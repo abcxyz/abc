@@ -1,3 +1,3 @@
 module github.com/abcxyz/abc
 
-go 1.21
+go 1.20
