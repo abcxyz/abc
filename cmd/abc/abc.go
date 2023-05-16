@@ -23,27 +23,25 @@ import (
 	"github.com/abcxyz/pkg/cli"
 )
 
-var (
-	rootCmd = func() *cli.RootCommand {
-		return &cli.RootCommand{
-			Name:    "abc",
-			Version: "0.0.1",
-			Commands: map[string]cli.CommandFactory{
-				"templates": func() cli.Command {
-					return &cli.RootCommand{
-						Name:        "templates",
-						Description: "subcommands for rendering templates and related things",
-						Commands: map[string]cli.CommandFactory{
-							"render": func() cli.Command {
-								return &render.Command{}
-							},
+var rootCmd = func() *cli.RootCommand {
+	return &cli.RootCommand{
+		Name:    "abc",
+		Version: "0.0.1",
+		Commands: map[string]cli.CommandFactory{
+			"templates": func() cli.Command {
+				return &cli.RootCommand{
+					Name:        "templates",
+					Description: "subcommands for rendering templates and related things",
+					Commands: map[string]cli.CommandFactory{
+						"render": func() cli.Command {
+							return &render.Command{}
 						},
-					}
-				},
+					},
+				}
 			},
-		}
+		},
 	}
-)
+}
 
 func main() {
 	ctx := context.Background()
