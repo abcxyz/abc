@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/abcxyz/pkg/cli"
@@ -27,45 +28,40 @@ import (
 type Render struct {
 	cli.BaseCommand
 
-	fs fs
+	fs fs.StatFS
 
-	fv flagValues
-}
-
-type flagValues struct {
-	template       string
-	spec           string
-	dest           string
-	gitProtocol    string
-	logLevel       string
-	forceOverwrite bool
-	keepTempDirs   bool
-	inputs         map[string]string
+	flagSource         string
+	flagSpec           string
+	flagDest           string
+	flagGitProtocol    string
+	flagLogLevel       string
+	flagForceOverwrite bool
+	flagKeepTempDirs   bool
+	flagInputs         map[string]string
 }
 
 // Desc implements cli.Command.
 func (r *Render) Desc() string {
-	return "Instantiate a template to setup a new app or add config files"
+	return "instantiate a template to setup a new app or add config files"
 }
 
 func (r *Render) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
-  The {{ COMMAND }} command renders the given template into the given dest
-  directory.
+  The {{ COMMAND }} command renders the given template into the given dest directory.
 `
 }
 
 func (r *Render) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
-	sect := set.NewSection("Render options")
-	sect.StringVar(&cli.StringVar{
-		Name:    "template",
-		Aliases: []string{"t"},
+	f := set.NewSection("Render options")
+	f.StringVar(&cli.StringVar{
+		Name:    "source",
+		Aliases: []string{"s"},
 		Example: "helloworld@v1",
-		Target:  &r.fv.template,
+		Target:  &r.flagSource,
 		Usage: `Required. The location of the template to be instantiated. Many forms are accepted. ` +
 			`"helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1; this is for a template owned by abcxyz. ` +
 			`"myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision v1; this is for a template not owned by abcxyz but still on GitHub. ` +
@@ -73,50 +69,50 @@ func (r *Render) Flags() *cli.FlagSet {
 			`"mylocaltarball.tgz" is for a template not in git but present on the local filesystem. ` +
 			`"http://example.com/myremotetarball.tgz" os for a non-Git template in a remote tarball.`,
 	})
-	sect.StringVar(&cli.StringVar{
+	f.StringVar(&cli.StringVar{
 		Name:    "spec",
 		Example: "path/to/spec.yaml",
-		Target:  &r.fv.spec,
+		Target:  &r.flagSpec,
 		Default: "./spec.yaml",
 		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
 	})
-	sect.StringVar(&cli.StringVar{
+	f.StringVar(&cli.StringVar{
 		Name:    "dest",
 		Aliases: []string{"d"},
 		Example: "/my/git/dir",
-		Target:  &r.fv.dest,
+		Target:  &r.flagDest,
 		Default: ".",
 		Usage:   "Required. The target directory in which to write the output files.",
 	})
-	sect.StringVar(&cli.StringVar{
+	f.StringVar(&cli.StringVar{
 		Name:    "git-protocol",
 		Example: "https",
 		Default: "https",
-		Target:  &r.fv.gitProtocol,
+		Target:  &r.flagGitProtocol,
 		Usage:   "Either ssh or https, the protocol for connecting to GitHub. Only used if the template source is GitHub.",
 	})
-	sect.StringMapVar(&cli.StringMapVar{
+	f.StringMapVar(&cli.StringMapVar{
 		Name:    "input",
 		Example: "foo=bar",
-		Target:  &r.fv.inputs,
+		Target:  &r.flagInputs,
 		Usage:   "The key=val pairs of template values; may be repeated.",
 	})
-	sect.StringVar(&cli.StringVar{
+	f.StringVar(&cli.StringVar{
 		Name:    "log-level",
 		Example: "info",
 		Default: "warning",
-		Target:  &r.fv.logLevel,
+		Target:  &r.flagLogLevel,
 		Usage:   "How verbose to log; any of debug|info|warning|error.",
 	})
-	sect.BoolVar(&cli.BoolVar{
+	f.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
-		Target:  &r.fv.forceOverwrite,
+		Target:  &r.flagForceOverwrite,
 		Default: false,
 		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
 	})
-	sect.BoolVar(&cli.BoolVar{
+	f.BoolVar(&cli.BoolVar{
 		Name:    "keep-temp-dirs",
-		Target:  &r.fv.keepTempDirs,
+		Target:  &r.flagKeepTempDirs,
 		Default: false,
 		Usage:   "Preserve the temp directories instead of deleting them normally.",
 	})
@@ -129,8 +125,8 @@ func (r *Render) parseFlags(args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	if r.fv.template == "" {
-		return fmt.Errorf("-template is required")
+	if r.flagSource == "" {
+		return fmt.Errorf("--source is required")
 	}
 
 	return nil
@@ -142,10 +138,10 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 	}
 
 	if r.fs == nil { // allow filesystem interaction to be faked for testing
-		r.fs = &realFS{}
+		r.fs = os.DirFS("/").(fs.StatFS) // type assertion is safe per docs: https://pkg.go.dev/os#DirFS
 	}
 
-	if err := destOK(r.fs, &r.fv); err != nil {
+	if err := destOK(r.fs, r.flagDest); err != nil {
 		return err
 	}
 
@@ -154,23 +150,18 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 
 // destOK makes sure that the output directory looks sane; we don't want to clobber the user's
 // home directory or something.
-func destOK(fs fs, fv *flagValues) error {
-	fi, err := fs.Stat(fv.dest)
+func destOK(fs fs.StatFS, dest string) error {
+	fi, err := fs.Stat(dest)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("the destination directory doesn't exist: %q", fv.dest)
+			return fmt.Errorf("the destination directory doesn't exist: %q", dest)
 		}
-		return fmt.Errorf("os.Stat(%s): %w", fv.dest, err)
+		return fmt.Errorf("os.Stat(%s): %w", dest, err)
 	}
 
 	if !fi.IsDir() {
-		return fmt.Errorf("the destination %q is not a directory", fv.dest)
+		return fmt.Errorf("the destination %q is not a directory", dest)
 	}
 
 	return nil
-}
-
-// An interface that allows for a fake filesystem to be used in tests.
-type fs interface {
-	Stat(string) (os.FileInfo, error)
 }

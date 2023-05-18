@@ -18,8 +18,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/abcxyz/abc/internal/templates/commands"
+	"github.com/abcxyz/abc/templates/commands"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -44,9 +46,17 @@ var rootCmd = func() *cli.RootCommand {
 }
 
 func main() {
-	ctx := context.Background()
-	if err := rootCmd().Run(ctx, os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	ctx, done := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
+	defer done()
+
+	if err := realMain(ctx); err != nil {
+		done()
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+}
+
+func realMain(ctx context.Context) error {
+	return rootCmd().Run(ctx, os.Args[1:])
 }
