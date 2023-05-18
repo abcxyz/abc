@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/abcxyz/abc/internal/templates/render"
+	"github.com/abcxyz/abc/internal/templates/commands"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -34,7 +34,7 @@ var rootCmd = func() *cli.RootCommand {
 					Description: "subcommands for rendering templates and related things",
 					Commands: map[string]cli.CommandFactory{
 						"render": func() cli.Command {
-							return &render.Command{}
+							return &commands.Render{}
 						},
 					},
 				}

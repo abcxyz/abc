@@ -1,4 +1,4 @@
-package render
+package commands
 
 import (
 	"fmt"
@@ -23,14 +23,14 @@ func TestParseFlags(t *testing.T) {
 		{
 			name: "all flags present",
 			args: []string{
-				"-t", "helloworld@v1",
-				"-s", "my_spec.yaml",
-				"-d", "my_dir",
-				"-p", "https",
-				"-i", "x=y",
-				"-l", "info",
-				"-o",
-				"-k",
+				"--template", "helloworld@v1",
+				"--spec", "my_spec.yaml",
+				"--dest", "my_dir",
+				"--git-protocol", "https",
+				"--input", "x=y",
+				"--log-level", "info",
+				"--force-overwrite",
+				"--keep-temp-dirs",
 			},
 			want: flagValues{
 				template:       "helloworld@v1",
@@ -70,7 +70,7 @@ func TestParseFlags(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			c := &Command{}
+			c := &Render{}
 			err := c.parseFlags(tc.args)
 			if tc.wantErr != "" {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package render implements the "templates render" subcommand for installing a template.
-package render
+package commands
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 	"github.com/abcxyz/pkg/cli"
 )
 
-type Command struct {
+type Render struct {
 	cli.BaseCommand
 
 	fs fs
@@ -44,11 +44,11 @@ type flagValues struct {
 }
 
 // Desc implements cli.Command.
-func (c *Command) Desc() string {
+func (r *Render) Desc() string {
 	return "Instantiate a template to setup a new app or add config files"
 }
 
-func (c *Command) Help() string {
+func (r *Render) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
@@ -57,7 +57,7 @@ Usage: {{ COMMAND }} [options]
 `
 }
 
-func (c *Command) Flags() *cli.FlagSet {
+func (r *Render) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
 	sect := set.NewSection("Render options")
@@ -65,7 +65,7 @@ func (c *Command) Flags() *cli.FlagSet {
 		Name:    "template",
 		Aliases: []string{"t"},
 		Example: "helloworld@v1",
-		Target:  &c.fv.template,
+		Target:  &r.fv.template,
 		Usage: `Required. The location of the template to be instantiated. Many forms are accepted. ` +
 			`"helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1; this is for a template owned by abcxyz. ` +
 			`"myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision v1; this is for a template not owned by abcxyz but still on GitHub. ` +
@@ -76,7 +76,7 @@ func (c *Command) Flags() *cli.FlagSet {
 	sect.StringVar(&cli.StringVar{
 		Name:    "spec",
 		Example: "path/to/spec.yaml",
-		Target:  &c.fv.spec,
+		Target:  &r.fv.spec,
 		Default: "./spec.yaml",
 		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
 	})
@@ -84,7 +84,7 @@ func (c *Command) Flags() *cli.FlagSet {
 		Name:    "dest",
 		Aliases: []string{"d"},
 		Example: "/my/git/dir",
-		Target:  &c.fv.dest,
+		Target:  &r.fv.dest,
 		Default: ".",
 		Usage:   "Required. The target directory in which to write the output files.",
 	})
@@ -92,31 +92,31 @@ func (c *Command) Flags() *cli.FlagSet {
 		Name:    "git-protocol",
 		Example: "https",
 		Default: "https",
-		Target:  &c.fv.gitProtocol,
+		Target:  &r.fv.gitProtocol,
 		Usage:   "Either ssh or https, the protocol for connecting to GitHub. Only used if the template source is GitHub.",
 	})
 	sect.StringMapVar(&cli.StringMapVar{
 		Name:    "input",
 		Example: "foo=bar",
-		Target:  &c.fv.inputs,
+		Target:  &r.fv.inputs,
 		Usage:   "The key=val pairs of template values; may be repeated.",
 	})
 	sect.StringVar(&cli.StringVar{
 		Name:    "log-level",
 		Example: "info",
 		Default: "warning",
-		Target:  &c.fv.logLevel,
+		Target:  &r.fv.logLevel,
 		Usage:   "How verbose to log; any of debug|info|warning|error.",
 	})
 	sect.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
-		Target:  &c.fv.forceOverwrite,
+		Target:  &r.fv.forceOverwrite,
 		Default: false,
 		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
 	})
 	sect.BoolVar(&cli.BoolVar{
 		Name:    "keep-temp-dirs",
-		Target:  &c.fv.keepTempDirs,
+		Target:  &r.fv.keepTempDirs,
 		Default: false,
 		Usage:   "Preserve the temp directories instead of deleting them normally.",
 	})
@@ -124,31 +124,28 @@ func (c *Command) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *Command) parseFlags(args []string) error {
-	if err := c.Flags().Parse(args); err != nil {
+func (r *Render) parseFlags(args []string) error {
+	if err := r.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	if c.fv.template == "" {
+	if r.fv.template == "" {
 		return fmt.Errorf("-template is required")
-	}
-	if c.fv.dest == "" {
-		return fmt.Errorf("-dest is required")
 	}
 
 	return nil
 }
 
-func (c *Command) Run(ctx context.Context, args []string) error {
-	if err := c.parseFlags(args); err != nil {
+func (r *Render) Run(ctx context.Context, args []string) error {
+	if err := r.parseFlags(args); err != nil {
 		return err
 	}
 
-	if c.fs == nil { // allow filesystem interaction to be faked for testing
-		c.fs = &realFS{}
+	if r.fs == nil { // allow filesystem interaction to be faked for testing
+		r.fs = &realFS{}
 	}
 
-	if err := destOK(c.fs, &c.fv); err != nil {
+	if err := destOK(r.fs, &r.fv); err != nil {
 		return err
 	}
 
