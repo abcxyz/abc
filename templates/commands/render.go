@@ -138,7 +138,7 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 	}
 
 	if r.fs == nil { // allow filesystem interaction to be faked for testing
-		r.fs = os.DirFS("/").(fs.StatFS) // type assertion is safe per docs: https://pkg.go.dev/os#DirFS
+		r.fs = os.DirFS("/").(fs.StatFS) // nolint:forcetypeassert // safe per docs: https://pkg.go.dev/os#DirFS
 	}
 
 	if err := destOK(r.fs, r.flagDest); err != nil {

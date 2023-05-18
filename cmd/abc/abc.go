@@ -58,5 +58,5 @@ func main() {
 }
 
 func realMain(ctx context.Context) error {
-	return rootCmd().Run(ctx, os.Args[1:])
+	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }
