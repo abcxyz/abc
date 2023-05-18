@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package render implements the "templates render" subcommand for installing a template.
 package render
 
 import (
@@ -19,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/abcxyz/pkg/cli"
 )
@@ -27,15 +27,20 @@ import (
 type Command struct {
 	cli.BaseCommand
 
-	template        string
-	spec            string
-	dest            string
-	gitProtocol     string
-	logLevel        string
-	allowNonGitDest bool
-	forceOverwrite  bool
-	keepTempDirs    bool
-	inputs          map[string]string
+	fs fs
+
+	fv flagValues
+}
+
+type flagValues struct {
+	template       string
+	spec           string
+	dest           string
+	gitProtocol    string
+	logLevel       string
+	forceOverwrite bool
+	keepTempDirs   bool
+	inputs         map[string]string
 }
 
 // Desc implements cli.Command.
@@ -60,8 +65,8 @@ func (c *Command) Flags() *cli.FlagSet {
 		Name:    "template",
 		Aliases: []string{"t"},
 		Example: "helloworld@v1",
-		Target:  &c.template,
-		Usage: `the location of the template to be instantiated. Many forms are accepted. ` +
+		Target:  &c.fv.template,
+		Usage: `Required. The location of the template to be instantiated. Many forms are accepted. ` +
 			`"helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1; this is for a template owned by abcxyz. ` +
 			`"myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision v1; this is for a template not owned by abcxyz but still on GitHub. ` +
 			`"mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git repo but not owned by abcxyz and not on GitHub. ` +
@@ -70,59 +75,50 @@ func (c *Command) Flags() *cli.FlagSet {
 	})
 	sect.StringVar(&cli.StringVar{
 		Name:    "spec",
-		Aliases: []string{"s"},
 		Example: "path/to/spec.yaml",
-		Target:  &c.spec,
+		Target:  &c.fv.spec,
 		Default: "./spec.yaml",
-		Usage:   "the path of the .yaml file within the template directory that specifies how the template is rendered.",
+		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
 	})
 	sect.StringVar(&cli.StringVar{
 		Name:    "dest",
 		Aliases: []string{"d"},
 		Example: "/my/git/dir",
-		Target:  &c.dest,
+		Target:  &c.fv.dest,
 		Default: ".",
-		Usage:   "the target directory in which to write the output files.",
+		Usage:   "Required. The target directory in which to write the output files.",
 	})
 	sect.StringVar(&cli.StringVar{
 		Name:    "git-protocol",
-		Aliases: []string{"p"},
 		Example: "https",
-		Target:  &c.gitProtocol,
-		Usage:   "either ssh or https, the protocol for connecting to GitHub.",
+		Default: "https",
+		Target:  &c.fv.gitProtocol,
+		Usage:   "Either ssh or https, the protocol for connecting to GitHub. Only used if the template source is GitHub.",
 	})
 	sect.StringMapVar(&cli.StringMapVar{
 		Name:    "input",
-		Aliases: []string{"i"},
 		Example: "foo=bar",
-		Target:  &c.inputs,
-		Usage:   "key=val pairs of template values; may be repeated.",
+		Target:  &c.fv.inputs,
+		Usage:   "The key=val pairs of template values; may be repeated.",
 	})
 	sect.StringVar(&cli.StringVar{
 		Name:    "log-level",
-		Aliases: []string{"l"},
 		Example: "info",
 		Default: "warning",
-		Target:  &c.logLevel,
-		Usage:   "how verbose to log; any of debug|info|warning|error.",
-	})
-	sect.BoolVar(&cli.BoolVar{
-		Name:    "allow-non-git-dest",
-		Aliases: []string{"a"},
-		Target:  &c.allowNonGitDest,
-		Usage:   "skip the sanity checks that the dest directory is a git repo.",
+		Target:  &c.fv.logLevel,
+		Usage:   "How verbose to log; any of debug|info|warning|error.",
 	})
 	sect.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
-		Aliases: []string{"o"},
-		Target:  &c.forceOverwrite,
-		Usage:   "if an output file already exists in the destination, overwrite it instead of failing.",
+		Target:  &c.fv.forceOverwrite,
+		Default: false,
+		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
 	})
 	sect.BoolVar(&cli.BoolVar{
-		Name:    "keep-temp-dirs-on-failure",
-		Aliases: []string{"k"},
-		Target:  &c.keepTempDirs,
-		Usage:   "if there is an error, preserve the temp directories instead of deleting them normally.",
+		Name:    "keep-temp-dirs",
+		Target:  &c.fv.keepTempDirs,
+		Default: false,
+		Usage:   "Preserve the temp directories instead of deleting them normally.",
 	})
 
 	return set
@@ -133,25 +129,11 @@ func (c *Command) parseFlags(args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	if c.template == "" {
+	if c.fv.template == "" {
 		return fmt.Errorf("-template is required")
 	}
-	if c.dest == "" {
+	if c.fv.dest == "" {
 		return fmt.Errorf("-dest is required")
-	}
-
-	if c.allowNonGitDest {
-		ok, err := isGitRepo(c.dest)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return fmt.Errorf("the provided -dest dir is not a git repo; if this is intentional, use --allow-non-git-dest")
-		}
-	}
-
-	if c.template == "" {
-		return fmt.Errorf("-template is required")
 	}
 
 	return nil
@@ -161,17 +143,37 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.parseFlags(args); err != nil {
 		return err
 	}
+
+	if c.fs == nil { // allow filesystem interaction to be faked for testing
+		c.fs = &realFS{}
+	}
+
+	if err := destOK(c.fs, &c.fv); err != nil {
+		return err
+	}
+
 	return fmt.Errorf("stub")
 }
 
-func isGitRepo(dir string) (bool, error) {
-	path := filepath.Join(dir, ".git")
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
+// destOK makes sure that the output directory looks sane; we don't want to clobber the user's
+// home directory or something.
+func destOK(fs fs, fv *flagValues) error {
+	fi, err := fs.Stat(fv.dest)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("the destination directory doesn't exist: %q", fv.dest)
+		}
+		return fmt.Errorf("os.Stat(%s): %w", fv.dest, err)
 	}
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+
+	if !fi.IsDir() {
+		return fmt.Errorf("the destination %q is not a directory", fv.dest)
 	}
-	return false, fmt.Errorf("os.Stat(%s): %w", path, err)
+
+	return nil
+}
+
+// An interface that allows for a fake filesystem to be used in tests.
+type fs interface {
+	Stat(string) (os.FileInfo, error)
 }
