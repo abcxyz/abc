@@ -28,7 +28,7 @@ import (
 type Render struct {
 	cli.BaseCommand
 
-	fs fs.StatFS
+	testFS fs.StatFS
 
 	flagSource         string
 	flagSpec           string
@@ -56,7 +56,7 @@ Usage: {{ COMMAND }} [options]
 func (r *Render) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
-	f := set.NewSection("Render options")
+	f := set.NewSection("RENDER OPTIONS")
 	f.StringVar(&cli.StringVar{
 		Name:    "source",
 		Aliases: []string{"s"},
@@ -84,13 +84,6 @@ func (r *Render) Flags() *cli.FlagSet {
 		Default: ".",
 		Usage:   "Required. The target directory in which to write the output files.",
 	})
-	f.StringVar(&cli.StringVar{
-		Name:    "git-protocol",
-		Example: "https",
-		Default: "https",
-		Target:  &r.flagGitProtocol,
-		Usage:   "Either ssh or https, the protocol for connecting to GitHub. Only used if the template source is GitHub.",
-	})
 	f.StringMapVar(&cli.StringMapVar{
 		Name:    "input",
 		Example: "foo=bar",
@@ -117,6 +110,15 @@ func (r *Render) Flags() *cli.FlagSet {
 		Usage:   "Preserve the temp directories instead of deleting them normally.",
 	})
 
+	g := set.NewSection("GIT OPTIONS")
+	g.StringVar(&cli.StringVar{
+		Name:    "git-protocol",
+		Example: "https",
+		Default: "https",
+		Target:  &r.flagGitProtocol,
+		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
+	})
+
 	return set
 }
 
@@ -137,15 +139,16 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	if r.fs == nil { // allow filesystem interaction to be faked for testing
-		r.fs = os.DirFS("/").(fs.StatFS) //nolint:forcetypeassert // safe per docs: https://pkg.go.dev/os#DirFS
+	useFS := r.testFS // allow filesystem interaction to be faked for testing
+	if useFS == nil {
+		useFS = os.DirFS("/").(fs.StatFS) //nolint:forcetypeassert // safe per docs: https://pkg.go.dev/os#DirFS
 	}
 
-	if err := destOK(r.fs, r.flagDest); err != nil {
+	if err := destOK(useFS, r.flagDest); err != nil {
 		return err
 	}
 
-	return fmt.Errorf("stub")
+	return fmt.Errorf("not implemented")
 }
 
 // destOK makes sure that the output directory looks sane; we don't want to clobber the user's
