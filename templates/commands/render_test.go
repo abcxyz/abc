@@ -75,7 +75,7 @@ func TestParseFlags(t *testing.T) {
 			},
 		},
 		{
-			name:    "required_flag_is_missing",
+			name:    "required_source_is_missing",
 			args:    []string{},
 			wantErr: flag.ErrHelp.Error(),
 		},
