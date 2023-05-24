@@ -121,17 +121,19 @@ steps:
 			t.Parallel()
 			got := &Spec{}
 			dec := NewDecoder(strings.NewReader(tc.in))
-			if err := dec.Decode(got); tc.wantUnmarshalErr != "" || err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
-					t.Fatal(diff)
-				}
+			err := dec.Decode(got)
+			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
 				return
 			}
 
-			if err := got.Validate(); tc.wantValidateErr != "" || err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
-					t.Fatal(diff)
-				}
+			err = got.Validate()
+			if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
 				return
 			}
 
@@ -194,17 +196,19 @@ nonexistent_field: 'oops'`,
 			t.Parallel()
 			got := &Input{}
 			dec := NewDecoder(strings.NewReader(tc.in))
-			if err := dec.Decode(got); tc.wantUnmarshalErr != "" || err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
-					t.Fatal(diff)
-				}
+			err := dec.Decode(got)
+			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
 				return
 			}
 
-			if err := got.Validate(); tc.wantValidateErr != "" || err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
-					t.Fatal(diff)
-				}
+			err = got.Validate()
+			if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
 				return
 			}
 
@@ -326,17 +330,19 @@ params:
 			t.Parallel()
 			got := &Step{}
 			dec := NewDecoder(strings.NewReader(tc.in))
-			if err := dec.Decode(got); tc.wantUnmarshalErr != "" || err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
-					t.Fatal(diff)
-				}
+			err := dec.Decode(got)
+			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
 				return
 			}
 
-			if err := got.Validate(); tc.wantValidateErr != "" || err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
-					t.Fatal(diff)
-				}
+			err = got.Validate()
+			if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
 				return
 			}
 

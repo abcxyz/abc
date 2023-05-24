@@ -169,7 +169,6 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	// Unmarshal with default values
 	type shadowType Step
 	shadow := &shadowType{} // see "Q2" in file comment above
 	if err := n.Decode(shadow); err != nil {
@@ -214,8 +213,8 @@ func (s *Step) Validate() error {
 	// The "action" field is implicitly validated by UnmarshalYAML, so not included here.
 	return errors.Join(
 		notZero(s.Pos, s.Desc, "desc"),
-		validateIfNotNil(s.Print),
-		validateIfNotNil(s.Include),
+		validateUnlessNil(s.Print),
+		validateUnlessNil(s.Include),
 		// TODO: add more action types:
 		// validateIfNotNil(s.RegexReplace),
 		// validateIfNotNil(s.StringReplace),

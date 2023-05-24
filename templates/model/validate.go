@@ -81,12 +81,12 @@ type validator interface {
 	Validate() error
 }
 
-// validateIfNotNil is intended to be used in a model Validate() method.
+// validateUnlessNil is intended to be used in a model Validate() method.
 // Semantically it means "if this model field is present (non-nil), then
 // validate it. If not present, then skip validation." This is useful for
 // polymorphic models like Step that have many possible child types, only one
 // of which will be set.
-func validateIfNotNil(v validator) error {
+func validateUnlessNil(v validator) error {
 	if v == nil || reflect.ValueOf(v).IsNil() {
 		return nil
 	}
