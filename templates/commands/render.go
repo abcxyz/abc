@@ -48,7 +48,7 @@ func (r *Render) Desc() string {
 
 func (r *Render) Help() string {
 	return `
-Usage: {{ COMMAND }} <source> [options]
+Usage: {{ COMMAND }} [options] <source>
 
 The {{ COMMAND }} command renders the given template.
 

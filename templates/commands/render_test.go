@@ -15,6 +15,7 @@
 package commands
 
 import (
+	"flag"
 	"fmt"
 	"io/fs"
 	"testing"
@@ -37,7 +38,6 @@ func TestParseFlags(t *testing.T) {
 		{
 			name: "all_flags_present",
 			args: []string{
-				"--source", "helloworld@v1",
 				"--spec", "my_spec.yaml",
 				"--dest", "my_dir",
 				"--git-protocol", "https",
@@ -45,9 +45,10 @@ func TestParseFlags(t *testing.T) {
 				"--log-level", "info",
 				"--force-overwrite",
 				"--keep-temp-dirs",
+				"helloworld@v1",
 			},
 			want: &Render{
-				flagSource:         "helloworld@v1",
+				source:             "helloworld@v1",
 				flagSpec:           "my_spec.yaml",
 				flagDest:           "my_dir",
 				flagGitProtocol:    "https",
@@ -60,10 +61,10 @@ func TestParseFlags(t *testing.T) {
 		{
 			name: "minimal_flags_present",
 			args: []string{
-				"-s", "helloworld@v1",
+				"helloworld@v1",
 			},
 			want: &Render{
-				flagSource:         "helloworld@v1",
+				source:             "helloworld@v1",
 				flagSpec:           "./spec.yaml",
 				flagDest:           ".",
 				flagGitProtocol:    "https",
@@ -76,7 +77,7 @@ func TestParseFlags(t *testing.T) {
 		{
 			name:    "required_flag_is_missing",
 			args:    []string{},
-			wantErr: "--source is required",
+			wantErr: flag.ErrHelp.Error(),
 		},
 	}
 
@@ -86,7 +87,7 @@ func TestParseFlags(t *testing.T) {
 			t.Parallel()
 			r := &Render{}
 			err := r.parseFlags(tc.args)
-			if tc.wantErr != "" {
+			if err != nil || tc.wantErr != "" {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
 				}
