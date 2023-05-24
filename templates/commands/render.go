@@ -18,6 +18,7 @@ package commands
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -30,7 +31,7 @@ type Render struct {
 
 	testFS fs.StatFS
 
-	flagSource         string
+	source             string
 	flagSpec           string
 	flagDest           string
 	flagGitProtocol    string
@@ -47,28 +48,29 @@ func (r *Render) Desc() string {
 
 func (r *Render) Help() string {
 	return `
-Usage: {{ COMMAND }} [options]
+Usage: {{ COMMAND }} <source> [options]
 
-  The {{ COMMAND }} command renders the given template into the given dest directory.
-`
+The {{ COMMAND }} command renders the given template.
+
+The "<source>" is the location of the template to be instantiated. Many forms
+are accepted:
+
+  - "helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1;
+    this is for a template owned by abcxyz.
+  - "myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision
+    v1; this is for a template not owned by abcxyz but still on GitHub.
+  - "mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git
+    repo but not owned by abcxyz and not on GitHub. 
+  - "mylocaltarball.tgz" is for a template not in git but present on the local
+    filesystem. 
+  - "http://example.com/myremotetarball.tgz" os for a non-Git template in a
+    remote tarball.`
 }
 
 func (r *Render) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
 	f := set.NewSection("RENDER OPTIONS")
-	f.StringVar(&cli.StringVar{
-		Name:    "source",
-		Aliases: []string{"s"},
-		Example: "helloworld@v1",
-		Target:  &r.flagSource,
-		Usage: `Required. The location of the template to be instantiated. Many forms are accepted. ` +
-			`"helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1; this is for a template owned by abcxyz. ` +
-			`"myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision v1; this is for a template not owned by abcxyz but still on GitHub. ` +
-			`"mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git repo but not owned by abcxyz and not on GitHub. ` +
-			`"mylocaltarball.tgz" is for a template not in git but present on the local filesystem. ` +
-			`"http://example.com/myremotetarball.tgz" os for a non-Git template in a remote tarball.`,
-	})
 	f.StringVar(&cli.StringVar{
 		Name:    "spec",
 		Example: "path/to/spec.yaml",
@@ -123,13 +125,18 @@ func (r *Render) Flags() *cli.FlagSet {
 }
 
 func (r *Render) parseFlags(args []string) error {
-	if err := r.Flags().Parse(args); err != nil {
+	flagSet := r.Flags()
+
+	if err := flagSet.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	if r.flagSource == "" {
-		return fmt.Errorf("--source is required")
+	parsedArgs := flagSet.Args()
+	if len(parsedArgs) != 1 {
+		return flag.ErrHelp
 	}
+
+	r.source = parsedArgs[0]
 
 	return nil
 }
