@@ -19,7 +19,7 @@ package model
 
 // Notes for maintainers explaining the confusing stuff in this file:
 //
-// Q. Why do we need to override UnmarshalYAML()?
+// Q1. Why do we need to override UnmarshalYAML()?
 //    A. We want to save the location within the YAML file of each object, so
 //       that we can return helpful error messages that point to the problem.
 //    A. We want to reject unrecognized fields. Due to a known issue in yaml.v3
@@ -28,15 +28,16 @@ package model
 //    A. In the case of the Step struct, we want to do polymorphic decoding
 //       based on the value of the "action" field.
 //
-// Q. What's up with the weird "shadow" unmarshalling pattern (ctrl-f "shadow")
+// Q2. What's up with the weird "shadow" unmarshalling pattern (ctrl-f "shadow")
 // A. We often want to "unmarshal all the fields of my struct, but also run
-//    our own logic before and after unmarshaling. To do this, we have to create
-//    a separate type that *doesn't* implement yaml.Unmarshaler, and unmarshal
-//    into that first. If we're inside UnmarshalYAML() and we try to unmarshal
-//    into the receiver, there will be infinite recursion into UnmarshalYAML().
-//    See e.g. https://github.com/go-yaml/yaml/issues/107#issuecomment-524681153.
+//    our own logic before and after unmarshaling." To do this, we have to
+//    create a separate type that *doesn't* implement yaml.Unmarshaler, and
+//    unmarshal into that first. If we didn't do this, we'd get infinite
+//    recursion where UnmarshalYAML invokes Decode which invokes UnmarshalYAML
+//    which invokes Decode ...infinitely. See e.g.
+//    https://github.com/go-yaml/yaml/issues/107#issuecomment-524681153.
 //
-// Q. Why is validation done as a separate pass instead of in UnmarshalYAML()?
+// Q3. Why is validation done as a separate pass instead of in UnmarshalYAML()?
 // A. Because there's a very specific edge case that we need to avoid.
 //    UnmarshalYAML() is only called for YAML objects that have at least one
 //    field that's specified in the input YAML. This can happen if an object
@@ -62,7 +63,7 @@ func NewDecoder(r io.Reader) *yaml.Decoder {
 // Spec represents a parsed spec.yaml file describing a template.
 type Spec struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos *ConfigPos `yaml:"-"`
 
 	APIVersion String `yaml:"apiVersion"`
 	Kind       String `yaml:"kind"`
@@ -74,12 +75,13 @@ type Spec struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
-	if err := extraFields(n, []string{"apiVersion", "kind", "desc", "inputs", "steps"}); err != nil {
+	knownYAMLFields := []string{"apiVersion", "kind", "desc", "inputs", "steps"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
 
 	type shadowType Spec
-	shadow := &shadowType{} // unmarshal into a type that doesn't have UnmarshalYAML
+	shadow := &shadowType{} // see "Q2" in file comment above
 	if err := n.Decode(shadow); err != nil {
 		return err
 	}
@@ -95,7 +97,7 @@ func (s *Spec) Validate() error {
 		notZero(s.Pos, s.APIVersion, "apiVersion"),
 		notZero(s.Pos, s.Kind, "kind"),
 		notZero(s.Pos, s.Desc, "desc"),
-		nonemptySlice(s.Pos, s.Steps, "steps"),
+		nonEmptySlice(s.Pos, s.Steps, "steps"),
 		validateEach(s.Inputs),
 		validateEach(s.Steps),
 	)
@@ -104,7 +106,7 @@ func (s *Spec) Validate() error {
 // Input represents one of the parsed "input" fields from the spec.yaml file.
 type Input struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos *ConfigPos `yaml:"-"`
 
 	Name     String `yaml:"name"`
 	Desc     String `yaml:"desc"`
@@ -113,7 +115,8 @@ type Input struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Input) UnmarshalYAML(n *yaml.Node) error {
-	if err := extraFields(n, []string{"name", "desc", "required"}); err != nil {
+	knownYAMLFields := []string{"name", "desc", "required"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
 
@@ -144,7 +147,7 @@ func (i *Input) Validate() error {
 // Step represents one of the work steps involved in rendering a template.
 type Step struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos *ConfigPos `yaml:"-"`
 
 	Desc   String `yaml:"desc"`
 	Action String `yaml:"action"`
@@ -161,13 +164,14 @@ type Step struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Step) UnmarshalYAML(n *yaml.Node) error {
-	if err := extraFields(n, []string{"desc", "action", "params"}); err != nil {
+	knownYAMLFields := []string{"desc", "action", "params"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
 
 	// Unmarshal with default values
 	type shadowType Step
-	shadow := &shadowType{} // unmarshal into a type that doesn't have UnmarshalYAML
+	shadow := &shadowType{} // see "Q2" in file comment above
 	if err := n.Decode(shadow); err != nil {
 		return err
 	}
@@ -222,19 +226,20 @@ func (s *Step) Validate() error {
 // Print is an action that prints a message to standard output.
 type Print struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos *ConfigPos `yaml:"-"`
 
 	Message String `yaml:"message"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (p *Print) UnmarshalYAML(n *yaml.Node) error {
-	if err := extraFields(n, []string{"message"}); err != nil {
+	knownYAMLFields := []string{"message"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
 
 	type shadowType Print
-	shadow := &shadowType{} // unmarshal into a type that doesn't have UnmarshalYAML
+	shadow := &shadowType{} // see "Q2" in file comment above
 
 	if err := n.Decode(shadow); err != nil {
 		return err
@@ -255,18 +260,19 @@ func (p *Print) Validate() error {
 // Include is an action that places files into the output directory.
 type Include struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos *ConfigPos `yaml:"-"`
 
 	Paths []String `yaml:"paths"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	if err := extraFields(n, []string{"paths"}); err != nil {
+	knownYAMLFields := []string{"paths"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
 	type shadowType Include
-	shadow := &shadowType{} // unmarshal into a type that doesn't have UnmarshalYAML
+	shadow := &shadowType{} // see "Q2" in file comment above
 
 	if err := n.Decode(shadow); err != nil {
 		return err
@@ -280,6 +286,6 @@ func (i *Include) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (i *Include) Validate() error {
 	return errors.Join(
-		nonemptySlice(i.Pos, i.Paths, "paths"),
+		nonEmptySlice(i.Pos, i.Paths, "paths"),
 	)
 }

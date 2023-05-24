@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func notZero[T comparable](pos ConfigPos, x valWithPos[T], fieldName string) error {
+func notZero[T comparable](pos *ConfigPos, x valWithPos[T], fieldName string) error {
 	var zero T
 	if x.Val == zero {
 		return pos.AnnotateErr(fmt.Errorf("field %q is required", fieldName))
@@ -31,7 +31,7 @@ func notZero[T comparable](pos ConfigPos, x valWithPos[T], fieldName string) err
 	return nil
 }
 
-func nonemptySlice[T any](pos ConfigPos, s []T, fieldName string) error {
+func nonEmptySlice[T any](pos *ConfigPos, s []T, fieldName string) error {
 	if len(s) == 0 {
 		return pos.AnnotateErr(fmt.Errorf("field %q is required", fieldName))
 	}
@@ -55,6 +55,7 @@ func extraFields(n *yaml.Node, knownFields []string) error {
 	for k := range m {
 		if !slices.Contains(knownFields, k) {
 			unknownField = k
+			break
 		}
 	}
 
@@ -80,6 +81,11 @@ type validator interface {
 	Validate() error
 }
 
+// validateIfNotNil is intended to be used in a model Validate() method.
+// Semantically it means "if this model field is present (non-nil), then
+// validate it. If not present, then skip validation. This is useful for
+// polymorphic models like Step that have many possible child types, only one
+// of which will be set.
 func validateIfNotNil(v validator) error {
 	if v == nil || reflect.ValueOf(v).IsNil() {
 		return nil
@@ -88,12 +94,10 @@ func validateIfNotNil(v validator) error {
 }
 
 func validateEach[T validator](s []T) error {
-	var out []error
+	var merr error
 	for _, v := range s {
-		if err := v.Validate(); err != nil {
-			out = append(out, err)
-		}
+		merr = errors.Join(merr, v.Validate())
 	}
 
-	return errors.Join(out...)
+	return merr
 }

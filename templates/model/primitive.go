@@ -29,7 +29,7 @@ type Bool = valWithPos[bool]
 // from. This allows helpful error messages.
 type valWithPos[T any] struct {
 	Val T
-	Pos ConfigPos
+	Pos *ConfigPos
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

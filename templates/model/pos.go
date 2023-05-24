@@ -16,6 +16,7 @@ package model
 
 // This file deals with tracking the line/column information in YAML files
 // to support helpful error messages.
+
 import (
 	"fmt"
 
@@ -26,15 +27,15 @@ import (
 // to problems. The zero value means "position unknown or there is no position."
 //
 // This is theoretically agnostic to input format; we could decide to support alternative
-// serialization formats in the future.
+// serialization formats besides YAML in the future.
 type ConfigPos struct {
 	Line   int
 	Column int
 }
 
 // yamlPos constructs a position struct based on a YAML parse cursor.
-func yamlPos(n *yaml.Node) ConfigPos {
-	return ConfigPos{
+func yamlPos(n *yaml.Node) *ConfigPos {
+	return &ConfigPos{
 		Line:   n.Line,
 		Column: n.Column,
 	}
@@ -42,13 +43,13 @@ func yamlPos(n *yaml.Node) ConfigPos {
 
 // AnnotateErr prepends the config file location of a parsed value to an error. If the input err is
 // nil, then nil is returned.
-func (c ConfigPos) AnnotateErr(err error) error {
+func (c *ConfigPos) AnnotateErr(err error) error {
 	if err == nil {
 		return nil
 	}
 
 	pos := "(position unknown)" // This can happen when field values are defaults, rather that coming from the config file
-	if c != (ConfigPos{}) {
+	if *c != (ConfigPos{}) {
 		pos = fmt.Sprintf("line %d column %d", c.Line, c.Column)
 	}
 

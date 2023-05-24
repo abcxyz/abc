@@ -135,7 +135,7 @@ steps:
 				return
 			}
 
-			opt := cmpopts.IgnoreTypes(ConfigPos{}) // don't force test authors to assert the line and column numbers
+			opt := cmpopts.IgnoreTypes(&ConfigPos{}) // don't force test authors to assert the line and column numbers
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
@@ -208,7 +208,7 @@ nonexistent_field: 'oops'`,
 				return
 			}
 
-			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreTypes(ConfigPos{})); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreTypes(&ConfigPos{})); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
 		})
@@ -340,7 +340,7 @@ params:
 				return
 			}
 
-			opt := cmpopts.IgnoreTypes(ConfigPos{}) // don't force test authors to assert the line and column numbers
+			opt := cmpopts.IgnoreTypes(&ConfigPos{}) // don't force test authors to assert the line and column numbers
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
