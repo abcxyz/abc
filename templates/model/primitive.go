@@ -34,7 +34,7 @@ type valWithPos[T any] struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (v *valWithPos[T]) UnmarshalYAML(n *yaml.Node) error {
-	if err := n.Decode(&v.Val); err != nil { 
+	if err := n.Decode(&v.Val); err != nil {
 		return err //nolint:wrapcheck
 	}
 	v.Pos = yamlPos(n)

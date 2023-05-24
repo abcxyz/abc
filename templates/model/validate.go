@@ -48,7 +48,7 @@ func extraFields(n *yaml.Node, knownFields []string) error {
 	}
 	m := map[string]any{}
 	if err := n.Decode(m); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	var unknownField string
