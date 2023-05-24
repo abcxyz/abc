@@ -5,6 +5,8 @@ go 1.20
 require (
 	github.com/abcxyz/pkg v0.3.0
 	github.com/google/go-cmp v0.5.9
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
