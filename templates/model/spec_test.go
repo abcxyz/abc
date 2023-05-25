@@ -322,6 +322,92 @@ params:
   nonexistent: 'foo'`,
 			wantUnmarshalErr: `invalid config near line 4 column 3: unknown field name "nonexistent"`,
 		},
+		{
+			name: "regex_replace_success",
+			in: `desc: 'mydesc'
+action: 'regex_replace'
+params:
+  regex: 'my_regex'
+  subgroup: 1
+  with: 'some_template'`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "regex_replace"},
+				RegexReplace: &RegexReplace{
+					Regex:    String{Val: "my_regex"},
+					Subgroup: Int{Val: 1},
+					With:     String{Val: "some_template"},
+				},
+			},
+		},
+		{
+			name: "regex_negative_subgroup_should_fail",
+			in: `desc: 'mydesc'
+action: 'regex_replace'
+params:
+  regex: 'my_regex'
+  subgroup: -1
+  with: 'some_template'`,
+			wantValidateErr: `field "subgroup" must not be negative`,
+		},
+		{
+			name: "regex_missing_fields_should_fail",
+			in: `desc: 'mydesc'
+action: 'regex_replace'
+params:
+  subgroup: 1`,
+			wantValidateErr: `invalid config near line 4 column 3: field "regex" is required
+invalid config near line 4 column 3: field "with" is required`,
+		},
+		{
+			name: "string_replace_success",
+			in: `desc: 'mydesc'
+action: 'string_replace'
+params:
+  to_replace: 'abc'
+  with: 'def'`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "string_replace"},
+				StringReplace: &StringReplace{
+					ToReplace: String{Val: "abc"},
+					With:      String{Val: "def"},
+				},
+			},
+		},
+		{
+			name: "string_replace_missing_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'string_replace'
+params:
+  with: 'def'`,
+			wantValidateErr: `invalid config near line 4 column 3: field "to_replace" is required`,
+		},
+		{
+			name: "go_template_success",
+			in: `desc: 'mydesc'
+action: 'go_template'
+params:
+  paths: ['my/path/1', 'my/path/2']`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "go_template"},
+				GoTemplate: &GoTemplate{
+					Paths: []String{
+						{Val: "my/path/1"},
+						{Val: "my/path/2"},
+					},
+				},
+			},
+		},
+		{
+			name: "go_template_missing_paths_should_fail",
+			in: `desc: 'mydesc'
+action: 'go_template'
+params:
+  paths: []`,
+			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
+		},
 	}
 
 	for _, tc := range cases {
