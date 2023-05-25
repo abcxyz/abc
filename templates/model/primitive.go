@@ -25,7 +25,7 @@ type String = valWithPos[string]
 // Bool represents a boolean field in a model, together with its location in the input file.
 type Bool = valWithPos[bool]
 
-// Bool represents an integer field in a model, together with its location in the input file.
+// Int represents an integer field in a model, together with its location in the input file.
 type Int = valWithPos[int]
 
 // valWithPos unmarshals a type T from YAML, and adds on the location in the YAML doc that it came
