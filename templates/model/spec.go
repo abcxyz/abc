@@ -153,13 +153,11 @@ type Step struct {
 	Action String `yaml:"action"`
 
 	// Each action type has a field below. Only one of these will be set.
-	Print   *Print   `yaml:"-"`
-	Include *Include `yaml:"-"`
-
-	// TODO: add more action types:
-	// RegexReplace  *RegexReplace  `yaml:"-"`
-	// StringReplace *StringReplace `yaml:"-"`
-	// GoTemplate    *GoTemplate    `yaml:"-"`
+	Print         *Print         `yaml:"-"`
+	Include       *Include       `yaml:"-"`
+	RegexReplace  *RegexReplace  `yaml:"-"`
+	StringReplace *StringReplace `yaml:"-"`
+	GoTemplate    *GoTemplate    `yaml:"-"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -190,6 +188,18 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 		s.Include = new(Include)
 		unmarshalInto = s.Include
 		s.Include.Pos = s.Pos
+	case "regex_replace":
+		s.RegexReplace = new(RegexReplace)
+		unmarshalInto = s.RegexReplace
+		s.RegexReplace.Pos = s.Pos
+	case "string_replace":
+		s.StringReplace = new(StringReplace)
+		unmarshalInto = s.StringReplace
+		s.StringReplace.Pos = s.Pos
+	case "go_template":
+		s.GoTemplate = new(GoTemplate)
+		unmarshalInto = s.GoTemplate
+		s.GoTemplate.Pos = s.Pos
 	case "":
 		return s.Pos.AnnotateErr(fmt.Errorf(`missing "action" field in this step`))
 	default:
@@ -215,10 +225,9 @@ func (s *Step) Validate() error {
 		notZero(s.Pos, s.Desc, "desc"),
 		validateUnlessNil(s.Print),
 		validateUnlessNil(s.Include),
-		// TODO: add more action types:
-		// validateIfNotNil(s.RegexReplace),
-		// validateIfNotNil(s.StringReplace),
-		// validateIfNotNil(s.GoTemplate),
+		validateUnlessNil(s.RegexReplace),
+		validateUnlessNil(s.StringReplace),
+		validateUnlessNil(s.GoTemplate),
 	)
 }
 
@@ -287,4 +296,119 @@ func (i *Include) Validate() error {
 	return errors.Join(
 		nonEmptySlice(i.Pos, i.Paths, "paths"),
 	)
+}
+
+// RegexReplace is an action that replaces a regex match (or a subgroup of it) with a
+// template expression.
+type RegexReplace struct {
+	// Pos is the YAML file location where this object started.
+	Pos *ConfigPos `yaml:"-"`
+
+	Regex    String `yaml:"regex"`
+	Subgroup Int    `yaml:"subgroup"`
+	With     String `yaml:"with"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (r *RegexReplace) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"regex", "subgroup", "with"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType RegexReplace
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*r = RegexReplace(*shadow)
+	r.Pos = yamlPos(n)
+
+	return nil
+}
+
+// Validate implements Validator.
+func (r *RegexReplace) Validate() error {
+	// Some validation happens later during execution:
+	//  - Compiling the regular expression
+	//  - Compiling the "with" template
+	//  - Validating that the subgroup number is actually a valid subgroup in the regex
+	return errors.Join(
+		notZero(r.Pos, r.Regex, "regex"),
+		notZero(r.Pos, r.With, "with"),
+		nonNegative(r.Subgroup, "subgroup"),
+	)
+}
+
+// StringReplace is an action that replaces a string with a template expression.
+type StringReplace struct {
+	// Pos is the YAML file location where this object started.
+	Pos *ConfigPos `yaml:"-"`
+
+	ToReplace String `yaml:"to_replace"`
+	With      String `yaml:"with"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (s *StringReplace) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"to_replace", "with"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType StringReplace
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*s = StringReplace(*shadow)
+	s.Pos = yamlPos(n)
+
+	return nil
+}
+
+// Validate implements Validator.
+func (s *StringReplace) Validate() error {
+	// Some validation doesn't happen here, it happens later during execution:
+	//  - Compiling the regular expression
+	//  - Compiling the "with" template
+	//  - Validating that the subgroup number is actually a valid subgroup in
+	//    the regex
+	return errors.Join(
+		notZero(s.Pos, s.ToReplace, "to_replace"),
+		notZero(s.Pos, s.With, "with"),
+	)
+}
+
+// GoTemplate is an action that executes one more files as a Go template,
+// replacing each one with its template output.
+type GoTemplate struct {
+	// Pos is the YAML file location where this object started.
+	Pos *ConfigPos `yaml:"-"`
+
+	Paths []String `yaml:"paths"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (g *GoTemplate) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"paths"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType GoTemplate
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*g = GoTemplate(*shadow)
+	g.Pos = yamlPos(n)
+
+	return nil
+}
+
+// Validate implements Validator.
+func (g *GoTemplate) Validate() error {
+	// Checking that the input paths are valid will happen later.
+	return errors.Join(nonEmptySlice(g.Pos, g.Paths, "paths"))
 }

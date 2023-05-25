@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
@@ -34,6 +35,14 @@ func notZero[T comparable](pos *ConfigPos, x valWithPos[T], fieldName string) er
 func nonEmptySlice[T any](pos *ConfigPos, s []T, fieldName string) error {
 	if len(s) == 0 {
 		return pos.AnnotateErr(fmt.Errorf("field %q is required", fieldName))
+	}
+	return nil
+}
+
+func nonNegative[T constraints.Ordered](x valWithPos[T], fieldName string) error {
+	var zero T
+	if x.Val < zero {
+		return x.Pos.AnnotateErr(fmt.Errorf("field %q must not be negative", fieldName))
 	}
 	return nil
 }
