@@ -15,15 +15,20 @@
 package commands
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/go-getter/v2"
 )
 
 func TestParseFlags(t *testing.T) {
@@ -137,7 +142,7 @@ func TestDestOK(t *testing.T) {
 		{
 			name:    "stat_returns_error",
 			dest:    "my/git/dir",
-			fs:      &errorFS{err: fmt.Errorf("yikes")},
+			fs:      &errorFS{statErr: fmt.Errorf("yikes")},
 			wantErr: "yikes",
 		},
 	}
@@ -155,11 +160,176 @@ func TestDestOK(t *testing.T) {
 	}
 }
 
-type errorFS struct {
-	fs.StatFS
-	err error
+func TestRealRun(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name             string
+		templateContents map[string]string
+		keepTempDirs     bool
+		getterErr        error
+		removeAllErr     error
+		wantErr          string
+	}{
+		{
+			name: "simple_success",
+			templateContents: map[string]string{
+				"file1.txt": "My first file",
+				"file2.txt": "My second file",
+			},
+		},
+		{
+			name:         "keep_temp_dirs_on_success",
+			keepTempDirs: true,
+			templateContents: map[string]string{
+				"file1.txt": "My first file",
+				"file2.txt": "My second file",
+			},
+		},
+		{
+			name:      "getter_error",
+			getterErr: fmt.Errorf("fake error for testing"),
+			wantErr:   "fake error for testing",
+		},
+		{
+			name:         "errors_are_combined",
+			getterErr:    fmt.Errorf("fake getter error for testing"),
+			removeAllErr: fmt.Errorf("fake removeAll error for testing"),
+			wantErr:      "fake getter error for testing\nfake removeAll error for testing",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			templateDir := filepath.Join(tempDir, "template")
+			templateDirNamer := func(debugID string) (string, error) {
+				return templateDir, nil
+			}
+			rp := &runParams{
+				getter: &fakeGetter{
+					wantSource: "github.com/myorg/myrepo",
+					output:     tc.templateContents,
+					err:        tc.getterErr,
+				},
+				fs: &errorFS{
+					removeAllErr: tc.removeAllErr,
+				},
+				tempDirNamer: templateDirNamer,
+			}
+			r := &Render{
+				source:           "github.com/myorg/myrepo",
+				flagKeepTempDirs: tc.keepTempDirs,
+			}
+			ctx := context.Background()
+			err := r.realRun(ctx, rp)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+
+			wantFiles := tc.templateContents
+			if !tc.keepTempDirs {
+				wantFiles = nil
+			}
+
+			got := loadDirContents(t, templateDir)
+			if diff := cmp.Diff(got, wantFiles); diff != "" {
+				t.Errorf("output files were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
 }
 
-func (e *errorFS) Stat(string) (fs.FileInfo, error) {
-	return nil, e.err
+// Read all the files recursively under "dir", returning their contents as a
+// map[filename]->contents. Returns nil if dir doesn't exist.
+func loadDirContents(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	if _, err := os.Stat(dir); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		t.Fatal(err)
+	}
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("ReadFile(): %w", err)
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return fmt.Errorf("Rel(): %w", err)
+		}
+		out[rel] = string(contents)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkDir(): %v", err)
+	}
+	return out
+}
+
+// A renderFS implementation that can inject errors for testing.
+type errorFS struct {
+	renderFS
+
+	statErr      error
+	removeAllErr error
+	openErr      error
+}
+
+func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
+	if e.statErr != nil {
+		return nil, e.statErr
+	}
+	return e.renderFS.Stat(name)
+}
+
+func (e *errorFS) RemoveAll(name string) error {
+	if e.removeAllErr != nil {
+		return e.removeAllErr
+	}
+	return e.renderFS.RemoveAll(name)
+}
+
+func (e *errorFS) Open(name string) (fs.File, error) {
+	if e.openErr != nil {
+		return nil, e.openErr
+	}
+	return e.renderFS.Open(name)
+}
+
+type fakeGetter struct {
+	wantSource string
+	output     map[string]string
+	err        error
+}
+
+func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetResult, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if req.Src != f.wantSource {
+		return nil, fmt.Errorf("got template source %s but expected %s", req.Src, f.wantSource)
+	}
+	for path, contents := range f.output {
+		fullPath := filepath.Join(req.Dst, path)
+		dir := filepath.Dir(fullPath)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, fmt.Errorf("MkdirAll(%q): %w", dir, err)
+		}
+		if err := os.WriteFile(fullPath, []byte(contents), 0o600); err != nil {
+			return nil, fmt.Errorf("WriteFile(%q): %w", fullPath, err)
+		}
+	}
+	return &getter.GetResult{Dst: req.Dst}, nil
 }
