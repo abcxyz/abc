@@ -216,6 +216,7 @@ func TestRealRun(t *testing.T) {
 					err:        tc.getterErr,
 				},
 				fs: &errorFS{
+					renderFS:     &realFS{},
 					removeAllErr: tc.removeAllErr,
 				},
 				tempDirNamer: templateDirNamer,
