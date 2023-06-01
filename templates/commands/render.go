@@ -165,15 +165,15 @@ func (r *Render) parseFlags(args []string) error {
 type realFS struct{}
 
 func (r *realFS) Stat(name string) (fs.FileInfo, error) {
-	return os.Stat(name)
+	return os.Stat(name) //nolint:wrapcheck
 }
 
 func (r *realFS) Open(name string) (fs.File, error) {
-	return os.Open(name)
+	return os.Open(name) //nolint:wrapcheck
 }
 
 func (r *realFS) RemoveAll(name string) error {
-	return os.RemoveAll(name)
+	return os.RemoveAll(name) //nolint:wrapcheck
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
@@ -242,7 +242,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 
 // Downloads the template and returns the name of the temp directory where it
 // was saved. If error is returned, then the returned directory name may or may
-// not exist.
+// not exist, and may or may not be empty.
 func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
 	templateDir, err := rp.tempDirNamer("template-copy")
 	if err != nil {
@@ -257,7 +257,7 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 
 	res, err := rp.getter.Get(ctx, req)
 	if err != nil {
-		return templateDir, err
+		return templateDir, fmt.Errorf("go-getter.Get(): %w", err)
 	}
 
 	logger.Debugf("copied source template %q into temporary directory %q", r.source, res.Dst)
