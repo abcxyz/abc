@@ -29,12 +29,13 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
+	"go.uber.org/zap"
 )
-
-var logger = logging.NewFromEnv("ABC_")
 
 type Render struct {
 	cli.BaseCommand
+
+	logger *zap.SugaredLogger
 
 	testFS     renderFS
 	testGetter getterClient
@@ -196,6 +197,10 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 			Getters:       getter.Getters,
 			Decompressors: getter.Decompressors,
 		}
+	}
+
+	if r.logger == nil {
+		r.logger = logging.NewFromEnv("ABC_")
 	}
 
 	wd, err := os.Getwd()
