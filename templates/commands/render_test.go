@@ -25,6 +25,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -225,7 +226,7 @@ func TestRealRun(t *testing.T) {
 				source:           "github.com/myorg/myrepo",
 				flagKeepTempDirs: tc.keepTempDirs,
 			}
-			ctx := context.Background()
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			err := r.realRun(ctx, rp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)

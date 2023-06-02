@@ -29,13 +29,10 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
-	"go.uber.org/zap"
 )
 
 type Render struct {
 	cli.BaseCommand
-
-	logger *zap.SugaredLogger
 
 	testFS     renderFS
 	testGetter getterClient
@@ -178,6 +175,8 @@ func (r *realFS) RemoveAll(name string) error {
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
+	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
+
 	if err := r.parseFlags(args); err != nil {
 		return err
 	}
@@ -197,10 +196,6 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 			Getters:       getter.Getters,
 			Decompressors: getter.Decompressors,
 		}
-	}
-
-	if r.logger == nil {
-		r.logger = logging.NewFromEnv("ABC_")
 	}
 
 	wd, err := os.Getwd()
@@ -233,7 +228,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	templateDir, err := r.copyTemplate(ctx, rp)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		defer func() {
-			outErr = errors.Join(outErr, r.maybeRemoveTempDirs(rp.fs, templateDir))
+			outErr = errors.Join(outErr, r.maybeRemoveTempDirs(ctx, rp.fs, templateDir))
 		}()
 	}
 	if err != nil {
@@ -265,12 +260,13 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 		return templateDir, fmt.Errorf("go-getter.Get(): %w", err)
 	}
 
-	logger.Debugf("copied source template %q into temporary directory %q", r.source, res.Dst)
+	logging.FromContext(ctx).Debugf("copied source template %q into temporary directory %q", r.source, res.Dst)
 	return templateDir, nil
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
-func (r *Render) maybeRemoveTempDirs(fs renderFS, tempDirs ...string) error {
+func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
+	logger := logging.FromContext(ctx)
 	if r.flagKeepTempDirs {
 		logger.Infof("keeping temporary directories due to --keep-temp-dirs. Locations are: %v", tempDirs)
 		return nil
