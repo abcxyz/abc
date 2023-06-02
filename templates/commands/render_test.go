@@ -210,12 +210,12 @@ func TestRealRun(t *testing.T) {
 			templateDirNamer := func(debugID string) (string, error) {
 				return templateDir, nil
 			}
+			fg := &fakeGetter{
+				output: tc.templateContents,
+				err:    tc.getterErr,
+			}
 			rp := &runParams{
-				getter: &fakeGetter{
-					wantSource: "github.com/myorg/myrepo",
-					output:     tc.templateContents,
-					err:        tc.getterErr,
-				},
+				getter: fg,
 				fs: &errorFS{
 					renderFS:     &realFS{},
 					removeAllErr: tc.removeAllErr,
@@ -230,6 +230,10 @@ func TestRealRun(t *testing.T) {
 			err := r.realRun(ctx, rp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
+			}
+
+			if fg.gotSource != r.source {
+				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.source)
 			}
 
 			wantFiles := tc.templateContents
@@ -311,17 +315,15 @@ func (e *errorFS) Open(name string) (fs.File, error) {
 }
 
 type fakeGetter struct {
-	wantSource string
-	output     map[string]string
-	err        error
+	gotSource string
+	output    map[string]string
+	err       error
 }
 
 func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetResult, error) {
+	f.gotSource = req.Src
 	if f.err != nil {
 		return nil, f.err
-	}
-	if req.Src != f.wantSource {
-		return nil, fmt.Errorf("got template source %s but want %s", req.Src, f.wantSource)
 	}
 	for path, contents := range f.output {
 		fullPath := filepath.Join(req.Dst, path)
