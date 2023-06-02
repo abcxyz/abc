@@ -280,20 +280,21 @@ func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs 
 	return merr
 }
 
-// Generate the name for a temporary directory, without creating it. debugID is
-// an optional name that can be included to help understand which directory is
-// which during debugging.
+// Generate the name for a temporary directory, without creating it. namePart is
+// an optional name that can be included to help template developers distinguish
+// between the various template directories created by this program, such as
+// "template" or "scratch".
 //
 // We can't use os.MkdirTemp() for a go-getter output directory because
 // go-getter silently fails to clone a git repo into an existing (empty)
 // directory. go-getter assumes that the dir must already be a git repo if it
 // exists.
-func tempDirName(debugID string) (string, error) {
+func tempDirName(namePart string) (string, error) {
 	rnd, err := randU64()
 	if err != nil {
 		return "", err
 	}
-	basename := fmt.Sprintf("abc-%s-%d", debugID, rnd)
+	basename := fmt.Sprintf("abc-%s-%d", namePart, rnd)
 	return filepath.Join(os.TempDir(), basename), nil
 }
 

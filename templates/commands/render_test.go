@@ -321,7 +321,7 @@ func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetR
 		return nil, f.err
 	}
 	if req.Src != f.wantSource {
-		return nil, fmt.Errorf("got template source %s but expected %s", req.Src, f.wantSource)
+		return nil, fmt.Errorf("got template source %s but want %s", req.Src, f.wantSource)
 	}
 	for path, contents := range f.output {
 		fullPath := filepath.Join(req.Dst, path)
