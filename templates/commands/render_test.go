@@ -15,6 +15,7 @@
 package commands
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -22,9 +23,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -164,28 +167,96 @@ func TestDestOK(t *testing.T) {
 func TestRealRun(t *testing.T) {
 	t.Parallel()
 
+	specContents := `
+apiVersion: 'abc'
+kind: 'Template'
+desc: 'A template for the ages'
+inputs:
+- name: 'name_to_greet'
+  required: true
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'Hello, {{.name_to_greet}}'
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
+`
+
 	cases := []struct {
-		name             string
-		templateContents map[string]string
-		keepTempDirs     bool
-		getterErr        error
-		removeAllErr     error
-		wantErr          string
+		name                 string
+		templateContents     map[string]string
+		flagInputs           map[string]string
+		flagKeepTempDirs     bool
+		flagSpec             string
+		getterErr            error
+		removeAllErr         error
+		wantScratchContents  map[string]string // wanted contents of the scratch dir after finishing
+		wantTemplateContents map[string]string // wanted contents of the template dir after finishing
+		wantStdout           string
+		wantErr              string
 	}{
 		{
 			name: "simple_success",
+			flagInputs: map[string]string{
+				"name_to_greet": "🐈",
+			},
 			templateContents: map[string]string{
-				"file1.txt": "My first file",
-				"file2.txt": "My second file",
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantScratchContents: map[string]string{
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, 🐈\n",
+		},
+		{
+			name: "keep_temp_dirs_on_success_if_flag",
+			flagInputs: map[string]string{
+				"name_to_greet": "🐈",
+			},
+			flagKeepTempDirs: true,
+			flagSpec:         "spec.yaml",
+			templateContents: map[string]string{
+				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantScratchContents: map[string]string{
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, 🐈\n",
+			wantTemplateContents: map[string]string{
+				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
 			},
 		},
 		{
-			name:         "keep_temp_dirs_on_success",
-			keepTempDirs: true,
-			templateContents: map[string]string{
-				"file1.txt": "My first file",
-				"file2.txt": "My second file",
+			name: "keep_temp_dirs_on_failure_if_flag",
+			flagInputs: map[string]string{
+				"name_to_greet": "🐈",
 			},
+			flagKeepTempDirs: true,
+			flagSpec:         "spec.yaml",
+			templateContents: map[string]string{
+				"spec.yaml": "this is an unparseable YAML file *&^#%$",
+			},
+			wantTemplateContents: map[string]string{
+				"spec.yaml": "this is an unparseable YAML file *&^#%$",
+			},
+			wantErr: "error parsing YAML spec file",
 		},
 		{
 			name:      "getter_error",
@@ -206,25 +277,28 @@ func TestRealRun(t *testing.T) {
 			t.Parallel()
 
 			tempDir := t.TempDir()
-			templateDir := filepath.Join(tempDir, "template")
-			templateDirNamer := func(debugID string) (string, error) {
-				return templateDir, nil
+			tempDirNamer := func(namePart string) (string, error) {
+				return filepath.Join(tempDir, namePart), nil
 			}
 			fg := &fakeGetter{
-				output: tc.templateContents,
 				err:    tc.getterErr,
+				output: tc.templateContents,
 			}
+			stdoutBuf := &strings.Builder{}
 			rp := &runParams{
-				getter: fg,
 				fs: &errorFS{
 					renderFS:     &realFS{},
 					removeAllErr: tc.removeAllErr,
 				},
-				tempDirNamer: templateDirNamer,
+				getter:       fg,
+				stdout:       stdoutBuf,
+				tempDirNamer: tempDirNamer,
 			}
 			r := &Render{
+				flagInputs:       tc.flagInputs,
+				flagKeepTempDirs: tc.flagKeepTempDirs,
+				flagSpec:         "spec.yaml",
 				source:           "github.com/myorg/myrepo",
-				flagKeepTempDirs: tc.keepTempDirs,
 			}
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			err := r.realRun(ctx, rp)
@@ -236,30 +310,396 @@ func TestRealRun(t *testing.T) {
 				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.source)
 			}
 
-			wantFiles := tc.templateContents
-			if !tc.keepTempDirs {
-				wantFiles = nil
+			if diff := cmp.Diff(stdoutBuf.String(), tc.wantStdout); diff != "" {
+				t.Errorf("template output was not as expected; (-got,+want): %s", diff)
 			}
 
-			got := loadDirContents(t, templateDir)
-			if diff := cmp.Diff(got, wantFiles); diff != "" {
-				t.Errorf("output files were not as expected (-got,+want): %s", diff)
+			gotTemplateContents := loadDirWithoutMode(t, filepath.Join(tempDir, templateDirNamePart))
+			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents); diff != "" {
+				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
+			}
+
+			gotScratchContents := loadDirWithoutMode(t, filepath.Join(tempDir, scratchDirNamePart))
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
+				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
 }
 
+func TestActionPrint(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		in      string
+		inputs  map[string]string
+		want    string
+		wantErr string
+	}{
+		{
+			name: "simple_success",
+			in:   "hello 🐕",
+			want: "hello 🐕\n",
+		},
+		{
+			name: "simple_templating",
+			in:   "hello {{.name}}",
+			inputs: map[string]string{
+				"name": "🐕",
+			},
+			want: "hello 🐕\n",
+		},
+		{
+			name:    "template_missing_input",
+			in:      "hello {{.name}}",
+			inputs:  map[string]string{},
+			wantErr: `map has no entry for key "name"`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			var outBuf bytes.Buffer
+			sp := &stepParams{
+				stdout: &outBuf,
+				inputs: tc.inputs,
+			}
+			print := &model.Print{
+				Message: model.String{
+					Val: tc.in,
+					Pos: &model.ConfigPos{},
+				},
+			}
+			err := actionPrint(ctx, print, sp)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+
+			if diff := cmp.Diff(outBuf.String(), tc.want); diff != "" {
+				t.Errorf("got different output than wanted (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestCopyRecursive(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name            string
+		fromDirContents map[string]modeAndContents
+		suffix          string
+		want            map[string]modeAndContents
+		mkdirAllErr     error
+		readFileErr     error
+		statErr         error
+		writeFileErr    error
+		wantErr         string
+	}{
+		{
+			name: "simple_success",
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":      {0o600, "file1 contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt":      {0o600, "file1 contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+		},
+		{
+			name: "only_owner_bits_should_be_preserved",
+			fromDirContents: map[string]modeAndContents{
+				"myfile.txt": {0o777, "my file contents"},
+			},
+			want: map[string]modeAndContents{
+				"myfile.txt": {0o700, "my file contents"},
+			},
+		},
+		{
+			name: "all_files_should_be_owner_rw",
+			fromDirContents: map[string]modeAndContents{
+				"myfile1.txt": {0o400, "my file contents"},
+			},
+			want: map[string]modeAndContents{
+				"myfile1.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "owner_execute_bit_should_be_preserved",
+			fromDirContents: map[string]modeAndContents{
+				"myfile1.txt": {0o400, "my file contents"},
+				"myfile2.txt": {0o500, "my file contents"},
+			},
+			want: map[string]modeAndContents{
+				"myfile1.txt": {0o600, "my file contents"},
+				"myfile2.txt": {0o700, "my file contents"},
+			},
+		},
+		{
+			name:   "copying_a_file_rather_than_directory_should_work",
+			suffix: "myfile1.txt",
+			fromDirContents: map[string]modeAndContents{
+				"myfile1.txt": {0o400, "my file contents"},
+			},
+			want: map[string]modeAndContents{
+				"myfile1.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "deep_directories_should_work",
+			fromDirContents: map[string]modeAndContents{
+				"dir/dir/dir/dir/dir/file.txt": {0o600, "file contents"},
+			},
+			want: map[string]modeAndContents{
+				"dir/dir/dir/dir/dir/file.txt": {0o600, "file contents"},
+			},
+		},
+		{
+			name: "directories_with_several_files_should_work",
+			fromDirContents: map[string]modeAndContents{
+				"f1.txt": {0o600, "abc"},
+				"f2.txt": {0o600, "def"},
+				"f3.txt": {0o600, "ghi"},
+				"f4.txt": {0o600, "jkl"},
+				"f5.txt": {0o600, "mno"},
+				"f6.txt": {0o600, "pqr"},
+				"f7.txt": {0o600, "stu"},
+				"f8.txt": {0o600, "vwx"},
+				"f9.txt": {0o600, "yz"},
+			},
+			want: map[string]modeAndContents{
+				"f1.txt": {0o600, "abc"},
+				"f2.txt": {0o600, "def"},
+				"f3.txt": {0o600, "ghi"},
+				"f4.txt": {0o600, "jkl"},
+				"f5.txt": {0o600, "mno"},
+				"f6.txt": {0o600, "pqr"},
+				"f7.txt": {0o600, "stu"},
+				"f8.txt": {0o600, "vwx"},
+				"f9.txt": {0o600, "yz"},
+			},
+		},
+		{
+			name: "MkdirAll error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			mkdirAllErr: fmt.Errorf("fake error"),
+			wantErr:     "MkdirAll(): fake error",
+		},
+		{
+			name: "ReadFile error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			readFileErr: fmt.Errorf("fake error"),
+			wantErr:     "ReadFile(): fake error",
+		},
+		{
+			name: "WriteFile error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			writeFileErr: fmt.Errorf("fake error"),
+			wantErr:      "WriteFile(): fake error",
+		},
+		{
+			name: "Stat error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			statErr: fmt.Errorf("fake error"),
+			wantErr: "fake error",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			fromDir := filepath.Join(tempDir, "from_dir")
+			toDir := filepath.Join(tempDir, "to_dir")
+
+			if err := writeAll(fromDir, tc.fromDirContents); err != nil {
+				t.Fatal(err)
+			}
+
+			from := fromDir
+			to := toDir
+			if tc.suffix != "" {
+				from = filepath.Join(fromDir, tc.suffix)
+				to = filepath.Join(toDir, tc.suffix)
+			}
+			fs := &errorFS{
+				renderFS: &realFS{},
+
+				mkdirAllErr:  tc.mkdirAllErr,
+				readFileErr:  tc.readFileErr,
+				statErr:      tc.statErr,
+				writeFileErr: tc.writeFileErr,
+			}
+			err := copyRecursive(&model.ConfigPos{}, from, to, fs)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf(diff)
+			}
+
+			got := loadDirContents(t, toDir)
+			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestActionInclude(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name                string
+		paths               []string
+		templateContents    map[string]modeAndContents
+		inputs              map[string]string
+		wantScratchContents map[string]modeAndContents
+		statErr             error
+		wantErr             string
+	}{
+		{
+			name:  "simple_success",
+			paths: []string{"myfile.txt"},
+			templateContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name:    "reject_dot_dot",
+			paths:   []string{"../file.txt"},
+			wantErr: `path must not contain ".."`,
+		},
+		{
+			name:  "templated_filename_success",
+			paths: []string{"{{.my_dir}}/{{.my_file}}"},
+			templateContents: map[string]modeAndContents{
+				"foo/bar.txt": {0o600, "file contents"},
+			},
+			inputs: map[string]string{
+				"my_dir":  "foo",
+				"my_file": "bar.txt",
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"foo/bar.txt": {0o600, "file contents"},
+			},
+		},
+		{
+			name:  "templated_filename_nonexistent_input_var_should_fail",
+			paths: []string{"{{.filename}}"},
+			templateContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "file contents"},
+			},
+			inputs:  map[string]string{},
+			wantErr: `no entry for key "filename"`,
+		},
+		{
+			name:  "nonexistent_source_should_fail",
+			paths: []string{"nonexistent"},
+			templateContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "file contents"},
+			},
+			wantErr: `include path doesn't exist: "nonexistent"`,
+		},
+		{
+			// Note: we don't exhaustively test every possible FS error here. That's
+			// already done in the tests for the underlying copyRecursive function.
+			name:  "filesystem_error_should_be_returned",
+			paths: []string{"myfile.txt"},
+			templateContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+			},
+			statErr: fmt.Errorf("fake error"),
+			wantErr: "fake error",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+			tempDir := t.TempDir()
+			templateDir := filepath.Join(tempDir, templateDirNamePart)
+			scratchDir := filepath.Join(tempDir, scratchDirNamePart)
+
+			if err := writeAll(templateDir, tc.templateContents); err != nil {
+				t.Fatal(err)
+			}
+
+			include := &model.Include{
+				Pos:   &model.ConfigPos{},
+				Paths: modelStrings(tc.paths),
+			}
+			sp := &stepParams{
+				fs: &errorFS{
+					renderFS: &realFS{},
+					statErr:  tc.statErr,
+				},
+				scratchDir:  scratchDir,
+				templateDir: templateDir,
+				inputs:      tc.inputs,
+			}
+			err := actionInclude(ctx, include, sp)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+
+			gotTemplateContents := loadDirContents(t, filepath.Join(tempDir, templateDirNamePart))
+			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
+				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
+			}
+
+			gotScratchContents := loadDirContents(t, filepath.Join(tempDir, scratchDirNamePart))
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
+				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func modelStrings(ss []string) []model.String {
+	var out []model.String
+	for _, s := range ss {
+		out = append(out, model.String{
+			Pos: &model.ConfigPos{},
+			Val: s,
+		})
+	}
+	return out
+}
+
 // Read all the files recursively under "dir", returning their contents as a
 // map[filename]->contents. Returns nil if dir doesn't exist.
-func loadDirContents(t *testing.T, dir string) map[string]string {
+func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
 	t.Helper()
-	out := map[string]string{}
 	if _, err := os.Stat(dir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 		t.Fatal(err)
 	}
+	out := map[string]modeAndContents{}
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -275,7 +715,14 @@ func loadDirContents(t *testing.T, dir string) map[string]string {
 		if err != nil {
 			return fmt.Errorf("Rel(): %w", err)
 		}
-		out[rel] = string(contents)
+		fi, err := d.Info()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[rel] = modeAndContents{
+			Mode:     fi.Mode(),
+			Contents: string(contents),
+		}
 		return nil
 	})
 	if err != nil {
@@ -284,20 +731,49 @@ func loadDirContents(t *testing.T, dir string) map[string]string {
 	return out
 }
 
+func loadDirWithoutMode(t *testing.T, dir string) map[string]string {
+	withMode := loadDirContents(t, dir)
+	if withMode == nil {
+		return nil
+	}
+	out := map[string]string{}
+	for name, mc := range withMode {
+		out[name] = mc.Contents
+	}
+	return out
+}
+
 // A renderFS implementation that can inject errors for testing.
 type errorFS struct {
 	renderFS
 
-	statErr      error
-	removeAllErr error
+	mkdirAllErr  error
 	openErr      error
+	readFileErr  error
+	removeAllErr error
+	statErr      error
+	writeFileErr error
 }
 
-func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
-	if e.statErr != nil {
-		return nil, e.statErr
+func (e *errorFS) MkdirAll(name string, mode fs.FileMode) error {
+	if e.mkdirAllErr != nil {
+		return e.mkdirAllErr
 	}
-	return e.renderFS.Stat(name)
+	return e.renderFS.MkdirAll(name, mode)
+}
+
+func (e *errorFS) Open(name string) (fs.File, error) {
+	if e.openErr != nil {
+		return nil, e.openErr
+	}
+	return e.renderFS.Open(name)
+}
+
+func (e *errorFS) ReadFile(name string) ([]byte, error) {
+	if e.readFileErr != nil {
+		return nil, e.readFileErr
+	}
+	return e.renderFS.ReadFile(name)
 }
 
 func (e *errorFS) RemoveAll(name string) error {
@@ -307,11 +783,18 @@ func (e *errorFS) RemoveAll(name string) error {
 	return e.renderFS.RemoveAll(name)
 }
 
-func (e *errorFS) Open(name string) (fs.File, error) {
-	if e.openErr != nil {
-		return nil, e.openErr
+func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
+	if e.statErr != nil {
+		return nil, e.statErr
 	}
-	return e.renderFS.Open(name)
+	return e.renderFS.Stat(name)
+}
+
+func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	if e.writeFileErr != nil {
+		return e.writeFileErr
+	}
+	return e.renderFS.WriteFile(name, data, perm)
 }
 
 type fakeGetter struct {
@@ -325,15 +808,46 @@ func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetR
 	if f.err != nil {
 		return nil, f.err
 	}
-	for path, contents := range f.output {
-		fullPath := filepath.Join(req.Dst, path)
-		dir := filepath.Dir(fullPath)
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return nil, fmt.Errorf("MkdirAll(%q): %w", dir, err)
-		}
-		if err := os.WriteFile(fullPath, []byte(contents), 0o600); err != nil {
-			return nil, fmt.Errorf("WriteFile(%q): %w", fullPath, err)
-		}
+	if err := writeAllDefaultMode(req.Dst, f.output); err != nil {
+		return nil, err
 	}
 	return &getter.GetResult{Dst: req.Dst}, nil
+}
+
+type modeAndContents struct {
+	Mode     os.FileMode
+	Contents string
+}
+
+// writeAllDefaultMode wraps writeAll and sets file permissions to 0600.
+func writeAllDefaultMode(root string, files map[string]string) error {
+	withMode := map[string]modeAndContents{}
+	for name, contents := range files {
+		withMode[name] = modeAndContents{
+			Mode:     0o600,
+			Contents: contents,
+		}
+	}
+	return writeAll(root, withMode)
+}
+
+// writeAll saves the given file contents with the given permissions.
+func writeAll(root string, files map[string]modeAndContents) error {
+	for path, mc := range files {
+		fullPath := filepath.Join(root, path)
+		dir := filepath.Dir(fullPath)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return fmt.Errorf("MkdirAll(%q): %w", dir, err)
+		}
+		if err := os.WriteFile(fullPath, []byte(mc.Contents), mc.Mode); err != nil {
+			return fmt.Errorf("WriteFile(%q): %w", fullPath, err)
+		}
+		// The user's may have prevented the file from being created with the
+		// desired permissions. Use chmod to really set the desired permissions.
+		if err := os.Chmod(fullPath, mc.Mode); err != nil {
+			return fmt.Errorf("Chmod(): %w", err)
+		}
+	}
+
+	return nil
 }
