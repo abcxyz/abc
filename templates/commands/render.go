@@ -41,6 +41,12 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy"
 	scratchDirNamePart  = "scratch"
+
+	// Bitmasks for bitwise logic with read/write/execute permission in a
+	// FileMode.
+	ownerRead  = 0o400
+	ownerWrite = 0o200
+	ownerExec  = 0o100
 )
 
 type Render struct {
@@ -185,11 +191,11 @@ func (r *Render) parseFlags(args []string) error {
 type realFS struct{}
 
 func (r *realFS) Mkdir(name string, perm os.FileMode) error {
-	return os.Mkdir(name, perm)
+	return os.Mkdir(name, perm) //nolint:wrapcheck
 }
 
 func (r *realFS) MkdirAll(name string, perm os.FileMode) error {
-	return os.MkdirAll(name, perm)
+	return os.MkdirAll(name, perm) //nolint:wrapcheck
 }
 
 func (r *realFS) Open(name string) (fs.File, error) {
@@ -197,7 +203,7 @@ func (r *realFS) Open(name string) (fs.File, error) {
 }
 
 func (r *realFS) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name)
+	return os.ReadFile(name) //nolint:wrapcheck
 }
 
 func (r *realFS) RemoveAll(name string) error {
@@ -209,7 +215,7 @@ func (r *realFS) Stat(name string) (fs.FileInfo, error) {
 }
 
 func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(name, data, perm)
+	return os.WriteFile(name, data, perm) //nolint:wrapcheck
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
@@ -280,7 +286,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	scratchDir, err := rp.tempDirNamer("scratch")
+	scratchDir, err := rp.tempDirNamer(scratchDirNamePart)
 	if err != nil {
 		return err
 	}
@@ -335,82 +341,27 @@ func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error
 	}
 }
 
-func errWithPos(pos *model.ConfigPos, fmtStr string, args ...any) error {
-	err := fmt.Errorf(fmtStr, args...)
-	lineStr := fmt.Sprintf("line %d", pos.Line)
-	if pos.Line == 0 {
-		lineStr = "(unknown line number)"
-	}
-	return fmt.Errorf("failed executing template spec file at %s: %w", lineStr, err)
-}
-
 func parseGoTmpl(tpl string) (*template.Template, error) {
-	return template.New("").Option("missingkey=error").Parse(tpl)
+	return template.New("").Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
 }
 
 func parseAndExecuteGoTmpl(m model.String, inputs map[string]string) (string, error) {
 	goTmpl, err := parseGoTmpl(m.Val)
 	if err != nil {
-		return "", errWithPos(m.Pos, `error compiling as go-template: %w`, err)
+		return "", model.ErrWithPos(m.Pos, `error compiling as go-template: %w`, err)
 	}
 
 	sb := strings.Builder{}
 	if err := goTmpl.Execute(&sb, inputs); err != nil {
-		return "", errWithPos(m.Pos, "template.Execute() failed: %w", err)
+		return "", model.ErrWithPos(m.Pos, "template.Execute() failed: %w", err)
 	}
 
 	return sb.String(), nil
 }
 
-func actionPrint(ctx context.Context, p *model.Print, sp *stepParams) error {
-	msg, err := parseAndExecuteGoTmpl(p.Message, sp.inputs)
-	if err != nil {
-		return err
-	}
-	if !strings.HasSuffix(msg, "\n") {
-		msg += "\n"
-	}
-
-	// We can ignore the int returned from Write() because the docs promise that
-	// short writes always return error.
-	if _, err := sp.stdout.Write([]byte(msg)); err != nil {
-		return fmt.Errorf("error writing to stdout: %w", err)
-	}
-
-	return nil
-}
-
-func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error {
-	for _, p := range i.Paths {
-		// Paths may contain template expressions, so render them first.
-		walkRelPath, err := parseAndExecuteGoTmpl(p, sp.inputs)
-		if err != nil {
-			return errWithPos(p.Pos, `error compiling as go-template: %w`, err)
-		}
-
-		if err := safeRelPath(p.Val); err != nil {
-			return errWithPos(p.Pos, "invalid path: %w", err)
-		}
-
-		absSrc := filepath.Join(sp.templateDir, walkRelPath)
-		absDst := filepath.Join(sp.scratchDir, walkRelPath)
-
-		if _, err := sp.fs.Stat(absSrc); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return errWithPos(p.Pos, "include path doesn't exist: %q", walkRelPath)
-			}
-		}
-
-		if err := copyRecursive(p.Pos, absSrc, absDst, sp.fs); err != nil {
-			return errWithPos(p.Pos, "copying failed: %w", err)
-		}
-	}
-	return nil
-}
-
 // "from" may be a file or directory. "pos" is only used for error messages.
 func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
-	return fs.WalkDir(rfs, from, func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(rfs, from, func(path string, d fs.DirEntry, err error) error { //nolint:wrapcheck
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
@@ -420,7 +371,7 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 
 		relToSrc, err := filepath.Rel(from, path)
 		if err != nil {
-			return errWithPos(pos, "filepath.Rel(%s,%s): %w", from, path, err)
+			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", from, path, err)
 		}
 
 		dst := filepath.Join(to, relToSrc)
@@ -434,7 +385,7 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 			dirToCreate = filepath.Dir(dst)
 		}
 		if err := rfs.MkdirAll(dirToCreate, 0o700); err != nil {
-			return errWithPos(pos, "MkdirAll(): %w", err)
+			return model.ErrWithPos(pos, "MkdirAll(): %w", err)
 		}
 		if d.IsDir() {
 			return nil
@@ -442,7 +393,7 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 
 		buf, err := rfs.ReadFile(path)
 		if err != nil {
-			return errWithPos(pos, "ReadFile(): %w", err)
+			return model.ErrWithPos(pos, "ReadFile(): %w", err)
 		}
 
 		// The permission bits for normal files in the scratch directory will be
@@ -455,8 +406,8 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 		if err != nil {
 			return fmt.Errorf("Stat(): %w", err)
 		}
-		ownerExecuteBit := info.Mode() & 0o100
-		dstPerms := 0o600 | ownerExecuteBit
+		ownerExecBitOnly := info.Mode() & ownerExec
+		dstPerms := ownerRead | ownerWrite | ownerExecBitOnly
 
 		if err := rfs.WriteFile(dst, buf, dstPerms); err != nil {
 			return fmt.Errorf("failed writing to scratch file: WriteFile(): %w", err)
@@ -501,11 +452,11 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 		return "", err
 	}
 	req := &getter.Request{
-		Src:             r.source,
-		Dst:             templateDir,
-		Pwd:             rp.cwd,
-		GetMode:         getter.ModeAny,
 		DisableSymlinks: true,
+		Dst:             templateDir,
+		GetMode:         getter.ModeAny,
+		Pwd:             rp.cwd,
+		Src:             r.source,
 	}
 
 	res, err := rp.getter.Get(ctx, req)
@@ -576,6 +527,7 @@ func destOK(fs fs.StatFS, dest string) error {
 	return nil
 }
 
+// safeRelPath returns an error if the path is absolute or if it contains a ".." traversal.
 func safeRelPath(p string) error {
 	if strings.Contains(p, "..") {
 		return fmt.Errorf(`path must not contain ".."`)

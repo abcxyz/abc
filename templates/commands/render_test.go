@@ -15,7 +15,6 @@
 package commands
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -327,66 +326,6 @@ steps:
 	}
 }
 
-func TestActionPrint(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name    string
-		in      string
-		inputs  map[string]string
-		want    string
-		wantErr string
-	}{
-		{
-			name: "simple_success",
-			in:   "hello 🐕",
-			want: "hello 🐕\n",
-		},
-		{
-			name: "simple_templating",
-			in:   "hello {{.name}}",
-			inputs: map[string]string{
-				"name": "🐕",
-			},
-			want: "hello 🐕\n",
-		},
-		{
-			name:    "template_missing_input",
-			in:      "hello {{.name}}",
-			inputs:  map[string]string{},
-			wantErr: `map has no entry for key "name"`,
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			var outBuf bytes.Buffer
-			sp := &stepParams{
-				stdout: &outBuf,
-				inputs: tc.inputs,
-			}
-			print := &model.Print{
-				Message: model.String{
-					Val: tc.in,
-					Pos: &model.ConfigPos{},
-				},
-			}
-			err := actionPrint(ctx, print, sp)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Error(diff)
-			}
-
-			if diff := cmp.Diff(outBuf.String(), tc.want); diff != "" {
-				t.Errorf("got different output than wanted (-got,+want): %s", diff)
-			}
-		})
-	}
-}
-
 func TestCopyRecursive(t *testing.T) {
 	t.Parallel()
 
@@ -560,131 +499,13 @@ func TestCopyRecursive(t *testing.T) {
 	}
 }
 
-func TestActionInclude(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name                string
-		paths               []string
-		templateContents    map[string]modeAndContents
-		inputs              map[string]string
-		wantScratchContents map[string]modeAndContents
-		statErr             error
-		wantErr             string
-	}{
-		{
-			name:  "simple_success",
-			paths: []string{"myfile.txt"},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
-			},
-			wantScratchContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
-			},
-		},
-		{
-			name:    "reject_dot_dot",
-			paths:   []string{"../file.txt"},
-			wantErr: `path must not contain ".."`,
-		},
-		{
-			name:  "templated_filename_success",
-			paths: []string{"{{.my_dir}}/{{.my_file}}"},
-			templateContents: map[string]modeAndContents{
-				"foo/bar.txt": {0o600, "file contents"},
-			},
-			inputs: map[string]string{
-				"my_dir":  "foo",
-				"my_file": "bar.txt",
-			},
-			wantScratchContents: map[string]modeAndContents{
-				"foo/bar.txt": {0o600, "file contents"},
-			},
-		},
-		{
-			name:  "templated_filename_nonexistent_input_var_should_fail",
-			paths: []string{"{{.filename}}"},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "file contents"},
-			},
-			inputs:  map[string]string{},
-			wantErr: `no entry for key "filename"`,
-		},
-		{
-			name:  "nonexistent_source_should_fail",
-			paths: []string{"nonexistent"},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "file contents"},
-			},
-			wantErr: `include path doesn't exist: "nonexistent"`,
-		},
-		{
-			// Note: we don't exhaustively test every possible FS error here. That's
-			// already done in the tests for the underlying copyRecursive function.
-			name:  "filesystem_error_should_be_returned",
-			paths: []string{"myfile.txt"},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
-			},
-			statErr: fmt.Errorf("fake error"),
-			wantErr: "fake error",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-
-			tempDir := t.TempDir()
-			templateDir := filepath.Join(tempDir, templateDirNamePart)
-			scratchDir := filepath.Join(tempDir, scratchDirNamePart)
-
-			if err := writeAll(templateDir, tc.templateContents); err != nil {
-				t.Fatal(err)
-			}
-
-			include := &model.Include{
-				Pos:   &model.ConfigPos{},
-				Paths: modelStrings(tc.paths),
-			}
-			sp := &stepParams{
-				fs: &errorFS{
-					renderFS: &realFS{},
-					statErr:  tc.statErr,
-				},
-				scratchDir:  scratchDir,
-				templateDir: templateDir,
-				inputs:      tc.inputs,
-			}
-			err := actionInclude(ctx, include, sp)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Error(diff)
-			}
-
-			gotTemplateContents := loadDirContents(t, filepath.Join(tempDir, templateDirNamePart))
-			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
-				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
-			}
-
-			gotScratchContents := loadDirContents(t, filepath.Join(tempDir, scratchDirNamePart))
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
-				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
-			}
-		})
-	}
-}
-
 func modelStrings(ss []string) []model.String {
-	var out []model.String
-	for _, s := range ss {
-		out = append(out, model.String{
-			Pos: &model.ConfigPos{},
+	out := make([]model.String, len(ss))
+	for i, s := range ss {
+		out[i] = model.String{
+			Pos: &model.ConfigPos{}, // for the purposes of testing, "location unknown" is fine.
 			Val: s,
-		})
+		}
 	}
 	return out
 }
@@ -693,6 +514,7 @@ func modelStrings(ss []string) []model.String {
 // map[filename]->contents. Returns nil if dir doesn't exist.
 func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
 	t.Helper()
+
 	if _, err := os.Stat(dir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
@@ -732,6 +554,8 @@ func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
 }
 
 func loadDirWithoutMode(t *testing.T, dir string) map[string]string {
+	t.Helper()
+
 	withMode := loadDirContents(t, dir)
 	if withMode == nil {
 		return nil
