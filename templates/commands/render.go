@@ -40,12 +40,6 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy"
 	scratchDirNamePart  = "scratch"
-
-	// Bitmasks for bitwise logic with read/write/execute permission in a
-	// FileMode.
-	ownerRead  = 0o400
-	ownerWrite = 0o200
-	ownerExec  = 0o100
 )
 
 type Render struct {
@@ -342,6 +336,8 @@ func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error
 	}
 }
 
+// A template parser helper to remove the boilerplate of parsing with our
+// desired options.
 func parseGoTmpl(tpl string) (*template.Template, error) {
 	return template.New("").Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
 }
@@ -397,22 +393,17 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 			return model.ErrWithPos(pos, "ReadFile(): %w", err)
 		}
 
-		// The permission bits for normal files in the scratch directory will be
-		// set conservatively to either 600 (u=rw) or 700 (u=rwx), depending on
-		// the owner-executable permission bit of the source file. These
-		// permissions will be further limited by the user's umask (see `man
-		// umask` if unfamiliar), so the actual permissions on disk might be
-		// more restrictive than we ask for.
 		info, err := rfs.Stat(path)
 		if err != nil {
 			return fmt.Errorf("Stat(): %w", err)
 		}
-		ownerExecBitOnly := info.Mode() & ownerExec
-		dstPerms := ownerRead | ownerWrite | ownerExecBitOnly
 
 		// TODO: this arguable should be an atomic write so we don't end up with
 		// half-written files on error.
-		if err := rfs.WriteFile(dst, buf, dstPerms); err != nil {
+		//
+		// The permission bits on the output file are copied from the input file;
+		// this preserves the execute bit on executable files.
+		if err := rfs.WriteFile(dst, buf, info.Mode().Perm()); err != nil {
 			return fmt.Errorf("failed writing to scratch file: WriteFile(): %w", err)
 		}
 

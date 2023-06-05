@@ -352,28 +352,10 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
-			name: "only_owner_bits_should_be_preserved",
-			fromDirContents: map[string]modeAndContents{
-				"myfile.txt": {0o777, "my file contents"},
-			},
-			want: map[string]modeAndContents{
-				"myfile.txt": {0o700, "my file contents"},
-			},
-		},
-		{
-			name: "all_files_should_be_owner_rw",
-			fromDirContents: map[string]modeAndContents{
-				"myfile1.txt": {0o400, "my file contents"},
-			},
-			want: map[string]modeAndContents{
-				"myfile1.txt": {0o600, "my file contents"},
-			},
-		},
-		{
 			name: "owner_execute_bit_should_be_preserved",
 			fromDirContents: map[string]modeAndContents{
-				"myfile1.txt": {0o400, "my file contents"},
-				"myfile2.txt": {0o500, "my file contents"},
+				"myfile1.txt": {0o600, "my file contents"},
+				"myfile2.txt": {0o700, "my file contents"},
 			},
 			want: map[string]modeAndContents{
 				"myfile1.txt": {0o600, "my file contents"},
@@ -384,7 +366,7 @@ func TestCopyRecursive(t *testing.T) {
 			name:   "copying_a_file_rather_than_directory_should_work",
 			suffix: "myfile1.txt",
 			fromDirContents: map[string]modeAndContents{
-				"myfile1.txt": {0o400, "my file contents"},
+				"myfile1.txt": {0o600, "my file contents"},
 			},
 			want: map[string]modeAndContents{
 				"myfile1.txt": {0o600, "my file contents"},
@@ -454,7 +436,7 @@ func TestCopyRecursive(t *testing.T) {
 				"dir/file.txt": {0o600, "file1 contents"},
 			},
 			statErr: fmt.Errorf("fake error"),
-			wantErr: "fake error",
+			wantErr: "fake error", // This error comes from WalkDir, not from our own code, so it doesn't have a "Stat():" at the beginning
 		},
 	}
 
@@ -494,6 +476,83 @@ func TestCopyRecursive(t *testing.T) {
 			got := loadDirContents(t, toDir)
 			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestSafeRelPath(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		in      string
+		wantErr string
+	}{
+		{
+			name: "plain_filename_succeeds",
+			in:   "a.txt",
+		},
+		{
+			name: "path_with_directories_succeeds",
+			in:   "a/b.txt",
+		},
+		{
+			name: "trailing_slash_succeeds",
+			in:   "a/b/",
+		},
+		{
+			name:    "leading_slash_fails",
+			in:      "/a",
+			wantErr: "absolute",
+		},
+		{
+			name:    "leading_slash_with_more_dirs_fails",
+			in:      "/a/b/c",
+			wantErr: "absolute",
+		},
+		{
+			name:    "leading_slash_with_more_dirs_fails",
+			in:      "/a/b/c",
+			wantErr: "absolute",
+		},
+		{
+			name:    "plain_slash_fails",
+			in:      "/",
+			wantErr: "absolute",
+		},
+		{
+			name:    "leading_dot_dot_fails",
+			in:      "../a.txt",
+			wantErr: "..",
+		},
+		{
+			name:    "leading_dot_dot_with_more_dirs_fails",
+			in:      "../a/b/c.txt",
+			wantErr: "..",
+		},
+		{
+			name:    "dot_dot_in_the_middle_fails",
+			in:      "a/b/../c.txt",
+			wantErr: "..",
+		},
+		{
+			name:    "plain_dot_dot_fails",
+			in:      "..",
+			wantErr: "..",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := safeRelPath(tc.in)
+
+			if testutil.DiffErrString(got, tc.wantErr) != "" {
+				t.Errorf("safeRelPath(%s)=%s, want %s", tc.in, got, tc.wantErr)
 			}
 		})
 	}
