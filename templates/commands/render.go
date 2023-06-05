@@ -16,7 +16,6 @@
 package commands
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/binary"
@@ -71,11 +70,13 @@ type Render struct {
 // we created our own interface.
 type renderFS interface {
 	fs.StatFS
+
+	// These methods correspond to methods in the "os" package of the same name.
 	Mkdir(name string, perm os.FileMode) error
 	MkdirAll(string, os.FileMode) error
 	ReadFile(string) ([]byte, error)
 	RemoveAll(string) error
-	WriteFile(name string, data []byte, perm os.FileMode) error
+	WriteFile(string, []byte, os.FileMode) error
 }
 
 // Allows the github.com/hashicorp/go-getter/Client to be faked.
@@ -291,7 +292,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 	if err := rp.fs.MkdirAll(scratchDir, 0o700); err != nil {
-		return fmt.Errorf("MkdirAll(): %w", err)
+		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 
 	if err := executeSpec(ctx, spec, &stepParams{
@@ -409,6 +410,8 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 		ownerExecBitOnly := info.Mode() & ownerExec
 		dstPerms := ownerRead | ownerWrite | ownerExecBitOnly
 
+		// TODO: this arguable should be an atomic write so we don't end up with
+		// half-written files on error.
 		if err := rfs.WriteFile(dst, buf, dstPerms); err != nil {
 			return fmt.Errorf("failed writing to scratch file: WriteFile(): %w", err)
 		}
@@ -430,13 +433,14 @@ func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) 
 }
 
 func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error) {
-	buf, err := fs.ReadFile(filepath.Join(templateDir, flagSpec))
+	f, err := fs.Open(filepath.Join(templateDir, flagSpec))
 	if err != nil {
-		return nil, fmt.Errorf("error reading template spec: ReadFile(): %w", err)
+		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
 	}
+	defer f.Close()
 
-	decoder := model.NewDecoder(bytes.NewReader(buf))
-	spec := model.Spec{}
+	decoder := model.NewDecoder(f)
+	var spec model.Spec
 	if err := decoder.Decode(&spec); err != nil {
 		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
 	}
