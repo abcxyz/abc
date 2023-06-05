@@ -29,11 +29,11 @@ func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error 
 		// Paths may contain template expressions, so render them first.
 		walkRelPath, err := parseAndExecuteGoTmpl(p, sp.inputs)
 		if err != nil {
-			return model.ErrWithPos(p.Pos, `error compiling go-template: %w`, err)
+			return model.ErrWithPos(p.Pos, `error compiling go-template: %w`, err) //nolint:wrapcheck
 		}
 
 		if err := safeRelPath(p.Val); err != nil {
-			return model.ErrWithPos(p.Pos, "invalid path: %w", err)
+			return model.ErrWithPos(p.Pos, "invalid path: %w", err) //nolint:wrapcheck
 		}
 
 		absSrc := filepath.Join(sp.templateDir, walkRelPath)
@@ -41,13 +41,13 @@ func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error 
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return model.ErrWithPos(p.Pos, "include path doesn't exist: %q", walkRelPath)
+				return model.ErrWithPos(p.Pos, "include path doesn't exist: %q", walkRelPath) //nolint:wrapcheck
 			}
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
 		if err := copyRecursive(p.Pos, absSrc, absDst, sp.fs); err != nil {
-			return model.ErrWithPos(p.Pos, "copying failed: %w", err)
+			return model.ErrWithPos(p.Pos, "copying failed: %w", err) //nolint:wrapcheck
 		}
 	}
 	return nil

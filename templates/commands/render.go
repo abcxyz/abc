@@ -345,12 +345,12 @@ func parseGoTmpl(tpl string) (*template.Template, error) {
 func parseAndExecuteGoTmpl(m model.String, inputs map[string]string) (string, error) {
 	goTmpl, err := parseGoTmpl(m.Val)
 	if err != nil {
-		return "", model.ErrWithPos(m.Pos, `error compiling as go-template: %w`, err)
+		return "", model.ErrWithPos(m.Pos, `error compiling as go-template: %w`, err) //nolint:wrapcheck
 	}
 
-	sb := strings.Builder{}
+	var sb strings.Builder
 	if err := goTmpl.Execute(&sb, inputs); err != nil {
-		return "", model.ErrWithPos(m.Pos, "template.Execute() failed: %w", err)
+		return "", model.ErrWithPos(m.Pos, "template.Execute() failed: %w", err) //nolint:wrapcheck
 	}
 
 	return sb.String(), nil
@@ -368,7 +368,7 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 
 		relToSrc, err := filepath.Rel(from, path)
 		if err != nil {
-			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", from, path, err)
+			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", from, path, err) //nolint:wrapcheck
 		}
 
 		dst := filepath.Join(to, relToSrc)
@@ -382,7 +382,7 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 			dirToCreate = filepath.Dir(dst)
 		}
 		if err := rfs.MkdirAll(dirToCreate, 0o700); err != nil {
-			return model.ErrWithPos(pos, "MkdirAll(): %w", err)
+			return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
 		}
 		if d.IsDir() {
 			return nil
@@ -390,7 +390,7 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 
 		buf, err := rfs.ReadFile(path)
 		if err != nil {
-			return model.ErrWithPos(pos, "ReadFile(): %w", err)
+			return model.ErrWithPos(pos, "ReadFile(): %w", err) //nolint:wrapcheck
 		}
 
 		info, err := rfs.Stat(path)
