@@ -42,6 +42,9 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy"
 	scratchDirNamePart  = "scratch"
+
+	// Permission bits: rwx------
+	mkdirPerms = 0o700
 )
 
 type Render struct {
@@ -287,7 +290,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err != nil {
 		return err
 	}
-	if err := rp.fs.MkdirAll(scratchDir, 0o700); err != nil {
+	if err := rp.fs.MkdirAll(scratchDir, mkdirPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 
