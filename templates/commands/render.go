@@ -411,18 +411,6 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 	})
 }
 
-func actionRegexReplace(ctx context.Context, p *model.RegexReplace, sp *stepParams) error {
-	return fmt.Errorf("not implemented")
-}
-
-func actionStringReplace(ctx context.Context, p *model.StringReplace, sp *stepParams) error {
-	return fmt.Errorf("not implemented")
-}
-
-func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) error {
-	return fmt.Errorf("not implemented")
-}
-
 func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error) {
 	f, err := fs.Open(filepath.Join(templateDir, flagSpec))
 	if err != nil {
