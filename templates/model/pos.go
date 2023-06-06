@@ -55,3 +55,22 @@ func (c *ConfigPos) AnnotateErr(err error) error {
 
 	return fmt.Errorf("invalid config near %s: %w", pos, err)
 }
+
+// ErrWithPos includes information about the given config line with a given
+// error. One good way to use this is with %w, like:
+//
+//	ErrWithPos(pos, "Foo(): %w", err)
+//
+// Calling this function with a zero or nil ConfigPos is valid. The resulting
+// error will just say that the position is unknown.
+func ErrWithPos(pos *ConfigPos, fmtStr string, args ...any) error {
+	err := fmt.Errorf(fmtStr, args...)
+	var lineStr string
+	if pos == nil || *pos == (ConfigPos{}) {
+		lineStr = "(unknown line number)"
+	} else {
+		lineStr = fmt.Sprintf("line %d", pos.Line)
+	}
+
+	return fmt.Errorf("failed executing template spec file at %s: %w", lineStr, err)
+}

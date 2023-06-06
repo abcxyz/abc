@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package render implements the "templates render" subcommand for installing a template.
+// Package commands implements the template-related subcommands.
 package commands
+
+// This file implements the "templates render" subcommand for installing a template.
 
 import (
 	"context"
@@ -22,13 +24,27 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
+)
+
+const (
+	// These will be used as part of the names of the temporary directories to
+	// make them identifiable.
+	templateDirNamePart = "template-copy"
+	scratchDirNamePart  = "scratch"
+
+	// Permission bits: rwx------ .
+	mkdirPerms = 0o700
 )
 
 type Render struct {
@@ -47,10 +63,19 @@ type Render struct {
 	flagInputs         map[string]string
 }
 
-// The fs.StatFS doesn't include all the methods we need, so add some.
+// Abstracts filesystem operations.
+//
+// We can't use os.DirFS or fs.StatFS because they lack some methods we need. So
+// we created our own interface.
 type renderFS interface {
 	fs.StatFS
+
+	// These methods correspond to methods in the "os" package of the same name.
+	Mkdir(name string, perm os.FileMode) error
+	MkdirAll(string, os.FileMode) error
+	ReadFile(string) ([]byte, error)
 	RemoveAll(string) error
+	WriteFile(string, []byte, os.FileMode) error
 }
 
 // Allows the github.com/hashicorp/go-getter/Client to be faked.
@@ -155,23 +180,42 @@ func (r *Render) parseFlags(args []string) error {
 
 	r.source = parsedArgs[0]
 
+	if err := safeRelPath(r.flagSpec); err != nil {
+		return fmt.Errorf("invalid --spec path %q: %w", r.flagSpec, err)
+	}
+
 	return nil
 }
 
-// We can't use os.DirFS or StatFS because they lack some methods we need. So we
-// implement our own filesystem interface.
+// This is the non-test implementation of the filesystem interface.
 type realFS struct{}
 
-func (r *realFS) Stat(name string) (fs.FileInfo, error) {
-	return os.Stat(name) //nolint:wrapcheck
+func (r *realFS) Mkdir(name string, perm os.FileMode) error {
+	return os.Mkdir(name, perm) //nolint:wrapcheck
+}
+
+func (r *realFS) MkdirAll(name string, perm os.FileMode) error {
+	return os.MkdirAll(name, perm) //nolint:wrapcheck
 }
 
 func (r *realFS) Open(name string) (fs.File, error) {
 	return os.Open(name) //nolint:wrapcheck
 }
 
+func (r *realFS) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name) //nolint:wrapcheck
+}
+
 func (r *realFS) RemoveAll(name string) error {
 	return os.RemoveAll(name) //nolint:wrapcheck
+}
+
+func (r *realFS) Stat(name string) (fs.FileInfo, error) {
+	return os.Stat(name) //nolint:wrapcheck
+}
+
+func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm) //nolint:wrapcheck
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
@@ -204,23 +248,25 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 	}
 
 	return r.realRun(ctx, &runParams{
+		cwd:          wd,
 		fs:           fSys,
 		getter:       gg,
-		cwd:          wd,
+		stdout:       os.Stdout,
 		tempDirNamer: tempDirName,
 	})
 }
 
 type runParams struct {
+	cwd    string
 	fs     renderFS
 	getter getterClient
-	cwd    string
+	stdout io.Writer
 
 	// Constructs a name for a temp directory that doesn't exist yet and won't
 	// collide with other directories. Doesn't actually create a directory, the
 	// caller does that. This accommodates quirky behavior of go-getter that
 	// doesn't want the destination directory to exist already.
-	tempDirNamer func(debugID string) (string, error)
+	tempDirNamer func(namePart string) (string, error)
 }
 
 // realRun is for testability; it's Run() with fakeable interfaces.
@@ -235,24 +281,167 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	_ = templateDir // TODO: add template rendering logic
+	spec, err := loadSpecFile(rp.fs, templateDir, r.flagSpec)
+	if err != nil {
+		return err
+	}
+
+	scratchDir, err := rp.tempDirNamer(scratchDirNamePart)
+	if err != nil {
+		return err
+	}
+	if err := rp.fs.MkdirAll(scratchDir, mkdirPerms); err != nil {
+		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
+	}
+
+	if err := executeSpec(ctx, spec, &stepParams{
+		inputs:      r.flagInputs,
+		fs:          rp.fs,
+		scratchDir:  scratchDir,
+		stdout:      rp.stdout,
+		templateDir: templateDir,
+	}); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
+	for _, step := range spec.Steps {
+		if err := executeOneStep(ctx, step, sp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type stepParams struct {
+	fs          renderFS
+	inputs      map[string]string
+	scratchDir  string
+	stdout      io.Writer
+	templateDir string
+}
+
+func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error {
+	switch {
+	case step.Print != nil:
+		return actionPrint(ctx, step.Print, sp)
+	case step.Include != nil:
+		return actionInclude(ctx, step.Include, sp)
+	case step.RegexReplace != nil:
+		return actionRegexReplace(ctx, step.RegexReplace, sp)
+	case step.StringReplace != nil:
+		return actionStringReplace(ctx, step.StringReplace, sp)
+	case step.GoTemplate != nil:
+		return actionGoTemplate(ctx, step.GoTemplate, sp)
+	default:
+		return fmt.Errorf("internal error: unknown step action type %q", step.Action.Val)
+	}
+}
+
+// A template parser helper to remove the boilerplate of parsing with our
+// desired options.
+func parseGoTmpl(tpl string) (*template.Template, error) {
+	return template.New("").Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
+}
+
+func parseAndExecuteGoTmpl(m model.String, inputs map[string]string) (string, error) {
+	goTmpl, err := parseGoTmpl(m.Val)
+	if err != nil {
+		return "", model.ErrWithPos(m.Pos, `error compiling as go-template: %w`, err) //nolint:wrapcheck
+	}
+
+	var sb strings.Builder
+	if err := goTmpl.Execute(&sb, inputs); err != nil {
+		return "", model.ErrWithPos(m.Pos, "template.Execute() failed: %w", err) //nolint:wrapcheck
+	}
+
+	return sb.String(), nil
+}
+
+// "from" may be a file or directory. "pos" is only used for error messages.
+func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
+	return fs.WalkDir(rfs, from, func(path string, d fs.DirEntry, err error) error { //nolint:wrapcheck
+		if err != nil {
+			return err // There was some filesystem error. Give up.
+		}
+
+		// We don't have to worry about symlinks here because we passed
+		// DisableSymlinks=true to go-getter.
+
+		relToSrc, err := filepath.Rel(from, path)
+		if err != nil {
+			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", from, path, err) //nolint:wrapcheck
+		}
+
+		dst := filepath.Join(to, relToSrc)
+
+		// The spec file may specify a file to copy that's deep in a
+		// directory tree, without naming its parent directory. We can't
+		// rely on WalkDir having traversed the parent directory of $path,
+		// so we must create the target directory if it doesn't exist.
+		dirToCreate := dst
+		if !d.IsDir() {
+			dirToCreate = filepath.Dir(dst)
+		}
+		if err := rfs.MkdirAll(dirToCreate, 0o700); err != nil {
+			return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		buf, err := rfs.ReadFile(path)
+		if err != nil {
+			return model.ErrWithPos(pos, "ReadFile(): %w", err) //nolint:wrapcheck
+		}
+
+		info, err := rfs.Stat(path)
+		if err != nil {
+			return fmt.Errorf("Stat(): %w", err)
+		}
+
+		// The permission bits on the output file are copied from the input file;
+		// this preserves the execute bit on executable files.
+		if err := rfs.WriteFile(dst, buf, info.Mode().Perm()); err != nil {
+			return fmt.Errorf("failed writing to scratch file: WriteFile(): %w", err)
+		}
+
+		return nil
+	})
+}
+
+func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error) {
+	f, err := fs.Open(filepath.Join(templateDir, flagSpec))
+	if err != nil {
+		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
+	}
+	defer f.Close()
+
+	decoder := model.NewDecoder(f)
+	var spec model.Spec
+	if err := decoder.Decode(&spec); err != nil {
+		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
+	}
+	return &spec, nil
 }
 
 // Downloads the template and returns the name of the temp directory where it
 // was saved. If error is returned, then the returned directory name may or may
 // not exist, and may or may not be empty.
 func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
-	templateDir, err := rp.tempDirNamer("template-copy")
+	templateDir, err := rp.tempDirNamer(templateDirNamePart)
 	if err != nil {
 		return "", err
 	}
 	req := &getter.Request{
-		Src:     r.source,
-		Dst:     templateDir,
-		Pwd:     rp.cwd,
-		GetMode: getter.ModeAny,
+		DisableSymlinks: true,
+		Dst:             templateDir,
+		GetMode:         getter.ModeAny,
+		Pwd:             rp.cwd,
+		Src:             r.source,
 	}
 
 	res, err := rp.getter.Get(ctx, req)
@@ -320,5 +509,16 @@ func destOK(fs fs.StatFS, dest string) error {
 		return fmt.Errorf("the destination %q is not a directory", dest)
 	}
 
+	return nil
+}
+
+// safeRelPath returns an error if the path is absolute or if it contains a ".." traversal.
+func safeRelPath(p string) error {
+	if strings.Contains(p, "..") {
+		return fmt.Errorf(`path must not contain ".."`)
+	}
+	if filepath.IsAbs(p) {
+		return fmt.Errorf(`path must be relative, not absolute`)
+	}
 	return nil
 }
