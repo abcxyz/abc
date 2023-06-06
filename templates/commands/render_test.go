@@ -330,15 +330,17 @@ func TestCopyRecursive(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name            string
-		fromDirContents map[string]modeAndContents
-		suffix          string
-		want            map[string]modeAndContents
-		mkdirAllErr     error
-		readFileErr     error
-		statErr         error
-		writeFileErr    error
-		wantErr         string
+		name                 string
+		fromDirContents      map[string]modeAndContents
+		suffix               string
+		want                 map[string]modeAndContents
+		toDirInitialContents map[string]modeAndContents // only used in the tests for overwriting
+		overwrite            bool
+		mkdirAllErr          error
+		readFileErr          error
+		statErr              error
+		writeFileErr         error
+		wantErr              string
 	}{
 		{
 			name: "simple_success",
@@ -407,6 +409,60 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
+			name:      "overwriting_with_overwrite_true_should_succeed",
+			overwrite: true,
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "new contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt": {0o600, "new contents"},
+			},
+		},
+		{
+			name: "overwriting_with_overwrite_false_should_fail",
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "new contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			wantErr: "overwriting was not enabled",
+		},
+		{
+			name:      "overwriting_dir_with_child_file_should_fail",
+			overwrite: true,
+			fromDirContents: map[string]modeAndContents{
+				"a": {0o600, "file contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"a/b.txt": {0o600, "file contents"},
+			},
+			want: map[string]modeAndContents{
+				"a/b.txt": {0o600, "file contents"},
+			},
+			wantErr: "cannot overwrite a directory with a file of the same name",
+		},
+		{
+			name:      "overwriting_file_with_dir_should_fail",
+			overwrite: true,
+			fromDirContents: map[string]modeAndContents{
+				"a/b.txt": {0o600, "file contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"a": {0o600, "file contents"},
+			},
+			want: map[string]modeAndContents{
+				"a": {0o600, "file contents"},
+			},
+			wantErr: "cannot overwrite a file with a directory of the same name",
+		},
+		{
 			name: "MkdirAll error should be returned",
 			fromDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
@@ -460,6 +516,9 @@ func TestCopyRecursive(t *testing.T) {
 				from = filepath.Join(fromDir, tc.suffix)
 				to = filepath.Join(toDir, tc.suffix)
 			}
+			if err := writeAll(toDir, tc.toDirInitialContents); err != nil {
+				t.Fatal(err)
+			}
 			fs := &errorFS{
 				renderFS: &realFS{},
 
@@ -468,7 +527,7 @@ func TestCopyRecursive(t *testing.T) {
 				statErr:      tc.statErr,
 				writeFileErr: tc.writeFileErr,
 			}
-			err := copyRecursive(&model.ConfigPos{}, from, to, fs)
+			err := copyRecursive(&model.ConfigPos{}, from, to, fs, tc.overwrite)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf(diff)
 			}
