@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package render implements the "templates render" subcommand for installing a template.
+// Package commands implements the template-related subcommands.
 package commands
+
+// This file implements the "templates render" subcommand for installing a template.
 
 import (
 	"context"
