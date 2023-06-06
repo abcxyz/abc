@@ -390,10 +390,10 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS, overwrit
 		dirInfo, err := rfs.Stat(dirToCreate)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				return model.ErrWithPos(pos, "Stat(): %w", err)
+				return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
 			}
 		} else if !dirInfo.Mode().IsDir() {
-			return model.ErrWithPos(pos, "cannot overwrite a file with a directory of the same name, %q", path)
+			return model.ErrWithPos(pos, "cannot overwrite a file with a directory of the same name, %q", path) //nolint:wrapcheck
 		}
 		if err := rfs.MkdirAll(dirToCreate, 0o700); err != nil {
 			return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
@@ -410,13 +410,13 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS, overwrit
 		dstInfo, err := rfs.Stat(dst)
 		if err == nil {
 			if dstInfo.IsDir() {
-				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", path)
+				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", path) //nolint:wrapcheck
 			}
 			if !overwrite {
-				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", path)
+				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", path) //nolint:wrapcheck
 			}
 		} else if !os.IsNotExist(err) {
-			return model.ErrWithPos(pos, "Stat(%s): %w", dst, err)
+			return model.ErrWithPos(pos, "Stat(%s): %w", dst, err) //nolint:wrapcheck
 		}
 
 		info, err := rfs.Stat(path)
