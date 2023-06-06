@@ -43,7 +43,7 @@ const (
 	templateDirNamePart = "template-copy"
 	scratchDirNamePart  = "scratch"
 
-	// Permission bits: rwx------
+	// Permission bits: rwx------ .
 	mkdirPerms = 0o700
 )
 
