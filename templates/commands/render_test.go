@@ -192,8 +192,8 @@ steps:
 		flagSpec             string
 		getterErr            error
 		removeAllErr         error
-		wantScratchContents  map[string]string // wanted contents of the scratch dir after finishing
-		wantTemplateContents map[string]string // wanted contents of the template dir after finishing
+		wantScratchContents  map[string]string
+		wantTemplateContents map[string]string
 		wantStdout           string
 		wantErr              string
 	}{
@@ -205,11 +205,6 @@ steps:
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantScratchContents: map[string]string{
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
