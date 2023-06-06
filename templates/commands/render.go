@@ -398,9 +398,6 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS) error {
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
-		// TODO: this arguable should be an atomic write so we don't end up with
-		// half-written files on error.
-		//
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
 		if err := rfs.WriteFile(dst, buf, info.Mode().Perm()); err != nil {
