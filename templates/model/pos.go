@@ -62,15 +62,11 @@ func (c *ConfigPos) AnnotateErr(err error) error {
 //	ErrWithPos(pos, "Foo(): %w", err)
 //
 // Calling this function with a zero or nil ConfigPos is valid. The resulting
-// error will just say that the position is unknown.
+// error will just omit information about config location.
 func ErrWithPos(pos *ConfigPos, fmtStr string, args ...any) error {
 	err := fmt.Errorf(fmtStr, args...)
-	var lineStr string
 	if pos == nil || *pos == (ConfigPos{}) {
-		lineStr = "(unknown line number)"
-	} else {
-		lineStr = fmt.Sprintf("line %d", pos.Line)
+		return err // No location info is available.
 	}
-
-	return fmt.Errorf("failed executing template spec file at %s: %w", lineStr, err)
+	return fmt.Errorf("failed executing template spec file at line %d: %w", pos.Line, err)
 }

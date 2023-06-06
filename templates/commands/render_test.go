@@ -187,13 +187,16 @@ steps:
 	cases := []struct {
 		name                 string
 		templateContents     map[string]string
+		existingDestContents map[string]string
 		flagInputs           map[string]string
 		flagKeepTempDirs     bool
 		flagSpec             string
+		flagForceOverwrite   bool
 		getterErr            error
 		removeAllErr         error
 		wantScratchContents  map[string]string
 		wantTemplateContents map[string]string
+		wantDestContents     map[string]string
 		wantStdout           string
 		wantErr              string
 	}{
@@ -210,6 +213,11 @@ steps:
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantStdout: "Hello, 🐈\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
 		},
 		{
 			name: "keep_temp_dirs_on_success_if_flag",
@@ -224,14 +232,19 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantStdout: "Hello, 🐈\n",
 			wantScratchContents: map[string]string{
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, 🐈\n",
 			wantTemplateContents: map[string]string{
 				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantDestContents: map[string]string{
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -253,6 +266,51 @@ steps:
 			wantErr: "error parsing YAML spec file",
 		},
 		{
+			name: "existing_dest_file_with_overwrite_flag_should_succeed",
+			flagInputs: map[string]string{
+				"name_to_greet": "🐈",
+			},
+			flagForceOverwrite: true,
+			existingDestContents: map[string]string{
+				"file1.txt": "old contents",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "new contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, 🐈\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "new contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
+		{
+			name: "existing_dest_file_without_overwrite_flag_should_fail",
+			flagInputs: map[string]string{
+				"name_to_greet": "🐈",
+			},
+			flagForceOverwrite: false,
+			existingDestContents: map[string]string{
+				"file1.txt": "old contents",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, 🐈\n",
+			wantDestContents: map[string]string{
+				"file1.txt": "old contents",
+			},
+			wantErr: "overwriting was not enabled",
+		},
+		{
 			name:      "getter_error",
 			getterErr: fmt.Errorf("fake error for testing"),
 			wantErr:   "fake error for testing",
@@ -271,6 +329,10 @@ steps:
 			t.Parallel()
 
 			tempDir := t.TempDir()
+			dest := filepath.Join(tempDir, "dest")
+			if err := writeAllDefaultMode(dest, tc.existingDestContents); err != nil {
+				t.Fatal(err)
+			}
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
@@ -289,10 +351,12 @@ steps:
 				tempDirNamer: tempDirNamer,
 			}
 			r := &Render{
-				flagInputs:       tc.flagInputs,
-				flagKeepTempDirs: tc.flagKeepTempDirs,
-				flagSpec:         "spec.yaml",
-				source:           "github.com/myorg/myrepo",
+				flagDest:           dest,
+				flagForceOverwrite: tc.flagForceOverwrite,
+				flagInputs:         tc.flagInputs,
+				flagKeepTempDirs:   tc.flagKeepTempDirs,
+				flagSpec:           "spec.yaml",
+				source:             "github.com/myorg/myrepo",
 			}
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			err := r.realRun(ctx, rp)
@@ -317,6 +381,11 @@ steps:
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
+
+			gotDestContents := loadDirWithoutMode(t, dest)
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
 		})
 	}
 }
@@ -328,10 +397,13 @@ func TestCopyRecursive(t *testing.T) {
 		name                 string
 		fromDirContents      map[string]modeAndContents
 		suffix               string
+		overwrite            bool
+		dryRun               bool
 		want                 map[string]modeAndContents
 		toDirInitialContents map[string]modeAndContents // only used in the tests for overwriting
-		overwrite            bool
 		mkdirAllErr          error
+		openErr              error
+		openFileErr          error
 		readFileErr          error
 		statErr              error
 		writeFileErr         error
@@ -347,6 +419,29 @@ func TestCopyRecursive(t *testing.T) {
 				"file1.txt":      {0o600, "file1 contents"},
 				"dir1/file2.txt": {0o600, "file2 contents"},
 			},
+		},
+		{
+			name:   "dry_run_should_not_change_anything",
+			dryRun: true,
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":      {0o600, "file1 contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+		},
+		{
+			name:   "dry_run_without_overwrite_should_detect_conflicting_files",
+			dryRun: true,
+			toDirInitialContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":      {0o600, "new contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			wantErr: "already exists and overwriting was not enabled",
 		},
 		{
 			name: "owner_execute_bit_should_be_preserved",
@@ -466,20 +561,20 @@ func TestCopyRecursive(t *testing.T) {
 			wantErr:     "MkdirAll(): fake error",
 		},
 		{
-			name: "ReadFile error should be returned",
+			name: "Open error should be returned",
 			fromDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
 			},
-			readFileErr: fmt.Errorf("fake error"),
-			wantErr:     "ReadFile(): fake error",
+			openErr: fmt.Errorf("fake error"),
+			wantErr: "fake error", // This error comes from WalkDir, not from our own code, so it doesn't have an "Open():" at the beginning
 		},
 		{
-			name: "WriteFile error should be returned",
+			name: "OpenFile error should be returned",
 			fromDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
 			},
-			writeFileErr: fmt.Errorf("fake error"),
-			wantErr:      "WriteFile(): fake error",
+			openFileErr: fmt.Errorf("fake error"),
+			wantErr:     "OpenFile(): fake error",
 		},
 		{
 			name: "Stat error should be returned",
@@ -517,12 +612,12 @@ func TestCopyRecursive(t *testing.T) {
 			fs := &errorFS{
 				renderFS: &realFS{},
 
-				mkdirAllErr:  tc.mkdirAllErr,
-				readFileErr:  tc.readFileErr,
-				statErr:      tc.statErr,
-				writeFileErr: tc.writeFileErr,
+				mkdirAllErr: tc.mkdirAllErr,
+				openErr:     tc.openErr,
+				openFileErr: tc.openFileErr,
+				statErr:     tc.statErr,
 			}
-			err := copyRecursive(&model.ConfigPos{}, from, to, fs, tc.overwrite)
+			err := copyRecursive(&model.ConfigPos{}, from, to, fs, tc.overwrite, tc.dryRun)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf(diff)
 			}
@@ -686,10 +781,9 @@ type errorFS struct {
 
 	mkdirAllErr  error
 	openErr      error
-	readFileErr  error
+	openFileErr  error
 	removeAllErr error
 	statErr      error
-	writeFileErr error
 }
 
 func (e *errorFS) MkdirAll(name string, mode fs.FileMode) error {
@@ -706,11 +800,11 @@ func (e *errorFS) Open(name string) (fs.File, error) {
 	return e.renderFS.Open(name)
 }
 
-func (e *errorFS) ReadFile(name string) ([]byte, error) {
-	if e.readFileErr != nil {
-		return nil, e.readFileErr
+func (e *errorFS) OpenFile(name string, flag int, mode os.FileMode) (*os.File, error) {
+	if e.openFileErr != nil {
+		return nil, e.openFileErr
 	}
-	return e.renderFS.ReadFile(name)
+	return e.renderFS.OpenFile(name, flag, mode)
 }
 
 func (e *errorFS) RemoveAll(name string) error {
@@ -725,13 +819,6 @@ func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
 		return nil, e.statErr
 	}
 	return e.renderFS.Stat(name)
-}
-
-func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	if e.writeFileErr != nil {
-		return e.writeFileErr
-	}
-	return e.renderFS.WriteFile(name, data, perm)
 }
 
 type fakeGetter struct {
