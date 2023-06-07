@@ -46,7 +46,12 @@ func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error 
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
-		if err := copyRecursive(p.Pos, absSrc, absDst, sp.fs); err != nil {
+		// Allow later includes to replace earlier includes in the scratch
+		// directory. This doesn't affect whether files in the final destination
+		// directory will be overwritten; that comes later.
+		const overwrite = true
+
+		if err := copyRecursive(p.Pos, absSrc, absDst, sp.fs, overwrite); err != nil {
 			return model.ErrWithPos(p.Pos, "copying failed: %w", err) //nolint:wrapcheck
 		}
 	}

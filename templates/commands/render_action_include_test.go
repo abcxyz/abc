@@ -31,7 +31,7 @@ func TestActionInclude(t *testing.T) {
 
 	cases := []struct {
 		name                string
-		paths               []string
+		include             *model.Include
 		templateContents    map[string]modeAndContents
 		inputs              map[string]string
 		wantScratchContents map[string]modeAndContents
@@ -39,8 +39,10 @@ func TestActionInclude(t *testing.T) {
 		wantErr             string
 	}{
 		{
-			name:  "simple_success",
-			paths: []string{"myfile.txt"},
+			name: "simple_success",
+			include: &model.Include{
+				Paths: modelStrings([]string{"myfile.txt"}),
+			},
 			templateContents: map[string]modeAndContents{
 				"myfile.txt": {0o600, "my file contents"},
 			},
@@ -49,13 +51,17 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name:    "reject_dot_dot",
-			paths:   []string{"../file.txt"},
+			name: "reject_dot_dot",
+			include: &model.Include{
+				Paths: modelStrings([]string{"../file.txt"}),
+			},
 			wantErr: `path must not contain ".."`,
 		},
 		{
-			name:  "templated_filename_success",
-			paths: []string{"{{.my_dir}}/{{.my_file}}"},
+			name: "templated_filename_success",
+			include: &model.Include{
+				Paths: modelStrings([]string{"{{.my_dir}}/{{.my_file}}"}),
+			},
 			templateContents: map[string]modeAndContents{
 				"foo/bar.txt": {0o600, "file contents"},
 			},
@@ -68,8 +74,22 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name:  "templated_filename_nonexistent_input_var_should_fail",
-			paths: []string{"{{.filename}}"},
+			name: "including_multiple_times_should_succeed",
+			include: &model.Include{
+				Paths: modelStrings([]string{"myfile.txt", "myfile.txt"}),
+			},
+			templateContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "templated_filename_nonexistent_input_var_should_fail",
+			include: &model.Include{
+				Paths: modelStrings([]string{"{{.filename}}"}),
+			},
 			templateContents: map[string]modeAndContents{
 				"myfile.txt": {0o600, "file contents"},
 			},
@@ -77,8 +97,10 @@ func TestActionInclude(t *testing.T) {
 			wantErr: `no entry for key "filename"`,
 		},
 		{
-			name:  "nonexistent_source_should_fail",
-			paths: []string{"nonexistent"},
+			name: "nonexistent_source_should_fail",
+			include: &model.Include{
+				Paths: modelStrings([]string{"nonexistent"}),
+			},
 			templateContents: map[string]modeAndContents{
 				"myfile.txt": {0o600, "file contents"},
 			},
@@ -87,8 +109,10 @@ func TestActionInclude(t *testing.T) {
 		{
 			// Note: we don't exhaustively test every possible FS error here. That's
 			// already done in the tests for the underlying copyRecursive function.
-			name:  "filesystem_error_should_be_returned",
-			paths: []string{"myfile.txt"},
+			name: "filesystem_error_should_be_returned",
+			include: &model.Include{
+				Paths: modelStrings([]string{"myfile.txt"}),
+			},
 			templateContents: map[string]modeAndContents{
 				"myfile.txt": {0o600, "my file contents"},
 			},
@@ -113,10 +137,6 @@ func TestActionInclude(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			include := &model.Include{
-				Pos:   &model.ConfigPos{},
-				Paths: modelStrings(tc.paths),
-			}
 			sp := &stepParams{
 				fs: &errorFS{
 					renderFS: &realFS{},
@@ -126,7 +146,7 @@ func TestActionInclude(t *testing.T) {
 				templateDir: templateDir,
 				inputs:      tc.inputs,
 			}
-			err := actionInclude(ctx, include, sp)
+			err := actionInclude(ctx, tc.include, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
