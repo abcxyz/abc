@@ -271,11 +271,15 @@ type runParams struct {
 
 // realRun is for testability; it's Run() with fakeable interfaces.
 func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
+	var tempDirs []string
+	defer func() {
+		err := r.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
+		outErr = errors.Join(outErr, err)
+	}()
+
 	templateDir, err := r.copyTemplate(ctx, rp)
 	if templateDir != "" { // templateDir might be set even if there's an error
-		defer func() {
-			outErr = errors.Join(outErr, r.maybeRemoveTempDirs(ctx, rp.fs, templateDir))
-		}()
+		tempDirs = append(tempDirs, templateDir)
 	}
 	if err != nil {
 		return err
@@ -293,6 +297,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err := rp.fs.MkdirAll(scratchDir, mkdirPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
+	tempDirs = append(tempDirs, scratchDir)
 
 	if err := executeSpec(ctx, spec, &stepParams{
 		inputs:      r.flagInputs,
