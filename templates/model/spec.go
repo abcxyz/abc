@@ -304,9 +304,10 @@ type RegexReplace struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	Regex    String `yaml:"regex"`
-	Subgroup Int    `yaml:"subgroup"`
-	With     String `yaml:"with"`
+	Paths    []String `yaml:"paths"`
+	Regex    String   `yaml:"regex"`
+	Subgroup Int      `yaml:"subgroup"`
+	With     String   `yaml:"with"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -345,8 +346,9 @@ type StringReplace struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	ToReplace String `yaml:"to_replace"`
-	With      String `yaml:"with"`
+	Paths     []String `yaml:"paths"`
+	ToReplace String   `yaml:"to_replace"`
+	With      String   `yaml:"with"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
