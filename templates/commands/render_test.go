@@ -427,6 +427,8 @@ func TestCopyRecursive(t *testing.T) {
 				"file1.txt":      {0o600, "file1 contents"},
 				"dir1/file2.txt": {0o600, "file2 contents"},
 			},
+			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
+			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 		},
 		{
 			name:   "dry_run_without_overwrite_should_detect_conflicting_files",
@@ -441,7 +443,9 @@ func TestCopyRecursive(t *testing.T) {
 			want: map[string]modeAndContents{
 				"file1.txt": {0o600, "old contents"},
 			},
-			wantErr: "already exists and overwriting was not enabled",
+			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
+			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
+			wantErr:     "already exists and overwriting was not enabled",
 		},
 		{
 			name: "owner_execute_bit_should_be_preserved",
