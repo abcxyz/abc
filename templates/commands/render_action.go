@@ -42,7 +42,7 @@ func walkAndModify(pos *model.ConfigPos, rfs renderFS, scratchDir, relPath strin
 		return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
 	}
 
-	return filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error {
+	return filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error { //nolint:wrapcheck
 		if err != nil {
 			// There was some filesystem error. Give up.
 			return model.ErrWithPos(pos, "%w", err) //nolint:wrapcheck
