@@ -300,8 +300,8 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 
 	// Commit the contents of the scratch directory to the output directory. We
-	// first do a dry-run to check that the copy will fully succeed, so we don't
-	// leave a half-done mess in the user's dest directory.
+	// first do a dry-run to check that the copy is likely to  succeed, so we
+	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
 		if err := copyRecursive(nil, scratchDir, r.flagDest, rp.fs, r.flagForceOverwrite, dryRun); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
@@ -365,9 +365,9 @@ func parseAndExecuteGoTmpl(m model.String, inputs map[string]string) (string, er
 	return sb.String(), nil
 }
 
-// "from" may be a file or directory. "pos" is only used for error messages.
-func copyRecursive(pos *model.ConfigPos, fromRoot, toRoot string, rfs renderFS, overwrite, dryRun bool) error {
-	return fs.WalkDir(rfs, fromRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
+// "srcRoot" may be a file or directory. "pos" is only used for error messages.
+func copyRecursive(pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, overwrite, dryRun bool) error {
+	return fs.WalkDir(rfs, srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
@@ -376,21 +376,21 @@ func copyRecursive(pos *model.ConfigPos, fromRoot, toRoot string, rfs renderFS, 
 		// DisableSymlinks=true to go-getter.
 
 		if de.IsDir() {
-			return copyRecursiveDir(path, de, pos, fromRoot, toRoot, rfs, dryRun)
+			return copyRecursiveDir(path, de, pos, srcRoot, dstRoot, rfs, dryRun)
 		}
 
-		return copyRecursiveFile(path, de, pos, fromRoot, toRoot, rfs, overwrite, dryRun)
+		return copyRecursiveFile(path, de, pos, srcRoot, dstRoot, rfs, overwrite, dryRun)
 	})
 }
 
 // A helper function that's called by the WalkDirFunc inside copyRecursive in
 // the case that the source path is a directory.
-func copyRecursiveDir(path string, de fs.DirEntry, pos *model.ConfigPos, fromRoot, toRoot string, rfs renderFS, dryRun bool) error {
-	relToSrc, err := filepath.Rel(fromRoot, path)
+func copyRecursiveDir(path string, de fs.DirEntry, pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, dryRun bool) error {
+	relToSrc, err := filepath.Rel(srcRoot, path)
 	if err != nil {
-		return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", fromRoot, path, err) //nolint:wrapcheck
+		return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", srcRoot, path, err) //nolint:wrapcheck
 	}
-	dst := filepath.Join(toRoot, relToSrc)
+	dst := filepath.Join(dstRoot, relToSrc)
 
 	if err := mkdirAllChecked(pos, rfs, dst, dryRun); err != nil {
 		return err
@@ -401,12 +401,12 @@ func copyRecursiveDir(path string, de fs.DirEntry, pos *model.ConfigPos, fromRoo
 
 // A helper function that's called by the WalkDirFunc inside copyRecursive in
 // the case that the source path is a file.
-func copyRecursiveFile(path string, de fs.DirEntry, pos *model.ConfigPos, fromRoot, toRoot string, rfs renderFS, overwrite, dryRun bool) (outErr error) {
-	relToSrc, err := filepath.Rel(fromRoot, path)
+func copyRecursiveFile(path string, de fs.DirEntry, pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, overwrite, dryRun bool) (outErr error) {
+	relToSrc, err := filepath.Rel(srcRoot, path)
 	if err != nil {
-		return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", fromRoot, path, err) //nolint:wrapcheck
+		return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", srcRoot, path, err) //nolint:wrapcheck
 	}
-	dst := filepath.Join(toRoot, relToSrc)
+	dst := filepath.Join(dstRoot, relToSrc)
 
 	dstInfo, err := rfs.Stat(dst)
 	if err == nil {
