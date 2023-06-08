@@ -51,7 +51,7 @@ func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error 
 		// directory will be overwritten; that comes later.
 		const overwrite = true
 
-		if err := copyRecursive(p.Pos, absSrc, absDst, sp.fs, overwrite); err != nil {
+		if err := copyRecursive(p.Pos, absSrc, absDst, sp.fs, overwrite, false); err != nil {
 			return model.ErrWithPos(p.Pos, "copying failed: %w", err) //nolint:wrapcheck
 		}
 	}

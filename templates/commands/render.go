@@ -71,11 +71,9 @@ type renderFS interface {
 	fs.StatFS
 
 	// These methods correspond to methods in the "os" package of the same name.
-	Mkdir(name string, perm os.FileMode) error
 	MkdirAll(string, os.FileMode) error
-	ReadFile(string) ([]byte, error)
+	OpenFile(string, int, os.FileMode) (*os.File, error)
 	RemoveAll(string) error
-	WriteFile(string, []byte, os.FileMode) error
 }
 
 // Allows the github.com/hashicorp/go-getter/Client to be faked.
@@ -190,10 +188,6 @@ func (r *Render) parseFlags(args []string) error {
 // This is the non-test implementation of the filesystem interface.
 type realFS struct{}
 
-func (r *realFS) Mkdir(name string, perm os.FileMode) error {
-	return os.Mkdir(name, perm) //nolint:wrapcheck
-}
-
 func (r *realFS) MkdirAll(name string, perm os.FileMode) error {
 	return os.MkdirAll(name, perm) //nolint:wrapcheck
 }
@@ -202,8 +196,8 @@ func (r *realFS) Open(name string) (fs.File, error) {
 	return os.Open(name) //nolint:wrapcheck
 }
 
-func (r *realFS) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name) //nolint:wrapcheck
+func (r *realFS) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	return os.OpenFile(name, flag, perm) //nolint:wrapcheck
 }
 
 func (r *realFS) RemoveAll(name string) error {
@@ -212,10 +206,6 @@ func (r *realFS) RemoveAll(name string) error {
 
 func (r *realFS) Stat(name string) (fs.FileInfo, error) {
 	return os.Stat(name) //nolint:wrapcheck
-}
-
-func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(name, data, perm) //nolint:wrapcheck
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
@@ -309,6 +299,15 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
+	// Commit the contents of the scratch directory to the output directory. We
+	// first do a dry-run to check that the copy is likely to  succeed, so we
+	// don't leave a half-done mess in the user's dest directory.
+	for _, dryRun := range []bool{true, false} {
+		if err := copyRecursive(nil, scratchDir, r.flagDest, rp.fs, r.flagForceOverwrite, dryRun); err != nil {
+			return fmt.Errorf("failed writing to --dest directory: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -366,50 +365,33 @@ func parseAndExecuteGoTmpl(m model.String, inputs map[string]string) (string, er
 	return sb.String(), nil
 }
 
-// "from" may be a file or directory. "pos" is only used for error messages.
-func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS, overwrite bool) error {
-	return fs.WalkDir(rfs, from, func(path string, d fs.DirEntry, err error) error { //nolint:wrapcheck
+// "srcRoot" may be a file or directory. "pos" is only used for error messages.
+func copyRecursive(pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, overwrite, dryRun bool) (outErr error) {
+	return fs.WalkDir(rfs, srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
 		if err != nil {
 			return err // There was some filesystem error. Give up.
+		}
+
+		if de.IsDir() {
+			return nil
 		}
 
 		// We don't have to worry about symlinks here because we passed
 		// DisableSymlinks=true to go-getter.
 
-		relToSrc, err := filepath.Rel(from, path)
+		relToSrc, err := filepath.Rel(srcRoot, path)
 		if err != nil {
-			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", from, path, err) //nolint:wrapcheck
+			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", srcRoot, path, err) //nolint:wrapcheck
 		}
-
-		dst := filepath.Join(to, relToSrc)
+		dst := filepath.Join(dstRoot, relToSrc)
 
 		// The spec file may specify a file to copy that's deep in a
 		// directory tree, without naming its parent directory. We can't
 		// rely on WalkDir having traversed the parent directory of $path,
 		// so we must create the target directory if it doesn't exist.
-		dirToCreate := dst
-		if !d.IsDir() {
-			dirToCreate = filepath.Dir(dst)
-		}
-
-		dirInfo, err := rfs.Stat(dirToCreate)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
-			}
-		} else if !dirInfo.Mode().IsDir() {
-			return model.ErrWithPos(pos, "cannot overwrite a file with a directory of the same name, %q", path) //nolint:wrapcheck
-		}
-		if err := rfs.MkdirAll(dirToCreate, 0o700); err != nil {
-			return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
-		}
-		if d.IsDir() {
-			return nil
-		}
-
-		buf, err := rfs.ReadFile(path)
-		if err != nil {
-			return model.ErrWithPos(pos, "ReadFile(): %w", err) //nolint:wrapcheck
+		inDir := filepath.Dir(dst)
+		if err := mkdirAllChecked(pos, rfs, inDir, dryRun); err != nil {
+			return err
 		}
 
 		dstInfo, err := rfs.Stat(dst)
@@ -421,22 +403,64 @@ func copyRecursive(pos *model.ConfigPos, from, to string, rfs renderFS, overwrit
 				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", path) //nolint:wrapcheck
 			}
 		} else if !os.IsNotExist(err) {
-			return model.ErrWithPos(pos, "Stat(%s): %w", dst, err) //nolint:wrapcheck
+			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
 		}
 
-		info, err := rfs.Stat(path)
+		srcInfo, err := rfs.Stat(path)
 		if err != nil {
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
+		rf, err := rfs.Open(path)
+		if err != nil {
+			return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
+		}
+		defer func() { outErr = errors.Join(outErr, rf.Close()) }()
+
+		if dryRun {
+			return nil
+		}
+
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
-		if err := rfs.WriteFile(dst, buf, info.Mode().Perm()); err != nil {
-			return fmt.Errorf("failed writing to scratch file: WriteFile(): %w", err)
+		wf, err := rfs.OpenFile(dst, os.O_CREATE|os.O_WRONLY, srcInfo.Mode().Perm())
+		if err != nil {
+			return model.ErrWithPos(pos, "OpenFile(): %w", err) //nolint:wrapcheck
+		}
+		defer func() { outErr = errors.Join(outErr, wf.Close()) }()
+
+		if _, err := io.Copy(wf, rf); err != nil {
+			return fmt.Errorf("Copy(): %w", err)
 		}
 
 		return nil
 	})
+}
+
+// A fancy wrapper around MkdirAll with better error messages and a dry run
+// mode. In dry run mode, returns an error if the MkdirAll wouldn't succeed
+// (best-effort).
+func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun bool) error {
+	create := false
+	info, err := rfs.Stat(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
+		}
+		create = true
+	} else if !info.Mode().IsDir() {
+		return model.ErrWithPos(pos, "cannot overwrite a file with a directory of the same name, %q", path) //nolint:wrapcheck
+	}
+
+	if dryRun || !create {
+		return nil
+	}
+
+	if err := rfs.MkdirAll(path, mkdirPerms); err != nil {
+		return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
+	}
+
+	return nil
 }
 
 func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error) {
