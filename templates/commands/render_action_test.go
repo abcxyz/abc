@@ -209,3 +209,42 @@ func TestWalkAndModify(t *testing.T) {
 		})
 	}
 }
+
+func TestReverse(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		in   []int
+		want []int
+	}{
+		{
+			in:   []int{},
+			want: []int{},
+		},
+		{
+			in:   nil,
+			want: nil,
+		},
+		{
+			in:   []int{1},
+			want: []int{1},
+		},
+		{
+			in:   []int{1, 2, 3},
+			want: []int{3, 2, 1},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(fmt.Sprintf("%v", tc.in), func(t *testing.T) {
+			t.Parallel()
+
+			got := reverse(tc.in)
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("reverse(%v)=%v, want %v", tc.in, got, tc.want)
+			}
+		})
+	}
+}

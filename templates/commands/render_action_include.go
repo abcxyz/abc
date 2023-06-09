@@ -27,7 +27,7 @@ import (
 func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error {
 	for _, p := range i.Paths {
 		// Paths may contain template expressions, so render them first.
-		walkRelPath, err := parseAndExecuteGoTmpl(p, sp.inputs)
+		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
 		if err != nil {
 			return model.ErrWithPos(p.Pos, `error compiling go-template: %w`, err) //nolint:wrapcheck
 		}

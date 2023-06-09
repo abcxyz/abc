@@ -19,6 +19,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/abcxyz/abc/templates/model"
 )
@@ -77,4 +78,36 @@ func walkAndModify(pos *model.ConfigPos, rfs renderFS, scratchDir, relPath strin
 
 		return nil
 	})
+}
+
+func templateAndCompileRegexes(regexes []model.String, inputs map[string]string) ([]*regexp.Regexp, error) {
+	compiled := make([]*regexp.Regexp, len(regexes))
+	for i, re := range regexes {
+		templated, err := parseAndExecuteGoTmpl(re.Pos, re.Val, inputs)
+		if err != nil {
+			return nil, err
+		}
+
+		compiled[i], err = regexp.Compile(templated)
+		if err != nil {
+			return nil, model.ErrWithPos(re.Pos, "failed compiling regex: %w", err) //nolint:wrapcheck
+		}
+	}
+
+	return compiled, nil
+}
+
+// Returns a slice where the order of the elements is reverse. Returns the same
+// slice as the input in the case where the length of the input is 0 or 1,
+// because the reverse operation is a no-op on these.
+func reverse[T any](in []T) []T {
+	length := len(in)
+	if length <= 1 {
+		return in
+	}
+	out := make([]T, length)
+	for i, x := range in {
+		out[length-1-i] = x
+	}
+	return out
 }
