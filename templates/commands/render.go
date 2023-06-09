@@ -480,12 +480,7 @@ func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error
 	}
 	defer f.Close()
 
-	decoder := model.NewDecoder(f)
-	var spec model.Spec
-	if err := decoder.Decode(&spec); err != nil {
-		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
-	}
-	return &spec, nil
+	return model.DecodeSpec(f)
 }
 
 // Downloads the template and returns the name of the temp directory where it

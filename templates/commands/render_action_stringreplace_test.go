@@ -30,11 +30,10 @@ func TestActionStringReplace(t *testing.T) {
 	// These test cases are fairly minimal because all the heavy lifting is done
 	// in walkAndModify which has its own comprehensive test suite.
 	cases := []struct {
-		name      string
-		paths     []string
-		toReplace string
-		with      string
-		inputs    map[string]string
+		name         string
+		paths        []string
+		replacements []*model.StringReplacement
+		inputs       map[string]string
 
 		initialContents map[string]string
 		want            map[string]string
@@ -43,10 +42,14 @@ func TestActionStringReplace(t *testing.T) {
 		readFileErr error // no need to test all errors here, see TestWalkAndModify
 	}{
 		{
-			name:      "simple_success",
-			paths:     []string{"my_file.txt"},
-			toReplace: "foo",
-			with:      "bar",
+			name:  "simple_success",
+			paths: []string{"my_file.txt"},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "bar"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt": "abc foo def",
 			},
@@ -55,10 +58,14 @@ func TestActionStringReplace(t *testing.T) {
 			},
 		},
 		{
-			name:      "multiple_files_should_work",
-			paths:     []string{""},
-			toReplace: "foo",
-			with:      "bar",
+			name:  "multiple_files_should_work",
+			paths: []string{""},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "bar"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt":       "abc foo def",
 				"my_other_file.txt": "abc foo def",
@@ -69,10 +76,14 @@ func TestActionStringReplace(t *testing.T) {
 			},
 		},
 		{
-			name:      "no_replacement_needed_should_noop",
-			paths:     []string{""},
-			toReplace: "foo",
-			with:      "bar",
+			name:  "no_replacement_needed_should_noop",
+			paths: []string{""},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "bar"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt": "abc def",
 			},
@@ -81,10 +92,14 @@ func TestActionStringReplace(t *testing.T) {
 			},
 		},
 		{
-			name:      "empty_file_should_noop",
-			paths:     []string{""},
-			toReplace: "foo",
-			with:      "bar",
+			name:  "empty_file_should_noop",
+			paths: []string{""},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "bar"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt": "",
 			},
@@ -93,10 +108,14 @@ func TestActionStringReplace(t *testing.T) {
 			},
 		},
 		{
-			name:      "templated_replacement_should_succeed",
-			paths:     []string{"my_{{.filename_adjective}}_file.txt"},
-			toReplace: "sand{{.old_suffix}}",
-			with:      "hot{{.new_suffix}}",
+			name:  "templated_replacement_should_succeed",
+			paths: []string{"my_{{.filename_adjective}}_file.txt"},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "sand{{.old_suffix}}"},
+					With:      model.String{Val: "hot{{.new_suffix}}"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_cool_file.txt":  "sandwich",
 				"ignored_filed.txt": "ignored",
@@ -112,10 +131,14 @@ func TestActionStringReplace(t *testing.T) {
 			},
 		},
 		{
-			name:      "templated_filename_missing_input_should_fail",
-			paths:     []string{"{{.myinput}}"},
-			toReplace: "foo",
-			with:      "bar",
+			name:  "templated_filename_missing_input_should_fail",
+			paths: []string{"{{.myinput}}"},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "bar"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt": "foo",
 			},
@@ -126,10 +149,14 @@ func TestActionStringReplace(t *testing.T) {
 			wantErr: `no entry for key "myinput"`,
 		},
 		{
-			name:      "templated_toreplace_missing_input_should_fail",
-			paths:     []string{""},
-			toReplace: "{{.myinput}}",
-			with:      "bar",
+			name:  "templated_toreplace_missing_input_should_fail",
+			paths: []string{""},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "{{.myinput}}"},
+					With:      model.String{Val: "bar"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt": "foo",
 			},
@@ -140,10 +167,14 @@ func TestActionStringReplace(t *testing.T) {
 			wantErr: `no entry for key "myinput"`,
 		},
 		{
-			name:      "templated_with_missing_input_should_fail",
-			paths:     []string{""},
-			toReplace: "foo",
-			with:      "{{.myinput}}",
+			name:  "templated_with_missing_input_should_fail",
+			paths: []string{""},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "{{.myinput}}"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt": "foo",
 			},
@@ -154,10 +185,14 @@ func TestActionStringReplace(t *testing.T) {
 			wantErr: `no entry for key "myinput"`,
 		},
 		{
-			name:      "fs_errors_should_be_returned",
-			paths:     []string{"my_file.txt"},
-			toReplace: "foo",
-			with:      "bar",
+			name:  "fs_errors_should_be_returned",
+			paths: []string{"my_file.txt"},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "bar"},
+				},
+			},
 			initialContents: map[string]string{
 				"my_file.txt": "abc foo def",
 			},
@@ -181,9 +216,8 @@ func TestActionStringReplace(t *testing.T) {
 			}
 
 			sr := &model.StringReplace{
-				Paths:     modelStrings(tc.paths),
-				ToReplace: model.String{Val: tc.toReplace},
-				With:      model.String{Val: tc.with},
+				Paths:        modelStrings(tc.paths),
+				Replacements: tc.replacements,
 			}
 			sp := &stepParams{
 				fs: &errorFS{

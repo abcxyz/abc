@@ -15,33 +15,35 @@
 package commands
 
 import (
-	"bytes"
 	"context"
+	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
 )
 
 func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepParams) error {
-	replaceWith, err := parseAndExecuteGoTmpl(sr.With, sp.inputs)
-	if err != nil {
-		return err
-	}
-
-	toReplace, err := parseAndExecuteGoTmpl(sr.ToReplace, sp.inputs)
-	if err != nil {
-		return err
-	}
-
-	toReplaceBuf := []byte(toReplace)
-	replaceWithBuf := []byte(replaceWith)
-
-	for _, p := range sr.Paths {
-		relPath, err := parseAndExecuteGoTmpl(p, sp.inputs)
+	var replacerArgs []string
+	for _, r := range sr.Replacements {
+		toReplace, err := parseAndExecuteGoTmpl(r.ToReplace, sp.inputs)
 		if err != nil {
 			return err
 		}
-		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, relPath, func(buf []byte) ([]byte, error) {
-			return bytes.ReplaceAll(buf, toReplaceBuf, replaceWithBuf), nil
+		replaceWith, err := parseAndExecuteGoTmpl(r.With, sp.inputs)
+		if err != nil {
+			return err
+		}
+		replacerArgs = append(replacerArgs, toReplace, replaceWith)
+	}
+	replacer := strings.NewReplacer(replacerArgs...)
+
+	for _, p := range sr.Paths {
+		path, err := parseAndExecuteGoTmpl(p, sp.inputs)
+		if err != nil {
+			return err
+		}
+
+		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
+			return []byte(replacer.Replace(string(buf))), nil
 		}); err != nil {
 			return err
 		}

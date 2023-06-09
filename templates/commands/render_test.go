@@ -172,6 +172,7 @@ kind: 'Template'
 desc: 'A template for the ages'
 inputs:
 - name: 'name_to_greet'
+  desc: 'A name to include in the message'
   required: true
 steps:
 - desc: 'Print a message'
