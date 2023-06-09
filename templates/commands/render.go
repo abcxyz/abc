@@ -480,7 +480,12 @@ func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error
 	}
 	defer f.Close()
 
-	return model.DecodeSpec(f)
+	spec, err := model.DecodeSpec(f)
+	if err != nil {
+		return nil, fmt.Errorf("error reading template spec file: %w", err)
+	}
+
+	return spec, nil
 }
 
 // Downloads the template and returns the name of the temp directory where it
