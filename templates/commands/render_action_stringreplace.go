@@ -22,7 +22,7 @@ import (
 )
 
 func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepParams) error {
-	var replacerArgs []string
+	var replacerArgs []string //nolint:prealloc // strings.NewReplacer has a weird input slice, it's less confusing to append rather than preallocate.
 	for _, r := range sr.Replacements {
 		toReplace, err := parseAndExecuteGoTmpl(r.ToReplace, sp.inputs)
 		if err != nil {
