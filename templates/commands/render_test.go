@@ -172,6 +172,7 @@ kind: 'Template'
 desc: 'A template for the ages'
 inputs:
 - name: 'name_to_greet'
+  desc: 'A name to include in the message'
   required: true
 steps:
 - desc: 'Print a message'
@@ -702,7 +703,7 @@ func TestSafeRelPath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := safeRelPath(tc.in)
+			got := safeRelPath(nil, tc.in)
 
 			if testutil.DiffErrString(got, tc.wantErr) != "" {
 				t.Errorf("safeRelPath(%s)=%s, want %s", tc.in, got, tc.wantErr)
@@ -786,8 +787,10 @@ type errorFS struct {
 	mkdirAllErr  error
 	openErr      error
 	openFileErr  error
+	readFileErr  error
 	removeAllErr error
 	statErr      error
+	writeFileErr error
 }
 
 func (e *errorFS) MkdirAll(name string, mode fs.FileMode) error {
@@ -811,6 +814,13 @@ func (e *errorFS) OpenFile(name string, flag int, mode os.FileMode) (*os.File, e
 	return e.renderFS.OpenFile(name, flag, mode)
 }
 
+func (e *errorFS) ReadFile(name string) ([]byte, error) {
+	if e.readFileErr != nil {
+		return nil, e.readFileErr
+	}
+	return e.renderFS.ReadFile(name)
+}
+
 func (e *errorFS) RemoveAll(name string) error {
 	if e.removeAllErr != nil {
 		return e.removeAllErr
@@ -823,6 +833,13 @@ func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
 		return nil, e.statErr
 	}
 	return e.renderFS.Stat(name)
+}
+
+func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	if e.writeFileErr != nil {
+		return e.writeFileErr
+	}
+	return e.renderFS.WriteFile(name, data, perm)
 }
 
 type fakeGetter struct {

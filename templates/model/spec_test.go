@@ -120,7 +120,7 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Spec{}
-			dec := NewDecoder(strings.NewReader(tc.in))
+			dec := newDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)
@@ -195,7 +195,7 @@ nonexistent_field: 'oops'`,
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Input{}
-			dec := NewDecoder(strings.NewReader(tc.in))
+			dec := newDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)
@@ -327,16 +327,32 @@ params:
 			in: `desc: 'mydesc'
 action: 'regex_replace'
 params:
-  regex: 'my_regex'
-  subgroup: 1
-  with: 'some_template'`,
+  paths: ['a.txt', 'b.txt']
+  replacements:
+  - regex: 'my_regex'
+    subgroup: 1
+    with: 'some_template'
+  - regex: 'my_other_regex'
+    with: 'whatever'`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "regex_replace"},
 				RegexReplace: &RegexReplace{
-					Regex:    String{Val: "my_regex"},
-					Subgroup: Int{Val: 1},
-					With:     String{Val: "some_template"},
+					Paths: []String{
+						{Val: "a.txt"},
+						{Val: "b.txt"},
+					},
+					Replacements: []*RegexReplacement{
+						{
+							Regex:    String{Val: "my_regex"},
+							Subgroup: Int{Val: 1},
+							With:     String{Val: "some_template"},
+						},
+						{
+							Regex: String{Val: "my_other_regex"},
+							With:  String{Val: "whatever"},
+						},
+					},
 				},
 			},
 		},
@@ -345,9 +361,11 @@ params:
 			in: `desc: 'mydesc'
 action: 'regex_replace'
 params:
-  regex: 'my_regex'
-  subgroup: -1
-  with: 'some_template'`,
+  paths: ['a.txt']
+  replacements:
+  - regex: 'my_regex'
+    subgroup: -1
+    with: 'some_template'`,
 			wantValidateErr: `field "subgroup" must not be negative`,
 		},
 		{
@@ -355,33 +373,61 @@ params:
 			in: `desc: 'mydesc'
 action: 'regex_replace'
 params:
-  subgroup: 1`,
-			wantValidateErr: `invalid config near line 4 column 3: field "regex" is required
-invalid config near line 4 column 3: field "with" is required`,
+  paths: ['a.txt']
+  replacements:
+  - subgroup: 1`,
+			wantValidateErr: `invalid config near line 6 column 5: field "regex" is required
+invalid config near line 6 column 5: field "with" is required`,
 		},
 		{
 			name: "string_replace_success",
 			in: `desc: 'mydesc'
 action: 'string_replace'
 params:
-  to_replace: 'abc'
-  with: 'def'`,
+  paths: ['a.txt', 'b.txt']
+  replacements:
+  - to_replace: 'abc'
+    with: 'def'
+  - to_replace: 'ghi'
+    with: 'jkl'`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "string_replace"},
 				StringReplace: &StringReplace{
-					ToReplace: String{Val: "abc"},
-					With:      String{Val: "def"},
+					Paths: []String{
+						{Val: "a.txt"},
+						{Val: "b.txt"},
+					},
+					Replacements: []*StringReplacement{
+						{
+							ToReplace: String{Val: "abc"},
+							With:      String{Val: "def"},
+						},
+						{
+							ToReplace: String{Val: "ghi"},
+							With:      String{Val: "jkl"},
+						},
+					},
 				},
 			},
 		},
 		{
-			name: "string_replace_missing_field_should_fail",
+			name: "string_replace_missing_replacements_field_should_fail",
 			in: `desc: 'mydesc'
 action: 'string_replace'
 params:
-  with: 'def'`,
-			wantValidateErr: `invalid config near line 4 column 3: field "to_replace" is required`,
+  paths: ['a.txt']`,
+			wantValidateErr: `invalid config near line 4 column 3: field "replacements" is required`,
+		},
+		{
+			name: "string_replace_missing_paths_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'string_replace'
+params:
+  replacements:
+  - to_replace: 'abc'
+    with: 'def'`,
+			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
 		},
 		{
 			name: "go_template_success",
@@ -415,7 +461,7 @@ params:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Step{}
-			dec := NewDecoder(strings.NewReader(tc.in))
+			dec := newDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)

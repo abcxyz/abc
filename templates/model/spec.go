@@ -53,8 +53,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// NewDecoder returns a yaml Decoder with the desired options.
-func NewDecoder(r io.Reader) *yaml.Decoder {
+// DecodeSpec unmarshals the YAML Spec from r. This function exists so we can
+// validate the Spec model before providing it to the caller; we don't want the
+// caller to forget, and thereby introduce bugs.
+//
+// If the Spec parses successfully but then fails validation, the spec will be
+// returned along with the parse error.
+func DecodeSpec(r io.Reader) (*Spec, error) {
+	dec := newDecoder(r)
+	var spec Spec
+	if err := dec.Decode(&spec); err != nil {
+		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
+	}
+	return &spec, spec.Validate()
+}
+
+// newDecoder returns a yaml Decoder with the desired options.
+func newDecoder(r io.Reader) *yaml.Decoder {
 	dec := yaml.NewDecoder(r)
 	dec.KnownFields(true) // Fail if any unexpected fields are seen. Often doesn't work: https://github.com/go-yaml/yaml/issues/460
 	return dec
@@ -304,14 +319,13 @@ type RegexReplace struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	Regex    String `yaml:"regex"`
-	Subgroup Int    `yaml:"subgroup"`
-	With     String `yaml:"with"`
+	Paths        []String            `yaml:"paths"`
+	Replacements []*RegexReplacement `yaml:"replacements"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (r *RegexReplace) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"regex", "subgroup", "with"}
+	knownYAMLFields := []string{"paths", "replacements"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
@@ -329,15 +343,49 @@ func (r *RegexReplace) UnmarshalYAML(n *yaml.Node) error {
 
 // Validate implements Validator.
 func (r *RegexReplace) Validate() error {
+	return errors.Join(
+		nonEmptySlice(r.Pos, r.Paths, "paths"),
+		nonEmptySlice(r.Pos, r.Replacements, "replacements"),
+		validateEach(r.Replacements),
+	)
+}
+
+// RegexReplacement is one of potentially many regex replacements to be applied.
+type RegexReplacement struct {
+	Pos      *ConfigPos `yaml:"-"`
+	Regex    String     `yaml:"regex"`
+	Subgroup Int        `yaml:"subgroup"`
+	With     String     `yaml:"with"`
+}
+
+// Validate implements Validator.
+func (r *RegexReplacement) Validate() error {
 	// Some validation happens later during execution:
 	//  - Compiling the regular expression
 	//  - Compiling the "with" template
 	//  - Validating that the subgroup number is actually a valid subgroup in the regex
 	return errors.Join(
 		notZero(r.Pos, r.Regex, "regex"),
-		notZero(r.Pos, r.With, "with"),
 		nonNegative(r.Subgroup, "subgroup"),
+		notZero(r.Pos, r.With, "with"),
 	)
+}
+
+func (r *RegexReplacement) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"regex", "subgroup", "with"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType RegexReplacement
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*r = RegexReplacement(*shadow)
+	r.Pos = yamlPos(n)
+
+	return nil
 }
 
 // StringReplace is an action that replaces a string with a template expression.
@@ -345,13 +393,13 @@ type StringReplace struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	ToReplace String `yaml:"to_replace"`
-	With      String `yaml:"with"`
+	Paths        []String             `yaml:"paths"`
+	Replacements []*StringReplacement `yaml:"replacements"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *StringReplace) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"to_replace", "with"}
+	knownYAMLFields := []string{"paths", "replacements", "params"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
@@ -375,9 +423,41 @@ func (s *StringReplace) Validate() error {
 	//  - Validating that the subgroup number is actually a valid subgroup in
 	//    the regex
 	return errors.Join(
+		nonEmptySlice(s.Pos, s.Paths, "paths"),
+		nonEmptySlice(s.Pos, s.Replacements, "replacements"),
+		validateEach(s.Replacements),
+	)
+}
+
+type StringReplacement struct {
+	Pos *ConfigPos `yaml:"-"`
+
+	ToReplace String `yaml:"to_replace"`
+	With      String `yaml:"with"`
+}
+
+func (s *StringReplacement) Validate() error {
+	return errors.Join(
 		notZero(s.Pos, s.ToReplace, "to_replace"),
 		notZero(s.Pos, s.With, "with"),
 	)
+}
+
+func (s *StringReplacement) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"to_replace", "with"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType StringReplacement
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*s = StringReplacement(*shadow)
+	s.Pos = yamlPos(n)
+
+	return nil
 }
 
 // GoTemplate is an action that executes one more files as a Go template,

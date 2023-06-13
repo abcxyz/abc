@@ -44,7 +44,7 @@ const (
 	scratchDirNamePart  = "scratch"
 
 	// Permission bits: rwx------ .
-	mkdirPerms = 0o700
+	ownerRWXPerms = 0o700
 )
 
 type Render struct {
@@ -73,7 +73,9 @@ type renderFS interface {
 	// These methods correspond to methods in the "os" package of the same name.
 	MkdirAll(string, os.FileMode) error
 	OpenFile(string, int, os.FileMode) (*os.File, error)
+	ReadFile(string) ([]byte, error)
 	RemoveAll(string) error
+	WriteFile(string, []byte, os.FileMode) error
 }
 
 // Allows the github.com/hashicorp/go-getter/Client to be faked.
@@ -178,7 +180,7 @@ func (r *Render) parseFlags(args []string) error {
 
 	r.source = parsedArgs[0]
 
-	if err := safeRelPath(r.flagSpec); err != nil {
+	if err := safeRelPath(nil, r.flagSpec); err != nil {
 		return fmt.Errorf("invalid --spec path %q: %w", r.flagSpec, err)
 	}
 
@@ -200,12 +202,20 @@ func (r *realFS) OpenFile(name string, flag int, perm os.FileMode) (*os.File, er
 	return os.OpenFile(name, flag, perm) //nolint:wrapcheck
 }
 
+func (r *realFS) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name) //nolint:wrapcheck
+}
+
 func (r *realFS) RemoveAll(name string) error {
 	return os.RemoveAll(name) //nolint:wrapcheck
 }
 
 func (r *realFS) Stat(name string) (fs.FileInfo, error) {
 	return os.Stat(name) //nolint:wrapcheck
+}
+
+func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm) //nolint:wrapcheck
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
@@ -284,7 +294,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err != nil {
 		return err
 	}
-	if err := rp.fs.MkdirAll(scratchDir, mkdirPerms); err != nil {
+	if err := rp.fs.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
@@ -456,7 +466,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun boo
 		return nil
 	}
 
-	if err := rfs.MkdirAll(path, mkdirPerms); err != nil {
+	if err := rfs.MkdirAll(path, ownerRWXPerms); err != nil {
 		return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
 	}
 
@@ -470,12 +480,12 @@ func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error
 	}
 	defer f.Close()
 
-	decoder := model.NewDecoder(f)
-	var spec model.Spec
-	if err := decoder.Decode(&spec); err != nil {
-		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
+	spec, err := model.DecodeSpec(f)
+	if err != nil {
+		return nil, fmt.Errorf("error reading template spec file: %w", err)
 	}
-	return &spec, nil
+
+	return spec, nil
 }
 
 // Downloads the template and returns the name of the temp directory where it
@@ -563,12 +573,12 @@ func destOK(fs fs.StatFS, dest string) error {
 }
 
 // safeRelPath returns an error if the path is absolute or if it contains a ".." traversal.
-func safeRelPath(p string) error {
+func safeRelPath(pos *model.ConfigPos, p string) error {
 	if strings.Contains(p, "..") {
-		return fmt.Errorf(`path must not contain ".."`)
+		return model.ErrWithPos(pos, `path must not contain ".."`) //nolint:wrapcheck
 	}
 	if filepath.IsAbs(p) {
-		return fmt.Errorf(`path must be relative, not absolute`)
+		return model.ErrWithPos(pos, "path must be relative, not absolute") //nolint:wrapcheck
 	}
 	return nil
 }

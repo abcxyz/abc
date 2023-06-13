@@ -32,7 +32,7 @@ func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error 
 			return model.ErrWithPos(p.Pos, `error compiling go-template: %w`, err) //nolint:wrapcheck
 		}
 
-		if err := safeRelPath(p.Val); err != nil {
+		if err := safeRelPath(i.Pos, p.Val); err != nil {
 			return model.ErrWithPos(p.Pos, "invalid path: %w", err) //nolint:wrapcheck
 		}
 

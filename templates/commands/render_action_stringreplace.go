@@ -16,11 +16,38 @@ package commands
 
 import (
 	"context"
-	"fmt"
+	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
 )
 
-func actionStringReplace(ctx context.Context, p *model.StringReplace, sp *stepParams) error {
-	return fmt.Errorf("not implemented")
+func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepParams) error {
+	var replacerArgs []string //nolint:prealloc // strings.NewReplacer has a weird input slice, it's less confusing to append rather than preallocate.
+	for _, r := range sr.Replacements {
+		toReplace, err := parseAndExecuteGoTmpl(r.ToReplace, sp.inputs)
+		if err != nil {
+			return err
+		}
+		replaceWith, err := parseAndExecuteGoTmpl(r.With, sp.inputs)
+		if err != nil {
+			return err
+		}
+		replacerArgs = append(replacerArgs, toReplace, replaceWith)
+	}
+	replacer := strings.NewReplacer(replacerArgs...)
+
+	for _, p := range sr.Paths {
+		path, err := parseAndExecuteGoTmpl(p, sp.inputs)
+		if err != nil {
+			return err
+		}
+
+		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
+			return []byte(replacer.Replace(string(buf))), nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
