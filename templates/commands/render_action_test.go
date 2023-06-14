@@ -214,31 +214,46 @@ func TestReverse(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
+		name string
 		in   []int
 		want []int
 	}{
 		{
+			name: "empty_but_not_nil",
 			in:   []int{},
 			want: []int{},
 		},
 		{
+			name: "nil",
 			in:   nil,
 			want: nil,
 		},
 		{
+			name: "size_1",
 			in:   []int{1},
 			want: []int{1},
 		},
 		{
+			name: "size_2",
+			in:   []int{1, 2},
+			want: []int{2, 1},
+		},
+		{
+			name: "size_3",
 			in:   []int{1, 2, 3},
 			want: []int{3, 2, 1},
+		},
+		{
+			name: "size_4",
+			in:   []int{1, 2, 3, 4},
+			want: []int{4, 3, 2, 1},
 		},
 	}
 
 	for _, tc := range cases {
 		tc := tc
 
-		t.Run(fmt.Sprintf("%v", tc.in), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			got := reverse(tc.in)

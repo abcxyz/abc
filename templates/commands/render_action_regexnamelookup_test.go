@@ -51,7 +51,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				},
 			},
 			want: map[string]string{
-				"a.txt": "alpha foo foo delta",
+				"a.txt": "alpha foo foo delta", //nolint:dupword
 			},
 		},
 		{
@@ -134,8 +134,8 @@ func TestActionRegexNameLookup(t *testing.T) {
 				},
 			},
 			want: map[string]string{
-				"a.txt": "alpha foo foo delta",
-				"b.txt": "alpha foo foo delta",
+				"a.txt": "alpha foo foo delta", //nolint:dupword
+				"b.txt": "alpha foo foo delta", //nolint:dupword
 			},
 		},
 	}

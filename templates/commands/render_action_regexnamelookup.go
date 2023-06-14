@@ -71,7 +71,7 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 func replaceWithNameLookup(allMatches [][]int, b []byte, rn *model.RegexNameLookupEntry, re *regexp.Regexp, inputs map[string]string) ([]byte, error) {
 	for i := 1; i < len(re.SubexpNames()); i++ { // skip group 0, which is always unnamed because it's "the whole regex match"
 		if re.SubexpNames()[i] == "" {
-			return nil, model.ErrWithPos(rn.Regex.Pos, `all capturing groups in a regex_name_lookup must be named, like (?P<myinputvar>myregex), not like (myregex)`)
+			return nil, model.ErrWithPos(rn.Regex.Pos, `all capturing groups in a regex_name_lookup must be named, like (?P<myinputvar>myregex), not like (myregex)`) //nolint:wrapcheck
 		}
 	}
 
@@ -83,7 +83,7 @@ func replaceWithNameLookup(allMatches [][]int, b []byte, rn *model.RegexNameLook
 			subGroupName := re.SubexpNames()[subGroupIdx]
 			replacementVal, ok := inputs[subGroupName]
 			if !ok {
-				return nil, model.ErrWithPos(rn.Regex.Pos, "there was no template input variable matching the subgroup name %q; available variables are %v", subGroupName, maps.Keys(inputs))
+				return nil, model.ErrWithPos(rn.Regex.Pos, "there was no template input variable matching the subgroup name %q; available variables are %v", subGroupName, maps.Keys(inputs)) //nolint:wrapcheck
 			}
 			replaceAtStartIdx := oneMatch[subGroupIdx*2]
 			replaceAtEndIdx := oneMatch[subGroupIdx*2+1]

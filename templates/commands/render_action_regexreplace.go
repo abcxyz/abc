@@ -32,7 +32,7 @@ import (
 //     with: 'fresh'
 //
 // This would transform a file containing "Hello, cool world!" to "Hello, fresh
-// world!"
+// world!".
 func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepParams) error {
 	uncompiled := make([]model.String, len(rr.Replacements))
 	for i, rp := range rr.Replacements {
@@ -50,7 +50,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 			// corresponds to subgroup i because subgroup 0 is just the whole
 			// regex match. Therefore we use ">" in the check above, and
 			// NumSubexp() is the index of the final subgroup.
-			return model.ErrWithPos(rp.With.Pos, "subgroup $%d is out of range; the largest subgroup in this regex is %d", max, subexps)
+			return model.ErrWithPos(rp.With.Pos, "subgroup $%d is out of range; the largest subgroup in this regex is %d", max, subexps) //nolint:wrapcheck
 		}
 	}
 
@@ -127,7 +127,7 @@ var subGroupExtractRegex = regexp.MustCompile(`\$+` + // some number of dollar s
 //
 // Returns 0 when no subgroups were found. This makes sense because subgroup 0
 // means the entire string matched by the regex, and therefore subgroup 0 will
-// always be a valid "subgroup."
+// always be a valid "subgroup".
 func maxSubgroup(in []byte) int {
 	var maxSoFar int
 	matches := subGroupExtractRegex.FindAllSubmatchIndex(in, -1)
@@ -138,7 +138,7 @@ func maxSubgroup(in []byte) int {
 		}
 
 		if numDollars%2 == 0 {
-			// This is is a literal dollar sign ("$$" expands to "$") and not a
+			// This is a literal dollar sign ("$$" expands to "$") and not a
 			// subgroup reference. It could any even number of dollar signs,
 			// like "$$$$$$" expands to "$$$" and is not a subgroup reference.
 			continue

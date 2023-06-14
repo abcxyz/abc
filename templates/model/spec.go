@@ -441,7 +441,7 @@ type RegexNameLookupEntry struct {
 // Validate implements Validator.
 func (r *RegexNameLookupEntry) Validate() error {
 	return errors.Join(
-		
+
 		notZero(r.Pos, r.Regex, "regex"),
 	)
 }
