@@ -93,7 +93,7 @@ func templateAndCompileRegexes(regexes []model.String, inputs map[string]string)
 
 		compiled[i], err = regexp.Compile(templated)
 		if err != nil {
-			merr = errors.Join(merr, model.ErrWithPos(re.Pos, "failed compiling regex: %w", err)) //nolint:wrapcheck
+			merr = errors.Join(merr, model.ErrWithPos(re.Pos, "failed compiling regex: %w", err))
 			continue
 		}
 	}
