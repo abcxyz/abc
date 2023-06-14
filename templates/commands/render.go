@@ -363,14 +363,14 @@ func parseGoTmpl(tpl string) (*template.Template, error) {
 	return template.New("").Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
 }
 
-func parseAndExecuteGoTmpl(pos *model.ConfigPos, s string, inputs map[string]string) (string, error) {
-	goTmpl, err := parseGoTmpl(s)
+func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, inputs map[string]string) (string, error) {
+	parsedTmpl, err := parseGoTmpl(tmpl)
 	if err != nil {
 		return "", model.ErrWithPos(pos, `error compiling as go-template: %w`, err) //nolint:wrapcheck
 	}
 
 	var sb strings.Builder
-	if err := goTmpl.Execute(&sb, inputs); err != nil {
+	if err := parsedTmpl.Execute(&sb, inputs); err != nil {
 		return "", model.ErrWithPos(pos, "template.Execute() failed: %w", err) //nolint:wrapcheck
 	}
 

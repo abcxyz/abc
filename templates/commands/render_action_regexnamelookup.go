@@ -46,12 +46,7 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
 			for i, rn := range rn.Replacements {
 				cr := compiledRegexes[i]
-
-				// Why reverse()? We have to replace starting at the end of the
-				// file working toward the beginning, so when we replace part of
-				// the buffer it doesn't invalidate the indices of the other
-				// matches indices.
-				allMatches := reverse(cr.FindAllSubmatchIndex(b, -1))
+				allMatches := cr.FindAllSubmatchIndex(b, -1)
 
 				var err error
 				b, err = replaceWithNameLookup(allMatches, b, rn, cr, sp.inputs)
@@ -75,7 +70,12 @@ func replaceWithNameLookup(allMatches [][]int, b []byte, rn *model.RegexNameLook
 		}
 	}
 
-	for _, oneMatch := range allMatches {
+	// Why iterate in reverse? We have to replace starting at the end of the
+	// file working toward the beginning, so when we replace part of
+	// the buffer it doesn't invalidate the indices of the other
+	// matches indices.
+	for allMatchesIdx := len(allMatches) - 1; allMatchesIdx >= 0; allMatchesIdx-- {
+		oneMatch := allMatches[allMatchesIdx]
 		// allMatches looks like [group0StartIdx, group0EndIdx, group1StartIdx, group1EndIdx, ... ].
 		// That's why we have the "divide by two" stuff below; it's a
 		// concatenated list of pairs.

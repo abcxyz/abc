@@ -58,12 +58,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
 			for i, rr := range rr.Replacements {
 				cr := compiledRegexes[i]
-
-				// Why reverse()? We have to replace starting at the end of the
-				// file working toward the beginning, so when we replace part of
-				// the buffer it doesn't invalidate the indices of the other
-				// matches indices.
-				allMatches := reverse(cr.FindAllSubmatchIndex(b, -1))
+				allMatches := cr.FindAllSubmatchIndex(b, -1)
 
 				var err error
 				b, err = replaceWithTemplate(allMatches, b, rr, cr, sp.inputs)
@@ -81,7 +76,12 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 }
 
 func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEntry, re *regexp.Regexp, inputs map[string]string) ([]byte, error) {
-	for _, oneMatch := range allMatches {
+	// Why iterate in reverse? We have to replace starting at the end of the
+	// file working toward the beginning, so when we replace part of
+	// the buffer it doesn't invalidate the indices of the other
+	// matches indices.
+	for allMatchesIdx := len(allMatches) - 1; allMatchesIdx >= 0; allMatchesIdx-- {
+		oneMatch := allMatches[allMatchesIdx]
 		// Expand transforms "$1" and "${mygroup}" from "With" into the corresponding matched subgroups from oneMatch.
 		replacementRegexExpanded := re.Expand(nil, []byte(rr.With.Val), b, oneMatch)
 		// Why do regex expansion first before go-template execution? So we can
