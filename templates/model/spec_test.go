@@ -88,8 +88,8 @@ steps:
 		{
 			name: "check_required_fields",
 			in:   "inputs:",
-			wantValidateErr: `invalid config near line 1 column 1: field "apiVersion" is required
-invalid config near line 1 column 1: field "kind" is required
+			wantValidateErr: `invalid config near line 1 column 1: field "apiVersion" value must be one of [abcxyz.dev/cli/v1alpha1]
+invalid config near line 1 column 1: field "kind" value must be one of [Template]
 invalid config near line 1 column 1: field "desc" is required
 invalid config near line 1 column 1: field "steps" is required`,
 		},
