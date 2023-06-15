@@ -12,16 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This is the simplest possible demonstration of how templating works. Here we
-# just take a "hello world" program and turn it into a "hello "jupiter" program.
 
-# To run this, cd to the root of this git repo, then run these steps:
-#
-#    $ go build
-#    $ ./abc templates render examples/templates/render/hello_jupiter
-#
-# There will be a main.go outputted in your working directory. Run it
-# with "go run main.go" and you'll see "Hello, jupiter!".
 
 apiVersion: 'abcxyz.dev/cli/v1alpha1'
 kind: 'Template'
