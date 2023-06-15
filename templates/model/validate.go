@@ -24,7 +24,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Returns error if the given value value is equal to the zero value for type T.
+// Returns error if the given value is equal to the zero value for type T.
 func notZero[T comparable](pos *ConfigPos, x valWithPos[T], fieldName string) error {
 	var zero T
 	if x.Val == zero {
