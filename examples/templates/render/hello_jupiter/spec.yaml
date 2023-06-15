@@ -27,4 +27,4 @@ steps:
       paths: ['main.go']
       replacements:
         - to_replace: 'world'
-        with: 'jupiter'
+          with: 'jupiter'
