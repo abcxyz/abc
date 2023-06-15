@@ -16,9 +16,11 @@ package commands
 
 import (
 	"bytes"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/abcxyz/abc/templates/model"
 )
@@ -77,4 +79,24 @@ func walkAndModify(pos *model.ConfigPos, rfs renderFS, scratchDir, relPath strin
 
 		return nil
 	})
+}
+
+func templateAndCompileRegexes(regexes []model.String, inputs map[string]string) ([]*regexp.Regexp, error) {
+	compiled := make([]*regexp.Regexp, len(regexes))
+	var merr error
+	for i, re := range regexes {
+		templated, err := parseAndExecuteGoTmpl(re.Pos, re.Val, inputs)
+		if err != nil {
+			merr = errors.Join(merr, err)
+			continue
+		}
+
+		compiled[i], err = regexp.Compile(templated)
+		if err != nil {
+			merr = errors.Join(merr, model.ErrWithPos(re.Pos, "failed compiling regex: %w", err))
+			continue
+		}
+	}
+
+	return compiled, merr
 }

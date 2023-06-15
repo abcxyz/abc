@@ -23,7 +23,7 @@ import (
 )
 
 func actionPrint(ctx context.Context, p *model.Print, sp *stepParams) error {
-	msg, err := parseAndExecuteGoTmpl(p.Message, sp.inputs)
+	msg, err := parseAndExecuteGoTmpl(p.Message.Pos, p.Message.Val, sp.inputs)
 	if err != nil {
 		return err
 	}
