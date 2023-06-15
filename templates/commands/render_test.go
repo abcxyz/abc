@@ -167,7 +167,7 @@ func TestRealRun(t *testing.T) {
 	t.Parallel()
 
 	specContents := `
-apiVersion: 'abcxyz.dev/cli/v1alpha1'
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'A template for the ages'
 inputs:
