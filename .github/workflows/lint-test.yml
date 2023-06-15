@@ -16,14 +16,14 @@ concurrency:
 
 jobs:
   go_lint:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'  # ratchet:exclude
     with:
       go_version: '1.20'
 
   go_test:
-    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'  # ratchet:exclude
     with:
       go_version: '1.20'
 
   yaml_lint:
-    uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main'
+    uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main'  # ratchet:exclude

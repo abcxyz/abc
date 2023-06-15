@@ -22,5 +22,17 @@ import (
 )
 
 func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) error {
-	return fmt.Errorf("not implemented")
+	for _, p := range p.Paths {
+		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
+			executed, err := parseAndExecuteGoTmpl(nil, string(b), sp.inputs)
+			if err != nil {
+				return nil, fmt.Errorf("failed executing file as Go template: %w", err)
+			}
+			return []byte(executed), nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

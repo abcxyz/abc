@@ -16,11 +16,15 @@ package commands
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"path/filepath"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestWalkAndModify(t *testing.T) {
@@ -207,5 +211,339 @@ func TestWalkAndModify(t *testing.T) {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}
 		})
+	}
+}
+
+func TestCopyRecursive(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name                 string
+		fromDirContents      map[string]modeAndContents
+		suffix               string
+		overwrite            bool
+		dryRun               bool
+		want                 map[string]modeAndContents
+		toDirInitialContents map[string]modeAndContents // only used in the tests for overwriting
+		mkdirAllErr          error
+		openErr              error
+		openFileErr          error
+		readFileErr          error
+		statErr              error
+		writeFileErr         error
+		wantErr              string
+	}{
+		{
+			name: "simple_success",
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":      {0o600, "file1 contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt":      {0o600, "file1 contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+		},
+		{
+			name:   "dry_run_should_not_change_anything",
+			dryRun: true,
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":      {0o600, "file1 contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
+			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
+		},
+		{
+			name:   "dry_run_without_overwrite_should_detect_conflicting_files",
+			dryRun: true,
+			toDirInitialContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":      {0o600, "new contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
+			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
+			wantErr:     "already exists and overwriting was not enabled",
+		},
+		{
+			name: "owner_execute_bit_should_be_preserved",
+			fromDirContents: map[string]modeAndContents{
+				"myfile1.txt": {0o600, "my file contents"},
+				"myfile2.txt": {0o700, "my file contents"},
+			},
+			want: map[string]modeAndContents{
+				"myfile1.txt": {0o600, "my file contents"},
+				"myfile2.txt": {0o700, "my file contents"},
+			},
+		},
+		{
+			name:   "copying_a_file_rather_than_directory_should_work",
+			suffix: "myfile1.txt",
+			fromDirContents: map[string]modeAndContents{
+				"myfile1.txt": {0o600, "my file contents"},
+			},
+			want: map[string]modeAndContents{
+				"myfile1.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "deep_directories_should_work",
+			fromDirContents: map[string]modeAndContents{
+				"dir/dir/dir/dir/dir/file.txt": {0o600, "file contents"},
+			},
+			want: map[string]modeAndContents{
+				"dir/dir/dir/dir/dir/file.txt": {0o600, "file contents"},
+			},
+		},
+		{
+			name: "directories_with_several_files_should_work",
+			fromDirContents: map[string]modeAndContents{
+				"f1.txt": {0o600, "abc"},
+				"f2.txt": {0o600, "def"},
+				"f3.txt": {0o600, "ghi"},
+				"f4.txt": {0o600, "jkl"},
+				"f5.txt": {0o600, "mno"},
+				"f6.txt": {0o600, "pqr"},
+				"f7.txt": {0o600, "stu"},
+				"f8.txt": {0o600, "vwx"},
+				"f9.txt": {0o600, "yz"},
+			},
+			want: map[string]modeAndContents{
+				"f1.txt": {0o600, "abc"},
+				"f2.txt": {0o600, "def"},
+				"f3.txt": {0o600, "ghi"},
+				"f4.txt": {0o600, "jkl"},
+				"f5.txt": {0o600, "mno"},
+				"f6.txt": {0o600, "pqr"},
+				"f7.txt": {0o600, "stu"},
+				"f8.txt": {0o600, "vwx"},
+				"f9.txt": {0o600, "yz"},
+			},
+		},
+		{
+			name:      "overwriting_with_overwrite_true_should_succeed",
+			overwrite: true,
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "new contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt": {0o600, "new contents"},
+			},
+		},
+		{
+			name: "overwriting_with_overwrite_false_should_fail",
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "new contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			want: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			wantErr: "overwriting was not enabled",
+		},
+		{
+			name:      "overwriting_dir_with_child_file_should_fail",
+			overwrite: true,
+			fromDirContents: map[string]modeAndContents{
+				"a": {0o600, "file contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"a/b.txt": {0o600, "file contents"},
+			},
+			want: map[string]modeAndContents{
+				"a/b.txt": {0o600, "file contents"},
+			},
+			wantErr: "cannot overwrite a directory with a file of the same name",
+		},
+		{
+			name:      "overwriting_file_with_dir_should_fail",
+			overwrite: true,
+			fromDirContents: map[string]modeAndContents{
+				"a/b.txt": {0o600, "file contents"},
+			},
+			toDirInitialContents: map[string]modeAndContents{
+				"a": {0o600, "file contents"},
+			},
+			want: map[string]modeAndContents{
+				"a": {0o600, "file contents"},
+			},
+			wantErr: "cannot overwrite a file with a directory of the same name",
+		},
+		{
+			name: "MkdirAll error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			mkdirAllErr: fmt.Errorf("fake error"),
+			wantErr:     "MkdirAll(): fake error",
+		},
+		{
+			name: "Open error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			openErr: fmt.Errorf("fake error"),
+			wantErr: "fake error", // This error comes from WalkDir, not from our own code, so it doesn't have an "Open():" at the beginning
+		},
+		{
+			name: "OpenFile error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			openFileErr: fmt.Errorf("fake error"),
+			wantErr:     "OpenFile(): fake error",
+		},
+		{
+			name: "Stat error should be returned",
+			fromDirContents: map[string]modeAndContents{
+				"dir/file.txt": {0o600, "file1 contents"},
+			},
+			statErr: fmt.Errorf("fake error"),
+			wantErr: "fake error", // This error comes from WalkDir, not from our own code, so it doesn't have a "Stat():" at the beginning
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			fromDir := filepath.Join(tempDir, "from_dir")
+			toDir := filepath.Join(tempDir, "to_dir")
+
+			if err := writeAll(fromDir, tc.fromDirContents); err != nil {
+				t.Fatal(err)
+			}
+
+			from := fromDir
+			to := toDir
+			if tc.suffix != "" {
+				from = filepath.Join(fromDir, tc.suffix)
+				to = filepath.Join(toDir, tc.suffix)
+			}
+			if err := writeAll(toDir, tc.toDirInitialContents); err != nil {
+				t.Fatal(err)
+			}
+			fs := &errorFS{
+				renderFS: &realFS{},
+
+				mkdirAllErr: tc.mkdirAllErr,
+				openErr:     tc.openErr,
+				openFileErr: tc.openFileErr,
+				statErr:     tc.statErr,
+			}
+			err := copyRecursive(&model.ConfigPos{}, from, to, fs, tc.overwrite, tc.dryRun)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf(diff)
+			}
+
+			got := loadDirContents(t, toDir)
+			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestParseAndExecute(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name              string
+		pos               *model.ConfigPos
+		tmpl              string
+		inputs            map[string]string
+		want              string
+		wantUnknownKeyErr bool
+		wantErr           string
+	}{
+		{
+			name: "simple_success",
+			pos: &model.ConfigPos{
+				Line: 1,
+			},
+			tmpl: "{{.greeting}}, {{.greeted_entity}}!",
+			inputs: map[string]string{
+				"greeting":       "Hello",
+				"greeted_entity": "world",
+			},
+			want: "Hello, world!",
+		},
+		{
+			name: "missing_input",
+			pos: &model.ConfigPos{
+				Line: 1,
+			},
+			tmpl: "{{.my_input}}!",
+			inputs: map[string]string{
+				"something_else": "🥲",
+			},
+			wantUnknownKeyErr: true,
+			wantErr:           `failed executing template spec file at line 1: template.Execute() failed: the template referenced a nonexistent input variable name "my_input"; available variable names are [something_else]`,
+		},
+		{
+			name: "unclosed_braces",
+			tmpl: "Hello {{",
+			inputs: map[string]string{
+				"something_else": "🥲",
+			},
+			wantErr: `unclosed action`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseAndExecuteGoTmpl(tc.pos, tc.tmpl, tc.inputs)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+			if tc.wantUnknownKeyErr {
+				as := &unknownTemplateKeyError{}
+				if ok := errors.As(err, &as); !ok {
+					t.Errorf("errors.As(%T)=false, wanted true, for error %v", &as, err)
+				}
+			}
+
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("template output was not as expected, (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
+	t.Parallel()
+
+	err1 := &unknownTemplateKeyError{
+		key:           "my_key",
+		availableKeys: []string{"other_key"},
+		wrapped:       errors.New("wrapped"),
+	}
+
+	is := &unknownTemplateKeyError{}
+	if !errors.Is(err1, is) {
+		t.Errorf("errors.Is() returned false, should return true when called with an error of type %T", is)
+	}
+
+	as := &unknownTemplateKeyError{}
+	if !errors.As(err1, &as) {
+		t.Errorf("errors.As() returned false, should return true when called with an error of type %T", as)
 	}
 }
