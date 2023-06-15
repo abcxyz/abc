@@ -28,8 +28,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
-	"text/template"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
@@ -357,98 +355,6 @@ func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error
 	}
 }
 
-// A template parser helper to remove the boilerplate of parsing with our
-// desired options.
-func parseGoTmpl(tpl string) (*template.Template, error) {
-	return template.New("").Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
-}
-
-func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, inputs map[string]string) (string, error) {
-	parsedTmpl, err := parseGoTmpl(tmpl)
-	if err != nil {
-		return "", model.ErrWithPos(pos, `error compiling as go-template: %w`, err) //nolint:wrapcheck
-	}
-
-	var sb strings.Builder
-	if err := parsedTmpl.Execute(&sb, inputs); err != nil {
-		return "", model.ErrWithPos(pos, "template.Execute() failed: %w", err) //nolint:wrapcheck
-	}
-
-	return sb.String(), nil
-}
-
-// "srcRoot" may be a file or directory. "pos" is only used for error messages.
-func copyRecursive(pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, overwrite, dryRun bool) (outErr error) {
-	return fs.WalkDir(rfs, srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
-		if err != nil {
-			return err // There was some filesystem error. Give up.
-		}
-
-		if de.IsDir() {
-			return nil
-		}
-
-		// We don't have to worry about symlinks here because we passed
-		// DisableSymlinks=true to go-getter.
-
-		relToSrc, err := filepath.Rel(srcRoot, path)
-		if err != nil {
-			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", srcRoot, path, err) //nolint:wrapcheck
-		}
-		dst := filepath.Join(dstRoot, relToSrc)
-
-		// The spec file may specify a file to copy that's deep in a
-		// directory tree, without naming its parent directory. We can't
-		// rely on WalkDir having traversed the parent directory of $path,
-		// so we must create the target directory if it doesn't exist.
-		inDir := filepath.Dir(dst)
-		if err := mkdirAllChecked(pos, rfs, inDir, dryRun); err != nil {
-			return err
-		}
-
-		dstInfo, err := rfs.Stat(dst)
-		if err == nil {
-			if dstInfo.IsDir() {
-				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", path) //nolint:wrapcheck
-			}
-			if !overwrite {
-				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", path) //nolint:wrapcheck
-			}
-		} else if !os.IsNotExist(err) {
-			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
-		}
-
-		srcInfo, err := rfs.Stat(path)
-		if err != nil {
-			return fmt.Errorf("Stat(): %w", err)
-		}
-
-		rf, err := rfs.Open(path)
-		if err != nil {
-			return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
-		}
-		defer func() { outErr = errors.Join(outErr, rf.Close()) }()
-
-		if dryRun {
-			return nil
-		}
-
-		// The permission bits on the output file are copied from the input file;
-		// this preserves the execute bit on executable files.
-		wf, err := rfs.OpenFile(dst, os.O_CREATE|os.O_WRONLY, srcInfo.Mode().Perm())
-		if err != nil {
-			return model.ErrWithPos(pos, "OpenFile(): %w", err) //nolint:wrapcheck
-		}
-		defer func() { outErr = errors.Join(outErr, wf.Close()) }()
-
-		if _, err := io.Copy(wf, rf); err != nil {
-			return fmt.Errorf("Copy(): %w", err)
-		}
-
-		return nil
-	})
-}
-
 // A fancy wrapper around MkdirAll with better error messages and a dry run
 // mode. In dry run mode, returns an error if the MkdirAll wouldn't succeed
 // (best-effort).
@@ -571,16 +477,5 @@ func destOK(fs fs.StatFS, dest string) error {
 		return fmt.Errorf("the destination %q is not a directory", dest)
 	}
 
-	return nil
-}
-
-// safeRelPath returns an error if the path is absolute or if it contains a ".." traversal.
-func safeRelPath(pos *model.ConfigPos, p string) error {
-	if strings.Contains(p, "..") {
-		return model.ErrWithPos(pos, `path must not contain ".."`) //nolint:wrapcheck
-	}
-	if filepath.IsAbs(p) {
-		return model.ErrWithPos(pos, "path must be relative, not absolute") //nolint:wrapcheck
-	}
 	return nil
 }

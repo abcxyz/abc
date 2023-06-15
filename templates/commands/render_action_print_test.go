@@ -52,7 +52,7 @@ func TestActionPrint(t *testing.T) {
 			name:    "template_missing_input",
 			in:      "hello {{.name}}",
 			inputs:  map[string]string{},
-			wantErr: `map has no entry for key "name"`,
+			wantErr: `template referenced a nonexistent input variable name "name"`,
 		},
 	}
 
