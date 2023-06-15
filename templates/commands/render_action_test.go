@@ -529,6 +529,8 @@ func TestParseAndExecute(t *testing.T) {
 }
 
 func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
+	t.Parallel()
+
 	err1 := &unknownTemplateKeyErr{
 		key:           "my_key",
 		availableKeys: []string{"other_key"},

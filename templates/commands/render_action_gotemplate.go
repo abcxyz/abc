@@ -30,7 +30,7 @@ func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) 
 			}
 			return []byte(executed), nil
 		}); err != nil {
-			return err //nolint:wrapcheck
+			return err
 		}
 	}
 
