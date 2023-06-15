@@ -17,14 +17,14 @@ kind: 'Template'
 
 desc: 'An example template that changes a "hello world" program to a "hello jupiter" program'
 steps:
-- desc: 'Include some files and directories'
-  action: 'include'
-  params:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
     paths: ['main.go']
-- desc: 'Replace "world" with "jupiter"'
-  action: 'string_replace'
-  params:   
-    paths: ['main.go']
-    replacements:
-    - to_replace: 'world'
-      with: 'jupiter'
+  - desc: 'Replace "world" with "jupiter"'
+    action: 'string_replace'
+    params:
+      paths: ['main.go']
+      replacements:
+        - to_replace: 'world'
+        with: 'jupiter'
