@@ -121,7 +121,7 @@ func parseGoTmpl(tpl string) (*template.Template, error) {
 // pos may be nil if the template is not coming from the spec file and therefore
 // there's no reason to print out spec file location in an error message. If
 // template execution fails because of a missing input variable, the error will
-// be wrapped in a unknownTemplateKeyErr.
+// be wrapped in a unknownTemplateKeyError.
 func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, inputs map[string]string) (string, error) {
 	parsedTmpl, err := parseGoTmpl(tmpl)
 	if err != nil {
@@ -141,7 +141,7 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, inputs map[string]
 		if matches != nil {
 			inputKeys := maps.Keys(inputs)
 			sort.Strings(inputKeys)
-			err = &unknownTemplateKeyErr{
+			err = &unknownTemplateKeyError{
 				key:           matches[1],
 				availableKeys: inputKeys,
 				wrapped:       err,
@@ -152,25 +152,25 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, inputs map[string]
 	return sb.String(), nil
 }
 
-// unknownTemplateKeyErr is an error that will be returned when a template
+// unknownTemplateKeyError is an error that will be returned when a template
 // references a variable that's nonexistent.
-type unknownTemplateKeyErr struct {
+type unknownTemplateKeyError struct {
 	key           string
 	availableKeys []string
 	wrapped       error
 }
 
-func (n *unknownTemplateKeyErr) Error() string {
+func (n *unknownTemplateKeyError) Error() string {
 	return fmt.Sprintf("the template referenced a nonexistent input variable name %q; available variable names are %v",
 		n.key, n.availableKeys)
 }
 
-func (n *unknownTemplateKeyErr) Unwrap() error {
+func (n *unknownTemplateKeyError) Unwrap() error {
 	return n.wrapped
 }
 
-func (n *unknownTemplateKeyErr) Is(other error) bool {
-	_, ok := other.(*unknownTemplateKeyErr) //nolint:errorlint
+func (n *unknownTemplateKeyError) Is(other error) bool {
+	_, ok := other.(*unknownTemplateKeyError) //nolint:errorlint
 	return ok
 }
 
