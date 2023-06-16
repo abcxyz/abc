@@ -76,7 +76,7 @@ func TestParseFlags(t *testing.T) {
 				flagSpec:           "./spec.yaml",
 				flagDest:           ".",
 				flagGitProtocol:    "https",
-				flagInputs:         nil,
+				flagInputs:         map[string]string{},
 				flagLogLevel:       "warning",
 				flagForceOverwrite: false,
 				flagKeepTempDirs:   false,
