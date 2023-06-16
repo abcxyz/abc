@@ -24,6 +24,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Returns error if the given value is equal to the zero value for type T.
 func notZero[T comparable](pos *ConfigPos, x valWithPos[T], fieldName string) error {
 	var zero T
 	if x.Val == zero {
@@ -32,6 +33,7 @@ func notZero[T comparable](pos *ConfigPos, x valWithPos[T], fieldName string) er
 	return nil
 }
 
+// Returns error if the given slice is empty.
 func nonEmptySlice[T any](pos *ConfigPos, s []T, fieldName string) error {
 	if len(s) == 0 {
 		return pos.AnnotateErr(fmt.Errorf("field %q is required", fieldName))
@@ -39,12 +41,21 @@ func nonEmptySlice[T any](pos *ConfigPos, s []T, fieldName string) error {
 	return nil
 }
 
+// Returns error if x.Val is <0.
 func nonNegative[T constraints.Ordered](x valWithPos[T], fieldName string) error {
 	var zero T
 	if x.Val < zero {
 		return x.Pos.AnnotateErr(fmt.Errorf("field %q must not be negative", fieldName))
 	}
 	return nil
+}
+
+// Returns error of x.Val is not one of the given allowed choices.
+func oneOf[T comparable](pos *ConfigPos, x valWithPos[T], allowed []T, fieldName string) error {
+	if slices.Contains(allowed, x.Val) {
+		return nil
+	}
+	return pos.AnnotateErr(fmt.Errorf("field %q value must be one of %v", fieldName, allowed))
 }
 
 // Fail if any unexpected fields are seen. The input must be a mapping/object; anything else will

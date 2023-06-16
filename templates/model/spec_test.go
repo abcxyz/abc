@@ -35,7 +35,7 @@ func TestSpecUnmarshal(t *testing.T) {
 	}{
 		{
 			name: "simple_template_should_succeed",
-			in: `apiVersion: 'abcxyz.dev/cli/v1alpha1'
+			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
 desc: 'A simple template that just prints and exits'
@@ -50,7 +50,7 @@ steps:
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
 			want: &Spec{
-				APIVersion: String{Val: "abcxyz.dev/cli/v1alpha1"},
+				APIVersion: String{Val: "cli.abcxyz.dev/v1alpha1"},
 				Kind:       String{Val: "Template"},
 
 				Desc: String{Val: "A simple template that just prints and exits"},
@@ -88,15 +88,15 @@ steps:
 		{
 			name: "check_required_fields",
 			in:   "inputs:",
-			wantValidateErr: `invalid config near line 1 column 1: field "apiVersion" is required
-invalid config near line 1 column 1: field "kind" is required
+			wantValidateErr: `invalid config near line 1 column 1: field "apiVersion" value must be one of [cli.abcxyz.dev/v1alpha1]
+invalid config near line 1 column 1: field "kind" value must be one of [Template]
 invalid config near line 1 column 1: field "desc" is required
 invalid config near line 1 column 1: field "steps" is required`,
 		},
 
 		{
 			name: "unknown_field_should_fail",
-			in: `apiVersion: 'abcxyz.dev/cli/v1alpha1'
+			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
 desc: 'A simple template that just prints and exits'

@@ -109,8 +109,8 @@ func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (s *Spec) Validate() error {
 	return errors.Join(
-		notZero(s.Pos, s.APIVersion, "apiVersion"),
-		notZero(s.Pos, s.Kind, "kind"),
+		oneOf(s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		oneOf(s.Pos, s.Kind, []string{"Template"}, "kind"),
 		notZero(s.Pos, s.Desc, "desc"),
 		nonEmptySlice(s.Pos, s.Steps, "steps"),
 		validateEach(s.Inputs),
