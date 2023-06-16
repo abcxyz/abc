@@ -117,7 +117,6 @@ func (r *Render) Flags() *cli.FlagSet {
 		Example: "path/to/spec.yaml",
 		Target:  &r.flagSpec,
 		Default: "./spec.yaml",
-		Predict: predict.Files("*"),
 		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
 	})
 	f.StringVar(&cli.StringVar{

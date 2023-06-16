@@ -12,12 +12,6 @@ To run this, cd to the root of this git repo, then run these steps:
     $ go build
     ```
 
-1. (Optional) Install shell completions:
-
-    ```sh
-    COMP_INSTALL=1 COMP_YES=1 ./abc
-    ```
-
 1. Execute the template defined by the `spec.yaml` file in the example directory.
 This will output a file named `main.go` in your working directory containing
 the transformed program.
