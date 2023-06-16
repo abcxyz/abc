@@ -33,6 +33,7 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
+	"github.com/posener/complete/v2/predict"
 )
 
 const (
@@ -100,9 +101,9 @@ are accepted:
   - "myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision
     v1; this is for a template not owned by abcxyz but still on GitHub.
   - "mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git
-    repo but not owned by abcxyz and not on GitHub. 
+    repo but not owned by abcxyz and not on GitHub.
   - "mylocaltarball.tgz" is for a template not in git but present on the local
-    filesystem. 
+    filesystem.
   - "http://example.com/myremotetarball.tgz" os for a non-Git template in a
     remote tarball.`
 }
@@ -124,6 +125,7 @@ func (r *Render) Flags() *cli.FlagSet {
 		Example: "/my/git/dir",
 		Target:  &r.flagDest,
 		Default: ".",
+		Predict: predict.Dirs("*"),
 		Usage:   "Required. The target directory in which to write the output files.",
 	})
 	f.StringMapVar(&cli.StringMapVar{
@@ -158,6 +160,7 @@ func (r *Render) Flags() *cli.FlagSet {
 		Example: "https",
 		Default: "https",
 		Target:  &r.flagGitProtocol,
+		Predict: predict.Set([]string{"https", "ssh"}),
 		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
 	})
 
