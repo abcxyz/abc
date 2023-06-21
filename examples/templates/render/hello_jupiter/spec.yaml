@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: 'abcxyz.dev/cli/v1alpha1'
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
-desc: 'An example template that changes a "hello world" program to a "hello jupiter" program'
+desc:
+  'An example template that changes a "hello world" program to a "hello jupiter"
+  program'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-    paths: ['main.go']
+      paths: ['main.go']
   - desc: 'Replace "world" with "jupiter"'
     action: 'string_replace'
     params:
