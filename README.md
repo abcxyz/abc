@@ -13,6 +13,9 @@ Using this tool will reduce the cognitive load required to set up GitHub actions
 properly, or follow development best practices, and avoid copy/pasting from
 various sources to start a new project.
 
+This doc contains a [User Guide](#user-guide) and a
+[Template Developer Guide](#template-developer-guide).
+
 ## User Guide
 
 ---
@@ -86,3 +89,332 @@ precompiled binaries.
 
    # Assuming you're using GitHub, now go create a PR.
    ```
+
+It's possible for multiple templates to live in the same git repo, directory,
+tar file, etc. When this happens, there are multiple spec files, and the CLI
+user provides the `--spec=foo.yaml` flag to choose which spec file to execute.
+The `--spec` path is relative to the template root that was provided by the CLI.
+For example, if the user ran
+`abc templates render --spec=foo.yaml github.com/abcxyz/abc.git//examples/templates/render/hello_jupiter`,
+then the `foo.yaml` should be in the `hello_jupiter` directory.
+
+## Template developer guide
+
+This section explains how you can create a template for others to install (aka
+"render").
+
+### Concepts
+
+A template can take many forms. It can be anything downloadable by the
+https://github.com/hashicorp/go-getter library, including:
+
+- A GitHub repo
+- A .tgz or .zip file downloaded over HTTPS
+- A local directory
+- A GCP Cloud Storage bucket
+
+In essence, a template is a directory or directory-like object containing a
+"spec file", usually named `spec.yaml`
+([example](https://github.com/abcxyz/abc/blob/main/examples/templates/render/hello_jupiter/spec.yaml)),
+and other files such as source code and config files.
+
+### Model of operation
+
+Template rendering has a few phases:
+
+- The template is downloaded and unpacked into a temp directory, called the
+  "template directory."
+- The spec file is loadedand parsed as YAML from the template directory
+- Another temp directory called the "scratch directory" is created.
+- The steps in the spec file are executed in sequence:
+  - `include` actions copy files and directories from the template directory to
+    the scratch directory. This is analogous to a Dockerfile COPY command. For
+    example:
+    ```yaml
+    - action: 'include'
+      params:
+        paths: ['main.go']
+    ```
+  - The `string_replace`, `regex_replace`, `regex_name_lookup`, and
+    `go_template` actions transform the files that are in the scratch directory
+    at the time they're executed.
+- Once all steps are executed, the contents of the scratch directory are copied
+  to the output directory.
+
+Normally, the template and scratch directories are deleted when rendering
+completes. For debugging, you can provide the flag `--keep-temp-dirs` to retain
+them for inspection.
+
+### The spec file
+
+The spec file describes the template, including:
+
+- A human-readable description of the template
+- What inputs are needed from the user (e.g. their service name)
+- The sequence of steps to be executed by the CLI when rendering the template
+  (e.g. "replace every instance of `__replace_me_service_name__` with the
+  user-provided input named `service_name`).
+
+The following is an example spec file. It has a single templated file,
+`main.go`, and during template rendering all instances of the word `world` are
+replaced by a user-provided string. Thus "hello, world" is transformed into
+"hello, $whatever" in `main.go`.
+
+```yaml
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc:
+  'An example template that changes a "hello world" program to a "hello whoever"
+  program'
+inputs:
+  - name: 'whomever'
+    desc: 'The name of the person or thing to say hello to'
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['main.go']
+  - desc: 'Replace "world" with user-provided input'
+    action: 'string_replace'
+    params:
+      paths: ['main.go']
+      replacements:
+        - to_replace: 'world'
+          with: '{{.whomever}}'
+```
+
+#### Templating
+
+Most fields in the spec file can use template expressions that reference the
+input values. In the above example, the replacement value of `{{.whomever}}`
+means "the user-provided input value named `whomever`." This uses the
+[text/template templating language](https://pkg.go.dev/text/template) that is
+part of the Go standard library.
+
+### Steps and actions
+
+Each step of the spec file performs a single action. A single step consists of
+an optional `desc`, a string `action`, and a `params` object whose fields depend
+on the `action`:
+
+```yaml
+desc: 'An optional human-readable description of what this step is for'
+action: 'action-name' # One of 'include', 'print', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template
+params:
+  foo: bar # The params differ depending on the action
+```
+
+### Action: `include`
+
+Copies files or directories from the template directory to the scratch
+directory.
+
+Params:
+
+- `paths`: a list of files and/or directories to copy. These may use template
+  expressions (e.g. `{{.my_input}}`).
+
+Example:
+
+```yaml
+- action: 'include'
+  params:
+    paths: ['main.go', '{{.user_requested_config}}/config.txt']
+```
+
+### Action: `print`
+
+Prints a message to standard output. This can be used to suggest actions to the
+user.
+
+Params:
+
+- `message`: the message to show. May use template expressions (e.g.
+  `{{.my_input}}`).
+
+Example:
+
+```yaml
+- action: 'print'
+  params:
+    message:
+      'Please go to the GCP console for project {{.project_id}} and click on the
+      thing'
+```
+
+### Action: `string_replace`
+
+Within a given list of files and/or directories, replaces all occurrences of a
+given string with a given replacement string.
+
+Params:
+
+- `paths`: a list of files and/or directories in which to do the replacement.
+  May use template expressions (e.g. `{{.my_input}}`).
+- `replacements`: a list of objects, each having the form:
+  - `to_replace`: the string to search for. May use template expressions (e.g.
+    `{{.my_input}}`).
+  - `with`: the string to replace with. May use template expressions (e.g.
+    `{{.my_input}}`).
+
+Example:
+
+```yaml
+- action: 'string_replace'
+  params:
+    paths: ['main.go']
+    replacements:
+      - to_replace: 'Alice'
+        with: '{{.sender_name}}'
+      - to_replace: 'Bob'
+        with: '{{.receiver_name}}'
+```
+
+### Action: `regex_replace`
+
+Within a given list of files and/or directories, replace a regular expression
+(or a subgroup thereof) with a given string.
+
+Params:
+
+- `paths`: A list of files and/or directories in which to do the replacement.
+  May use template expressions (e.g. `{{.my_input}}`).
+- `replacements`: a list of objects, each having the form:
+
+  - `regex`: an
+    [RE2 regular expression](https://github.com/google/re2/wiki/Syntax),
+    optionally containing named subgroups (like `(?P<mygroupname>[a-z]+)`. May
+    use template expressions.
+
+    Non-named subgroups (like `(abc)|(def)`)are not supported, for the sake of
+    readability. Use a non-capturing group (like `(?:abc)|(?:abc)`) if you need
+    grouping without capturing.
+
+  - `with`: a string to that will replace regex matches (or, if the `subgroup`
+    field is set, will replace only that subgroup). May use template expressions
+    and may use
+    [Regexp.Expand() syntax](https://pkg.go.dev/regexp#Regexp.Expand) (e.g.
+    `${mysubgroup}`).
+
+    Regex expansion (e.g. `${mygroup}`) happens before _before_ go-template
+    expansion (e.g. `{{ .myinput }}`; that means you can use a subgroup to name
+    an input variable, like `{{ .${mygroup} }}`. That expression means "the
+    replacement value is calculated by taking the text of the regex subgroup
+    named `mygroup` and looking up the user-provided input variable having that
+    name." This is covered in the examples below.
+
+Examples:
+
+- Find `gcp_project_id=(anything)` and replace `x` with the user-provided input
+  named `project_id`:
+
+  ```yaml
+  - action: 'regex_replace'
+    params:
+      paths: ['main.go']
+      replacements:
+        - regex: 'gcp_project_id=[a-z0-9-]+'
+          with: 'gcp_project_id={{.project_id}}'
+  ```
+
+- Do the same thing as above, in a different way:
+
+  ```yaml
+  - action: 'regex_replace'
+    params:
+      paths: ['main.go']
+      replacements:
+        - regex: 'gcp_project_id=(?P<proj_id>[a-z0-9-]+)'
+          subgroup: 'proj_id'
+          with: '{{.project_id}}'
+  ```
+
+- Even more fancy: replace all instances of `gcp_$foo=$bar` with
+  `gcp_$foo=$user_provided_input_named_foo`:
+
+  ```yaml
+  - action: 'regex_replace'
+    params:
+      paths: ['main.go']
+      replacements:
+        - regex: 'gcp_(?P<input_name>[a-z_]+)=(?P<value>[a-z0-9-]+)'
+          subgroup: 'value'
+          with: '{{ .${input_name} }}'
+  ```
+
+- Replace all instances of `template_me_$foo=$bar` with
+  `$foo=$user_provided_input_named_foo`:
+
+  ```yaml
+  - action: 'regex_replace'
+    params:
+      paths: ['main.go']
+      replacements:
+        - regex: 'template_me_(?P<input_name>[a-z_]+)=(?P<value>[a-z0-9-]+)'
+          with: '${input_name}={{ .${input_name} }}'
+  ```
+
+### Action: `regex_name_lookup`
+
+`regex_name_lookup` is similar to `regex_replace`, but simpler to use, at the
+cost of generality. It matches a regular expression and replaces each named
+subgroup with the input variable whose name matches the subgroup name.
+
+Params:
+
+- `paths`: A list of files and/or directories in which to do the replacement.
+  May use template expressions (e.g. `{{.my_input}}`).
+- `replacements`: a list of objects, each having the form:
+  - `regex`: an
+    [RE2 regular expression](https://github.com/google/re2/wiki/Syntax)
+    containing one or more named subgroups. Each subgroup will be replaced by
+    looking up the input variable having the same name as the subgroup.
+
+Example: replace all appearances of `template_me` with the input variable named
+`myinput`:
+
+```yaml
+- action: 'regex_name_lookup'
+  params:
+    paths: ['main.go']
+    replacements:
+      - regex: '(?P<myinput>template_me)'
+```
+
+### Action: `go_template`
+
+Executes a file as a Go template, replacing the file with the template output.
+
+Params:
+
+- `paths`: A list of files and/or directories in which to do the replacement.
+  May use template expressions (e.g. `{{.my_input}}`). These files will be
+  rendered with Go's
+  [text/template templating language](https://pkg.go.dev/text/template).
+
+#### Example:
+
+Suppose you have a file named `hello.go` that looks like this, with a `{{.foo}}`
+template expression:
+
+```
+package main
+
+import "fmt"
+
+func main() {
+  for i := 0; i < {{.num_iterations}}; i++ {
+    fmt.Printf("Hello %d\n", i)
+  }
+}
+```
+
+This action will replace `{{.num_iterations}}` with the input named
+`num_iterations`:
+
+```yaml
+- action: 'go_template'
+  params:
+    paths: ['hello.go']
+```
