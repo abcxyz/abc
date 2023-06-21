@@ -109,8 +109,8 @@ func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (s *Spec) Validate() error {
 	return errors.Join(
-		notZero(s.Pos, s.APIVersion, "apiVersion"),
-		notZero(s.Pos, s.Kind, "kind"),
+		oneOf(s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		oneOf(s.Pos, s.Kind, []string{"Template"}, "kind"),
 		notZero(s.Pos, s.Desc, "desc"),
 		nonEmptySlice(s.Pos, s.Steps, "steps"),
 		validateEach(s.Inputs),
@@ -168,11 +168,12 @@ type Step struct {
 	Action String `yaml:"action"`
 
 	// Each action type has a field below. Only one of these will be set.
-	Print         *Print         `yaml:"-"`
-	Include       *Include       `yaml:"-"`
-	RegexReplace  *RegexReplace  `yaml:"-"`
-	StringReplace *StringReplace `yaml:"-"`
-	GoTemplate    *GoTemplate    `yaml:"-"`
+	Print           *Print           `yaml:"-"`
+	Include         *Include         `yaml:"-"`
+	RegexReplace    *RegexReplace    `yaml:"-"`
+	RegexNameLookup *RegexNameLookup `yaml:"-"`
+	StringReplace   *StringReplace   `yaml:"-"`
+	GoTemplate      *GoTemplate      `yaml:"-"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -207,6 +208,10 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 		s.RegexReplace = new(RegexReplace)
 		unmarshalInto = s.RegexReplace
 		s.RegexReplace.Pos = s.Pos
+	case "regex_name_lookup":
+		s.RegexNameLookup = new(RegexNameLookup)
+		unmarshalInto = s.RegexNameLookup
+		s.RegexNameLookup.Pos = s.Pos
 	case "string_replace":
 		s.StringReplace = new(StringReplace)
 		unmarshalInto = s.StringReplace
@@ -241,6 +246,7 @@ func (s *Step) Validate() error {
 		validateUnlessNil(s.Print),
 		validateUnlessNil(s.Include),
 		validateUnlessNil(s.RegexReplace),
+		validateUnlessNil(s.RegexNameLookup),
 		validateUnlessNil(s.StringReplace),
 		validateUnlessNil(s.GoTemplate),
 	)
@@ -319,8 +325,8 @@ type RegexReplace struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	Paths        []String            `yaml:"paths"`
-	Replacements []*RegexReplacement `yaml:"replacements"`
+	Paths        []String             `yaml:"paths"`
+	Replacements []*RegexReplaceEntry `yaml:"replacements"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -350,8 +356,8 @@ func (r *RegexReplace) Validate() error {
 	)
 }
 
-// RegexReplacement is one of potentially many regex replacements to be applied.
-type RegexReplacement struct {
+// RegexReplaceEntry is one of potentially many regex replacements to be applied.
+type RegexReplaceEntry struct {
 	Pos      *ConfigPos `yaml:"-"`
 	Regex    String     `yaml:"regex"`
 	Subgroup Int        `yaml:"subgroup"`
@@ -359,11 +365,12 @@ type RegexReplacement struct {
 }
 
 // Validate implements Validator.
-func (r *RegexReplacement) Validate() error {
+func (r *RegexReplaceEntry) Validate() error {
 	// Some validation happens later during execution:
 	//  - Compiling the regular expression
 	//  - Compiling the "with" template
 	//  - Validating that the subgroup number is actually a valid subgroup in the regex
+
 	return errors.Join(
 		notZero(r.Pos, r.Regex, "regex"),
 		nonNegative(r.Subgroup, "subgroup"),
@@ -371,18 +378,86 @@ func (r *RegexReplacement) Validate() error {
 	)
 }
 
-func (r *RegexReplacement) UnmarshalYAML(n *yaml.Node) error {
+func (r *RegexReplaceEntry) UnmarshalYAML(n *yaml.Node) error {
 	knownYAMLFields := []string{"regex", "subgroup", "with"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
-	type shadowType RegexReplacement
+	type shadowType RegexReplaceEntry
 	shadow := &shadowType{} // see "Q2" in file comment above
 
 	if err := n.Decode(shadow); err != nil {
 		return err
 	}
-	*r = RegexReplacement(*shadow)
+	*r = RegexReplaceEntry(*shadow)
+	r.Pos = yamlPos(n)
+
+	return nil
+}
+
+// RegexNameLookup is an action that replaces named regex capturing groups with
+// the template variable of the same name.
+type RegexNameLookup struct {
+	// Pos is the YAML file location where this object started.
+	Pos *ConfigPos `yaml:"-"`
+
+	Paths        []String                `yaml:"paths"`
+	Replacements []*RegexNameLookupEntry `yaml:"replacements"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (r *RegexNameLookup) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"paths", "replacements"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType RegexNameLookup
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*r = RegexNameLookup(*shadow)
+	r.Pos = yamlPos(n)
+
+	return nil
+}
+
+// Validate implements Validator.
+func (r *RegexNameLookup) Validate() error {
+	return errors.Join(
+		nonEmptySlice(r.Pos, r.Paths, "paths"),
+		nonEmptySlice(r.Pos, r.Replacements, "replacements"),
+		validateEach(r.Replacements),
+	)
+}
+
+// RegexNameLookupEntry is one of potentially many regex replacements to be applied.
+type RegexNameLookupEntry struct {
+	Pos   *ConfigPos `yaml:"-"`
+	Regex String     `yaml:"regex"`
+}
+
+// Validate implements Validator.
+func (r *RegexNameLookupEntry) Validate() error {
+	return errors.Join(
+
+		notZero(r.Pos, r.Regex, "regex"),
+	)
+}
+
+func (r *RegexNameLookupEntry) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"regex"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType RegexNameLookupEntry
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*r = RegexNameLookupEntry(*shadow)
 	r.Pos = yamlPos(n)
 
 	return nil

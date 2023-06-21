@@ -12,27 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package main
 
-import (
-	"context"
-	"fmt"
+import "fmt"
 
-	"github.com/abcxyz/abc/templates/model"
-)
-
-func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) error {
-	for _, p := range p.Paths {
-		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
-			executed, err := parseAndExecuteGoTmpl(nil, string(b), sp.inputs)
-			if err != nil {
-				return nil, fmt.Errorf("failed executing file as Go template: %w", err)
-			}
-			return []byte(executed), nil
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
+func main() {
+	fmt.Println("Hello, world!")
 }
