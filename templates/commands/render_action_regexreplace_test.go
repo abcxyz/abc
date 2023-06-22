@@ -43,9 +43,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: "foo"},
-						With:     model.String{Val: "bar"},
-						Subgroup: model.Int{Val: 0},
+						Regex: model.String{Val: "foo"},
+						With:  model.String{Val: "bar"},
 					},
 				},
 			},
@@ -62,9 +61,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: "foo"},
-						With:     model.String{Val: "bar"},
-						Subgroup: model.Int{Val: 0},
+						Regex: model.String{Val: "foo"},
+						With:  model.String{Val: "bar"},
 					},
 				},
 			},
@@ -82,9 +80,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: `\b(?P<my_first_input>b...) (?P<my_second_input>g....)`},
-						Subgroup: model.Int{Val: 0},
-						With:     model.String{Val: "${my_second_input} ${my_first_input}"},
+						Regex: model.String{Val: `\b(?P<my_first_input>b...) (?P<my_second_input>g....)`},
+						With:  model.String{Val: "${my_second_input} ${my_first_input}"},
 					},
 				},
 			},
@@ -93,7 +90,7 @@ func TestActionRegexReplace(t *testing.T) {
 			},
 		},
 		{
-			name: "numbered_subgroup_as_template_variable_should_work",
+			name: "numbered_subgroup_as_template_variable_should_fail",
 			initContents: map[string]string{
 				"a.txt": "alpha template_foo beta",
 			},
@@ -104,15 +101,15 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: "template_([a-z]+)"},
-						Subgroup: model.Int{Val: 0},
-						With:     model.String{Val: "{{.$1}}"},
+						Regex: model.String{Val: "template_(?P<mygroup>[a-z]+)"},
+						With:  model.String{Val: "{{.$1}}"},
 					},
 				},
 			},
 			want: map[string]string{
-				"a.txt": "alpha bar beta",
+				"a.txt": "alpha template_foo beta",
 			},
+			wantErr: "regex expansions must reference the subgroup by name",
 		},
 		{
 			name: "named_subgroup_template_variable_should_work",
@@ -126,9 +123,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: "template_(?P<mysubgroup>[a-z]+)"},
-						Subgroup: model.Int{Val: 0},
-						With:     model.String{Val: "{{.${mysubgroup}}}"},
+						Regex: model.String{Val: "template_(?P<mysubgroup>[a-z]+)"},
+						With:  model.String{Val: "{{.${mysubgroup}}}"},
 					},
 				},
 			},
@@ -148,9 +144,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: `\b(?P<mysubgroup>be..)\b`},
-						Subgroup: model.Int{Val: 0},
-						With:     model.String{Val: "{{.cool_${mysubgroup}}}"},
+						Regex: model.String{Val: `\b(?P<mysubgroup>be..)\b`},
+						With:  model.String{Val: "{{.cool_${mysubgroup}}}"},
 					},
 				},
 			},
@@ -159,7 +154,7 @@ func TestActionRegexReplace(t *testing.T) {
 			},
 		},
 		{
-			name: "template_lookup_using_numbered_regex_subgroup_should_work",
+			name: "template_lookup_using_numbered_regex_subgroup_should_not_work",
 			initContents: map[string]string{
 				"a.txt": "alpha beta gamma",
 			},
@@ -170,36 +165,15 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: `\b(be..)\b`},
-						Subgroup: model.Int{Val: 0},
-						With:     model.String{Val: "{{.cool_${1}}}"},
-					},
-				},
-			},
-			want: map[string]string{
-				"a.txt": "alpha BETA gamma",
-			},
-		},
-		{
-			name: "numbered_subgroup_out_of_range_should_fail",
-			initContents: map[string]string{
-				"a.txt": "alpha beta gamma",
-			},
-			inputs: map[string]string{},
-			rr: &model.RegexReplace{
-				Paths: modelStrings([]string{"."}),
-				Replacements: []*model.RegexReplaceEntry{
-					{
-						Regex:    model.String{Val: `\b(b...)`},
-						Subgroup: model.Int{Val: 0},
-						With:     model.String{Val: "{{.$9}}"},
+						Regex: model.String{Val: `\b(?P<mygroup>be..)\b`},
+						With:  model.String{Val: "{{.cool_${1}}}"},
 					},
 				},
 			},
 			want: map[string]string{
 				"a.txt": "alpha beta gamma",
 			},
-			wantErr: "subgroup $9 is out of range; the largest subgroup in this regex is 1",
+			wantErr: "regex expansions must reference the subgroup by name",
 		},
 		{
 			name: "regex_with_template_reference_should_work",
@@ -214,9 +188,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: `\b{{.to_replace}}`},
-						Subgroup: model.Int{Val: 0},
-						With:     model.String{Val: `{{.replace_with}}`},
+						Regex: model.String{Val: `\b{{.to_replace}}`},
+						With:  model.String{Val: `{{.replace_with}}`},
 					},
 				},
 			},
@@ -234,9 +207,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex:    model.String{Val: "foo"},
-						With:     model.String{Val: "bar"},
-						Subgroup: model.Int{Val: 0},
+						Regex: model.String{Val: "foo"},
+						With:  model.String{Val: "bar"},
 					},
 				},
 			},
@@ -277,44 +249,51 @@ func TestActionRegexReplace(t *testing.T) {
 	}
 }
 
-func TestMaxSubGroup(t *testing.T) {
+func TestRejectNumberedSubgroupExpand(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name string
-		in   string
-		want int
+		name    string
+		in      string
+		wantErr string
 	}{
 		{
-			name: "simple_success",
-			in:   "abc $5 def",
-			want: 5,
+			name:    "reject_numbered",
+			in:      "abc $5 def",
+			wantErr: "failed executing template spec file at line 1: regex expansions must reference the subgroup by name, like ${mygroup}, rather than by number, like ${1}; we saw $5",
 		},
 		{
 			// Note: "$$" expands to "$", this is not a subgroup reference
 			name: "dollardollar_literal_should_not_be_considered",
 			in:   "abc $$5 def",
-			want: 0,
 		},
 		{
 			name: "dollardollardollardollar_literal_should_not_be_considered",
 			in:   "abc $$$$5 def",
-			want: 0,
 		},
 		{
-			name: "dollardollardollardollardollar_literal_should_be_considered",
-			in:   "abc $$$$$5 def",
-			want: 5,
+			name:    "dollardollardollardollardollar_literal_should_be_considered",
+			in:      "abc $$$$$5 def",
+			wantErr: "must reference the subgroup by name",
 		},
 		{
-			name: "braces_should_work",
-			in:   "abc ${5} def",
-			want: 5,
+			name:    "braces",
+			in:      "abc ${5} def",
+			wantErr: "must reference the subgroup by name",
 		},
 		{
-			name: "multiple_subgroup_should_work",
-			in:   "abc $3 def $5 ghi %4",
-			want: 5,
+			name:    "multiple_subgroups",
+			in:      "abc $3 def $5 ghi %4",
+			wantErr: "must reference the subgroup by name",
+		},
+		{
+			name: "named_subgroups",
+			in:   "abc ${mygroup} def",
+		},
+		{
+			name:    "mix_of_named_and_numbered_subgroups",
+			in:      "abc ${mygroup} $5 def",
+			wantErr: "we saw $5",
 		},
 	}
 
@@ -323,8 +302,15 @@ func TestMaxSubGroup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := maxSubgroup([]byte(tc.in)); got != tc.want {
-				t.Errorf("maxSubgroup(%s)=%d, want %d", tc.in, got, tc.want)
+			in := model.String{
+				Pos: &model.ConfigPos{
+					Line:   1,
+					Column: 1,
+				},
+				Val: tc.in,
+			}
+			if diff := testutil.DiffErrString(rejectNumberedSubgroupExpand(in), tc.wantErr); diff != "" {
+				t.Error(diff)
 			}
 		})
 	}

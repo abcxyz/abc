@@ -18,8 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 
-	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
@@ -41,11 +41,13 @@ func nonEmptySlice[T any](pos *ConfigPos, s []T, fieldName string) error {
 	return nil
 }
 
-// Returns error if x.Val is <0.
-func nonNegative[T constraints.Ordered](x valWithPos[T], fieldName string) error {
-	var zero T
-	if x.Val < zero {
-		return x.Pos.AnnotateErr(fmt.Errorf("field %q must not be negative", fieldName))
+// In a regex, the groupname in (?P<groupname>re) must be a letter followed by zero
+// or more alphanumerics.
+var validRegexGroupName = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9]*`)
+
+func isValidRegexGroupName(s String, fieldName string) error {
+	if !validRegexGroupName.MatchString(s.Val) {
+		return s.Pos.AnnotateErr(fmt.Errorf("subgroup name must be a letter followed by zero or more alphanumerics"))
 	}
 	return nil
 }
