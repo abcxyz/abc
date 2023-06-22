@@ -329,8 +329,8 @@ action: 'regex_replace'
 params:
   paths: ['a.txt', 'b.txt']
   replacements:
-  - regex: 'my_regex'
-    subgroup: 1
+  - regex: 'my_(?P<groupname>regex)'
+    subgroup_to_replace: 'groupname'
     with: 'some_template'
   - regex: 'my_other_regex'
     with: 'whatever'`,
@@ -344,9 +344,9 @@ params:
 					},
 					Replacements: []*RegexReplaceEntry{
 						{
-							Regex:    String{Val: "my_regex"},
-							Subgroup: Int{Val: 1},
-							With:     String{Val: "some_template"},
+							Regex:             String{Val: "my_(?P<groupname>regex)"},
+							SubgroupToReplace: String{Val: "groupname"},
+							With:              String{Val: "some_template"},
 						},
 						{
 							Regex: String{Val: "my_other_regex"},
@@ -356,17 +356,18 @@ params:
 				},
 			},
 		},
+
 		{
-			name: "regex_replace_negative_subgroup_should_fail",
+			name: "regex_replace_invalid_subgroup_should_fail",
 			in: `desc: 'mydesc'
 action: 'regex_replace'
 params:
   paths: ['a.txt']
   replacements:
-  - regex: 'my_regex'
-    subgroup: -1
+  - regex: '(?p<x>y)'
+    subgroup_to_replace: 1
     with: 'some_template'`,
-			wantValidateErr: `field "subgroup" must not be negative`,
+			wantValidateErr: `invalid config near line 7 column 26: subgroup name must be a letter followed by zero or more alphanumerics`,
 		},
 		{
 			name: "regex_missing_fields_should_fail",
@@ -375,7 +376,31 @@ action: 'regex_replace'
 params:
   paths: ['a.txt']
   replacements:
-  - subgroup: 1`,
+  - subgroup_to_replace: xyz`,
+			wantValidateErr: `invalid config near line 6 column 5: field "regex" is required
+invalid config near line 6 column 5: field "with" is required`,
+		},
+
+		{
+			name: "regex_replace_negative_numbered_subgroup_should_fail",
+			in: `desc: 'mydesc'
+action: 'regex_replace'
+params:
+  paths: ['a.txt']
+  replacements:
+  - regex: 'my_regex'
+    subgroup_to_replace: -1
+    with: 'some_template'`,
+			wantValidateErr: `invalid config near line 7 column 26: subgroup name must be a letter followed by zero or more alphanumerics`,
+		},
+		{
+			name: "regex_missing_fields_should_fail",
+			in: `desc: 'mydesc'
+action: 'regex_replace'
+params:
+  paths: ['a.txt']
+  replacements:
+  - subgroup_to_replace: xyz`,
 			wantValidateErr: `invalid config near line 6 column 5: field "regex" is required
 invalid config near line 6 column 5: field "with" is required`,
 		},

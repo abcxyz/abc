@@ -358,10 +358,10 @@ func (r *RegexReplace) Validate() error {
 
 // RegexReplaceEntry is one of potentially many regex replacements to be applied.
 type RegexReplaceEntry struct {
-	Pos      *ConfigPos `yaml:"-"`
-	Regex    String     `yaml:"regex"`
-	Subgroup Int        `yaml:"subgroup"`
-	With     String     `yaml:"with"`
+	Pos               *ConfigPos `yaml:"-"`
+	Regex             String     `yaml:"regex"`
+	SubgroupToReplace String     `yaml:"subgroup_to_replace"`
+	With              String     `yaml:"with"`
 }
 
 // Validate implements Validator.
@@ -371,15 +371,20 @@ func (r *RegexReplaceEntry) Validate() error {
 	//  - Compiling the "with" template
 	//  - Validating that the subgroup number is actually a valid subgroup in the regex
 
+	var subgroupErr error
+	if r.SubgroupToReplace.Val != "" {
+		subgroupErr = isValidRegexGroupName(r.SubgroupToReplace, "subgroup")
+	}
+
 	return errors.Join(
 		notZero(r.Pos, r.Regex, "regex"),
-		nonNegative(r.Subgroup, "subgroup"),
 		notZero(r.Pos, r.With, "with"),
+		subgroupErr,
 	)
 }
 
 func (r *RegexReplaceEntry) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"regex", "subgroup", "with"}
+	knownYAMLFields := []string{"regex", "subgroup_to_replace", "with"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}

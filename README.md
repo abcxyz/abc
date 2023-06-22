@@ -291,9 +291,9 @@ Params:
     readability. Use a non-capturing group (like `(?:abc)|(?:abc)`) if you need
     grouping without capturing.
 
-  - `with`: a string to that will replace regex matches (or, if the `subgroup`
-    field is set, will replace only that subgroup). May use template expressions
-    and may use
+  - `with`: a string to that will replace regex matches (or, if the
+    `subgroup_to_replace` field is set, will replace only that subgroup). May
+    use template expressions and may use
     [Regexp.Expand() syntax](https://pkg.go.dev/regexp#Regexp.Expand) (e.g.
     `${mysubgroup}`).
 
@@ -326,7 +326,7 @@ Examples:
       paths: ['main.go']
       replacements:
         - regex: 'gcp_project_id=(?P<proj_id>[a-z0-9-]+)'
-          subgroup: 'proj_id'
+          subgroup_to_replace: 'proj_id'
           with: '{{.project_id}}'
   ```
 
@@ -339,7 +339,7 @@ Examples:
       paths: ['main.go']
       replacements:
         - regex: 'gcp_(?P<input_name>[a-z_]+)=(?P<value>[a-z0-9-]+)'
-          subgroup: 'value'
+          subgroup_to_replace: 'value'
           with: '{{ .${input_name} }}'
   ```
 

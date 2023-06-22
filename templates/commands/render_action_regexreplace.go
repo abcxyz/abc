@@ -16,19 +16,17 @@ package commands
 
 import (
 	"context"
-	"fmt"
 	"regexp"
-	"strconv"
 
 	"github.com/abcxyz/abc/templates/model"
 )
 
 // The regex_replace action replaces a regex match (or a subgroup thereof) with
-// a given string. The replacement string can use subgroup references like $1 or
+// a given string. The replacement string can use subgroup references like
 // ${groupname}, and can also use Go template expressions. An example is:
 //
 //   - regex: '([a-zA-Z]+), (?P<adjective>[a-zA-Z]+) world!'
-//     subgroup: 1
+//     subgroup_to_replace: 'adjective'
 //     with: 'fresh'
 //
 // This would transform a file containing "Hello, cool world!" to "Hello, fresh
@@ -43,14 +41,28 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 		return err
 	}
 
+	// For the sake of readable spec files, we require that all regex capturing
+	// groups be named.
 	for i, rp := range rr.Replacements {
-		subexps := compiledRegexes[i].NumSubexp()
-		if max := maxSubgroup([]byte(rp.With.Val)); max > subexps {
-			// Note to maintainers: subgroups are 1-indexed, and index i
-			// corresponds to subgroup i because subgroup 0 is just the whole
-			// regex match. Therefore we use ">" in the check above, and
-			// NumSubexp() is the index of the final subgroup.
-			return model.ErrWithPos(rp.With.Pos, "subgroup $%d is out of range; the largest subgroup in this regex is %d", max, subexps) //nolint:wrapcheck
+		compiled := compiledRegexes[i]
+		for subexpIdx, name := range compiled.SubexpNames() {
+			if subexpIdx == 0 {
+				// Subexp 0 is "the whole regex match", and not a subexp, so
+				// it's never named. Therefore we skip the name check for subexp
+				// 0.
+				continue
+			}
+			if name == "" {
+				return model.ErrWithPos(rp.Regex.Pos, "all capturing groups in regexes must be named, like (?P<myname>re) . The %d'th capturing group in regex %s is an unnamed group, like (re) . Please use either a named capturing group or an non-capturing group like (?:re)", subexpIdx, rp.Regex.Val) //nolint:wrapcheck
+			}
+		}
+	}
+
+	// For the sake of readable spec files, we require that all regex expansions reference
+	// the subgroup by name (like ${mygroup}) rather than number (like ${1}).
+	for _, rp := range rr.Replacements {
+		if err := rejectNumberedSubgroupExpand(rp.With); err != nil {
+			return err
 		}
 	}
 
@@ -82,23 +94,29 @@ func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEnt
 	// matches indices.
 	for allMatchesIdx := len(allMatches) - 1; allMatchesIdx >= 0; allMatchesIdx-- {
 		oneMatch := allMatches[allMatchesIdx]
-		// Expand transforms "$1" and "${mygroup}" from "With" into the corresponding matched subgroups from oneMatch.
+		// Expand transforms "${mygroup}" from "With" into the
+		// corresponding matched subgroups from oneMatch.
 		replacementRegexExpanded := re.Expand(nil, []byte(rr.With.Val), b, oneMatch)
 		// Why do regex expansion first before go-template execution? So we can
 		// use regex subgroups to reference template variables to support people
-		// trying to be super clever with their templates.
+		// trying to be super clever with their templates. Like:
+		// {{.${mysubgroup}}}
 		replacementTemplateExpanded, err := parseAndExecuteGoTmpl(rr.With.Pos, string(replacementRegexExpanded), inputs)
 		if err != nil {
 			return nil, err
 		}
 
-		// Subgroup 0 means "the whole string matched by the regex, not just a
-		// subgroup". This is a neat coincidence because the default Subgroup
-		// number in the config is 0 if not specified by the user. So this gives
-		// us the desired behavior of "if user doesn't specify a subgroup to
-		// replace, then replace the whole matched string."
-		replaceAtStartIdx := oneMatch[rr.Subgroup.Val*2] // bounds have already been checked in the caller
-		replaceAtEndIdx := oneMatch[rr.Subgroup.Val*2+1]
+		subgroupNum := 0
+		// If the user didn't specify a subgroup to replace, then replace
+		// subgroup 0, which is the entire string matched by the regex.
+		if rr.SubgroupToReplace.Val != "" {
+			subgroupNum = re.SubexpIndex(rr.SubgroupToReplace.Val)
+			if subgroupNum < 0 {
+				return nil, model.ErrWithPos(rr.SubgroupToReplace.Pos, "subgroup name %q is not a named subgroup in the regex %s", rr.SubgroupToReplace.Val, re.String()) //nolint:wrapcheck
+			}
+		}
+		replaceAtStartIdx := oneMatch[subgroupNum*2] // bounds have already been checked in the caller
+		replaceAtEndIdx := oneMatch[subgroupNum+1]
 		b = append(b[:replaceAtStartIdx],
 			append([]byte(replacementTemplateExpanded),
 				b[replaceAtEndIdx:]...)...)
@@ -108,53 +126,26 @@ func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEnt
 
 // A regular expression that matches regex subgroup references like "$5" or
 // "${5}" in a string that will be passed to Regexp.Expand().
-var subGroupExtractRegex = regexp.MustCompile(`\$+` + // some number of dollar signs
+var subGroupExtractRegex = regexp.MustCompile(`(?P<dollars>\$+)` + // some number of dollar signs
 	`[{]?` + // then optionally has a brace character
-	`([0-9]+)`) // and then has some number of decimal digits (as a capturing group)
+	`[0-9]+`) // and then has some number of decimal digits (as a capturing group)
 
-// Given a string that will be passed to Regexp.Expand(), try to find the
-// highest-numbered subgroup reference. This lets us show a friendly error
-// message instead of failing weirdly. If Regexp.Expand() sees a subgroup
-// reference for a nonexistent subgroup, it will just expand it to the empty
-// string. This is likely to be quite confusing for users; they'll get bad
-// output without knowing why.
-//
-// This could be problematic if we find false positive or false negative
-// matches, because the parser in Expand() might have a slightly different idea
-// of what a subgroup reference looks like. We must accept this risk in exchange
-// for the ability to detect problems and provide a decent error message to the
-// user.
-//
-// Returns 0 when no subgroups were found. This makes sense because subgroup 0
-// means the entire string matched by the regex, and therefore subgroup 0 will
-// always be a valid "subgroup".
-func maxSubgroup(in []byte) int {
-	var maxSoFar int
-	matches := subGroupExtractRegex.FindAllSubmatchIndex(in, -1)
+// Given a string that will be passed to Regexp.Expand(), make sure it that it
+// doesn't use any numbered subgroup expansions (like ${1}). Named subgroup
+// expansions are allowed (like ${mygroup}). This is a policy decision because
+// we consider the numbered form to be harder to read.
+func rejectNumberedSubgroupExpand(with model.String) error {
+	matches := subGroupExtractRegex.FindAllStringSubmatch(with.Val, -1)
 	for _, oneMatch := range matches {
-		// Count leading '$' bytes
-		numDollars := 0
-		for ; in[oneMatch[0]+numDollars] == '$'; numDollars++ {
-		}
-
-		if numDollars%2 == 0 {
+		dollars := oneMatch[subGroupExtractRegex.SubexpIndex("dollars")]
+		if len(dollars)%2 == 0 {
 			// This is a literal dollar sign ("$$" expands to "$") and not a
 			// subgroup reference. It could any even number of dollar signs,
 			// like "$$$$$$" expands to "$$$" and is not a subgroup reference.
 			continue
 		}
 
-		numberStartIdx, numberEndIdx := oneMatch[2*1], oneMatch[2*1+1]
-
-		groupNum, err := strconv.Atoi(string(in[numberStartIdx:numberEndIdx]))
-		if err != nil {
-			// We're guaranteed that subgroup 1 is just decimal digits because
-			// of the regex definition. An Atoi failure is not possible.
-			panic(fmt.Errorf("impossible error: numeric subgroup couldn't be parsed as int: %w", err))
-		}
-		if groupNum > maxSoFar {
-			maxSoFar = groupNum
-		}
+		return model.ErrWithPos(with.Pos, "regex expansions must reference the subgroup by name, like ${mygroup}, rather than by number, like ${1}; we saw %s", oneMatch[0]) //nolint:wrapcheck
 	}
-	return maxSoFar
+	return nil
 }
