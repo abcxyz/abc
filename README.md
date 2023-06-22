@@ -25,9 +25,6 @@ tool. "Rendering" a template is when you use the `abc` CLI to download some
 template code, do some substitution to replace parts of it with your own values,
 and write the result to a local directory.
 
-The full user journey looks is as follows. For this example, suppose you want to
-create a "hello world" Go web service.
-
 ## One-time CLI installation
 
 The quick answer is to just run
@@ -40,6 +37,9 @@ This is the temporary installation process until we start formally releasing
 precompiled binaries.
 
 ## Rendering a template
+
+The full user journey looks as follows. For this example, suppose you want to
+create a "hello world" Go web service.
 
 1. Set up a directory that will receive the rendered template output, and `cd`
    to it.
@@ -98,6 +98,8 @@ For example, if the user ran
 `abc templates render --spec=foo.yaml github.com/abcxyz/abc.git//examples/templates/render/hello_jupiter`,
 then the `foo.yaml` should be in the `hello_jupiter` directory.
 
+TODO document flags
+
 ## Template developer guide
 
 This section explains how you can create a template for others to install (aka
@@ -124,7 +126,7 @@ Template rendering has a few phases:
 
 - The template is downloaded and unpacked into a temp directory, called the
   "template directory."
-- The spec file is loadedand parsed as YAML from the template directory
+- The spec file is loaded and parsed as YAML from the template directory
 - Another temp directory called the "scratch directory" is created.
 - The steps in the spec file are executed in sequence:
   - `include` actions copy files and directories from the template directory to
@@ -395,26 +397,24 @@ Params:
 
 #### Example:
 
-Suppose you have a file named `hello.go` that looks like this, with a `{{.foo}}`
-template expression:
+Suppose you have a file named `hello.html` that looks like this, with a
+`{{.foo}}` template expression:
 
 ```
-package main
-
-import "fmt"
-
-func main() {
-  for i := 0; i < {{.num_iterations}}; i++ {
-    fmt.Printf("Hello %d\n", i)
-  }
-}
+<html><body>
+{{ if .friendly }}
+Hello, {{.person_name}}!
+{{ else }}
+Go jump in a lake, {{.person_name}}.
+{{ end }}
+</body></html>
 ```
 
-This action will replace `{{.num_iterations}}` with the input named
-`num_iterations`:
+This action will replace `{{.person_name}}` (and all other template expressions)
+with the corresponding inputs:
 
 ```yaml
 - action: 'go_template'
   params:
-    paths: ['hello.go']
+    paths: ['hello.html']
 ```
