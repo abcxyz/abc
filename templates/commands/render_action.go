@@ -39,7 +39,8 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // given visitor for each file. If the visitor returns modified file contents
 // for a given file, that file will be overwritten with the new contents.
 func walkAndModify(pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor) error {
-	if err := safeRelPath(pos, relPath); err != nil {
+	relPath, err := safeRelPath(pos, relPath)
+	if err != nil {
 		return err
 	}
 	walkFrom := filepath.Join(scratchDir, relPath)
@@ -261,13 +262,11 @@ func copyRecursive(pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, 
 	})
 }
 
-// safeRelPath returns an error if the path is absolute or if it contains a ".." traversal.
-func safeRelPath(pos *model.ConfigPos, p string) error {
+// safeRelPath returns an error if the path contains a ".." traversal, and
+// converts it to a relative path by removing any leading "/".
+func safeRelPath(pos *model.ConfigPos, p string) (string, error) {
 	if strings.Contains(p, "..") {
-		return model.ErrWithPos(pos, `path must not contain ".."`) //nolint:wrapcheck
+		return "", model.ErrWithPos(pos, `path %q must not contain ".."`, p) //nolint:wrapcheck
 	}
-	if filepath.IsAbs(p) {
-		return model.ErrWithPos(pos, "path must be relative, not absolute") //nolint:wrapcheck
-	}
-	return nil
+	return strings.TrimLeft(p, string(filepath.Separator)), nil
 }

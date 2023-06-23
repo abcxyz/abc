@@ -291,6 +291,97 @@ params:
 			},
 		},
 		{
+			name: "include_with_prefixes",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths:
+    - 'a/b/c'
+    - 'x/y.txt'
+  strip_prefix: 'a/b'
+  add_prefix: 'c/d'`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					Paths: []String{
+						{
+							Val: "a/b/c",
+						},
+						{
+							Val: "x/y.txt",
+						},
+					},
+					StripPrefix: String{Val: "a/b"},
+					AddPrefix:   String{Val: "c/d"},
+				},
+			},
+		},
+		{
+			name: "include_with_as",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths: ['a/b/c', 'd/e/f']
+  as: ['x/y/z', 'q/r/s']`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					Paths: []String{
+						{
+							Val: "a/b/c",
+						},
+						{
+							Val: "d/e/f",
+						},
+					},
+					As: []String{
+						{
+							Val: "x/y/z",
+						},
+						{
+							Val: "q/r/s",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "wrong_number_of_as_paths",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths: ['a/b/c', 'd/e/f']
+  as: ['x/y/z', 'q/r/s', 't/u/v']`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					Paths: []String{
+						{
+							Val: "a/b/c",
+						},
+						{
+							Val: "d/e/f",
+						},
+					},
+					As: []String{
+						{
+							Val: "x/y/z",
+						},
+						{
+							Val: "q/r/s",
+						},
+						{
+							Val: "t/u/v",
+						},
+					},
+				},
+			},
+			wantValidateErr: `the size of "as" (3) must be the same as the size of "paths" (2)`,
+		},
+		{
 			name: "missing_action_field_should_fail",
 			in: `desc: 'mydesc'
 params:

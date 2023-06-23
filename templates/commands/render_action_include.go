@@ -20,24 +20,51 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
 )
 
-func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error {
-	for _, p := range i.Paths {
+func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) error {
+	stripPrefixStr, err := parseAndExecuteGoTmpl(inc.StripPrefix.Pos, inc.StripPrefix.Val, sp.inputs)
+	if err != nil {
+		return err
+	}
+	addPrefixStr, err := parseAndExecuteGoTmpl(inc.AddPrefix.Pos, inc.AddPrefix.Val, sp.inputs)
+	if err != nil {
+		return err
+	}
+
+	for i, p := range inc.Paths {
 		// Paths may contain template expressions, so render them first.
 		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
 		if err != nil {
-			return model.ErrWithPos(p.Pos, `error compiling go-template: %w`, err) //nolint:wrapcheck
+			return err
 		}
 
-		if err := safeRelPath(i.Pos, p.Val); err != nil {
-			return model.ErrWithPos(p.Pos, "invalid path: %w", err) //nolint:wrapcheck
+		walkRelPath, err = safeRelPath(inc.Pos, walkRelPath)
+		if err != nil {
+			return err
+		}
+
+		// During validation in spec.go, we've already enforced that either:
+		//  - len(inc.As) == 0
+		//  - len(inc.As) == len(inc.Paths)
+		var as string
+		if len(inc.As) > 0 {
+			as, err = parseAndExecuteGoTmpl(inc.As[i].Pos, inc.As[i].Val, sp.inputs)
+			if err != nil {
+				return err
+			}
+		}
+
+		relDst, err := dest(p.Pos, walkRelPath, as, stripPrefixStr, addPrefixStr)
+		if err != nil {
+			return err
 		}
 
 		absSrc := filepath.Join(sp.templateDir, walkRelPath)
-		absDst := filepath.Join(sp.scratchDir, walkRelPath)
+		absDst := filepath.Join(sp.scratchDir, relDst)
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
@@ -56,4 +83,33 @@ func actionInclude(ctx context.Context, i *model.Include, sp *stepParams) error 
 		}
 	}
 	return nil
+}
+
+// The caller must have already executed the go-templates for all inputs.
+func dest(pathPos *model.ConfigPos, relPath, as, stripPrefix, addPrefix string) (string, error) {
+	// inc.As is mutually exclusive with inc.StripPrefix and inc.AddPrefix. This
+	// exclusivity is enforced earlier, during validation.
+	if as != "" {
+		var err error
+		as, err = safeRelPath(pathPos, as)
+		if err != nil {
+			return "", err
+		}
+		return as, nil
+	}
+
+	if stripPrefix != "" {
+		before := relPath
+		relPath = strings.TrimPrefix(relPath, stripPrefix)
+		if relPath == before {
+			return "", model.ErrWithPos(pathPos, "the strip_prefix %q wasn't a prefix of the actual path %q", //nolint:wrapcheck
+				stripPrefix, relPath)
+		}
+	}
+
+	if addPrefix != "" {
+		relPath = addPrefix + relPath
+	}
+
+	return safeRelPath(pathPos, relPath)
 }
