@@ -34,7 +34,7 @@ var bind = flag.String("bind", ":8080", "Specifies server ip address and port to
 
 func handleHello(h *renderer.Renderer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.RenderJSON(w, http.StatusOK, map[string]any{"message": "hello world"})
+		h.RenderJSON(w, http.StatusOK, map[string]string{"message": "hello world"})
 	})
 }
 
