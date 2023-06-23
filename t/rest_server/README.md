@@ -31,7 +31,7 @@ the transformed program.
 1. Run the transformed program:
 
     ```shell
-    $ go run main.go
+    $ go run .
     [yyyy/mm/dd hh:mm:ss] starting server on :8080
     ```
 

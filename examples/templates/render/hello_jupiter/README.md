@@ -33,6 +33,6 @@ the transformed program.
 1. Run the transformed program:
 
     ```shell
-    $ go run main.go
+    $ go run .
     Hello, jupiter!
     ```
