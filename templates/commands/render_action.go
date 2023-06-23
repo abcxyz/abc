@@ -112,10 +112,23 @@ func templateAndCompileRegexes(regexes []model.String, inputs map[string]string)
 	return compiled, merr
 }
 
+// templateFuncs returns a function map for adding functions to go templates.
+func templateFuncs() template.FuncMap {
+	return map[string]interface{}{
+		"split":      strings.Split,
+		"contains":   strings.Contains,
+		"toLower":    strings.ToLower,
+		"toUpper":    strings.ToUpper,
+		"trimPrefix": strings.TrimPrefix,
+		"trimSuffix": strings.TrimSuffix,
+		"trimSpace":  strings.TrimSpace,
+	}
+}
+
 // A template parser helper to remove the boilerplate of parsing with our
 // desired options.
 func parseGoTmpl(tpl string) (*template.Template, error) {
-	return template.New("").Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
+	return template.New("").Funcs(templateFuncs()).Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
 }
 
 // pos may be nil if the template is not coming from the spec file and therefore
