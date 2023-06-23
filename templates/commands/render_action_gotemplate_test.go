@@ -108,6 +108,30 @@ func TestActionGoTemplate(t *testing.T) {
 			},
 			wantErr: `when processing template file "a.txt": failed executing file as Go template: error compiling as go-template: template: :1: unclosed action`, //
 		},
+		{
+			name: "has_functions",
+			inputs: map[string]string{
+				"list":   "one,two,three",
+				"trim":   "  padded  ",
+				"prefix": "prefixtest",
+				"suffix": "testsuffix",
+			},
+			initContents: map[string]string{
+				"list.txt":   `{{ range split .list "," }}{{.}} {{end}}`,
+				"trim.txt":   `{{ trimSpace .trim }}`,
+				"prefix.txt": `{{ trimPrefix .prefix "prefix" }}`,
+				"suffix.txt": `{{ trimSuffix .suffix "suffix" }}`,
+			},
+			gt: &model.GoTemplate{
+				Paths: modelStrings([]string{"."}),
+			},
+			want: map[string]string{
+				"list.txt":   `one two three `,
+				"trim.txt":   `padded`,
+				"prefix.txt": `test`,
+				"suffix.txt": `test`,
+			},
+		},
 	}
 
 	for _, tc := range cases {
