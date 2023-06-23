@@ -185,6 +185,28 @@ steps:
     paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
 `
 
+	inputsSpecContents := `
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+inputs:
+- name: 'first_input'
+  desc: 'The first input'
+  required: true
+- name: 'second_input'
+  desc: 'The second inpnut'
+  default:  'second'
+  required: true
+- name: 'third_input'
+  desc: 'The third inpnut'
+  required: true
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'test'
+`
+
 	cases := []struct {
 		name                 string
 		templateContents     map[string]string
@@ -198,6 +220,7 @@ steps:
 		wantScratchContents  map[string]string
 		wantTemplateContents map[string]string
 		wantDestContents     map[string]string
+		wantFlagInputs       map[string]string
 		wantStdout           string
 		wantErr              string
 	}{
@@ -322,6 +345,31 @@ steps:
 			removeAllErr: fmt.Errorf("fake removeAll error for testing"),
 			wantErr:      "fake getter error for testing\nfake removeAll error for testing",
 		},
+		{
+			name: "defaults_inputs",
+			flagInputs: map[string]string{
+				"first_input": "first",
+				"third_input": "third",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": inputsSpecContents,
+			},
+			// print command from the inputsSpecContents
+			wantStdout: "test\n",
+			wantFlagInputs: map[string]string{
+				"first_input":  "first",
+				"second_input": "second",
+				"third_input":  "third",
+			},
+		},
+		{
+			name:       "missing_required_inputs",
+			flagInputs: map[string]string{},
+			templateContents: map[string]string{
+				"spec.yaml": inputsSpecContents,
+			},
+			wantErr: "missing required inputs: \n  - first_input\n  - third_input",
+		},
 	}
 
 	for _, tc := range cases {
@@ -367,6 +415,12 @@ steps:
 
 			if fg.gotSource != r.source {
 				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.source)
+			}
+
+			if tc.wantFlagInputs != nil {
+				if diff := cmp.Diff(r.flagInputs, tc.wantFlagInputs); diff != "" {
+					t.Errorf("flagInputs was not as expected; (-got,+want): %s", diff)
+				}
 			}
 
 			if diff := cmp.Diff(stdoutBuf.String(), tc.wantStdout); diff != "" {

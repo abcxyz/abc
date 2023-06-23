@@ -28,11 +28,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
+	"github.com/hashicorp/go-multierror"
 	"github.com/posener/complete/v2/predict"
 )
 
@@ -292,6 +294,10 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
+	if err := validateAndDefaultInputs(r.flagInputs, spec); err != nil {
+		return fmt.Errorf("missing required inputs: %w", err)
+	}
+
 	scratchDir, err := rp.tempDirNamer(scratchDirNamePart)
 	if err != nil {
 		return err
@@ -321,6 +327,35 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 
 	return nil
+}
+
+// validateAndDefaultInputs validates and sets the input values provided by the user.
+func validateAndDefaultInputs(flagInputs map[string]string, spec *model.Spec) error {
+	var result *multierror.Error
+
+	for _, i := range spec.Inputs {
+		val, ok := flagInputs[i.Name.Val]
+		if !ok || val == "" {
+			if i.Default.Val != "" {
+				flagInputs[i.Name.Val] = i.Default.Val
+			} else if i.Required.Val {
+				result = multierror.Append(result, fmt.Errorf("%s", i.Name.Val))
+			}
+		}
+	}
+
+	if result != nil {
+		result.ErrorFormat = func(errors []error) string {
+			out := strings.Builder{}
+
+			for _, e := range errors {
+				out.WriteString(fmt.Sprintf("\n  - %s", e))
+			}
+			return out.String()
+		}
+	}
+
+	return result.ErrorOrNil()
 }
 
 func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {

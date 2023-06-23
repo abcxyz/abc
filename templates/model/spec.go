@@ -125,12 +125,13 @@ type Input struct {
 
 	Name     String `yaml:"name"`
 	Desc     String `yaml:"desc"`
+	Default  String `yaml:"default"`
 	Required Bool   `yaml:"required"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Input) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"name", "desc", "required"}
+	knownYAMLFields := []string{"name", "desc", "default", "required"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
