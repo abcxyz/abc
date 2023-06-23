@@ -50,7 +50,7 @@ func realMain(ctx context.Context) error {
 			log.Printf("failed to render: %v", err)
 		}))
 	if err != nil {
-		return fmt.Errorf("failed to create renderer for main server %w", err)
+		return fmt.Errorf("failed to create renderer for main server: %w", err)
 	}
 
 	r := chi.NewRouter()
