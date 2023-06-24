@@ -30,11 +30,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/abcxyz/abc/flags"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
-	"github.com/hashicorp/go-multierror"
+	"github.com/mattn/go-isatty"
 	"github.com/posener/complete/v2/predict"
 )
 
@@ -50,9 +51,12 @@ const (
 
 type Render struct {
 	cli.BaseCommand
+	automationFlags flags.AutomationFlags
 
 	testFS     renderFS
 	testGetter getterClient
+
+	hasTTY bool
 
 	source             string
 	flagSpec           string
@@ -112,6 +116,8 @@ are accepted:
 
 func (r *Render) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
+
+	r.automationFlags.AddAutomationFlags(set)
 
 	f := set.NewSection("RENDER OPTIONS")
 	f.StringVar(&cli.StringVar{
@@ -224,6 +230,8 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
+	r.hasTTY = (r.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
+
 	fSys := r.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
 		fSys = &realFS{}
@@ -294,8 +302,18 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	if err := validateAndDefaultInputs(r.flagInputs, spec); err != nil {
-		return fmt.Errorf("missing required inputs: %w", err)
+	if unknownInputs := r.processUnknownInputs(spec); len(unknownInputs) > 0 {
+		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+	}
+
+	if !r.automationFlags.FlagNoPrompt && r.hasTTY {
+		if err := r.promptForInputs(ctx, spec); err != nil {
+			return fmt.Errorf("failed to prompt for inputs: %w", err)
+		}
+	}
+
+	if requiredInputs := r.processRequiredInputs(spec); len(requiredInputs) > 0 {
+		return fmt.Errorf("missing required input(s): %s", strings.Join(requiredInputs, ", "))
 	}
 
 	scratchDir, err := rp.tempDirNamer(scratchDirNamePart)
@@ -329,33 +347,70 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	return nil
 }
 
-// validateAndDefaultInputs validates and sets the input values provided by the user.
-func validateAndDefaultInputs(flagInputs map[string]string, spec *model.Spec) error {
-	var result *multierror.Error
+// processUnknownInputs checks for any unknown input flags and returns them in a slice.
+func (r *Render) processUnknownInputs(spec *model.Spec) []string {
+	unknownInputs := make([]string, 0)
+
+	specInputs := make(map[string]any)
+	for _, v := range spec.Inputs {
+		specInputs[v.Name.Val] = struct{}{}
+	}
+
+	for key := range r.flagInputs {
+		if _, ok := specInputs[key]; !ok {
+			unknownInputs = append(unknownInputs, key)
+		}
+	}
+
+	return unknownInputs
+}
+
+// promptForInputs checks the flag inputs and prompts for missing inputs,
+// using a default value if configured.
+func (r *Render) promptForInputs(ctx context.Context, spec *model.Spec) error {
+	for _, i := range spec.Inputs {
+		_, ok := r.flagInputs[i.Name.Val]
+		if !ok {
+			defaultText := ""
+			if i.Default != nil {
+				defaultText = fmt.Sprintf(" (%s)", i.Default.Val)
+			}
+
+			v, err := r.Prompt(ctx, "Enter value for %s%s:   ", i.Name.Val, defaultText)
+			if err != nil {
+				return fmt.Errorf("failed to read user input for %s: %w", i.Name.Val, err)
+			}
+
+			r.flagInputs[i.Name.Val] = v
+
+			if r.flagInputs[i.Name.Val] == "" && i.Default != nil {
+				r.flagInputs[i.Name.Val] = i.Default.Val
+			}
+		}
+	}
+
+	return nil
+}
+
+// processRequiredInputs checks the flag inputs for missing inputs and sets them to
+// a default value if configured. If no default value is configured, the missing input
+// keys are returned as a slice.
+func (r *Render) processRequiredInputs(spec *model.Spec) []string {
+	requiredInputs := make([]string, 0)
 
 	for _, i := range spec.Inputs {
-		val, ok := flagInputs[i.Name.Val]
-		if !ok || val == "" {
-			if i.Default.Val != "" {
-				flagInputs[i.Name.Val] = i.Default.Val
-			} else if i.Required.Val {
-				result = multierror.Append(result, fmt.Errorf("%s", i.Name.Val))
+		_, ok := r.flagInputs[i.Name.Val]
+		if !ok {
+			if i.Default != nil {
+				r.flagInputs[i.Name.Val] = i.Default.Val
+				continue
 			}
+
+			requiredInputs = append(requiredInputs, i.Name.Val)
 		}
 	}
 
-	if result != nil {
-		result.ErrorFormat = func(errors []error) string {
-			out := strings.Builder{}
-
-			for _, e := range errors {
-				out.WriteString(fmt.Sprintf("\n  - %s", e))
-			}
-			return out.String()
-		}
-	}
-
-	return result.ErrorOrNil()
+	return requiredInputs
 }
 
 func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {

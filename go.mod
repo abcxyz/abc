@@ -3,10 +3,10 @@ module github.com/abcxyz/abc
 go 1.20
 
 require (
-	github.com/abcxyz/pkg v0.0.0-20230615204628-683ea9d2f9bd
+	github.com/abcxyz/pkg v0.0.0-20230627122505-f65777eea99c
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-getter/v2 v2.2.1
-	github.com/hashicorp/go-multierror v1.1.1
+	github.com/mattn/go-isatty v0.0.17
 	github.com/posener/complete/v2 v2.0.1-alpha.13
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	gopkg.in/yaml.v3 v3.0.1
@@ -20,6 +20,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/klauspost/compress v1.11.2 // indirect
@@ -30,7 +31,6 @@ require (
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.0.11 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/posener/script v1.1.5 // indirect
