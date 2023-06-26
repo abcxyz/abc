@@ -17,37 +17,38 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
+	"github.com/abcxyz/pkg/serving"
 	"github.com/go-chi/chi/v5"
 )
 
-var bind = flag.String("bind", ":8080", "Specifies server ip address and port to listen on.")
+var port = flag.String("port", "8080", "Specifies server port to listen on.")
 
 func handleHello(h *renderer.Renderer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := logging.FromContext(r.Context())
+		logger.Info("handling request")
 		h.RenderJSON(w, http.StatusOK, map[string]string{"message": "hello world"})
 	})
 }
 
 // realMain creates an example backend HTTP server.
-// This server supports graceful stopping and cancellation by:
-//   - using a cancellable context
-//   - listening to incoming requests in a goroutine
+// This server supports graceful stopping and cancellation.
 func realMain(ctx context.Context) error {
+	logger := logging.FromContext(ctx)
 	// Make a new renderer for rendering json.
 	// Don't provide filesystem as we don't have templates to render.
 	h, err := renderer.New(ctx, nil,
 		renderer.WithOnError(func(err error) {
-			log.Printf("failed to render: %v", err)
+			logger.Errorw("failed to render", "error", err)
 		}))
 	if err != nil {
 		return fmt.Errorf("failed to create renderer for main server: %w", err)
@@ -56,41 +57,29 @@ func realMain(ctx context.Context) error {
 	r := chi.NewRouter()
 	r.Mount("/", handleHello(h))
 	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		logger.Debugw("Route registered", "http_method", method, "route", route)
 		return nil
 	}
 
 	if err := chi.Walk(r, walkFunc); err != nil {
-		return fmt.Errorf("error walking routes: %w", err)
+		logger.Errorw("error walking routes", "error", err)
 	}
 
-	s := &http.Server{
-		Addr:              *bind,
+	httpServer := &http.Server{
+		Addr:              *port,
 		Handler:           r,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 
-	log.Printf("starting server on %v", *bind)
-	errCh := make(chan error, 1)
-	go func() {
-		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			select {
-			case errCh <- err:
-			default:
-			}
-		}
-	}()
-
-	// Wait for cancellation
-	select {
-	case err := <-errCh:
-		return fmt.Errorf("error from server listener: %w", err)
-	case <-ctx.Done():
+	logger.Info("starting server on ", *port)
+	server, err := serving.New(*port)
+	if err != nil {
+		return fmt.Errorf("error creating server: %w", err)
 	}
 
-	shutdownCtx, done := context.WithTimeout(context.Background(), 5*time.Second)
-	defer done()
-	if err := s.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("failed to shutdown: %w", err)
+	// This will block until the provided context is cancelled.
+	if err := server.StartHTTP(ctx, httpServer); err != nil {
+		return fmt.Errorf("error starting server: %w", err)
 	}
 	return nil
 }
@@ -98,11 +87,12 @@ func realMain(ctx context.Context) error {
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
+	logger := logging.FromContext(ctx)
 
 	flag.Parse()
-	if err := realMain(ctx); err != nil {
+	if err := realMain(logging.WithLogger(ctx, logger)); err != nil {
 		done()
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
-	log.Print("completed")
+	logger.Info("completed")
 }

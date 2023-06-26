@@ -32,7 +32,7 @@ the transformed program.
 
     ```shell
     $ go run .
-    [yyyy/mm/dd hh:mm:ss] starting server on :8080
+    [yyyy/mm/dd hh:mm:ss] starting server on 8080
     ```
 
 1. In a separate shell, run:
