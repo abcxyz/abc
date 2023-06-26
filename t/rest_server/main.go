@@ -30,7 +30,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var port = flag.String("port", "8080", "Specifies server port to listen on.")
+const defaultPort = "8080"
+
+var port = flag.String("port", defaultPort, "Specifies server port to listen on.")
 
 func handleHello(h *renderer.Renderer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +42,7 @@ func handleHello(h *renderer.Renderer) http.Handler {
 	})
 }
 
-// realMain creates an example backend HTTP server.
+// RealMain creates an example backend HTTP server.
 // This server supports graceful stopping and cancellation.
 func realMain(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
