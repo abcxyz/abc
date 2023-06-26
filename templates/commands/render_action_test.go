@@ -269,7 +269,7 @@ func TestCopyRecursive(t *testing.T) {
 			},
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
-			wantErr:     "already exists and overwriting was not enabled",
+			wantErr:     "file file1.txt already exists and overwriting was not enabled",
 		},
 		{
 			name: "owner_execute_bit_should_be_preserved",
