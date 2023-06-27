@@ -32,19 +32,14 @@ func TestRealMain(t *testing.T) {
 	ctx, done := context.WithCancel(ctx)
 	defer done()
 
-	errCh := make(chan error, 1)
-	doneCh := make(chan struct{}, 1)
+	var realMainErr error
+	finishedCh := make(chan struct{}, 0)
 	go func() {
-		defer close(doneCh)
-
-		if err := realMain(ctx); err != nil {
-			select {
-			case errCh <- err:
-			default:
-			}
-		}
+		defer close(finishedCh)
+		realMainErr = realMain(ctx)
 	}()
 
+	time.Sleep(100 * time.Millisecond) // wait for server startup
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%s", defaultPort))
 	if err != nil {
 		t.Fatal(err)
@@ -55,27 +50,23 @@ func TestRealMain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(string(b))
 
 	want := "hello world"
 	if !strings.Contains(string(b), want) {
-		t.Errorf("unexpected response:\n%s", cmp.Diff(string(b), want))
+		t.Errorf("unexpected response: (-got,+want)\n%s", cmp.Diff(string(b), want))
 	}
 
 	// stop server
 	done()
 
-	// Read any errors first
-	select {
-	case err := <-errCh:
-		t.Fatal(err)
-	default:
-	}
-
 	// Wait for done
 	select {
-	case <-doneCh:
+	case <-finishedCh:
 	case <-time.After(time.Second):
-		t.Errorf("expected server to be stopped")
+		t.Fatalf("expected server to be stopped")
 	}
+  
+  if realMainErr != nil {
+    t.Errorf("realMain(): %v", realMainErr)
+  }
 }
