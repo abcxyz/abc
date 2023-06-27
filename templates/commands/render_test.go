@@ -397,39 +397,43 @@ func TestSafeRelPath(t *testing.T) {
 	cases := []struct {
 		name    string
 		in      string
+		want    string
 		wantErr string
 	}{
 		{
 			name: "plain_filename_succeeds",
 			in:   "a.txt",
+			want: "a.txt",
 		},
 		{
 			name: "path_with_directories_succeeds",
 			in:   "a/b.txt",
+			want: "a/b.txt",
 		},
 		{
 			name: "trailing_slash_succeeds",
 			in:   "a/b/",
+			want: "a/b/",
 		},
 		{
-			name:    "leading_slash_fails",
-			in:      "/a",
-			wantErr: "absolute",
+			name: "leading_slash_stripped",
+			in:   "/a",
+			want: "a",
 		},
 		{
-			name:    "leading_slash_with_more_dirs_fails",
-			in:      "/a/b/c",
-			wantErr: "absolute",
+			name: "leading_slash_with_more_dirs",
+			in:   "/a/b/c",
+			want: "a/b/c",
 		},
 		{
-			name:    "leading_slash_with_more_dirs_fails",
-			in:      "/a/b/c",
-			wantErr: "absolute",
+			name: "leading_slash_with_more_dirs",
+			in:   "/a/b/c",
+			want: "a/b/c",
 		},
 		{
-			name:    "plain_slash_fails",
-			in:      "/",
-			wantErr: "absolute",
+			name: "plain_slash_stripped",
+			in:   "/",
+			want: "",
 		},
 		{
 			name:    "leading_dot_dot_fails",
@@ -459,9 +463,12 @@ func TestSafeRelPath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := safeRelPath(nil, tc.in)
+			got, err := safeRelPath(nil, tc.in)
 
-			if testutil.DiffErrString(got, tc.wantErr) != "" {
+			if got != tc.want {
+				t.Errorf("safeRelPath(%q)=%q, want %q", tc.in, got, tc.want)
+			}
+			if testutil.DiffErrString(err, tc.wantErr) != "" {
 				t.Errorf("safeRelPath(%s)=%s, want %s", tc.in, got, tc.wantErr)
 			}
 		})

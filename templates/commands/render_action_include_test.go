@@ -51,11 +51,23 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "absolute_path_treated_as_relative",
+			include: &model.Include{
+				Paths: modelStrings([]string{"/myfile.txt"}),
+			},
+			templateContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+			},
+		},
+		{
 			name: "reject_dot_dot",
 			include: &model.Include{
 				Paths: modelStrings([]string{"../file.txt"}),
 			},
-			wantErr: `path must not contain ".."`,
+			wantErr: `path "../file.txt" must not contain ".."`,
 		},
 		{
 			name: "templated_filename_success",
@@ -118,6 +130,95 @@ func TestActionInclude(t *testing.T) {
 			},
 			statErr: fmt.Errorf("fake error"),
 			wantErr: "fake error",
+		},
+		{
+			name: "strip_prefix_from_file",
+			include: &model.Include{
+				Paths:       modelStrings([]string{"a/deep/subdir/hello.txt"}),
+				StripPrefix: model.String{Val: "a/deep/subdir"},
+			},
+			templateContents: map[string]modeAndContents{
+				"a/deep/subdir/hello.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"hello.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "strip_prefix_from_dir",
+			include: &model.Include{
+				Paths:       modelStrings([]string{"a/deep/subdir/hello.txt"}),
+				StripPrefix: model.String{Val: "a/deep"},
+			},
+			templateContents: map[string]modeAndContents{
+				"a/deep/subdir/hello.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"subdir/hello.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "strip_and_add_prefix_together_with_templates",
+			include: &model.Include{
+				Paths:       modelStrings([]string{"a/deep/subdir/hello.txt"}),
+				StripPrefix: model.String{Val: "{{.ay}}/"},
+				AddPrefix:   model.String{Val: "{{.bee}}/"},
+			},
+			inputs: map[string]string{
+				"ay":  "a",
+				"bee": "b",
+			},
+			templateContents: map[string]modeAndContents{
+				"a/deep/subdir/hello.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"b/deep/subdir/hello.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "as_with_single_path",
+			include: &model.Include{
+				Paths: modelStrings([]string{"dir1/file1.txt"}),
+				As:    modelStrings([]string{"dir2/file2.txt"}),
+			},
+			templateContents: map[string]modeAndContents{
+				"dir1/file1.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"dir2/file2.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "as_with_multiple_paths_and_templates",
+			include: &model.Include{
+				Paths: modelStrings([]string{"file{{.one}}.txt", "file{{.two}}.txt"}),
+				As:    modelStrings([]string{"file{{.three}}.txt", "file{{.four}}.txt"}),
+			},
+			inputs: map[string]string{
+				"one":   "1",
+				"two":   "2",
+				"three": "3",
+				"four":  "4",
+			},
+			templateContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "my file contents"},
+				"file2.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file3.txt": {0o600, "my file contents"},
+				"file4.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "strip_prefix_doesnt_find_prefix",
+			include: &model.Include{
+				Paths:       modelStrings([]string{"a/b/c"}),
+				StripPrefix: model.String{Val: "x/"},
+			},
+			templateContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "my file contents"},
+			},
+			wantErr: "wasn't a prefix of the actual path",
 		},
 	}
 
