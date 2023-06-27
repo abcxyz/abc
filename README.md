@@ -16,6 +16,58 @@ various sources to start a new project.
 This doc contains a [User Guide](#user-guide) and a
 [Template Developer Guide](#template-developer-guide).
 
+## Command line usage
+
+### For `abc templates render`
+
+Usage: `abc templates render [flags] <template_location>`
+
+The `<template_location>` parameter is any directory-like location that can be
+downloaded by the library that we use for template downloads,
+github.com/hashicorp/go-getter. It should contain a `spec.yaml` file in its root
+(or use the `--spec` flag to specify an alternate spec file name).
+
+Examples of template locations:
+
+- Git repo: `github.com/abcxyz/abc.git`
+- A subdirectory of a git repo (useful when a single repo contains multiple
+  templates):
+  `github.com/abcxyz/abc.git//examples/templates/render/hello_jupiter`
+- A specific branch or SHA of a git repo:
+  `github.com/abcxyz/abc.git?ref=d3beffc21f324fc23f954c6602c49dfe8f9988e8`
+- A local directory (useful for template developers, you can run a template
+  without committing and merging it to github):
+  `~/git/example.com/myorg/mytemplaterepo`
+- A tarball, local or remote: `~/my_downloaded_tarball.tgz`
+- A GCS bucket (no example yet)
+
+#### Flags
+
+- `--spec <path_to_spec_yaml>`: the path of the spec yaml file, relative to the
+  template root. Defaults to `spec.yaml`.
+- `--dest <output_dir>`: the directory on the local filesystem to write output
+  to. Defaults to the current directory.
+- `--input=key=val`: provide an input parameter to the template. `key` must be
+  one of the inputs declared by the template in its `spec.yaml`. May be repeated
+  to provide multiple inputs, like
+  `--input=name=alice --input=email=alice@example.com`.
+- `--log-level`: one of `debug|info|warning|error`. How verbose to log.
+- `--force-overwrite`: normally, the template rendering operation will abort if
+  the template would output a file at a location that already exists on the
+  filesystem. This flag allows it to continue.
+- `--keep-temp-dirs`: there are two temp directories created during template
+  rendering. Normally, they are removed at the end of the template rendering
+  operation, but this flag causes them to be kept. Inspecting the temp
+  directories can be helpful in debugging problems with `spec.yaml` or with the
+  `abc` command itself. The two temp directories are the "template directory",
+  into which the template is downloaded, and the "scratch directory", where
+  files are staged during transformations before being written to the output
+  directory. Use `--log-level` verbosity of `info` or higher to see the
+  locations of the directories.
+- `--no-prompt`: normally, the user will be prompted for inputs that are needed
+  by the template but are not supplied by `--inputs`. This flag will skip such
+  prompting and just fail if there are any missing inputs.
+
 ## User Guide
 
 Start here if you want want to install ("render") a template using this CLI
@@ -95,8 +147,6 @@ The `--spec` path is relative to the template root that was provided by the CLI.
 For example, if the user ran
 `abc templates render --spec=foo.yaml github.com/abcxyz/abc.git//examples/templates/render/hello_jupiter`,
 then the `foo.yaml` should be in the `hello_jupiter` directory.
-
-TODO document flags
 
 ## Template developer guide
 

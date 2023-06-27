@@ -281,6 +281,8 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err != nil {
 		return err
 	}
+	logger := logging.FromContext(ctx)
+	logger.Infof("created temporary template directory at: %s", templateDir)
 
 	safeSpecPath, err := safeRelPath(nil, r.flagSpec)
 	if err != nil {
@@ -300,6 +302,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
+	logger.Infof("created temporary scratch directory at: %s", scratchDir)
 
 	if err := executeSpec(ctx, spec, &stepParams{
 		inputs:      r.flagInputs,
