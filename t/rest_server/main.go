@@ -87,6 +87,7 @@ func realMain(ctx context.Context) error {
 }
 
 func main() {
+	// creates a context that exits on interrupt signal.
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 	logger := logging.FromContext(ctx)
