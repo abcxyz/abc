@@ -33,7 +33,7 @@ func TestRealMain(t *testing.T) {
 	defer done()
 
 	var realMainErr error
-	finishedCh := make(chan struct{}, 0)
+	finishedCh := make(chan struct{})
 	go func() {
 		defer close(finishedCh)
 		realMainErr = realMain(ctx)
@@ -65,8 +65,8 @@ func TestRealMain(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("expected server to be stopped")
 	}
-  
-  if realMainErr != nil {
-    t.Errorf("realMain(): %v", realMainErr)
-  }
+
+	if realMainErr != nil {
+		t.Errorf("realMain(): %v", realMainErr)
+	}
 }
