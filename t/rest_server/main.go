@@ -42,7 +42,7 @@ func handleHello(h *renderer.Renderer) http.Handler {
 	})
 }
 
-// RealMain creates an example backend HTTP server.
+// realMain creates an example backend HTTP server.
 // This server supports graceful stopping and cancellation.
 func realMain(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
@@ -93,7 +93,7 @@ func main() {
 
 	flag.Parse()
 	if err := realMain(logging.WithLogger(ctx, logger)); err != nil {
-		done()
+		done() // deferred function calls won't execute due to logger.Fatal() never returning
 		logger.Fatal(err)
 	}
 	logger.Info("completed")

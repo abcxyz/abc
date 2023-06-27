@@ -17,7 +17,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"os/exec"
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -44,20 +45,21 @@ func TestRealMain(t *testing.T) {
 		}
 	}()
 
-	cmd := exec.Command(
-		"curl",
-		fmt.Sprintf("localhost:%s", defaultPort),
-	)
-
-	out, err := cmd.Output()
-	t.Log(string(out))
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%s", defaultPort))
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer resp.Body.Close()
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(string(b))
 
 	want := "hello world"
-	if !strings.Contains(string(out), want) {
-		t.Errorf("unexpected response:\n%s", cmp.Diff(string(out), want))
+	if !strings.Contains(string(b), want) {
+		t.Errorf("unexpected response:\n%s", cmp.Diff(string(b), want))
 	}
 
 	// stop server
