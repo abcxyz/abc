@@ -181,10 +181,6 @@ func (r *Render) parseFlags(args []string) error {
 
 	r.source = parsedArgs[0]
 
-	if err := safeRelPath(nil, r.flagSpec); err != nil {
-		return fmt.Errorf("invalid --spec path %q: %w", r.flagSpec, err)
-	}
-
 	return nil
 }
 
@@ -286,7 +282,12 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	spec, err := loadSpecFile(rp.fs, templateDir, r.flagSpec)
+	safeSpecPath, err := safeRelPath(nil, r.flagSpec)
+	if err != nil {
+		return fmt.Errorf("invalid --spec path %q: %w", r.flagSpec, err)
+	}
+
+	spec, err := loadSpecFile(rp.fs, templateDir, safeSpecPath)
 	if err != nil {
 		return err
 	}

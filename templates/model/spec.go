@@ -291,12 +291,15 @@ type Include struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	Paths []String `yaml:"paths"`
+	Paths       []String `yaml:"paths"`
+	As          []String `yaml:"as"`
+	StripPrefix String   `yaml:"strip_prefix"`
+	AddPrefix   String   `yaml:"add_prefix"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths"}
+	knownYAMLFields := []string{"paths", "as", "strip_prefix", "add_prefix"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
@@ -314,8 +317,19 @@ func (i *Include) UnmarshalYAML(n *yaml.Node) error {
 
 // Validate implements Validator.
 func (i *Include) Validate() error {
+	var exclusivityErr error
+	if len(i.As) != 0 {
+		if i.StripPrefix.Val != "" || i.AddPrefix.Val != "" {
+			exclusivityErr = i.As[0].Pos.AnnotateErr(fmt.Errorf(`"as" may not be used with "strip_prefix" or "add_prefix"`))
+		} else if len(i.Paths) != len(i.As) {
+			exclusivityErr = i.As[0].Pos.AnnotateErr(fmt.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
+				len(i.As), len(i.Paths)))
+		}
+	}
+
 	return errors.Join(
 		nonEmptySlice(i.Pos, i.Paths, "paths"),
+		exclusivityErr,
 	)
 }
 
