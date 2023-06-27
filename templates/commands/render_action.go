@@ -222,10 +222,10 @@ func copyRecursive(pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, 
 		dstInfo, err := rfs.Stat(dst)
 		if err == nil {
 			if dstInfo.IsDir() {
-				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", path) //nolint:wrapcheck
+				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", relToSrc) //nolint:wrapcheck
 			}
 			if !overwrite {
-				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", path) //nolint:wrapcheck
+				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", relToSrc) //nolint:wrapcheck
 			}
 		} else if !os.IsNotExist(err) {
 			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
