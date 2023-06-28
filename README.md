@@ -263,15 +263,93 @@ directory.
 Params:
 
 - `paths`: a list of files and/or directories to copy. These may use template
-  expressions (e.g. `{{.my_input}}`).
+  expressions (e.g. `{{.my_input}}`). By default, the output location of each
+  file is the same as its location in the template directory.
+- `as`: as list of output locations relative to the output directory. This can
+  be used to make the output location(s) different than the input locations. If
+  `as` is present, its length must be equal to the length of `paths`; that is,
+  each path must be given an output location.
 
-Example:
+  `as` may not be used with `strip_prefix` or `add_prefix`.
 
-```yaml
-- action: 'include'
-  params:
-    paths: ['main.go', '{{.user_requested_config}}/config.txt']
-```
+  These may use template expressions (e.g. `{{.my_input}}`).
+
+- `strip_prefix`: computes the output path by stripping off the beginning of the
+  input path. Useful for relocating files to a different location in the output
+  than their input location in the template.
+
+  If `strip_prefix` is not actually a prefix of every element of `paths`, that's
+  an error.
+
+  `strip_prefix` may be used with `add_prefix`. `strip_prefix` is executed
+  before `add_prefix` if both are present.
+
+  `strip_prefix` can't be used with `as`.
+
+  These may use template expressions (e.g. `{{.my_input}}`).
+
+- `add_prefix`: computes the output path by prepending to the beginning of the
+  input path. Useful for relocating files to a different location in the output
+  than their input location in the template.
+
+  `add_prefix` may be used with `strip_prefix`. `strip_prefix` is executed
+  before `add_prefix` if both are present.
+
+  `add_prefix` can't be used with `as`.
+
+  These may use template expressions (e.g. `{{.my_input}}`).
+
+- `skip`: omits some files or directories that might be present in the input
+  paths. For each path in `paths`, if `$path/$skip` exists, it won't be included
+  in the output. This supports use cases like "I want every thing in this
+  directory except this specific subdirectory and this specific file."
+
+  It's not an error if the path to skip wasn't found.
+
+  As a special case, the template spec file is automatically skipped and omitted
+  from the template output when the template has an `include` for the path `.`.
+  We assume that when template authors say "copy everything in the template into
+  the output," they mean "everything except the spec file."
+
+  These may use template expressions (e.g. `{{.my_input}}`).
+
+Examples:
+
+- A simple include, where each file keeps it location:
+
+  ```yaml
+  - action: 'include'
+    params:
+      paths: ['main.go', '{{.user_requested_config}}/config.txt']
+  ```
+
+- Using `as` to relocate files:
+
+  ```yaml
+  - action: 'include'
+    params:
+      paths: ['{{.dbname}}/db.go']
+      as: ['db.go']
+  ```
+
+- Using `strip_prefix` and `add_prefix` to relocate files:
+
+  ```yaml
+  - action: 'include'
+    params:
+      paths: ['my/config/files']
+      strip_prefix: 'my/config/files'
+      add_prefix: 'config_files'
+  ```
+
+- Using `skip` to omit certain sub-paths:
+
+  ```yaml
+  - action: 'include'
+    params:
+      paths: ['configs']
+      skip: ['unwanted_subdir', 'unwanted_file.txt']
+  ```
 
 ### Action: `print`
 

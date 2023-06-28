@@ -173,12 +173,16 @@ desc: 'A template for the ages'
 inputs:
 - name: 'name_to_greet'
   desc: 'A name to include in the message'
-  required: true
+- name: 'emoji_suffix'
+  desc: 'An emoji suffix to include in message'
+- name: 'defaulted_input'
+  desc: 'The defaulted input'
+  default:  'default'
 steps:
 - desc: 'Print a message'
   action: 'print'
   params:
-    message: 'Hello, {{.name_to_greet}}'
+    message: 'Hello, {{.name_to_greet}}{{.emoji_suffix}}'
 - desc: 'Include some files and directories'
   action: 'include'
   params:
@@ -189,6 +193,7 @@ steps:
 		name                 string
 		templateContents     map[string]string
 		existingDestContents map[string]string
+		stdinInput           string
 		flagInputs           map[string]string
 		flagKeepTempDirs     bool
 		flagSpec             string
@@ -198,13 +203,16 @@ steps:
 		wantScratchContents  map[string]string
 		wantTemplateContents map[string]string
 		wantDestContents     map[string]string
+		wantFlagInputs       map[string]string
 		wantStdout           string
 		wantErr              string
 	}{
 		{
 			name: "simple_success",
 			flagInputs: map[string]string{
-				"name_to_greet": "🐈",
+				"name_to_greet":   "Bob",
+				"emoji_suffix":    "🐈",
+				"defaulted_input": "default",
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -213,7 +221,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, 🐈\n",
+			wantStdout: "Hello, Bob🐈\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -223,7 +231,9 @@ steps:
 		{
 			name: "keep_temp_dirs_on_success_if_flag",
 			flagInputs: map[string]string{
-				"name_to_greet": "🐈",
+				"name_to_greet":   "Bob",
+				"emoji_suffix":    "🐈",
+				"defaulted_input": "default",
 			},
 			flagKeepTempDirs: true,
 			flagSpec:         "spec.yaml",
@@ -233,7 +243,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, 🐈\n",
+			wantStdout: "Hello, Bob🐈\n",
 			wantScratchContents: map[string]string{
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -254,7 +264,9 @@ steps:
 		{
 			name: "keep_temp_dirs_on_failure_if_flag",
 			flagInputs: map[string]string{
-				"name_to_greet": "🐈",
+				"name_to_greet":   "Bob",
+				"emoji_suffix":    "🐈",
+				"defaulted_input": "default",
 			},
 			flagKeepTempDirs: true,
 			flagSpec:         "spec.yaml",
@@ -269,7 +281,9 @@ steps:
 		{
 			name: "existing_dest_file_with_overwrite_flag_should_succeed",
 			flagInputs: map[string]string{
-				"name_to_greet": "🐈",
+				"name_to_greet":   "Bob",
+				"emoji_suffix":    "🐈",
+				"defaulted_input": "default",
 			},
 			flagForceOverwrite: true,
 			existingDestContents: map[string]string{
@@ -282,7 +296,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, 🐈\n",
+			wantStdout: "Hello, Bob🐈\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "new contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -292,7 +306,9 @@ steps:
 		{
 			name: "existing_dest_file_without_overwrite_flag_should_fail",
 			flagInputs: map[string]string{
-				"name_to_greet": "🐈",
+				"name_to_greet":   "Bob",
+				"emoji_suffix":    "🐈",
+				"defaulted_input": "default",
 			},
 			flagForceOverwrite: false,
 			existingDestContents: map[string]string{
@@ -305,7 +321,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, 🐈\n",
+			wantStdout: "Hello, Bob🐈\n",
 			wantDestContents: map[string]string{
 				"file1.txt": "old contents",
 			},
@@ -321,6 +337,60 @@ steps:
 			getterErr:    fmt.Errorf("fake getter error for testing"),
 			removeAllErr: fmt.Errorf("fake removeAll error for testing"),
 			wantErr:      "fake getter error for testing\nfake removeAll error for testing",
+		},
+		{
+			name: "defaults_inputs",
+			flagInputs: map[string]string{
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Bob🐈\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantFlagInputs: map[string]string{
+				"name_to_greet":   "Bob",
+				"emoji_suffix":    "🐈",
+				"defaulted_input": "default",
+			},
+		},
+		{
+			name: "handles_unknown_inputs",
+			flagInputs: map[string]string{
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
+				"pets_name":     "Fido",
+				"pets_age":      "15",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantErr: `unknown input(s): pets_age, pets_name`,
+		},
+		{
+			name:       "handles_missing_required_inputs",
+			flagInputs: map[string]string{},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "file1 contents",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantErr: `missing required input(s): emoji_suffix, name_to_greet`,
 		},
 	}
 
@@ -359,6 +429,7 @@ steps:
 				flagSpec:           "spec.yaml",
 				source:             "github.com/myorg/myrepo",
 			}
+
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			err := r.realRun(ctx, rp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
@@ -367,6 +438,12 @@ steps:
 
 			if fg.gotSource != r.source {
 				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.source)
+			}
+
+			if tc.wantFlagInputs != nil {
+				if diff := cmp.Diff(r.flagInputs, tc.wantFlagInputs); diff != "" {
+					t.Errorf("flagInputs was not as expected; (-got,+want): %s", diff)
+				}
 			}
 
 			if diff := cmp.Diff(stdoutBuf.String(), tc.wantStdout); diff != "" {

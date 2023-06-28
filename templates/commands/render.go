@@ -28,6 +28,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
@@ -294,6 +296,16 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
+	if unknownInputs := r.checkUnknownInputs(spec); len(unknownInputs) > 0 {
+		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+	}
+
+	r.collapseDefaultInputs(spec)
+
+	if requiredInputs := r.checkRequiredInputs(spec); len(requiredInputs) > 0 {
+		return fmt.Errorf("missing required input(s): %s", strings.Join(requiredInputs, ", "))
+	}
+
 	scratchDir, err := rp.tempDirNamer(scratchDirNamePart)
 	if err != nil {
 		return err
@@ -305,6 +317,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	logger.Infof("created temporary scratch directory at: %s", scratchDir)
 
 	if err := executeSpec(ctx, spec, &stepParams{
+		flagSpec:    r.flagSpec,
 		inputs:      r.flagInputs,
 		fs:          rp.fs,
 		scratchDir:  scratchDir,
@@ -318,12 +331,62 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	// first do a dry-run to check that the copy is likely to  succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
-		if err := copyRecursive(nil, scratchDir, r.flagDest, rp.fs, r.flagForceOverwrite, dryRun); err != nil {
+		params := &copyParams{
+			srcRoot:   scratchDir,
+			dstRoot:   r.flagDest,
+			rfs:       rp.fs,
+			overwrite: r.flagForceOverwrite,
+			dryRun:    dryRun,
+		}
+		if err := copyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// checkUnknownInputs checks for any unknown input flags and returns them in a slice.
+func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
+	specInputs := make(map[string]any, len(spec.Inputs))
+	for _, v := range spec.Inputs {
+		specInputs[v.Name.Val] = struct{}{}
+	}
+
+	unknownInputs := make([]string, 0, len(r.flagInputs))
+	for key := range r.flagInputs {
+		if _, ok := specInputs[key]; !ok {
+			unknownInputs = append(unknownInputs, key)
+		}
+	}
+
+	sort.Strings(unknownInputs)
+
+	return unknownInputs
+}
+
+// collapseDefaultInputs defaults any missing input flags if default is set.
+func (r *Render) collapseDefaultInputs(spec *model.Spec) {
+	for _, input := range spec.Inputs {
+		if _, ok := r.flagInputs[input.Name.Val]; !ok && input.Default != nil {
+			r.flagInputs[input.Name.Val] = input.Default.Val
+		}
+	}
+}
+
+// checkRequiredInputs checks for missing input flags returns them as a slice.
+func (r *Render) checkRequiredInputs(spec *model.Spec) []string {
+	requiredInputs := make([]string, 0, len(r.flagInputs))
+
+	for _, input := range spec.Inputs {
+		if _, ok := r.flagInputs[input.Name.Val]; !ok {
+			requiredInputs = append(requiredInputs, input.Name.Val)
+		}
+	}
+
+	sort.Strings(requiredInputs)
+
+	return requiredInputs
 }
 
 func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
@@ -337,6 +400,7 @@ func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
 
 type stepParams struct {
 	fs          renderFS
+	flagSpec    string
 	inputs      map[string]string
 	scratchDir  string
 	stdout      io.Writer
@@ -389,7 +453,8 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun boo
 }
 
 func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error) {
-	f, err := fs.Open(filepath.Join(templateDir, flagSpec))
+	specPath := filepath.Join(templateDir, flagSpec)
+	f, err := fs.Open(specPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
 	}

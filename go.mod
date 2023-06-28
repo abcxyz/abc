@@ -3,7 +3,7 @@ module github.com/abcxyz/abc
 go 1.20
 
 require (
-	github.com/abcxyz/pkg v0.0.0-20230615204628-683ea9d2f9bd
+	github.com/abcxyz/pkg v0.0.0-20230627122505-f65777eea99c
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-getter/v2 v2.2.1
 	github.com/posener/complete/v2 v2.0.1-alpha.13

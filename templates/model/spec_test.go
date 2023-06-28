@@ -41,8 +41,8 @@ kind: 'Template'
 desc: 'A simple template that just prints and exits'
 inputs:
 - name: 'person_name'
-  required: false  # The default is required=true
   desc: 'An optional name of a person to greet'
+  default: 'default value'
 
 steps:
 - desc: 'Print a message'
@@ -56,9 +56,9 @@ steps:
 				Desc: String{Val: "A simple template that just prints and exits"},
 				Inputs: []*Input{
 					{
-						Name:     String{Val: "person_name"},
-						Desc:     String{Val: "An optional name of a person to greet"},
-						Required: Bool{Val: false},
+						Name:    String{Val: "person_name"},
+						Desc:    String{Val: "An optional name of a person to greet"},
+						Default: &String{Val: "default value"},
 					},
 				},
 				Steps: []*Step{
@@ -102,16 +102,15 @@ kind: 'Template'
 desc: 'A simple template that just prints and exits'
 inputs:
 - name: 'person_name'
-  required: false  # The default is required=true
   desc: 'An optional name of a person to greet'
-not_a_real_field: 'oops'
+  not_a_real_field: 'oops'
 
 steps:
 - desc: 'Print a message'
   action: 'print'
   params:
     message: 'Hello'`,
-			wantUnmarshalErr: `invalid config near line 9 column 1: unknown field name "not_a_real_field"`,
+			wantUnmarshalErr: `invalid config near line 8 column 3: unknown field name "not_a_real_field"`,
 		},
 	}
 
@@ -159,21 +158,21 @@ func TestUnmarshalInput(t *testing.T) {
 			name: "simple_case_should_pass",
 			in: `name: 'person_name'
 desc: "The name of a person to greet"
-required: false`,
+default: "default"`,
 			want: &Input{
-				Name:     String{Val: "person_name"},
-				Desc:     String{Val: "The name of a person to greet"},
-				Required: Bool{Val: false},
+				Name:    String{Val: "person_name"},
+				Desc:    String{Val: "The name of a person to greet"},
+				Default: &String{Val: "default"},
 			},
 		},
 		{
-			name: "default_true_for_required",
+			name: "missing_default_is_nil",
 			in: `name: 'person_name'
 desc: "The name of a person to greet"`,
 			want: &Input{
-				Name:     String{Val: "person_name"},
-				Desc:     String{Val: "The name of a person to greet"},
-				Required: Bool{Val: true},
+				Name:    String{Val: "person_name"},
+				Desc:    String{Val: "The name of a person to greet"},
+				Default: nil,
 			},
 		},
 		{
@@ -342,6 +341,30 @@ params:
 						},
 						{
 							Val: "q/r/s",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "include_with_skip",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths: ['.']
+  skip: ['x/y']`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					Paths: []String{
+						{
+							Val: ".",
+						},
+					},
+					Skip: []String{
+						{
+							Val: "x/y",
 						},
 					},
 				},

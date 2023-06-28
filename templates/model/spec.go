@@ -58,7 +58,7 @@ import (
 // caller to forget, and thereby introduce bugs.
 //
 // If the Spec parses successfully but then fails validation, the spec will be
-// returned along with the parse error.
+// returned along with the validation error.
 func DecodeSpec(r io.Reader) (*Spec, error) {
 	dec := newDecoder(r)
 	var spec Spec
@@ -123,23 +123,21 @@ type Input struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	Name     String `yaml:"name"`
-	Desc     String `yaml:"desc"`
-	Required Bool   `yaml:"required"`
+	Name    String  `yaml:"name"`
+	Desc    String  `yaml:"desc"`
+	Default *String `yaml:"default,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Input) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"name", "desc", "required"}
+	knownYAMLFields := []string{"name", "desc", "default"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
 
 	// Unmarshal with default values
 	type shadowType Input
-	shadow := &shadowType{ // unmarshal into a type that doesn't have UnmarshalYAML
-		Required: Bool{Val: true},
-	}
+	shadow := &shadowType{} // unmarshal into a type that doesn't have UnmarshalYAML
 
 	if err := n.Decode(shadow); err != nil {
 		return err
@@ -295,11 +293,12 @@ type Include struct {
 	As          []String `yaml:"as"`
 	StripPrefix String   `yaml:"strip_prefix"`
 	AddPrefix   String   `yaml:"add_prefix"`
+	Skip        []String `yaml:"skip"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths", "as", "strip_prefix", "add_prefix"}
+	knownYAMLFields := []string{"paths", "as", "strip_prefix", "add_prefix", "skip"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}

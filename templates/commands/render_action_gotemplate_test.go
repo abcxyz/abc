@@ -79,6 +79,22 @@ func TestActionGoTemplate(t *testing.T) {
 			},
 		},
 		{
+			name: "path_expression",
+			inputs: map[string]string{
+				"greeting": "Hello",
+				"person":   "Alice",
+			},
+			initContents: map[string]string{
+				"a_Alice.txt": "{{.greeting}}, {{.person}}!",
+			},
+			gt: &model.GoTemplate{
+				Paths: modelStrings([]string{"a_{{.person}}.txt"}),
+			},
+			want: map[string]string{
+				"a_Alice.txt": "Hello, Alice!",
+			},
+		},
+		{
 			name: "missing_var",
 			inputs: map[string]string{
 				"something_else": "foo",
@@ -117,19 +133,23 @@ func TestActionGoTemplate(t *testing.T) {
 				"suffix": "testsuffix",
 			},
 			initContents: map[string]string{
-				"list.txt":   `{{ range split .list "," }}{{.}} {{end}}`,
-				"trim.txt":   `{{ trimSpace .trim }}`,
-				"prefix.txt": `{{ trimPrefix .prefix "prefix" }}`,
-				"suffix.txt": `{{ trimSuffix .suffix "suffix" }}`,
+				"replace_all.txt":  `{{ replace "my-test-project" "-" "_" -1 }}`,
+				"replace_some.txt": `{{ replace "my-test-project" "-" "_" 1 }}`,
+				"list.txt":         `{{ range split .list "," }}{{.}} {{end}}`,
+				"trim.txt":         `{{ trimSpace .trim }}`,
+				"prefix.txt":       `{{ trimPrefix .prefix "prefix" }}`,
+				"suffix.txt":       `{{ trimSuffix .suffix "suffix" }}`,
 			},
 			gt: &model.GoTemplate{
 				Paths: modelStrings([]string{"."}),
 			},
 			want: map[string]string{
-				"list.txt":   `one two three `,
-				"trim.txt":   `padded`,
-				"prefix.txt": `test`,
-				"suffix.txt": `test`,
+				"replace_all.txt":  `my_test_project`,
+				"replace_some.txt": `my_test-project`,
+				"list.txt":         `one two three `,
+				"trim.txt":         `padded`,
+				"prefix.txt":       `test`,
+				"suffix.txt":       `test`,
 			},
 		},
 	}
