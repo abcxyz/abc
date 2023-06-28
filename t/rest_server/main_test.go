@@ -42,7 +42,7 @@ func TestRealMain(t *testing.T) {
 	}()
 
 	time.Sleep(100 * time.Millisecond) // wait for server startup
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%s/", defaultPort))
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%s/", *port))
 	if err != nil {
 		t.Fatal(err)
 	}
