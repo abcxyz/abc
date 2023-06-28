@@ -28,14 +28,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
-	"github.com/abcxyz/abc/flags"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
-	"github.com/mattn/go-isatty"
 	"github.com/posener/complete/v2/predict"
 )
 
@@ -51,12 +50,9 @@ const (
 
 type Render struct {
 	cli.BaseCommand
-	automationFlags flags.AutomationFlags
 
 	testFS     renderFS
 	testGetter getterClient
-
-	hasTTY bool
 
 	source             string
 	flagSpec           string
@@ -116,8 +112,6 @@ are accepted:
 
 func (r *Render) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
-
-	r.automationFlags.AddAutomationFlags(set)
 
 	f := set.NewSection("RENDER OPTIONS")
 	f.StringVar(&cli.StringVar{
@@ -230,8 +224,6 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	r.hasTTY = (r.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
-
 	fSys := r.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
 		fSys = &realFS{}
@@ -302,17 +294,13 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	if unknownInputs := r.processUnknownInputs(spec); len(unknownInputs) > 0 {
+	if unknownInputs := r.checkUnknownInputs(spec); len(unknownInputs) > 0 {
 		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
 
-	if !r.automationFlags.FlagNoPrompt && r.hasTTY {
-		if err := r.promptForInputs(ctx, spec); err != nil {
-			return fmt.Errorf("failed to prompt for inputs: %w", err)
-		}
-	}
+	r.collapseDefaultInputs(spec)
 
-	if requiredInputs := r.processRequiredInputs(spec); len(requiredInputs) > 0 {
+	if requiredInputs := r.checkRequiredInputs(spec); len(requiredInputs) > 0 {
 		return fmt.Errorf("missing required input(s): %s", strings.Join(requiredInputs, ", "))
 	}
 
@@ -347,68 +335,45 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	return nil
 }
 
-// processUnknownInputs checks for any unknown input flags and returns them in a slice.
-func (r *Render) processUnknownInputs(spec *model.Spec) []string {
-	unknownInputs := make([]string, 0)
-
-	specInputs := make(map[string]any)
+// checkUnknownInputs checks for any unknown input flags and returns them in a slice.
+func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
+	specInputs := make(map[string]any, len(spec.Inputs))
 	for _, v := range spec.Inputs {
 		specInputs[v.Name.Val] = struct{}{}
 	}
 
+	unknownInputs := make([]string, 0, len(r.flagInputs))
 	for key := range r.flagInputs {
 		if _, ok := specInputs[key]; !ok {
 			unknownInputs = append(unknownInputs, key)
 		}
 	}
 
+	sort.Strings(unknownInputs)
+
 	return unknownInputs
 }
 
-// promptForInputs checks the flag inputs and prompts for missing inputs,
-// using a default value if configured.
-func (r *Render) promptForInputs(ctx context.Context, spec *model.Spec) error {
-	for _, i := range spec.Inputs {
-		_, ok := r.flagInputs[i.Name.Val]
-		if !ok {
-			defaultText := ""
-			if i.Default != nil {
-				defaultText = fmt.Sprintf(" (%s)", i.Default.Val)
-			}
-
-			v, err := r.Prompt(ctx, "Enter value for %s%s:   ", i.Name.Val, defaultText)
-			if err != nil {
-				return fmt.Errorf("failed to read user input for %s: %w", i.Name.Val, err)
-			}
-
-			r.flagInputs[i.Name.Val] = v
-
-			if r.flagInputs[i.Name.Val] == "" && i.Default != nil {
-				r.flagInputs[i.Name.Val] = i.Default.Val
-			}
+// collapseDefaultInputs defaults any missing input flags if default is set.
+func (r *Render) collapseDefaultInputs(spec *model.Spec) {
+	for _, input := range spec.Inputs {
+		if _, ok := r.flagInputs[input.Name.Val]; !ok && input.Default != nil {
+			r.flagInputs[input.Name.Val] = input.Default.Val
 		}
 	}
-
-	return nil
 }
 
-// processRequiredInputs checks the flag inputs for missing inputs and sets them to
-// a default value if configured. If no default value is configured, the missing input
-// keys are returned as a slice.
-func (r *Render) processRequiredInputs(spec *model.Spec) []string {
-	requiredInputs := make([]string, 0)
+// checkRequiredInputs checks for missing input flags returns them as a slice.
+func (r *Render) checkRequiredInputs(spec *model.Spec) []string {
+	requiredInputs := make([]string, 0, len(r.flagInputs))
 
-	for _, i := range spec.Inputs {
-		_, ok := r.flagInputs[i.Name.Val]
-		if !ok {
-			if i.Default != nil {
-				r.flagInputs[i.Name.Val] = i.Default.Val
-				continue
-			}
-
-			requiredInputs = append(requiredInputs, i.Name.Val)
+	for _, input := range spec.Inputs {
+		if _, ok := r.flagInputs[input.Name.Val]; !ok {
+			requiredInputs = append(requiredInputs, input.Name.Val)
 		}
 	}
+
+	sort.Strings(requiredInputs)
 
 	return requiredInputs
 }

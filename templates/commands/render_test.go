@@ -26,7 +26,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/abcxyz/abc/flags"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -105,7 +104,6 @@ func TestParseFlags(t *testing.T) {
 			opts := []cmp.Option{
 				cmp.AllowUnexported(Render{}),
 				cmpopts.IgnoreFields(Render{}, "BaseCommand"),
-				cmpopts.IgnoreFields(Render{}, "automationFlags"),
 			}
 			if diff := cmp.Diff(r, tc.want, opts...); diff != "" {
 				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", r, tc.want, diff)
@@ -196,8 +194,6 @@ steps:
 		templateContents     map[string]string
 		existingDestContents map[string]string
 		stdinInput           string
-		hasTTY               bool
-		flagNoPrompt         bool
 		flagInputs           map[string]string
 		flagKeepTempDirs     bool
 		flagSpec             string
@@ -343,11 +339,10 @@ steps:
 			wantErr:      "fake getter error for testing\nfake removeAll error for testing",
 		},
 		{
-			name:       "prompts_for_input",
-			hasTTY:     true,
-			stdinInput: "Bob",
+			name: "defaults_inputs",
 			flagInputs: map[string]string{
-				"emoji_suffix": "🐈",
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -369,12 +364,12 @@ steps:
 			},
 		},
 		{
-			name:         "unknown_inputs",
-			flagNoPrompt: true,
+			name: "handles_unknown_inputs",
 			flagInputs: map[string]string{
 				"name_to_greet": "Bob",
 				"emoji_suffix":  "🐈",
 				"pets_name":     "Fido",
+				"pets_age":      "15",
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -383,74 +378,10 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantErr: `unknown input(s): pets_name`,
+			wantErr: `unknown input(s): pets_age, pets_name`,
 		},
 		{
-			name:         "no_prompt_default_inputs",
-			flagNoPrompt: true,
-			flagInputs: map[string]string{
-				"name_to_greet": "Bob",
-				"emoji_suffix":  "🐈",
-			},
-			templateContents: map[string]string{
-				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantStdout: "Hello, Bob🐈\n",
-			wantDestContents: map[string]string{
-				"file1.txt":            "file1 contents",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantFlagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
-			},
-		},
-		{
-			name:         "no_prompt_missing_required_inputs",
-			flagNoPrompt: true,
-			flagInputs:   map[string]string{},
-			templateContents: map[string]string{
-				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantErr: `missing required input(s): name_to_greet, emoji_suffix`,
-		},
-		{
-			name: "no_tty_default_inputs",
-			flagInputs: map[string]string{
-				"name_to_greet": "Bob",
-				"emoji_suffix":  "🐈",
-			},
-			templateContents: map[string]string{
-				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantStdout: "Hello, Bob🐈\n",
-			wantDestContents: map[string]string{
-				"file1.txt":            "file1 contents",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantFlagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
-			},
-		},
-		{
-			name:       "no_tty_missing_required_inputs",
+			name:       "handles_missing_required_inputs",
 			flagInputs: map[string]string{},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -459,7 +390,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantErr: `missing required input(s): name_to_greet, emoji_suffix`,
+			wantErr: `missing required input(s): emoji_suffix, name_to_greet`,
 		},
 	}
 
@@ -491,10 +422,6 @@ steps:
 				tempDirNamer: tempDirNamer,
 			}
 			r := &Render{
-				automationFlags: flags.AutomationFlags{
-					FlagNoPrompt: tc.flagNoPrompt,
-				},
-				hasTTY:             tc.hasTTY,
 				flagDest:           dest,
 				flagForceOverwrite: tc.flagForceOverwrite,
 				flagInputs:         tc.flagInputs,
@@ -502,9 +429,6 @@ steps:
 				flagSpec:           "spec.yaml",
 				source:             "github.com/myorg/myrepo",
 			}
-
-			stdin, _, _ := r.Pipe()
-			stdin.WriteString(tc.stdinInput)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			err := r.realRun(ctx, rp)
