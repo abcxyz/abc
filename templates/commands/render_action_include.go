@@ -35,6 +35,14 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		return err
 	}
 
+	skipStrs := make([]string, len(inc.Skip))
+	for i, skip := range inc.Skip {
+		skipStrs[i], err = parseAndExecuteGoTmpl(skip.Pos, skip.Val, sp.inputs)
+		if err != nil {
+			return err
+		}
+	}
+
 	for i, p := range inc.Paths {
 		// Paths may contain template expressions, so render them first.
 		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
@@ -66,6 +74,14 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		absSrc := filepath.Join(sp.templateDir, walkRelPath)
 		absDst := filepath.Join(sp.scratchDir, relDst)
 
+		skip := skipStrs
+		if absSrc == sp.templateDir {
+			// If we're copying the template root directory, automatically skip
+			// the spec.yaml file, because it's very unlikely that the user actually
+			// wants the spec file in the template output.
+			skip = append([]string{sp.flagSpec}, skipStrs...)
+		}
+
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				return model.ErrWithPos(p.Pos, "include path doesn't exist: %q", walkRelPath) //nolint:wrapcheck
@@ -73,12 +89,20 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
-		// Allow later includes to replace earlier includes in the scratch
-		// directory. This doesn't affect whether files in the final destination
-		// directory will be overwritten; that comes later.
-		const overwrite = true
+		params := &copyParams{
+			dryRun:  false,
+			dstRoot: absDst,
 
-		if err := copyRecursive(p.Pos, absSrc, absDst, sp.fs, overwrite, false); err != nil {
+			// Allow later includes to replace earlier includes in the scratch
+			// directory. This doesn't affect whether files in the final destination
+			// directory will be overwritten; that comes later.
+			overwrite: true,
+
+			rfs:     sp.fs,
+			skip:    skip,
+			srcRoot: absSrc,
+		}
+		if err := copyRecursive(ctx, p.Pos, params); err != nil {
 			return model.ErrWithPos(p.Pos, "copying failed: %w", err) //nolint:wrapcheck
 		}
 	}

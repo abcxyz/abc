@@ -58,7 +58,7 @@ import (
 // caller to forget, and thereby introduce bugs.
 //
 // If the Spec parses successfully but then fails validation, the spec will be
-// returned along with the parse error.
+// returned along with the validation error.
 func DecodeSpec(r io.Reader) (*Spec, error) {
 	dec := newDecoder(r)
 	var spec Spec
@@ -295,11 +295,12 @@ type Include struct {
 	As          []String `yaml:"as"`
 	StripPrefix String   `yaml:"strip_prefix"`
 	AddPrefix   String   `yaml:"add_prefix"`
+	Skip        []String `yaml:"skip"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths", "as", "strip_prefix", "add_prefix"}
+	knownYAMLFields := []string{"paths", "as", "strip_prefix", "add_prefix", "skip"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
