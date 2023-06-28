@@ -16,6 +16,7 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,7 +29,9 @@ import (
 	"text/template"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/logging"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 // Called with the contents of a file, and returns the new contents of the file
@@ -192,65 +195,88 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 
 var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)
 
-// "srcRoot" may be a file or directory. "pos" is only used for error messages.
-func copyRecursive(pos *model.ConfigPos, srcRoot, dstRoot string, rfs renderFS, overwrite, dryRun bool) (outErr error) {
-	return fs.WalkDir(rfs, srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
+type copyParams struct {
+	// The file or directory from which to copy
+	srcRoot string
+	// The output directory
+	dstRoot string
+	// The filesytem to use
+	rfs renderFS
+	// Overwrite files if they already exists, rather than the default behavior
+	// of returning error.
+	overwrite bool
+	// Don't actually copy anything, just check whether the copy would be likely
+	// to succeed.
+	dryRun bool
+	// A set of paths not to be copied. These paths are relative to srcRoot.
+	skip []string
+}
+
+func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
+	return fs.WalkDir(p.rfs, p.srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
+		logger := logging.FromContext(ctx)
+
 		if err != nil {
 			return err // There was some filesystem error. Give up.
+		}
+
+		// We don't have to worry about symlinks here because we passed
+		// DisableSymlinks=true to go-getter.
+
+		relToSrc, err := filepath.Rel(p.srcRoot, path)
+		if err != nil {
+			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", p.srcRoot, path, err) //nolint:wrapcheck
+		}
+		if slices.Contains(p.skip, relToSrc) {
+			logger.Debugf("copyRecursive: skipping file per configuration: %s", relToSrc)
+			return fs.SkipDir
 		}
 
 		if de.IsDir() {
 			return nil
 		}
 
-		// We don't have to worry about symlinks here because we passed
-		// DisableSymlinks=true to go-getter.
-
-		relToSrc, err := filepath.Rel(srcRoot, path)
-		if err != nil {
-			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", srcRoot, path, err) //nolint:wrapcheck
-		}
-		dst := filepath.Join(dstRoot, relToSrc)
+		dst := filepath.Join(p.dstRoot, relToSrc)
 
 		// The spec file may specify a file to copy that's deep in a
 		// directory tree, without naming its parent directory. We can't
 		// rely on WalkDir having traversed the parent directory of $path,
 		// so we must create the target directory if it doesn't exist.
 		inDir := filepath.Dir(dst)
-		if err := mkdirAllChecked(pos, rfs, inDir, dryRun); err != nil {
+		if err := mkdirAllChecked(pos, p.rfs, inDir, p.dryRun); err != nil {
 			return err
 		}
 
-		dstInfo, err := rfs.Stat(dst)
+		dstInfo, err := p.rfs.Stat(dst)
 		if err == nil {
 			if dstInfo.IsDir() {
 				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", relToSrc) //nolint:wrapcheck
 			}
-			if !overwrite {
+			if !p.overwrite {
 				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", relToSrc) //nolint:wrapcheck
 			}
 		} else if !os.IsNotExist(err) {
 			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
 		}
 
-		srcInfo, err := rfs.Stat(path)
+		srcInfo, err := p.rfs.Stat(path)
 		if err != nil {
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
-		rf, err := rfs.Open(path)
+		rf, err := p.rfs.Open(path)
 		if err != nil {
 			return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
 		}
 		defer func() { outErr = errors.Join(outErr, rf.Close()) }()
 
-		if dryRun {
+		if p.dryRun {
 			return nil
 		}
 
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
-		wf, err := rfs.OpenFile(dst, os.O_CREATE|os.O_WRONLY, srcInfo.Mode().Perm())
+		wf, err := p.rfs.OpenFile(dst, os.O_CREATE|os.O_WRONLY, srcInfo.Mode().Perm())
 		if err != nil {
 			return model.ErrWithPos(pos, "OpenFile(): %w", err) //nolint:wrapcheck
 		}

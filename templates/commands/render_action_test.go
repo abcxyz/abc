@@ -16,6 +16,7 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -222,6 +223,7 @@ func TestCopyRecursive(t *testing.T) {
 		suffix               string
 		overwrite            bool
 		dryRun               bool
+		skip                 []string
 		want                 map[string]modeAndContents
 		toDirInitialContents map[string]modeAndContents // only used in the tests for overwriting
 		mkdirAllErr          error
@@ -380,6 +382,34 @@ func TestCopyRecursive(t *testing.T) {
 			wantErr: "cannot overwrite a file with a directory of the same name",
 		},
 		{
+			name: "skipped_files",
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":        {0o600, "file1 contents"},
+				"dir1/file2.txt":   {0o600, "file2 contents"},
+				"skip1.txt":        {0o600, "skip1.txt contents"},
+				"subdir/skip2.txt": {0o600, "skip2.txt contents"},
+			},
+			skip: []string{"skip1.txt", "subdir/skip2.txt"},
+			want: map[string]modeAndContents{
+				"file1.txt":      {0o600, "file1 contents"},
+				"dir1/file2.txt": {0o600, "file2 contents"},
+			},
+		},
+		{
+			name: "skipped_directory",
+			fromDirContents: map[string]modeAndContents{
+				"file1.txt":          {0o600, "file1 contents"},
+				"subdir/file2.txt":   {0o600, "file2 contents"},
+				"subdir/file3.txt":   {0o600, "file3 contents"},
+				"otherdir/file4.txt": {0o600, "file4 contents"},
+			},
+			skip: []string{"subdir"},
+			want: map[string]modeAndContents{
+				"file1.txt":          {0o600, "file1 contents"},
+				"otherdir/file4.txt": {0o600, "file4 contents"},
+			},
+		},
+		{
 			name: "MkdirAll error should be returned",
 			fromDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
@@ -444,7 +474,15 @@ func TestCopyRecursive(t *testing.T) {
 				openFileErr: tc.openFileErr,
 				statErr:     tc.statErr,
 			}
-			err := copyRecursive(&model.ConfigPos{}, from, to, fs, tc.overwrite, tc.dryRun)
+			ctx := context.Background()
+			err := copyRecursive(ctx, &model.ConfigPos{}, &copyParams{
+				srcRoot:   from,
+				dstRoot:   to,
+				rfs:       fs,
+				overwrite: tc.overwrite,
+				dryRun:    tc.dryRun,
+				skip:      tc.skip,
+			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf(diff)
 			}
