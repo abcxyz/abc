@@ -1,10 +1,8 @@
-# Example: Hello, jupiter
+# Example: REST server
 
-This is the simplest possible demonstration of how templating works. Here we
-just take a "hello world" program and turn it into a "hello jupiter" program
-by doing a simple string replacement.
+Simple HTTP/JSON REST server implemented in Go, using go-chi for HTTP routing.
 
-To run this:
+To run this, cd to the root of this git repo, then run these steps:
 
 1. cd into an empty directory
 
@@ -22,17 +20,24 @@ To run this:
 
     This only works if you have go installed (https://go.dev/doc/install) and have the Go binary directory in your $PATH (try PATH=$PATH:~/go/bin).
 
-1. Execute the template defined by the `spec.yaml` file in the example directory.
+1. Execute the template defined in the `t` directory.
 This will output a file named `main.go` in your working directory containing
 the transformed program.
 
     ```shell
-    $ abc templates render github.com/abcxyz/abc.git//examples/templates/render/hello_jupiter
+    $ abc templates render github.com/abcxyz/abc.git//t/rest_server
     ```
 
 1. Run the transformed program:
 
     ```shell
     $ go run .
-    Hello, jupiter!
+    [yyyy/mm/dd hh:mm:ss] starting server on 8080
+    ```
+
+1. In a separate shell, run:
+
+    ```shell
+    $ curl localhost:8080
+    {"message":"hello world"}
     ```
