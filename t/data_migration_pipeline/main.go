@@ -4,19 +4,19 @@ import (
 	"context"
 	"encoding/csv"
 	"flag"
-	"io"
 	"log"
-	"os"
+	"strings"
 
 	"github.com/apache/beam/sdks/v2/go/pkg/beam"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/spannerio"
+	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/textio"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/runners/direct"
 )
 
 var (
-	input = flag.String("input-csv-path", "", "The path of the input MySQL CSV dumped .")
-	path  = flag.String("spanner-database-path", "", "The path of the output Spanner database.")
-	table = flag.String("spanner-table", "", "The name of the output Spanner table.")
+	input    = flag.String("input-csv-path", "", "The path of the input MySQL CSV dumped .")
+	database = flag.String("spanner-database", "", "The path of the output Spanner database.")
+	table    = flag.String("spanner-table", "", "The name of the output Spanner table.")
 )
 
 type DataModel struct {
@@ -36,32 +36,6 @@ func parseDataModel(record []string) *DataModel {
 	}
 }
 
-// readCSVFile reads the CSV file and returns a PCollection of strings representing each line.
-func readCSVFile(s beam.Scope, filePath string) beam.PCollection {
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Fatalf("Failed to open file: %v", err)
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-
-	// Read each line from the CSV file.
-	dataModels := beam.Impulse(s)
-	return beam.ParDo(s, func(ctx context.Context, emit func(*DataModel)) {
-		for {
-			record, err := reader.Read()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Fatalf("Failed to read record: %v", err)
-			}
-			emit(parseDataModel(record))
-		}
-	}, dataModels)
-}
-
 func main() {
 	flag.Parse()
 	beam.Init()
@@ -69,9 +43,23 @@ func main() {
 	// Create the pipeline object and the root scope
 	p, s := beam.NewPipelineWithRoot()
 
-	dataModels := readCSVFile(s, *input)
+	lines, err := textio.Immediate(s, *input)
+	if err != nil {
+		log.Fatal("Failed to read %v: %v", *input, err)
+		return
+	}
 
-	spannerio.Write(s, database, table, dataModels)
+	// Convert each line to a data model
+	dataModels := beam.ParDo(s, func(line string, emit func(*DataModel)) {
+		reader := csv.NewReader(strings.NewReader(line))
+		csvLine, err := reader.Read()
+		if err != nil {
+			log.Fatalf("Failed to read record: %v", err)
+		}
+		emit(parseDataModel(csvLine))
+	}, lines)
+
+	spannerio.Write(s, *database, *table, dataModels)
 
 	// Run the pipeline.
 	if _, err := direct.Execute(context.Background(), p); err != nil {
