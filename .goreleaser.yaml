@@ -23,9 +23,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: abc
-    main: ./cmd/abc
-    binary: abc
+  - id: 'abc'
+    main: './cmd/abc'
+    binary: 'abc'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - '-a'
@@ -57,10 +57,10 @@ checksum:
   algorithm: 'sha512'
 
 changelog:
-  use: github
-  sort: asc
+  use: 'github'
+  sort: 'asc'
 
 # Release to github.
 release:
   draft: false
-  mode: replace
+  mode: 'replace'
