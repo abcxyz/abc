@@ -79,6 +79,22 @@ func TestActionGoTemplate(t *testing.T) {
 			},
 		},
 		{
+			name: "path_expression",
+			inputs: map[string]string{
+				"greeting": "Hello",
+				"person":   "Alice",
+			},
+			initContents: map[string]string{
+				"a_Alice.txt": "{{.greeting}}, {{.person}}!",
+			},
+			gt: &model.GoTemplate{
+				Paths: modelStrings([]string{"a_{{.person}}.txt"}),
+			},
+			want: map[string]string{
+				"a_Alice.txt": "Hello, Alice!",
+			},
+		},
+		{
 			name: "missing_var",
 			inputs: map[string]string{
 				"something_else": "foo",
