@@ -195,20 +195,24 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 
 var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)
 
+// copyParams contains most of the parameters to copyRecursive(). There were too
+// many of these, so they've been factored out into a struct to avoid having the
+// function parameter list be really long.
 type copyParams struct {
-	// The file or directory from which to copy
+	// srcRoot is the file or directory from which to copy.
 	srcRoot string
-	// The output directory
+	// dstRoot is the output directory.
 	dstRoot string
-	// The filesytem to use
+	// rfs is the filesytem to use.
 	rfs renderFS
-	// Overwrite files if they already exists, rather than the default behavior
+	// overwrite files if they already exists, rather than the default behavior
 	// of returning error.
 	overwrite bool
-	// Don't actually copy anything, just check whether the copy would be likely
-	// to succeed.
+	// dryRun skips actually copy anything, just checks whether the copy would
+	// be likely to succeed.
 	dryRun bool
-	// A set of paths not to be copied. These paths are relative to srcRoot.
+	// skip is a set of paths not to be copied. These paths are relative to
+	// srcRoot. This lets certain special files be excluded from the output.
 	skip []string
 }
 
