@@ -34,6 +34,7 @@ func TestActionInclude(t *testing.T) {
 		include             *model.Include
 		templateContents    map[string]modeAndContents
 		inputs              map[string]string
+		flagSpec            string
 		wantScratchContents map[string]modeAndContents
 		statErr             error
 		wantErr             string
@@ -220,6 +221,35 @@ func TestActionInclude(t *testing.T) {
 			},
 			wantErr: "wasn't a prefix of the actual path",
 		},
+		{
+			name: "spec_yaml_should_be_skipped",
+			include: &model.Include{
+				Paths: modelStrings([]string{"."}),
+			},
+			flagSpec: "spec.yaml",
+			templateContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "my file contents"},
+				"spec.yaml": {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "spec_yaml_in_subdir_should_not_be_skipped",
+			include: &model.Include{
+				Paths: modelStrings([]string{"."}),
+			},
+			flagSpec: "spec.yaml",
+			templateContents: map[string]modeAndContents{
+				"file1.txt":        {0o600, "my file contents"},
+				"subdir/spec.yaml": {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file1.txt":        {0o600, "my file contents"},
+				"subdir/spec.yaml": {0o600, "spec contents"},
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -239,6 +269,7 @@ func TestActionInclude(t *testing.T) {
 			}
 
 			sp := &stepParams{
+				flagSpec: tc.flagSpec,
 				fs: &errorFS{
 					renderFS: &realFS{},
 					statErr:  tc.statErr,

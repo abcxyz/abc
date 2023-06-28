@@ -347,6 +347,30 @@ params:
 			},
 		},
 		{
+			name: "include_with_skip",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths: ['.']
+  skip: ['x/y']`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					Paths: []String{
+						{
+							Val: ".",
+						},
+					},
+					Skip: []String{
+						{
+							Val: "x/y",
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "wrong_number_of_as_paths",
 			in: `desc: 'mydesc'
 action: 'include'
