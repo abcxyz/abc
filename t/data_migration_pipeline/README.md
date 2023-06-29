@@ -30,7 +30,8 @@ the template program.
     $ gcloud components update
     $ gcloud emulators spanner start
     ```
-1. Create a dedicated gcloud configuration that allows disable authentication and override the endpoint. Once configured, your gcloud commands will be sent to the emulator instead of the production service. No worries, you'll be able to switch back to your previous configurations at the end of this guide.
+1. Create a dedicated gcloud configuration that allows disable authentication and override the endpoint.
+Once configured, your gcloud commands will be sent to the emulator instead of the production service. No worries, you'll be able to switch back to your previous configurations at the end of this guide.
 
     ```shell
     $ gcloud config configurations create emulator
@@ -44,6 +45,12 @@ the template program.
     $ gcloud spanner instances create test-instance \
    --config=emulator-config --description="Test Instance" --nodes=1
     $ gcloud spanner databases create testdb --instance=test-instance --ddl='CREATE TABLE mytable (Id STRING(36)) PRIMARY KEY(Id)'
+    ```
+1. Point your client libraries to the emulator.
+When pipeline starts, the client library automatically checks for SPANNER_EMULATOR_HOST and connects to the emulator if it is running.
+
+    ```shell
+    $ export SPANNER_EMULATOR_HOST=localhost:9010
     ```
 1. Run the data migration pipeline.
 
