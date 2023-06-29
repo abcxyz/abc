@@ -69,6 +69,25 @@ Examples of template locations:
   by the template but are not supplied by `--inputs`. This flag will skip such
   prompting and just fail if there are any missing inputs.
 
+#### Logging
+
+Use the environment variables `ABC_LOG_LEVEL` and `ABC_LOG_MODE` to configure
+logging.
+
+The valid values for `ABC_LOG_MODE` are:
+
+- `dev`: (the default) non-JSON logs, best for human readability in a terminal
+- `production`: JSON formatted logs, better for feeding into a program
+
+The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `warn`, `error`, and
+`fatal`. The default is `warn`.
+
+Example:
+
+```shell
+$ ABC_LOG_LEVEL=info abc templates render some_template_location
+```
+
 ## User Guide
 
 Start here if you want want to install ("render") a template using this CLI

@@ -218,6 +218,7 @@ func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
+	setLogDefaults()
 	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	if err := r.parseFlags(args); err != nil {
@@ -550,4 +551,13 @@ func destOK(fs fs.StatFS, dest string) error {
 	}
 
 	return nil
+}
+
+func setLogDefaults() {
+	if os.Getenv("ABC_LOG_MODE") == "" {
+		os.Setenv("ABC_LOG_MODE", "dev")
+	}
+	if os.Getenv("ABC_LOG_LEVEL") == "" {
+		os.Setenv("ABC_LOG_LEVEL", "warn")
+	}
 }
