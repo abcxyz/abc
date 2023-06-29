@@ -51,6 +51,19 @@ func parseDataModel(record []string) *DataModel {
 	}
 }
 
+// emitResult emits data models to be written to Spanner
+func emitResult(s beam.Scope, lines beam.PCollection) beam.PCollection {
+	dataModels := beam.ParDo(s, func(line string, emit func(*DataModel)) {
+		reader := csv.NewReader(strings.NewReader(line))
+		csvLine, err := reader.Read()
+		if err != nil {
+			log.Fatalf("Failed to read record: %v", err)
+		}
+		emit(parseDataModel(csvLine))
+	}, lines)
+	return dataModels
+}
+
 func main() {
 	flag.Parse()
 	beam.Init()
@@ -60,19 +73,12 @@ func main() {
 
 	lines, err := textio.Immediate(s, *input)
 	if err != nil {
-		log.Fatal("Failed to read %v: %v", *input, err)
+		log.Fatalf("Failed to read %v: %v", *input, err)
 		return
 	}
 
 	// Convert each line to a data model
-	dataModels := beam.ParDo(s, func(line string, emit func(*DataModel)) {
-		reader := csv.NewReader(strings.NewReader(line))
-		csvLine, err := reader.Read()
-		if err != nil {
-			log.Fatalf("Failed to read record: %v", err)
-		}
-		emit(parseDataModel(csvLine))
-	}, lines)
+	dataModels := emitResult(s, lines)
 
 	spannerio.Write(s, *database, *table, dataModels)
 
