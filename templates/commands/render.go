@@ -46,6 +46,9 @@ const (
 
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
+
+	defaultLogLevel = "warn"
+	defaultLogMode  = "dev"
 )
 
 type Render struct {
@@ -218,7 +221,7 @@ func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
-	setLogDefaults()
+	r.setLogEnvVars()
 	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	if err := r.parseFlags(args); err != nil {
@@ -510,6 +513,18 @@ func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs 
 	return merr
 }
 
+func (r *Render) setLogEnvVars() {
+	if os.Getenv("ABC_LOG_MODE") == "" {
+		os.Setenv("ABC_LOG_MODE", defaultLogMode)
+	}
+
+	if r.flagLogLevel != "" {
+		os.Setenv("ABC_LOG_LEVEL", r.flagLogLevel)
+	} else if os.Getenv("ABC_LOG_LEVEL") == "" {
+		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
+	}
+}
+
 // Generate the name for a temporary directory, without creating it. namePart is
 // an optional name that can be included to help template developers distinguish
 // between the various template directories created by this program, such as
@@ -551,13 +566,4 @@ func destOK(fs fs.StatFS, dest string) error {
 	}
 
 	return nil
-}
-
-func setLogDefaults() {
-	if os.Getenv("ABC_LOG_MODE") == "" {
-		os.Setenv("ABC_LOG_MODE", "dev")
-	}
-	if os.Getenv("ABC_LOG_LEVEL") == "" {
-		os.Setenv("ABC_LOG_LEVEL", "warn")
-	}
 }
