@@ -36,8 +36,12 @@ jobs:
 
   go_test:
     uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main' # ratchet:exclude
+    strategy:
+      matrix:
+        os: ['ubuntu-latest', 'macos-latest'] # TODO: add 'windows-latest' once it's known to work (issue #70)
     with:
       go_version: '1.20'
+      os: '${{ matrix.os }}'
 
   yaml_lint:
     uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
