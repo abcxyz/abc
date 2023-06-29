@@ -134,13 +134,7 @@ func TestDestOK(t *testing.T) {
 			fs: fstest.MapFS{
 				"my/file": {},
 			},
-			wantErr: "is not a directory",
-		},
-		{
-			name:    "dest_doesnt_exist_should_fail",
-			dest:    "my/dir",
-			fs:      fstest.MapFS{},
-			wantErr: "doesn't exist",
+			wantErr: "exists but isn't a directory",
 		},
 		{
 			name:    "stat_returns_error",
