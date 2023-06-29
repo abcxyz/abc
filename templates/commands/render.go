@@ -328,7 +328,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 
 	// Commit the contents of the scratch directory to the output directory. We
-	// first do a dry-run to check that the copy is likely to  succeed, so we
+	// first do a dry-run to check that the copy is likely to succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
 		params := &copyParams{
@@ -540,13 +540,13 @@ func destOK(fs fs.StatFS, dest string) error {
 	fi, err := fs.Stat(dest)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("the destination directory doesn't exist: %q", dest)
+			return nil
 		}
 		return fmt.Errorf("os.Stat(%s): %w", dest, err)
 	}
 
 	if !fi.IsDir() {
-		return fmt.Errorf("the destination %q is not a directory", dest)
+		return fmt.Errorf("the destination %q exists but isn't a directory", dest)
 	}
 
 	return nil
