@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: 'release'
+name: 'Release'
 
 on:
   workflow_dispatch:
   workflow_call:
+
+permissions:
+  contents: write
 
 jobs:
   # Double check that tests pass and lint is clean.
@@ -28,6 +31,8 @@ jobs:
     needs: 'lint-test'
     steps:
       - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: 'Setup Go'
         uses: 'actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753' # ratchet:actions/setup-go@v4
