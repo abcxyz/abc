@@ -484,11 +484,11 @@ func TestCopyRecursive(t *testing.T) {
 				skip:      tc.skip,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Errorf(diff)
+				t.Error(diff)
 			}
 
 			got := loadDirContents(t, toDir)
-			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
 			}
 		})

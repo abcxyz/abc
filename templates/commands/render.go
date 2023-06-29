@@ -28,6 +28,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -550,4 +551,14 @@ func destOK(fs fs.StatFS, dest string) error {
 	}
 
 	return nil
+}
+
+// toPlatformPath takes a path-like string (e.g. "/foo/bar/file.txt") and
+// converts it to the platform-appropriate string for the file separator. On
+// unix systems, the path separator is "/". On windows, it's "\".
+func toPlatformPath(pth string) string {
+	if runtime.GOOS == "windows" {
+		return strings.ReplaceAll(pth, "/", "\\")
+	}
+	return strings.ReplaceAll(pth, "\\", "/")
 }

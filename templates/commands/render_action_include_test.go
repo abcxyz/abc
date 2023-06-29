@@ -284,12 +284,12 @@ func TestActionInclude(t *testing.T) {
 			}
 
 			gotTemplateContents := loadDirContents(t, filepath.Join(tempDir, templateDirNamePart))
-			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
+			if diff := cmp.Diff(gotTemplateContents, tc.templateContents, cmpFileMode); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
 			gotScratchContents := loadDirContents(t, filepath.Join(tempDir, scratchDirNamePart))
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpFileMode); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
