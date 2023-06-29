@@ -7,8 +7,8 @@ To run this, please follow these steps:
 1. cd into an empty directory
 
     ```shell
-    $ mkdir ~/template_tmp
-    $ cd ~/template_tmp
+    $ mkdir ~/spanner_migration_project
+    $ cd ~/spanner_migration_project
     ```
 1. Install the `abc` binary
 
@@ -39,7 +39,7 @@ Once configured, your gcloud commands will be sent to the emulator instead of th
     $ gcloud config set project your-project-id
     $ gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
     ```
-1. Creat a test database to host your pipeline output.
+1. Create a test database to host your pipeline output.
 
     ```shell
     $ gcloud spanner instances create test-instance \
