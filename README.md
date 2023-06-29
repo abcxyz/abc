@@ -367,7 +367,7 @@ Example:
 - action: 'print'
   params:
     message:
-      'Please go to the GCP console for project {{.project_id}} and click on the
+      'Please go to the GCP console for project {{.project_id}} and click the
       thing'
 ```
 
