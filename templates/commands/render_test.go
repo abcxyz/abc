@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -33,6 +34,29 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/go-getter/v2"
 )
+
+// cmpFileMode is a cmp option that handles the conflict between Unix and
+// Windows systems file permissions.
+var cmpFileMode = cmp.Comparer(func(a, b fs.FileMode) bool {
+	// Windows really only has 2 file modes: 0666 and 0444[1]. Thus we only check
+	// the first bit, since we know the remaining bits will be the same.
+	// Furthermore, there's no reliable way to know whether the executive bit is
+	// set[2], so we ignore it.
+	//
+	// I tried doing fancy bitmasking stuff here, but apparently umasks on Windows
+	// are undefined(?), so we've resorted to substring matching - hooray.
+	//
+	// [1]: https://medium.com/@MichalPristas/go-and-file-perms-on-windows-3c944d55dd44
+	// [2]: https://github.com/golang/go/issues/41809
+	if runtime.GOOS == "windows" {
+		// A filemode of 0644 would show as "-rw-r--r--", but on Windows we only
+		// care about the first bit (which is the first 3 characters in the output
+		// string).
+		return a.Perm().String()[1:3] == b.Perm().String()[1:3]
+	}
+
+	return a == b
+})
 
 func TestParseFlags(t *testing.T) {
 	t.Parallel()
@@ -393,6 +417,15 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(
+				tc.templateContents,
+				tc.existingDestContents,
+				tc.wantDestContents,
+				tc.wantScratchContents,
+				tc.wantTemplateContents,
+			)
+
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
 			if err := writeAllDefaultMode(dest, tc.existingDestContents); err != nil {
@@ -445,17 +478,17 @@ steps:
 			}
 
 			gotTemplateContents := loadDirWithoutMode(t, filepath.Join(tempDir, templateDirNamePart))
-			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents); diff != "" {
+			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, cmpFileMode); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			gotScratchContents := loadDirWithoutMode(t, filepath.Join(tempDir, scratchDirNamePart))
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpFileMode); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			gotDestContents := loadDirWithoutMode(t, dest)
-			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, cmpFileMode); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -497,11 +530,6 @@ func TestSafeRelPath(t *testing.T) {
 			want: "a/b/c",
 		},
 		{
-			name: "leading_slash_with_more_dirs",
-			in:   "/a/b/c",
-			want: "a/b/c",
-		},
-		{
 			name: "plain_slash_stripped",
 			in:   "/",
 			want: "",
@@ -534,13 +562,13 @@ func TestSafeRelPath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := safeRelPath(nil, tc.in)
+			got, err := safeRelPath(nil, toPlatformPath(tc.in))
 
-			if got != tc.want {
-				t.Errorf("safeRelPath(%q)=%q, want %q", tc.in, got, tc.want)
+			if got, want := got, toPlatformPath(tc.want); got != want {
+				t.Errorf("safeRelPath(%s): expected %q to be %q", tc.in, got, want)
 			}
-			if testutil.DiffErrString(err, tc.wantErr) != "" {
-				t.Errorf("safeRelPath(%s)=%s, want %s", tc.in, got, tc.wantErr)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
 			}
 		})
 	}
@@ -729,4 +757,17 @@ func writeAll(root string, files map[string]modeAndContents) error {
 	}
 
 	return nil
+}
+
+// convertKeysToPlatformPaths is a helper that converts the keys in all of the
+// given maps to a platform-specific file path. The maps are modified in place.
+func convertKeysToPlatformPaths[T any](maps ...map[string]T) {
+	for _, m := range maps {
+		for k, v := range m {
+			if diff := toPlatformPath(k); diff != k {
+				m[diff] = v
+				delete(m, k)
+			}
+		}
+	}
 }

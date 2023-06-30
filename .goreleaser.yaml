@@ -40,7 +40,7 @@ builds:
     goos:
       - 'darwin'
       - 'linux'
-      # - 'windows'  # Coming some day
+      - 'windows'
     goarch:
       - 'amd64'
       - 'arm64'

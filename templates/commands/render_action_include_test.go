@@ -260,6 +260,9 @@ func TestActionInclude(t *testing.T) {
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(tc.templateContents, tc.wantScratchContents)
+
 			tempDir := t.TempDir()
 			templateDir := filepath.Join(tempDir, templateDirNamePart)
 			scratchDir := filepath.Join(tempDir, scratchDirNamePart)
@@ -284,12 +287,12 @@ func TestActionInclude(t *testing.T) {
 			}
 
 			gotTemplateContents := loadDirContents(t, filepath.Join(tempDir, templateDirNamePart))
-			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
+			if diff := cmp.Diff(gotTemplateContents, tc.templateContents, cmpFileMode); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
 			gotScratchContents := loadDirContents(t, filepath.Join(tempDir, scratchDirNamePart))
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpFileMode); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
