@@ -46,7 +46,8 @@ Examples of template locations:
 - `--spec <path_to_spec_yaml>`: the path of the spec yaml file, relative to the
   template root. Defaults to `spec.yaml`.
 - `--dest <output_dir>`: the directory on the local filesystem to write output
-  to. Defaults to the current directory.
+  to. Defaults to the current directory. If it doesn't exist, it will be
+  created.
 - `--input=key=val`: provide an input parameter to the template. `key` must be
   one of the inputs declared by the template in its `spec.yaml`. May be repeated
   to provide multiple inputs, like
@@ -367,7 +368,7 @@ Example:
 - action: 'print'
   params:
     message:
-      'Please go to the GCP console for project {{.project_id}} and click on the
+      'Please go to the GCP console for project {{.project_id}} and click the
       thing'
 ```
 
