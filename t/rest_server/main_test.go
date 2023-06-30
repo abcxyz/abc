@@ -30,6 +30,7 @@ import (
 )
 
 func TestRealMain(t *testing.T) {
+	t.Parallel()
 	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 	ctx, done := context.WithCancel(ctx)
 	defer done()
@@ -41,8 +42,8 @@ func TestRealMain(t *testing.T) {
 		realMainErr = realMain(ctx)
 	}()
 
-	time.Sleep(100 * time.Millisecond) // wait for server startup
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%s/", *port))
+	time.Sleep(100 * time.Millisecond)                                // wait for server startup
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%s/", *port)) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
