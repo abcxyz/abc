@@ -260,6 +260,9 @@ func TestActionInclude(t *testing.T) {
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(tc.templateContents, tc.wantScratchContents)
+
 			tempDir := t.TempDir()
 			templateDir := filepath.Join(tempDir, templateDirNamePart)
 			scratchDir := filepath.Join(tempDir, scratchDirNamePart)

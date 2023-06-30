@@ -49,7 +49,9 @@ var cmpFileMode = cmp.Comparer(func(a, b fs.FileMode) bool {
 	// [1]: https://medium.com/@MichalPristas/go-and-file-perms-on-windows-3c944d55dd44
 	// [2]: https://github.com/golang/go/issues/41809
 	if runtime.GOOS == "windows" {
-		// "-rw-r--r--"
+		// A filemode of 0644 would show as "-rw-r--r--", but on Windows we only
+		// care about the first bit (which is the first 3 characters in the output
+		// string).
 		return a.Perm().String()[1:3] == b.Perm().String()[1:3]
 	}
 
@@ -415,6 +417,15 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(
+				tc.templateContents,
+				tc.existingDestContents,
+				tc.wantDestContents,
+				tc.wantScratchContents,
+				tc.wantTemplateContents,
+			)
+
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
 			if err := writeAllDefaultMode(dest, tc.existingDestContents); err != nil {
@@ -746,4 +757,17 @@ func writeAll(root string, files map[string]modeAndContents) error {
 	}
 
 	return nil
+}
+
+// convertKeysToPlatformPaths is a helper that converts the keys in all of the
+// given maps to a platform-specific file path. The maps are modified in place.
+func convertKeysToPlatformPaths[T any](maps ...map[string]T) {
+	for _, m := range maps {
+		for k, v := range m {
+			if diff := toPlatformPath(k); diff != k {
+				m[diff] = v
+				delete(m, k)
+			}
+		}
+	}
 }
