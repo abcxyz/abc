@@ -198,42 +198,21 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 // many of these, so they've been factored out into a struct to avoid having the
 // function parameter list be really long.
 type copyParams struct {
-	// srcRoot is the file or directory from which to copy.
-	srcRoot string
-	// dstRoot is the output directory.
-	dstRoot string
-	// rfs is the filesytem to use.
-	rfs renderFS
-	// overwrite files if they already exists, rather than the default behavior
-	// of returning error.
-	overwrite bool
+	// backupDir provides the path at which files will be saved before they're
+	// overwritten.
+	backupDir string
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	dryRun bool
+	// dstRoot is the output directory.
+	dstRoot string
+	// srcRoot is the file or directory from which to copy.
+	srcRoot string
+	// rfs is the filesytem to use.
+	rfs renderFS
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	visitor copyVisitor
-}
-
-// copyVisitor is the type for callback functions that are called by
-// copyRecursive for each file and directory encountered. It gives the caller an
-// opportunity to influence the behavior of the copy operation on a per-file
-// basis, and also informs the of each file and directory being copied.
-type copyVisitor func(relPath string, de fs.DirEntry) (copyHint, error)
-
-// copyHint is returned from a copyVisitor to indicate how a given file or
-// directory should be handled.
-type copyHint struct {
-	// Overwrite the file in the destination if it already exists. The default
-	// is to conservatively fail without overwriting.
-	//
-	// This has no effect on directories, only files.
-	overwrite bool
-
-	// Whether to skip this file or directory (don't write it to the
-	// destination). For directories, this will cause all files underneath the
-	// directory to be skipped.
-	skip bool
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
@@ -287,6 +266,11 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 			if !ch.overwrite {
 				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc) //nolint:wrapcheck
 			}
+			if ch.backupIfExists {
+				if err := backUp(ctx, p.rfs, p.backupDir, p.dstRoot, relToSrc); err != nil {
+					return err
+				}
+			}
 		} else if !os.IsNotExist(err) {
 			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
 		}
@@ -326,6 +310,32 @@ func copyFile(pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileM
 	return nil
 }
 
+// copyVisitor is the type for callback functions that are called by
+// copyRecursive for each file and directory encountered. It gives the caller an
+// opportunity to influence the behavior of the copy operation on a per-file
+// basis, and also informs the of each file and directory being copied.
+type copyVisitor func(relPath string, de fs.DirEntry) (copyHint, error)
+
+type copyHint struct {
+	// Before overwriting a file in the destination dir, copy the preexisting
+	// contents of the file into ~/.abc/$timestamp. Only used if
+	// overwrite==true.
+	//
+	// This has no effect on directories, only files.
+	backupIfExists bool
+
+	// Overwrite files in the destination if they already exist. The default is
+	// to conservatively fail.
+	//
+	// This has no effect on directories, only files.
+	overwrite bool
+
+	// Whether to skip this file or directory (don't write it to the
+	// destination). For directories, this will cause all files underneath the
+	// directory to be skipped.
+	skip bool
+}
+
 // safeRelPath returns an error if the path contains a ".." traversal, and
 // converts it to a relative path by removing any leading "/".
 func safeRelPath(pos *model.ConfigPos, p string) (string, error) {
@@ -333,4 +343,26 @@ func safeRelPath(pos *model.ConfigPos, p string) (string, error) {
 		return "", model.ErrWithPos(pos, `path %q must not contain ".."`, p) //nolint:wrapcheck
 	}
 	return strings.TrimLeft(p, string(filepath.Separator)), nil
+}
+
+// When we overwrite a file in the destination dir, we back it the old version in case
+// the user had uncommitted changes in that file that were unrelated to abc.
+func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath string) error {
+	backupFile := filepath.Join(backupDir, relPath)
+	parent := filepath.Dir(backupFile)
+	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
+		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
+	}
+
+	fileToBackup := filepath.Join(srcRoot, relPath)
+
+	if err := copyFile(nil, rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
+		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
+			fileToBackup, backupFile, err)
+	}
+
+	logger := logging.FromContext(ctx)
+	logger.Infof("backed up previous contents of %s at %s", fileToBackup, backupFile)
+
+	return nil
 }

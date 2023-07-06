@@ -50,6 +50,7 @@ import (
 	"fmt"
 	"io"
 
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -290,6 +291,7 @@ type Include struct {
 	Pos *ConfigPos `yaml:"-"`
 
 	Paths       []String `yaml:"paths"`
+	From        String
 	As          []String `yaml:"as"`
 	StripPrefix String   `yaml:"strip_prefix"`
 	AddPrefix   String   `yaml:"add_prefix"`
@@ -298,7 +300,7 @@ type Include struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths", "as", "strip_prefix", "add_prefix", "skip"}
+	knownYAMLFields := []string{"add_prefix", "as", "from", "paths", "skip", "strip_prefix"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
@@ -326,9 +328,16 @@ func (i *Include) Validate() error {
 		}
 	}
 
+	var fromErr error
+	validFrom := []string{"destination"}
+	if i.From.Val != "" && !slices.Contains(validFrom, i.From.Val) {
+		fromErr = i.From.Pos.AnnotateErr(fmt.Errorf(`"from" must be one of %v`, validFrom))
+	}
+
 	return errors.Join(
 		nonEmptySlice(i.Pos, i.Paths, "paths"),
 		exclusivityErr,
+		fromErr,
 	)
 }
 

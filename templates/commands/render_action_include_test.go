@@ -30,14 +30,16 @@ func TestActionInclude(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name                string
-		include             *model.Include
-		templateContents    map[string]modeAndContents
-		inputs              map[string]string
-		flagSpec            string
-		wantScratchContents map[string]modeAndContents
-		statErr             error
-		wantErr             string
+		name                 string
+		include              *model.Include
+		templateContents     map[string]modeAndContents
+		destDirContents      map[string]modeAndContents
+		inputs               map[string]string
+		flagSpec             string
+		wantScratchContents  map[string]modeAndContents
+		wantIncludedFromDest []string
+		statErr              error
+		wantErr              string
 	}{
 		{
 			name: "simple_success",
@@ -250,6 +252,60 @@ func TestActionInclude(t *testing.T) {
 				"subdir/spec.yaml": {0o600, "spec contents"},
 			},
 		},
+		{
+			name: "include_dot_from_destination",
+			include: &model.Include{
+				Paths: modelStrings([]string{"."}),
+				From:  model.String{Val: "destination"},
+			},
+			templateContents: map[string]modeAndContents{
+				"spec.yaml": {0o600, "spec contents"},
+			},
+			destDirContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "file1 contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "file1 contents"},
+			},
+			wantIncludedFromDest: []string{"file1.txt"},
+		},
+		{
+			name: "include_subdir_from_destination",
+			include: &model.Include{
+				Paths: modelStrings([]string{"subdir"}),
+				From:  model.String{Val: "destination"},
+			},
+			templateContents: map[string]modeAndContents{
+				"spec.yaml": {0o600, "spec contents"},
+			},
+			destDirContents: map[string]modeAndContents{
+				"file1.txt":        {0o600, "file1 contents"},
+				"subdir/file2.txt": {0o600, "file2 contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"subdir/file2.txt": {0o600, "file2 contents"},
+			},
+			wantIncludedFromDest: []string{"subdir/file2.txt"},
+		},
+		{
+			name: "include_individual_files_from_destination",
+			include: &model.Include{
+				Paths: modelStrings([]string{"file1.txt", "subdir/file2.txt"}),
+				From:  model.String{Val: "destination"},
+			},
+			templateContents: map[string]modeAndContents{
+				"spec.yaml": {0o600, "spec contents"},
+			},
+			destDirContents: map[string]modeAndContents{
+				"file1.txt":        {0o600, "file1 contents"},
+				"subdir/file2.txt": {0o600, "file2 contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file1.txt":        {0o600, "file1 contents"},
+				"subdir/file2.txt": {0o600, "file2 contents"},
+			},
+			wantIncludedFromDest: []string{"file1.txt", "subdir/file2.txt"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -266,13 +322,20 @@ func TestActionInclude(t *testing.T) {
 			tempDir := t.TempDir()
 			templateDir := filepath.Join(tempDir, templateDirNamePart)
 			scratchDir := filepath.Join(tempDir, scratchDirNamePart)
+			destDir := filepath.Join(tempDir, "dest")
 
 			if err := writeAll(templateDir, tc.templateContents); err != nil {
 				t.Fatal(err)
 			}
 
+			// For testing "include from destination"
+			if err := writeAll(destDir, tc.destDirContents); err != nil {
+				t.Fatal(err)
+			}
+
 			sp := &stepParams{
 				flagSpec: tc.flagSpec,
+				flagDest: destDir,
 				fs: &errorFS{
 					renderFS: &realFS{},
 					statErr:  tc.statErr,
@@ -294,6 +357,10 @@ func TestActionInclude(t *testing.T) {
 			gotScratchContents := loadDirContents(t, filepath.Join(tempDir, scratchDirNamePart))
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpFileMode); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
+			}
+
+			if diff := cmp.Diff(sp.includedFromDest, tc.wantIncludedFromDest); diff != "" {
+				t.Errorf("includedFromDest was not as expected (-got,+want): %s", diff)
 			}
 		})
 	}

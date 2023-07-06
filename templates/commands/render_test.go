@@ -218,7 +218,6 @@ steps:
 		name                 string
 		templateContents     map[string]string
 		existingDestContents map[string]string
-		stdinInput           string
 		flagInputs           map[string]string
 		flagKeepTempDirs     bool
 		flagSpec             string
@@ -228,12 +227,14 @@ steps:
 		wantScratchContents  map[string]string
 		wantTemplateContents map[string]string
 		wantDestContents     map[string]string
+		wantBackupContents   map[string]string
 		wantFlagInputs       map[string]string
 		wantStdout           string
 		wantErr              string
 	}{
 		{
 			name: "simple_success",
+
 			flagInputs: map[string]string{
 				"name_to_greet":   "Bob",
 				"emoji_suffix":    "🐈",
@@ -327,6 +328,9 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantBackupContents: map[string]string{
+				"file1.txt": "old contents",
+			},
 		},
 		{
 			name: "existing_dest_file_without_overwrite_flag_should_fail",
@@ -417,6 +421,85 @@ steps:
 			},
 			wantErr: `missing required input(s): emoji_suffix, name_to_greet`,
 		},
+		{
+			name: "plain_destination_include",
+			templateContents: map[string]string{
+				"spec.yaml": `
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        from: 'destination'
+        paths:
+          - 'myfile.txt'
+          - 'subdir_a'
+          - 'subdir_b/file_b.txt'
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"myfile.txt":          "purple is my favorite color",
+				"subdir_a/file_a.txt": "purple is my favorite color",
+				"subdir_b/file_b.txt": "purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"myfile.txt":          "red is my favorite color",
+				"subdir_a/file_a.txt": "red is my favorite color",
+				"subdir_b/file_b.txt": "red is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"myfile.txt":          "purple is my favorite color",
+				"subdir_a/file_a.txt": "purple is my favorite color",
+				"subdir_b/file_b.txt": "purple is my favorite color",
+			},
+		},
+		{
+			name: "mix_of_destination_include_and_normal_include",
+			templateContents: map[string]string{
+				"file_b.txt": "red is my favorite color",
+				"spec.yaml": `
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        from: 'destination'
+        paths:
+          - 'file_a.txt'
+  - desc: 'Include from template'
+    action: 'include'
+    params:
+        paths:
+        - 'file_b.txt'
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"file_a.txt": "red is my favorite color",
+				"file_b.txt": "red is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -441,14 +524,17 @@ steps:
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
+			backupDir := filepath.Join(tempDir, "backups")
+			rfs := &realFS{}
 			fg := &fakeGetter{
 				err:    tc.getterErr,
 				output: tc.templateContents,
 			}
 			stdoutBuf := &strings.Builder{}
 			rp := &runParams{
+				backupDir: backupDir,
 				fs: &errorFS{
-					renderFS:     &realFS{},
+					renderFS:     rfs,
 					removeAllErr: tc.removeAllErr,
 				},
 				getter:       fg,
@@ -497,6 +583,11 @@ steps:
 			gotDestContents := loadDirWithoutMode(t, dest)
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, cmpFileMode); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+
+			gotBackupContents := loadDirWithoutMode(t, backupDir)
+			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents); diff != "" {
+				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
