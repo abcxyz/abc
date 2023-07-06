@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
+	"golang.org/x/exp/maps"
 )
 
 func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) error {
@@ -35,12 +37,13 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		return err
 	}
 
-	skipStrs := make([]string, len(inc.Skip))
-	for i, skip := range inc.Skip {
-		skipStrs[i], err = parseAndExecuteGoTmpl(skip.Pos, skip.Val, sp.inputs)
+	skip := make(map[string]bool, len(inc.Skip))
+	for _, s := range inc.Skip {
+		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.inputs)
 		if err != nil {
 			return err
 		}
+		skip[skipRelPath] = true
 	}
 
 	for i, p := range inc.Paths {
@@ -71,15 +74,19 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 			return err
 		}
 
-		absSrc := filepath.Join(sp.templateDir, walkRelPath)
+		// By default, we copy from the template directory. We also support
+		// grabbing files from the destination directory, so we can modify files
+		// that already exist in the destination.
+		fromDir := sp.templateDir
+		absSrc := filepath.Join(fromDir, walkRelPath)
 		absDst := filepath.Join(sp.scratchDir, relDst)
 
-		skip := skipStrs
+		skipNow := maps.Clone(skip)
 		if absSrc == sp.templateDir {
 			// If we're copying the template root directory, automatically skip
 			// the spec.yaml file, because it's very unlikely that the user actually
 			// wants the spec file in the template output.
-			skip = append([]string{sp.flagSpec}, skipStrs...)
+			skipNow[sp.flagSpec] = true
 		}
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
@@ -92,15 +99,23 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		params := &copyParams{
 			dryRun:  false,
 			dstRoot: absDst,
-
-			// Allow later includes to replace earlier includes in the scratch
-			// directory. This doesn't affect whether files in the final destination
-			// directory will be overwritten; that comes later.
-			overwrite: true,
-
 			rfs:     sp.fs,
-			skip:    skip,
 			srcRoot: absSrc,
+			visitor: func(relToAbsSrc string, de fs.DirEntry) (copyHint, error) {
+				if skipNow[relToAbsSrc] {
+					return copyHint{
+						skip: true,
+					}, nil
+				}
+
+				return copyHint{
+					// Allow later includes to replace earlier includes in the
+					// scratch directory. This doesn't affect whether files in
+					// the final *destination* directory will be overwritten;
+					// that comes later.
+					overwrite: true,
+				}, nil
+			},
 		}
 		if err := copyRecursive(ctx, p.Pos, params); err != nil {
 			return model.ErrWithPos(p.Pos, "copying failed: %w", err) //nolint:wrapcheck

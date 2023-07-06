@@ -205,6 +205,13 @@ steps:
   action: 'include'
   params:
     paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
+- desc: 'Replace "blue" with "red"'
+  action: 'string_replace'
+  params:
+    paths: ['.']
+    replacements:
+    - to_replace: 'blue'
+      with: 'red'
 `
 
 	cases := []struct {
@@ -235,13 +242,13 @@ steps:
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantStdout: "Hello, Bob🐈\n",
 			wantDestContents: map[string]string{
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
@@ -257,24 +264,24 @@ steps:
 			flagSpec:         "spec.yaml",
 			templateContents: map[string]string{
 				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantStdout: "Hello, Bob🐈\n",
 			wantScratchContents: map[string]string{
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantTemplateContents: map[string]string{
 				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantDestContents: map[string]string{
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
