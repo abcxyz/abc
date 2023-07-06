@@ -198,11 +198,8 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 // many of these, so they've been factored out into a struct to avoid having the
 // function parameter list be really long.
 type copyParams struct {
+	// backerUpper provides the real 
 	backerUpper *backerUpper
-
-	// // clock is used to create a directory name with an embedded timestamp,
-	// // while being fakeable for testing.
-	// clock clock.Clock
 
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.

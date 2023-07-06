@@ -361,10 +361,13 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			return copyHint{
 				backupIfExists: true,
 
-				// Special case: files that were "include"d from the •destination*
-				// directory (rather than the template directory), are always allowed
-				// to be overwritten. When the template uses this feature, we know
-				// that the intent is to modify the files in place.
+				// Special case: files that were "include"d from the
+				// *destination* directory (rather than the template directory),
+				// are always allowed to be overwritten. For example, if we grab
+				// file_to_modify.txt from the --dest dir, then we always allow
+				// ourself to write back to that file, even when
+				// --force-overwrite=false. When the template uses this feature,
+				// we know that the intent is to modify the files in place.
 				overwrite: r.flagForceOverwrite || includedFromDest[relPath],
 			}, nil
 		}
@@ -391,31 +394,6 @@ func sliceToSet[T comparable](vals []T) map[T]bool {
 	}
 	return out
 }
-
-// // TODO test
-// func backupDestIncludedFiles(rfs renderFS, flagDest, scratchDir string, relPaths []string) error {
-// 	unixTime := strconv.FormatInt(time.Now().Unix(), 10) // TODO fake clock?
-// 	home, err := os.UserHomeDir()
-// 	if err != nil {
-// 		return fmt.Errorf("os.UserHomeDir: %w", err)
-// 	}
-// 	for _, relPath := range relPaths {
-// 		dstPath := filepath.Join(home, ".abc", "backups", unixTime, relPath) // TODO factor out
-// 		dstDir := filepath.Dir(dstPath)
-// 		if err := os.MkdirAll(dstDir, ownerRWXPerms); err != nil {
-// 			return fmt.Errorf("os.MkdirAll(%s): %w", dstDir, err)
-// 		}
-
-// 		srcPath := filepath.Join(scratchDir, relPath)
-// 		// The permission bits on the output file are copied from the input file;
-// 		// this preserves the execute bit on executable files.
-// 		if err := copyFile(nil, rfs, srcPath, dstPath, ownerRWPerms, false); err != nil {
-// 			return fmt.Errorf("failed backing up file %q at %q before implicit overwrite: %w",
-// 				srcPath, dstPath, err)
-// 		}
-// 	}
-// 	return nil
-// }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.
 func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
@@ -484,13 +462,15 @@ type stepParams struct {
 	// includedFromDest is a list of every file (no directories) that was copied
 	// from the destination directory into the scratch directory. We want to
 	// track these because they are treated specially in the final phase of
-	// rendering. When we copy the template output from the scratch directory
+	// rendering. When we commit the template output from the scratch directory
 	// into the destination directory, these paths are always allowed to be
 	// overwritten. For other files not in this list, it's an error to try to
 	// write to an existing file. This whole scheme supports the feature of
 	// modifying files that already exist in the destination.
 	//
-	// These are paths relative to the destination directory.
+	// These are paths relative to the --dest directory (which is the same thing
+	// as being relative to the scratch directory, the paths within these dirs
+	// are the same).
 	includedFromDest []string
 }
 
