@@ -38,7 +38,7 @@ Once configured, your gcloud commands will be sent to the emulator instead of th
    --config=emulator-config --description="Test Instance" --nodes=1
     $ gcloud spanner databases create testdb --instance=test-instance --ddl='CREATE TABLE mytable (Id STRING(36)) PRIMARY KEY(Id)'
     ```
-   - make sure the local Spanner emulator runs in a different tab.
+   - make sure the local Spanner emulator runs in a separated tab.
 
 7. Point your client libraries to the emulator.
 When pipeline starts, the client library automatically checks for SPANNER_EMULATOR_HOST and connects to the emulator if it is running.
