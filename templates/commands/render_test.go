@@ -184,7 +184,7 @@ func TestDestOK(t *testing.T) {
 func TestRealRun(t *testing.T) {
 	t.Parallel()
 
-	specContents := `
+	basicSpec := `
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'A template for the ages'
@@ -205,13 +205,19 @@ steps:
   action: 'include'
   params:
     paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
+- desc: 'Replace "blue" with "red"'
+  action: 'string_replace'
+  params:
+    paths: ['.']
+    replacements:
+    - to_replace: 'blue'
+      with: 'red'
 `
 
 	cases := []struct {
 		name                 string
 		templateContents     map[string]string
 		existingDestContents map[string]string
-		stdinInput           string
 		flagInputs           map[string]string
 		flagKeepTempDirs     bool
 		flagSpec             string
@@ -221,12 +227,14 @@ steps:
 		wantScratchContents  map[string]string
 		wantTemplateContents map[string]string
 		wantDestContents     map[string]string
+		wantBackupContents   map[string]string
 		wantFlagInputs       map[string]string
 		wantStdout           string
 		wantErr              string
 	}{
 		{
 			name: "simple_success",
+
 			flagInputs: map[string]string{
 				"name_to_greet":   "Bob",
 				"emoji_suffix":    "🐈",
@@ -234,14 +242,14 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
+				"spec.yaml":            basicSpec,
+				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantStdout: "Hello, Bob🐈\n",
 			wantDestContents: map[string]string{
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
@@ -256,25 +264,25 @@ steps:
 			flagKeepTempDirs: true,
 			flagSpec:         "spec.yaml",
 			templateContents: map[string]string{
-				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
+				"spec.yaml":            basicSpec,
+				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantStdout: "Hello, Bob🐈\n",
 			wantScratchContents: map[string]string{
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantTemplateContents: map[string]string{
-				"spec.yaml":            specContents,
-				"file1.txt":            "file1 contents",
+				"spec.yaml":            basicSpec,
+				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantDestContents: map[string]string{
-				"file1.txt":            "file1 contents",
+				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
@@ -309,7 +317,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
+				"spec.yaml":            basicSpec,
 				"file1.txt":            "new contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -319,6 +327,9 @@ steps:
 				"file1.txt":            "new contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
+			},
+			wantBackupContents: map[string]string{
+				"file1.txt": "old contents",
 			},
 		},
 		{
@@ -334,7 +345,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
+				"spec.yaml":            basicSpec,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -364,7 +375,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
+				"spec.yaml":            basicSpec,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -391,7 +402,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
+				"spec.yaml":            basicSpec,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -403,12 +414,91 @@ steps:
 			flagInputs: map[string]string{},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
+				"spec.yaml":            basicSpec,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantErr: `missing required input(s): emoji_suffix, name_to_greet`,
+		},
+		{
+			name: "plain_destination_include",
+			templateContents: map[string]string{
+				"spec.yaml": `
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        from: 'destination'
+        paths:
+          - 'myfile.txt'
+          - 'subdir_a'
+          - 'subdir_b/file_b.txt'
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"myfile.txt":          "purple is my favorite color",
+				"subdir_a/file_a.txt": "purple is my favorite color",
+				"subdir_b/file_b.txt": "purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"myfile.txt":          "red is my favorite color",
+				"subdir_a/file_a.txt": "red is my favorite color",
+				"subdir_b/file_b.txt": "red is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"myfile.txt":          "purple is my favorite color",
+				"subdir_a/file_a.txt": "purple is my favorite color",
+				"subdir_b/file_b.txt": "purple is my favorite color",
+			},
+		},
+		{
+			name: "mix_of_destination_include_and_normal_include",
+			templateContents: map[string]string{
+				"file_b.txt": "red is my favorite color",
+				"spec.yaml": `
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        from: 'destination'
+        paths:
+          - 'file_a.txt'
+  - desc: 'Include from template'
+    action: 'include'
+    params:
+        paths:
+        - 'file_b.txt'
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"file_a.txt": "red is my favorite color",
+				"file_b.txt": "red is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
 		},
 	}
 
@@ -434,14 +524,21 @@ steps:
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
+			backupDir := filepath.Join(tempDir, "backups")
+			rfs := &realFS{}
+			backerUpper := &backerUpper{
+				rfs:     rfs,
+				baseDir: backupDir,
+			}
 			fg := &fakeGetter{
 				err:    tc.getterErr,
 				output: tc.templateContents,
 			}
 			stdoutBuf := &strings.Builder{}
 			rp := &runParams{
+				backerUpper: backerUpper,
 				fs: &errorFS{
-					renderFS:     &realFS{},
+					renderFS:     rfs,
 					removeAllErr: tc.removeAllErr,
 				},
 				getter:       fg,
@@ -491,9 +588,73 @@ steps:
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, cmpFileMode); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
+
+			gotBackupContents := loadDirWithoutMode(t, backupDir)
+			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents); diff != "" {
+				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
+			}
 		})
 	}
 }
+
+// func TestRealRun_DestinationInclude(t *testing.T) {
+// 	t.Parallel()
+
+// 	cases := []struct {
+// 		name string
+// 		spec string
+// 	}{
+// 		{
+// 			name: "plain_destination_include",
+// 			spec: `
+// apiVersion: 'cli.abcxyz.dev/v1alpha1'
+// kind: 'Template'
+// desc: 'my template'
+// steps:
+// - desc: 'Include from destination'
+//   action: 'include'
+//   params:
+//     from: 'destination'
+//     paths: ['file1.txt']
+// - desc: 'Replace "blue" with "red"'
+//   action: 'string_replace'
+//   params:
+//     paths: ['.']
+//     replacements:
+//     - to_replace: 'blue'
+//       with: 'red'`,
+// 		},
+// 		{
+// 			name: "destination_include_and_regular_include",
+// 			spec: `
+// apiVersion: 'cli.abcxyz.dev/v1alpha1'
+// kind: 'Template'
+// desc: 'my template'
+// steps:
+// - desc: 'Include from destination'
+//   action: 'include'
+//   params:
+//     from: 'destination'
+//     paths: ['file1.txt']
+// - desc: 'Include from destination'
+//   action: 'include'
+//   params:
+//     from: 'destination'
+//     paths: ['file1.txt']
+// - desc: 'Replace "blue" with "red"'
+//   action: 'string_replace'
+//   params:
+//     paths: ['.']
+//     replacements:
+//     - to_replace: 'blue'
+//       with: 'red'`,
+// 		},
+// 	}
+
+// 	for _, tc := range cases {
+// 		t.Parallel()
+// 	}
+// }
 
 func TestSafeRelPath(t *testing.T) {
 	t.Parallel()

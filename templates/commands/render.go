@@ -30,7 +30,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
@@ -47,6 +49,8 @@ const (
 
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
+	// Permission bits: rw------- .
+	ownerRWPerms = 0o600
 )
 
 type Render struct {
@@ -247,7 +251,19 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("os.UserHomeDir: %w", err)
+	}
+	backupDir := filepath.Join(homeDir, ".abc", "backups", strconv.FormatInt(time.Now().Unix(), 10))
+
+	backerUpper := &backerUpper{
+		rfs:     fSys,
+		baseDir: backupDir,
+	}
+
 	return r.realRun(ctx, &runParams{
+		backerUpper:  backerUpper,
 		cwd:          wd,
 		fs:           fSys,
 		getter:       gg,
@@ -257,10 +273,11 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 }
 
 type runParams struct {
-	cwd    string
-	fs     renderFS
-	getter getterClient
-	stdout io.Writer
+	backerUpper *backerUpper
+	cwd         string
+	fs          renderFS
+	getter      getterClient
+	stdout      io.Writer
 
 	// Constructs a name for a temp directory that doesn't exist yet and won't
 	// collide with other directories. Doesn't actually create a directory, the
@@ -317,27 +334,47 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	tempDirs = append(tempDirs, scratchDir)
 	logger.Infof("created temporary scratch directory at: %s", scratchDir)
 
-	if err := executeSpec(ctx, spec, &stepParams{
+	sp := &stepParams{
+		flagDest:    r.flagDest,
 		flagSpec:    r.flagSpec,
 		inputs:      r.flagInputs,
 		fs:          rp.fs,
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
-	}); err != nil {
+	}
+	if err := executeSpec(ctx, spec, sp); err != nil {
 		return err
 	}
+
+	// if err := backupDestIncludedFiles(rp.fs, r.flagDest, scratchDir, sp.includedFromDest); err != nil {
+	// 	return err
+	// }
+
+	includedFromDest := sliceToSet(sp.includedFromDest)
 
 	// Commit the contents of the scratch directory to the output directory. We
 	// first do a dry-run to check that the copy is likely to succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
+		visitor := func(relPath string, _ fs.DirEntry) (copyHint, error) {
+			return copyHint{
+				backupIfExists: true,
+
+				// Special case: files that were "include"d from the •destination*
+				// directory (rather than the template directory), are always allowed
+				// to be overwritten. When the template uses this feature, we know
+				// that the intent is to modify the files in place.
+				overwrite: r.flagForceOverwrite || includedFromDest[relPath],
+			}, nil
+		}
 		params := &copyParams{
-			srcRoot:   scratchDir,
-			dstRoot:   r.flagDest,
-			rfs:       rp.fs,
-			overwrite: r.flagForceOverwrite,
-			dryRun:    dryRun,
+			backerUpper: rp.backerUpper,
+			dryRun:      dryRun,
+			dstRoot:     r.flagDest,
+			rfs:         rp.fs,
+			srcRoot:     scratchDir,
+			visitor:     visitor,
 		}
 		if err := copyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
@@ -346,6 +383,39 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 
 	return nil
 }
+
+func sliceToSet[T comparable](vals []T) map[T]bool {
+	out := make(map[T]bool, len(vals))
+	for _, v := range vals {
+		out[v] = true
+	}
+	return out
+}
+
+// // TODO test
+// func backupDestIncludedFiles(rfs renderFS, flagDest, scratchDir string, relPaths []string) error {
+// 	unixTime := strconv.FormatInt(time.Now().Unix(), 10) // TODO fake clock?
+// 	home, err := os.UserHomeDir()
+// 	if err != nil {
+// 		return fmt.Errorf("os.UserHomeDir: %w", err)
+// 	}
+// 	for _, relPath := range relPaths {
+// 		dstPath := filepath.Join(home, ".abc", "backups", unixTime, relPath) // TODO factor out
+// 		dstDir := filepath.Dir(dstPath)
+// 		if err := os.MkdirAll(dstDir, ownerRWXPerms); err != nil {
+// 			return fmt.Errorf("os.MkdirAll(%s): %w", dstDir, err)
+// 		}
+
+// 		srcPath := filepath.Join(scratchDir, relPath)
+// 		// The permission bits on the output file are copied from the input file;
+// 		// this preserves the execute bit on executable files.
+// 		if err := copyFile(nil, rfs, srcPath, dstPath, ownerRWPerms, false); err != nil {
+// 			return fmt.Errorf("failed backing up file %q at %q before implicit overwrite: %w",
+// 				srcPath, dstPath, err)
+// 		}
+// 	}
+// 	return nil
+// }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.
 func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
@@ -400,12 +470,28 @@ func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
 }
 
 type stepParams struct {
-	fs          renderFS
+	// Immutable config fields
+	flagDest    string
 	flagSpec    string
+	fs          renderFS
 	inputs      map[string]string
 	scratchDir  string
 	stdout      io.Writer
 	templateDir string
+
+	// Mutable fields that are updated by action* functions go below this line.
+
+	// includedFromDest is a list of every file (no directories) that was copied
+	// from the destination directory into the scratch directory. We want to
+	// track these because they are treated specially in the final phase of
+	// rendering. When we copy the template output from the scratch directory
+	// into the destination directory, these paths are always allowed to be
+	// overwritten. For other files not in this list, it's an error to try to
+	// write to an existing file. This whole scheme supports the feature of
+	// modifying files that already exist in the destination.
+	//
+	// These are paths relative to the destination directory.
+	includedFromDest []string
 }
 
 func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error {

@@ -31,7 +31,6 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 // Called with the contents of a file, and returns the new contents of the file
@@ -137,6 +136,8 @@ func parseGoTmpl(tpl string) (*template.Template, error) {
 	return template.New("").Funcs(templateFuncs()).Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
 }
 
+var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)
+
 // pos may be nil if the template is not coming from the spec file and therefore
 // there's no reason to print out spec file location in an error message. If
 // template execution fails because of a missing input variable, the error will
@@ -193,27 +194,73 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 	return ok
 }
 
-var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)
-
 // copyParams contains most of the parameters to copyRecursive(). There were too
 // many of these, so they've been factored out into a struct to avoid having the
 // function parameter list be really long.
 type copyParams struct {
-	// srcRoot is the file or directory from which to copy.
-	srcRoot string
-	// dstRoot is the output directory.
-	dstRoot string
-	// rfs is the filesytem to use.
-	rfs renderFS
-	// overwrite files if they already exists, rather than the default behavior
-	// of returning error.
-	overwrite bool
+	backerUpper *backerUpper
+
+	// // clock is used to create a directory name with an embedded timestamp,
+	// // while being fakeable for testing.
+	// clock clock.Clock
+
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	dryRun bool
-	// skip is a set of paths not to be copied. These paths are relative to
-	// srcRoot. This lets certain special files be excluded from the output.
-	skip []string
+	// dstRoot is the output directory.
+	dstRoot string
+
+	// // homer is a function that provides the user's home directry in a way
+	// // that's fakeable for testing. This is only needed if the backup feature is
+	// // used (if the visitor function returns backupIfExists=true for any file).
+	// homer homer
+
+	// srcRoot is the file or directory from which to copy.
+	srcRoot string
+	// rfs is the filesytem to use.
+	rfs renderFS
+	// visitor is an optional function that will be called for each file in the
+	// source, to allow customization of the copy operation on a per-file basis.
+	visitor copyVisitor
+	// // overwrite files if they already exists, rather than the default behavior
+	// // of returning error.
+	// overwrite bool
+	// // skip is a set of paths not to be copied. These paths are relative to
+	// // srcRoot. This lets certain special files be excluded from the output.
+	// skip []string
+}
+
+// // A homer is a function that returns the user's home directory in a way that's
+// // fakeable for testing.
+// type homer func() (string, error)
+
+// type backerUpper interface {
+// 	backUp(ctx context.Context, srcRoot, relPath string) error
+// }
+
+type backerUpper struct {
+	rfs     renderFS
+	baseDir string
+}
+
+func (b *backerUpper) backUp(ctx context.Context, srcRoot, relPath string) error {
+	backupFile := filepath.Join(b.baseDir, relPath)
+	parent := filepath.Dir(backupFile)
+	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
+		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
+	}
+
+	fileToBackup := filepath.Join(srcRoot, relPath)
+
+	if err := copyFile(nil, b.rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
+		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
+			fileToBackup, backupFile, err)
+	}
+
+	logger := logging.FromContext(ctx)
+	logger.Infof("backed up previous contents of %s at %s", fileToBackup, backupFile)
+
+	return nil
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
@@ -231,21 +278,38 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		if err != nil {
 			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", p.srcRoot, path, err) //nolint:wrapcheck
 		}
-		if slices.Contains(p.skip, relToSrc) {
-			logger.Debugf("copyRecursive: skipping file per configuration: %s", relToSrc)
+		dst := filepath.Join(p.dstRoot, relToSrc)
+
+		// if slices.Contains(p.skip, relToSrc) {
+		// 	logger.Debugf("copyRecursive: skipping file per configuration: %s", relToSrc)
+		// 	return fs.SkipDir
+		// }
+
+		var ch copyHint
+		if p.visitor != nil {
+			ch, err = p.visitor(relToSrc, de)
+			if err != nil {
+				return err
+			}
+		}
+
+		if ch.skip {
+			logger.Debugf("copyRecursive: walkdirfunc visitor skipped file: %s", relToSrc)
 			return fs.SkipDir
 		}
 
 		if de.IsDir() {
+			// We don't create directories when they're encountered by this WalkDirFunc.
+			// Instead, we create output directories as needed when a file needs to be
+			// placed in that directory.
 			return nil
 		}
 
-		dst := filepath.Join(p.dstRoot, relToSrc)
-
-		// The spec file may specify a file to copy that's deep in a
-		// directory tree, without naming its parent directory. We can't
-		// rely on WalkDir having traversed the parent directory of $path,
-		// so we must create the target directory if it doesn't exist.
+		// The spec file may specify a file to copy that's deep in a directory
+		// tree, (like include "some/deep/subdir/myfile.txt") without including
+		// its parent directory. We can't rely on WalkDir having traversed the
+		// parent directory of $path, so we must create the target directory if
+		// it doesn't exist.
 		inDir := filepath.Dir(dst)
 		if err := mkdirAllChecked(pos, p.rfs, inDir, p.dryRun); err != nil {
 			return err
@@ -256,8 +320,13 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 			if dstInfo.IsDir() {
 				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", relToSrc) //nolint:wrapcheck
 			}
-			if !p.overwrite {
-				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled", relToSrc) //nolint:wrapcheck
+			if !ch.overwrite {
+				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc) //nolint:wrapcheck
+			}
+			if ch.backupIfExists {
+				if err := p.backerUpper.backUp(ctx, p.dstRoot, relToSrc); err != nil {
+					return err
+				}
 			}
 		} else if !os.IsNotExist(err) {
 			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
@@ -268,30 +337,58 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
-		rf, err := p.rfs.Open(path)
-		if err != nil {
-			return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
-		}
-		defer func() { outErr = errors.Join(outErr, rf.Close()) }()
-
-		if p.dryRun {
-			return nil
-		}
-
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
-		wf, err := p.rfs.OpenFile(dst, os.O_CREATE|os.O_WRONLY, srcInfo.Mode().Perm())
-		if err != nil {
-			return model.ErrWithPos(pos, "OpenFile(): %w", err) //nolint:wrapcheck
-		}
-		defer func() { outErr = errors.Join(outErr, wf.Close()) }()
-
-		if _, err := io.Copy(wf, rf); err != nil {
-			return fmt.Errorf("Copy(): %w", err)
-		}
-
-		return nil
+		mode := srcInfo.Mode().Perm()
+		return copyFile(pos, p.rfs, path, dst, mode, p.dryRun)
 	})
+}
+
+func copyFile(pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
+	readFile, err := rfs.Open(src)
+	if err != nil {
+		return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
+	}
+	defer func() { outErr = errors.Join(outErr, readFile.Close()) }()
+
+	if dryRun {
+		return nil
+	}
+
+	writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	if err != nil {
+		return model.ErrWithPos(pos, "OpenFile(): %w", err) //nolint:wrapcheck
+	}
+	defer func() { outErr = errors.Join(outErr, writeFile.Close()) }()
+
+	if _, err := io.Copy(writeFile, readFile); err != nil {
+		return fmt.Errorf("Copy(): %w", err)
+	}
+
+	return nil
+}
+
+// TODO when called for a directory, only "skip" actually matters.
+type copyVisitor func(relPath string, de fs.DirEntry) (copyHint, error)
+
+type copyHint struct {
+	// Before overwriting a file in the destination dir, copy the preexisting
+	// contents of the file into ~/.abc/$timestamp. Only used if
+	// overwrite==true.
+	//
+	// This has no effect on directories, only files.
+	backupIfExists bool
+
+	// Overwrite files in the destination if they already exist. The default is
+	// to conservatively fail.
+	//
+	// This has no effect on directories, only files.
+	overwrite bool
+
+	// Whether to skip this file or directory (don't write it to the
+	// destination). For directories, this will cause all files underneath the
+	// directory to be skipped.
+	skip bool
 }
 
 // safeRelPath returns an error if the path contains a ".." traversal, and
