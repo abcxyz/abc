@@ -16,71 +16,41 @@ apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'An example template for a simple HTTP/JSON REST server.'
 inputs:
-- name: 'automation_service_account'
-  desc: 'Automation Service Account (ex: [account_name]@[project_name].iam.gserviceaccount.com)'
-- name: 'wif_provider'
-  desc: 'Workload Identity Federation Provider (ex: projects/[project_id]/locations/global/workloadIdentityPools/[WIF_pool_name]/providers/[provider_name])'
-- name: 'ar_repository'
-  desc: 'Artifact Registry Repository (repo name in AR)'
-- name: 'ar_location'
-  desc: 'Artifact Registry Location (ex: us-docker.pkg.dev)'
-- name: 'cr_service'
-  desc: 'Cloud Run Service (service name in CR)'
-- name: 'region'
-  desc: 'Cloud Run Region (ex: us-west1)'
-- name: 'project_id'
-  desc: 'GCP Project ID'
+  - name: 'automation_service_account'
+    desc: 'Automation Service Account (ex: [account_name]@[project_name].iam.gserviceaccount.com)'
+  - name: 'wif_provider'
+    desc: 'Workload Identity Federation Provider (ex: projects/[project_id]/locations/global/workloadIdentityPools/[WIF_pool_name]/providers/[provider_name])'
+  - name: 'ar_repository'
+    desc: 'Artifact Registry Repository (repo name in AR)'
+  - name: 'ar_location'
+    desc: 'Artifact Registry Location (ex: us-docker.pkg.dev)'
+  - name: 'cr_service'
+    desc: 'Cloud Run Service (service name in CR)'
+  - name: 'region'
+    desc: 'Cloud Run Region (ex: us-west1)'
+  - name: 'project_id'
+    desc: 'GCP Project ID'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['.']
-  - desc: 'Populate Automation Service Account'
-    action: 'regex_replace'
+  - desc: 'Replace sentinel values with real input values'
+    action: 'string_replace'
     params:
       paths: ['.github/config']
       replacements:
-        - regex: 'AUTOMATION_SERVICE_ACCOUNT=\[AUTOMATION_SERVICE_ACCOUNT\]'
-          with: 'AUTOMATION_SERVICE_ACCOUNT={{automation_service_account}}'
-  - desc: 'Populate WIF Provider'
-    action: 'regex_replace'
-    params:
-      paths: ['.github/config']
-      replacements:
-        - regex: 'WIF_PROVIDER=\[WIF_PROVIDER\]'
-          with: 'WIF_PROVIDER={{wif_provider}}'
-  - desc: 'Populate AR Repository'
-    action: 'regex_replace'
-    params:
-      paths: ['.github/config']
-      replacements:
-        - regex: 'AR_REPOSITORY=\[AR_REPOSITORY\]'
-          with: 'AR_REPOSITORY={{ar_repository}}'
-  - desc: 'Populate AR Location'
-    action: 'regex_replace'
-    params:
-      paths: ['.github/config']
-      replacements:
-        - regex: 'AR_LOCATION=\[AR_LOCATIOn\]'
-          with: 'AR_LOCATIOn={{ar_location}}'
-  - desc: 'Populate CR Service'
-    action: 'regex_replace'
-    params:
-      paths: ['.github/config']
-      replacements:
-        - regex: 'CR_SERVICE=\[CR_SERVICE\]'
-          with: 'CR_SERVICE={{cr_service}}'
-  - desc: 'Populate Region'
-    action: 'regex_replace'
-    params:
-      paths: ['.github/config']
-      replacements:
-        - regex: 'REGION=\[REGION\]'
-          with: 'REGION={{region}}'
-  - desc: 'Populate Project ID'
-    action: 'regex_replace'
-    params:
-      paths: ['.github/config']
-      replacements:
-        - regex: 'PROJECT_ID=\[PROJECT_ID\]'
-          with: 'PROJECT_ID={{project_id}}'
+        - to_replace: 'AUTOMATION_SERVICE_ACCOUNT=[automation_service_account]'
+          with: 'AUTOMATION_SERVICE_ACCOUNT={{.automation_service_account}}'
+        - to_replace: 'WIF_PROVIDER=[wif_provider]'
+          with: 'WIF_PROVIDER={{.wif_provider}}'
+        - to_replace: 'AR_REPOSITORY=[ar_repository]'
+          with: 'AR_REPOSITORY={{.ar_repository}}'
+        - to_replace: 'AR_LOCATION=[ar_location]'
+          with: 'AR_LOCATION={{.ar_location}}'
+        - to_replace: 'CR_SERVICE=[cr_service]'
+          with: 'CR_SERVICE={{.cr_service}}'
+        - to_replace: 'REGION=[region]'
+          with: 'REGION={{.region}}'
+        - to_replace: 'PROJECT_ID=[project_id]'
+          with: 'PROJECT_ID={{.project_id}}'
