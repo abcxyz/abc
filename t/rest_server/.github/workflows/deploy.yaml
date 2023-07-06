@@ -25,7 +25,7 @@ concurrency:
 env:
   # This should be the only env variable defined in this file. Define all other
   # variables in the bootstrap file.
-  BOOTSTRAP_ENV_FILE: '.github/autopush-cicd.env'
+  BOOTSTRAP_ENV_FILE: '.github/config/autopush.env'
 
 jobs:
   image-release:
@@ -97,7 +97,7 @@ jobs:
           version: '>= 363.0.0'
       - name: 'Deploy to Cloud Run'
         run: |-
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
+          gcloud run deploy ${{ env.CR_SERVICE }} \
             --image ${{ env.IMAGE }} \
             --quiet \
             --platform managed \
