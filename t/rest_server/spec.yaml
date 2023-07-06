@@ -41,46 +41,46 @@ steps:
       paths: ['.github/config']
       replacements:
         - regex: 'AUTOMATION_SERVICE_ACCOUNT=\[AUTOMATION_SERVICE_ACCOUNT\]'
-          with: 'AUTOMATION_SERVICE_ACCOUNT={{.automation_service_account}}'
+          with: 'AUTOMATION_SERVICE_ACCOUNT={{automation_service_account}}'
   - desc: 'Populate WIF Provider'
     action: 'regex_replace'
     params:
       paths: ['.github/config']
       replacements:
         - regex: 'WIF_PROVIDER=\[WIF_PROVIDER\]'
-          with: 'WIF_PROVIDER={{.wif_provider}}'
+          with: 'WIF_PROVIDER={{wif_provider}}'
   - desc: 'Populate AR Repository'
     action: 'regex_replace'
     params:
       paths: ['.github/config']
       replacements:
         - regex: 'AR_REPOSITORY=\[AR_REPOSITORY\]'
-          with: 'AR_REPOSITORY={{.ar_repository}}'
+          with: 'AR_REPOSITORY={{ar_repository}}'
   - desc: 'Populate AR Location'
     action: 'regex_replace'
     params:
       paths: ['.github/config']
       replacements:
         - regex: 'AR_LOCATION=\[AR_LOCATIOn\]'
-          with: 'AR_LOCATIOn={{.ar_location}}'
+          with: 'AR_LOCATIOn={{ar_location}}'
   - desc: 'Populate CR Service'
     action: 'regex_replace'
     params:
       paths: ['.github/config']
       replacements:
         - regex: 'CR_SERVICE=\[CR_SERVICE\]'
-          with: 'CR_SERVICE={{.cr_service}}'
+          with: 'CR_SERVICE={{cr_service}}'
   - desc: 'Populate Region'
     action: 'regex_replace'
     params:
       paths: ['.github/config']
       replacements:
         - regex: 'REGION=\[REGION\]'
-          with: 'REGION={{.region}}'
+          with: 'REGION={{region}}'
   - desc: 'Populate Project ID'
     action: 'regex_replace'
     params:
       paths: ['.github/config']
       replacements:
         - regex: 'PROJECT_ID=\[PROJECT_ID\]'
-          with: 'PROJECT_ID={{.project_id}}'
+          with: 'PROJECT_ID={{project_id}}'
