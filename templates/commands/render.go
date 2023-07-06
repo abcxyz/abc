@@ -257,13 +257,8 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 	}
 	backupDir := filepath.Join(homeDir, ".abc", "backups", strconv.FormatInt(time.Now().Unix(), 10))
 
-	backerUpper := &backerUpper{
-		rfs:     fSys,
-		baseDir: backupDir,
-	}
-
 	return r.realRun(ctx, &runParams{
-		backerUpper:  backerUpper,
+		backupDir:    backupDir,
 		cwd:          wd,
 		fs:           fSys,
 		getter:       gg,
@@ -273,11 +268,11 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 }
 
 type runParams struct {
-	backerUpper *backerUpper
-	cwd         string
-	fs          renderFS
-	getter      getterClient
-	stdout      io.Writer
+	backupDir string
+	cwd       string
+	fs        renderFS
+	getter    getterClient
+	stdout    io.Writer
 
 	// Constructs a name for a temp directory that doesn't exist yet and won't
 	// collide with other directories. Doesn't actually create a directory, the
@@ -372,12 +367,12 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			}, nil
 		}
 		params := &copyParams{
-			backerUpper: rp.backerUpper,
-			dryRun:      dryRun,
-			dstRoot:     r.flagDest,
-			rfs:         rp.fs,
-			srcRoot:     scratchDir,
-			visitor:     visitor,
+			backupDir: rp.backupDir,
+			dryRun:    dryRun,
+			dstRoot:   r.flagDest,
+			rfs:       rp.fs,
+			srcRoot:   scratchDir,
+			visitor:   visitor,
 		}
 		if err := copyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)

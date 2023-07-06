@@ -198,20 +198,14 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 // many of these, so they've been factored out into a struct to avoid having the
 // function parameter list be really long.
 type copyParams struct {
-	// backerUpper provides the real 
-	backerUpper *backerUpper
-
+	// backupDir provides the path at which files will be saved before they're
+	// overwritten.
+	backupDir string
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	dryRun bool
 	// dstRoot is the output directory.
 	dstRoot string
-
-	// // homer is a function that provides the user's home directry in a way
-	// // that's fakeable for testing. This is only needed if the backup feature is
-	// // used (if the visitor function returns backupIfExists=true for any file).
-	// homer homer
-
 	// srcRoot is the file or directory from which to copy.
 	srcRoot string
 	// rfs is the filesytem to use.
@@ -219,45 +213,6 @@ type copyParams struct {
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	visitor copyVisitor
-	// // overwrite files if they already exists, rather than the default behavior
-	// // of returning error.
-	// overwrite bool
-	// // skip is a set of paths not to be copied. These paths are relative to
-	// // srcRoot. This lets certain special files be excluded from the output.
-	// skip []string
-}
-
-// // A homer is a function that returns the user's home directory in a way that's
-// // fakeable for testing.
-// type homer func() (string, error)
-
-// type backerUpper interface {
-// 	backUp(ctx context.Context, srcRoot, relPath string) error
-// }
-
-type backerUpper struct {
-	rfs     renderFS
-	baseDir string
-}
-
-func (b *backerUpper) backUp(ctx context.Context, srcRoot, relPath string) error {
-	backupFile := filepath.Join(b.baseDir, relPath)
-	parent := filepath.Dir(backupFile)
-	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
-		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
-	}
-
-	fileToBackup := filepath.Join(srcRoot, relPath)
-
-	if err := copyFile(nil, b.rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
-		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
-			fileToBackup, backupFile, err)
-	}
-
-	logger := logging.FromContext(ctx)
-	logger.Infof("backed up previous contents of %s at %s", fileToBackup, backupFile)
-
-	return nil
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
@@ -276,11 +231,6 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", p.srcRoot, path, err) //nolint:wrapcheck
 		}
 		dst := filepath.Join(p.dstRoot, relToSrc)
-
-		// if slices.Contains(p.skip, relToSrc) {
-		// 	logger.Debugf("copyRecursive: skipping file per configuration: %s", relToSrc)
-		// 	return fs.SkipDir
-		// }
 
 		var ch copyHint
 		if p.visitor != nil {
@@ -321,7 +271,7 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc) //nolint:wrapcheck
 			}
 			if ch.backupIfExists {
-				if err := p.backerUpper.backUp(ctx, p.dstRoot, relToSrc); err != nil {
+				if err := backUp(ctx, p.rfs, p.backupDir, p.dstRoot, relToSrc); err != nil {
 					return err
 				}
 			}
@@ -365,9 +315,13 @@ func copyFile(pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileM
 	return nil
 }
 
-// TODO when called for a directory, only "skip" actually matters.
+// copyVisitor is the type for callback functions that are called by
+// copyRecursive for each file and directory encountered. It gives the caller an
+// opportunity to influence the behavior of the copy operation on a per-file
+// basis, and also informs the of each file and directory being copied.
 type copyVisitor func(relPath string, de fs.DirEntry) (copyHint, error)
 
+// TODO when called for a directory, only "skip" actually matters.
 type copyHint struct {
 	// Before overwriting a file in the destination dir, copy the preexisting
 	// contents of the file into ~/.abc/$timestamp. Only used if
@@ -395,4 +349,24 @@ func safeRelPath(pos *model.ConfigPos, p string) (string, error) {
 		return "", model.ErrWithPos(pos, `path %q must not contain ".."`, p) //nolint:wrapcheck
 	}
 	return strings.TrimLeft(p, string(filepath.Separator)), nil
+}
+
+func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath string) error {
+	backupFile := filepath.Join(backupDir, relPath)
+	parent := filepath.Dir(backupFile)
+	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
+		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
+	}
+
+	fileToBackup := filepath.Join(srcRoot, relPath)
+
+	if err := copyFile(nil, rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
+		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
+			fileToBackup, backupFile, err)
+	}
+
+	logger := logging.FromContext(ctx)
+	logger.Infof("backed up previous contents of %s at %s", fileToBackup, backupFile)
+
+	return nil
 }

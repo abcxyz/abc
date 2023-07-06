@@ -552,17 +552,13 @@ func TestCopyRecursive(t *testing.T) {
 			const unixTime = 1688609125
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
-			bu := &backerUpper{
-				rfs:     fs,
-				baseDir: backupDir,
-			}
 			err := copyRecursive(ctx, &model.ConfigPos{}, &copyParams{
-				backerUpper: bu,
-				srcRoot:     from,
-				dstRoot:     to,
-				dryRun:      tc.dryRun,
-				rfs:         fs,
-				visitor:     tc.visitor,
+				backupDir: backupDir,
+				srcRoot:   from,
+				dstRoot:   to,
+				dryRun:    tc.dryRun,
+				rfs:       fs,
+				visitor:   tc.visitor,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)

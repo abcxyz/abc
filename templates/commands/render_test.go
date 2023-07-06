@@ -184,7 +184,7 @@ func TestDestOK(t *testing.T) {
 func TestRealRun(t *testing.T) {
 	t.Parallel()
 
-	basicSpec := `
+	specContents := `
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'A template for the ages'
@@ -242,7 +242,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -264,7 +264,7 @@ steps:
 			flagKeepTempDirs: true,
 			flagSpec:         "spec.yaml",
 			templateContents: map[string]string{
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -276,7 +276,7 @@ steps:
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantTemplateContents: map[string]string{
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "my favorite color is blue",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -317,7 +317,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "new contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -345,7 +345,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -375,7 +375,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -402,7 +402,7 @@ steps:
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -414,7 +414,7 @@ steps:
 			flagInputs: map[string]string{},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            basicSpec,
+				"spec.yaml":            specContents,
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
@@ -526,17 +526,13 @@ steps:
 			}
 			backupDir := filepath.Join(tempDir, "backups")
 			rfs := &realFS{}
-			backerUpper := &backerUpper{
-				rfs:     rfs,
-				baseDir: backupDir,
-			}
 			fg := &fakeGetter{
 				err:    tc.getterErr,
 				output: tc.templateContents,
 			}
 			stdoutBuf := &strings.Builder{}
 			rp := &runParams{
-				backerUpper: backerUpper,
+				backupDir: backupDir,
 				fs: &errorFS{
 					renderFS:     rfs,
 					removeAllErr: tc.removeAllErr,
@@ -596,65 +592,6 @@ steps:
 		})
 	}
 }
-
-// func TestRealRun_DestinationInclude(t *testing.T) {
-// 	t.Parallel()
-
-// 	cases := []struct {
-// 		name string
-// 		spec string
-// 	}{
-// 		{
-// 			name: "plain_destination_include",
-// 			spec: `
-// apiVersion: 'cli.abcxyz.dev/v1alpha1'
-// kind: 'Template'
-// desc: 'my template'
-// steps:
-// - desc: 'Include from destination'
-//   action: 'include'
-//   params:
-//     from: 'destination'
-//     paths: ['file1.txt']
-// - desc: 'Replace "blue" with "red"'
-//   action: 'string_replace'
-//   params:
-//     paths: ['.']
-//     replacements:
-//     - to_replace: 'blue'
-//       with: 'red'`,
-// 		},
-// 		{
-// 			name: "destination_include_and_regular_include",
-// 			spec: `
-// apiVersion: 'cli.abcxyz.dev/v1alpha1'
-// kind: 'Template'
-// desc: 'my template'
-// steps:
-// - desc: 'Include from destination'
-//   action: 'include'
-//   params:
-//     from: 'destination'
-//     paths: ['file1.txt']
-// - desc: 'Include from destination'
-//   action: 'include'
-//   params:
-//     from: 'destination'
-//     paths: ['file1.txt']
-// - desc: 'Replace "blue" with "red"'
-//   action: 'string_replace'
-//   params:
-//     paths: ['.']
-//     replacements:
-//     - to_replace: 'blue'
-//       with: 'red'`,
-// 		},
-// 	}
-
-// 	for _, tc := range cases {
-// 		t.Parallel()
-// 	}
-// }
 
 func TestSafeRelPath(t *testing.T) {
 	t.Parallel()
