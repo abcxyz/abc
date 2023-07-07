@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/abcxyz/pkg v0.0.0-20230627122505-f65777eea99c
+	github.com/benbjohnson/clock v1.3.0
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-getter/v2 v2.2.1
 	github.com/posener/complete/v2 v2.0.1-alpha.13
@@ -12,7 +13,6 @@ require (
 )
 
 require (
-	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
