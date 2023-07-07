@@ -210,9 +210,6 @@ type copyParams struct {
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	dryRun bool
-	// skip is a set of paths not to be copied. These paths are relative to
-	// srcRoot. This lets certain special files be excluded from the output.
-	skip []string
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	visitor copyVisitor
