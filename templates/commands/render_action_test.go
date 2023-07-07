@@ -189,6 +189,9 @@ func TestWalkAndModify(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(tc.initialContents, tc.want)
+
 			scratchDir := t.TempDir()
 			if err := writeAllDefaultMode(scratchDir, tc.initialContents); err != nil {
 				t.Fatal(err)
@@ -453,6 +456,13 @@ func TestCopyRecursive(t *testing.T) {
 			fromDir := filepath.Join(tempDir, "from_dir")
 			toDir := filepath.Join(tempDir, "to_dir")
 
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(
+				tc.fromDirContents,
+				tc.toDirInitialContents,
+				tc.want,
+			)
+
 			if err := writeAll(fromDir, tc.fromDirContents); err != nil {
 				t.Fatal(err)
 			}
@@ -484,11 +494,11 @@ func TestCopyRecursive(t *testing.T) {
 				skip:      tc.skip,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Errorf(diff)
+				t.Error(diff)
 			}
 
 			got := loadDirContents(t, toDir)
-			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
 			}
 		})

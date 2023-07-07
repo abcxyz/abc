@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: 'Lint and test'
+name: 'ci'
 
 on:
   push:
@@ -30,23 +30,14 @@ concurrency:
 
 jobs:
   go_lint:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main' # ratchet:exclude
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
       go_version: '1.20'
 
   go_test:
-    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main' # ratchet:exclude
-    strategy:
-      # allow all os suites to complete, even if one fails
-      fail-fast: false
-      matrix:
-        os:
-          - 'macos-latest'
-          - 'ubuntu-latest'
-          - 'windows-latest'
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
     with:
       go_version: '1.20'
-      os: '${{ matrix.os }}'
 
   yaml_lint:
     uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
