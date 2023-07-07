@@ -71,7 +71,7 @@ Examples of template locations:
 
 #### Logging
 
-Use the environment variable `ABC_LOG_MODE` to configure JSON logging. logging.
+Use the environment variable `ABC_LOG_MODE` to configure JSON logging.
 
 The valid values for `ABC_LOG_MODE` are:
 
