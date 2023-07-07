@@ -14,9 +14,67 @@
 
 package main
 
-import "testing"
+import (
+	"bytes"
+	"context"
+	"strings"
+	"testing"
 
-func TestMain(t *testing.T) {
+	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
+)
+
+func TestRealMain(t *testing.T) {
 	t.Parallel()
-	t.Skipf("TODO")
+
+	cases := []struct {
+		name       string
+		args       []string
+		wantStdout string
+		wantStderr string
+		wantErr    string
+	}{
+		{
+			name:       "render_prints_to_stdout",
+			args:       []string{"templates", "render", "--input=person_name=Bob", "../../examples/templates/render/print"},
+			wantStdout: "Hello, Bob!\n",
+		},
+		{
+			name:    "error_return",
+			args:    []string{"templates", "render", "nonexistent/dir"},
+			wantErr: "no such file or directory",
+		},
+		{
+			name:       "help_text",
+			args:       []string{"-h"},
+			wantStderr: "Usage: abc",
+		},
+		{
+			name:    "nonexistent_subcommand",
+			args:    []string{"nonexistent"},
+			wantErr: `unknown command "nonexistent": run "abc -help" for a list of commands`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			err := realMain(ctx, tc.args, stdout, stderr)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+			if !strings.Contains(stdout.String(), tc.wantStdout) {
+				t.Errorf("stdout was not as expected (-got,+want):\n%s", cmp.Diff(stdout.String(), tc.wantStdout))
+			}
+			if !strings.Contains(stderr.String(), tc.wantStderr) {
+				t.Errorf("stderr was not as expected (-got,+want):\n%s", cmp.Diff(stderr.String(), tc.wantStderr))
+			}
+		})
+	}
 }
