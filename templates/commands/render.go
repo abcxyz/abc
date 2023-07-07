@@ -143,9 +143,9 @@ func (r *Render) Flags() *cli.FlagSet {
 	f.StringVar(&cli.StringVar{
 		Name:    "log-level",
 		Example: "info",
-		Default: "warning",
+		Default: defaultLogLevel,
 		Target:  &r.flagLogLevel,
-		Usage:   "How verbose to log; any of debug|info|warning|error.",
+		Usage:   "How verbose to log; any of debug|info|warn|error.",
 	})
 	f.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
