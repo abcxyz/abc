@@ -17,11 +17,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
+	"golang.org/x/exp/slices"
 )
 
 func TestRealMain(t *testing.T) {
@@ -32,6 +34,7 @@ func TestRealMain(t *testing.T) {
 		args       []string
 		wantStdout string
 		wantStderr string
+		onlyGOOSes []string // error messages differ between platforms, use separate subtests
 		wantErr    string
 	}{
 		{
@@ -40,9 +43,16 @@ func TestRealMain(t *testing.T) {
 			wantStdout: "Hello, Bob!\n",
 		},
 		{
-			name:    "error_return",
-			args:    []string{"templates", "render", "nonexistent/dir"},
-			wantErr: "no such file or directory",
+			name:       "error_return_non_windows",
+			args:       []string{"templates", "render", "nonexistent/dir"},
+			onlyGOOSes: []string{"linux", "darwin"},
+			wantErr:    "no such file or directory",
+		},
+		{
+			name:       "error_return_windows",
+			args:       []string{"templates", "render", "nonexistent/dir"},
+			onlyGOOSes: []string{"windows"},
+			wantErr:    "cannot find the path",
 		},
 		{
 			name:       "help_text",
@@ -61,6 +71,10 @@ func TestRealMain(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			if len(tc.onlyGOOSes) > 0 && !slices.Contains(tc.onlyGOOSes, runtime.GOOS) {
+				t.Skipf("this subtest only runs if GOOS is one of %s", tc.onlyGOOSes)
+			}
 
 			ctx := context.Background()
 			stdout := &bytes.Buffer{}
