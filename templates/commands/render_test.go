@@ -101,7 +101,7 @@ func TestParseFlags(t *testing.T) {
 				flagDest:           ".",
 				flagGitProtocol:    "https",
 				flagInputs:         map[string]string{},
-				flagLogLevel:       "warning",
+				flagLogLevel:       "warn",
 				flagForceOverwrite: false,
 				flagKeepTempDirs:   false,
 			},
