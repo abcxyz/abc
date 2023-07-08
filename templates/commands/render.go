@@ -46,6 +46,9 @@ const (
 
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
+
+	defaultLogLevel = "warn"
+	defaultLogMode  = "dev"
 )
 
 type Render struct {
@@ -139,9 +142,9 @@ func (r *Render) Flags() *cli.FlagSet {
 	f.StringVar(&cli.StringVar{
 		Name:    "log-level",
 		Example: "info",
-		Default: "warning",
+		Default: defaultLogLevel,
 		Target:  &r.flagLogLevel,
-		Usage:   "How verbose to log; any of debug|info|warning|error.",
+		Usage:   "How verbose to log; any of debug|info|warn|error.",
 	})
 	f.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
@@ -218,6 +221,7 @@ func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
+	r.setLogEnvVars()
 	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	if err := r.parseFlags(args); err != nil {
@@ -507,6 +511,18 @@ func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs 
 		merr = errors.Join(merr, fs.RemoveAll(p))
 	}
 	return merr
+}
+
+func (r *Render) setLogEnvVars() {
+	if os.Getenv("ABC_LOG_MODE") == "" {
+		os.Setenv("ABC_LOG_MODE", defaultLogMode)
+	}
+
+	if r.flagLogLevel != "" {
+		os.Setenv("ABC_LOG_LEVEL", r.flagLogLevel)
+	} else if os.Getenv("ABC_LOG_LEVEL") == "" {
+		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
+	}
 }
 
 // Generate the name for a temporary directory, without creating it. namePart is
