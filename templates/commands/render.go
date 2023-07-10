@@ -341,6 +341,11 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			rfs:       rp.fs,
 			overwrite: r.flagForceOverwrite,
 			dryRun:    dryRun,
+			visitor: func(relPath string, _ fs.DirEntry) (copyHint, error) {
+				return copyHint{
+					overwrite: r.flagForceOverwrite,
+				}, nil
+			},
 		}
 		if err := copyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)

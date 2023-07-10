@@ -19,13 +19,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/benbjohnson/clock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"golang.org/x/exp/slices"
 )
 
 func TestWalkAndModify(t *testing.T) {
@@ -221,25 +226,24 @@ func TestCopyRecursive(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name                 string
-		fromDirContents      map[string]modeAndContents
-		suffix               string
-		overwrite            bool
-		dryRun               bool
-		skip                 []string
-		want                 map[string]modeAndContents
-		toDirInitialContents map[string]modeAndContents // only used in the tests for overwriting
-		mkdirAllErr          error
-		openErr              error
-		openFileErr          error
-		readFileErr          error
-		statErr              error
-		writeFileErr         error
-		wantErr              string
+		name                  string
+		srcDirContents        map[string]modeAndContents
+		suffix                string
+		dryRun                bool
+		visitor               copyVisitor
+		want                  map[string]modeAndContents
+		dstDirInitialContents map[string]modeAndContents // only used in the tests for overwriting
+		mkdirAllErr           error
+		openErr               error
+		openFileErr           error
+		readFileErr           error
+		statErr               error
+		writeFileErr          error
+		wantErr               string
 	}{
 		{
 			name: "simple_success",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"file1.txt":      {0o600, "file1 contents"},
 				"dir1/file2.txt": {0o600, "file2 contents"},
 			},
@@ -249,27 +253,32 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
-			name:   "dry_run_should_not_change_anything",
-			dryRun: true,
-			fromDirContents: map[string]modeAndContents{
+			name: "dry_run_should_not_change_anything",
+			srcDirContents: map[string]modeAndContents{
 				"file1.txt":      {0o600, "file1 contents"},
 				"dir1/file2.txt": {0o600, "file2 contents"},
 			},
+			dryRun:      true,
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 		},
 		{
-			name:   "dry_run_without_overwrite_should_detect_conflicting_files",
-			dryRun: true,
-			toDirInitialContents: map[string]modeAndContents{
+			name: "dry_run_without_overwrite_should_detect_conflicting_files",
+			dstDirInitialContents: map[string]modeAndContents{
 				"file1.txt": {0o600, "old contents"},
 			},
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"file1.txt":      {0o600, "new contents"},
 				"dir1/file2.txt": {0o600, "file2 contents"},
 			},
 			want: map[string]modeAndContents{
 				"file1.txt": {0o600, "old contents"},
+			},
+			dryRun: true,
+			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+				return copyHint{
+					overwrite: false,
+				}, nil
 			},
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
@@ -277,7 +286,7 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "owner_execute_bit_should_be_preserved",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"myfile1.txt": {0o600, "my file contents"},
 				"myfile2.txt": {0o700, "my file contents"},
 			},
@@ -289,7 +298,7 @@ func TestCopyRecursive(t *testing.T) {
 		{
 			name:   "copying_a_file_rather_than_directory_should_work",
 			suffix: "myfile1.txt",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"myfile1.txt": {0o600, "my file contents"},
 			},
 			want: map[string]modeAndContents{
@@ -298,7 +307,7 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "deep_directories_should_work",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"dir/dir/dir/dir/dir/file.txt": {0o600, "file contents"},
 			},
 			want: map[string]modeAndContents{
@@ -307,7 +316,7 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "directories_with_several_files_should_work",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"f1.txt": {0o600, "abc"},
 				"f2.txt": {0o600, "def"},
 				"f3.txt": {0o600, "ghi"},
@@ -331,13 +340,17 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
-			name:      "overwriting_with_overwrite_true_should_succeed",
-			overwrite: true,
-			fromDirContents: map[string]modeAndContents{
+			name: "overwriting_with_overwrite_true_should_succeed",
+			srcDirContents: map[string]modeAndContents{
 				"file1.txt": {0o600, "new contents"},
 			},
-			toDirInitialContents: map[string]modeAndContents{
+			dstDirInitialContents: map[string]modeAndContents{
 				"file1.txt": {0o600, "old contents"},
+			},
+			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+				return copyHint{
+					overwrite: true,
+				}, nil
 			},
 			want: map[string]modeAndContents{
 				"file1.txt": {0o600, "new contents"},
@@ -345,10 +358,10 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "overwriting_with_overwrite_false_should_fail",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"file1.txt": {0o600, "new contents"},
 			},
-			toDirInitialContents: map[string]modeAndContents{
+			dstDirInitialContents: map[string]modeAndContents{
 				"file1.txt": {0o600, "old contents"},
 			},
 			want: map[string]modeAndContents{
@@ -357,12 +370,16 @@ func TestCopyRecursive(t *testing.T) {
 			wantErr: "overwriting was not enabled",
 		},
 		{
-			name:      "overwriting_dir_with_child_file_should_fail",
-			overwrite: true,
-			fromDirContents: map[string]modeAndContents{
+			name: "overwriting_dir_with_child_file_should_fail",
+			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+				return copyHint{
+					overwrite: true,
+				}, nil
+			},
+			srcDirContents: map[string]modeAndContents{
 				"a": {0o600, "file contents"},
 			},
-			toDirInitialContents: map[string]modeAndContents{
+			dstDirInitialContents: map[string]modeAndContents{
 				"a/b.txt": {0o600, "file contents"},
 			},
 			want: map[string]modeAndContents{
@@ -371,12 +388,16 @@ func TestCopyRecursive(t *testing.T) {
 			wantErr: "cannot overwrite a directory with a file of the same name",
 		},
 		{
-			name:      "overwriting_file_with_dir_should_fail",
-			overwrite: true,
-			fromDirContents: map[string]modeAndContents{
+			name: "overwriting_file_with_dir_should_fail",
+			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+				return copyHint{
+					overwrite: true,
+				}, nil
+			},
+			srcDirContents: map[string]modeAndContents{
 				"a/b.txt": {0o600, "file contents"},
 			},
-			toDirInitialContents: map[string]modeAndContents{
+			dstDirInitialContents: map[string]modeAndContents{
 				"a": {0o600, "file contents"},
 			},
 			want: map[string]modeAndContents{
@@ -386,27 +407,41 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "skipped_files",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"file1.txt":        {0o600, "file1 contents"},
 				"dir1/file2.txt":   {0o600, "file2 contents"},
 				"skip1.txt":        {0o600, "skip1.txt contents"},
 				"subdir/skip2.txt": {0o600, "skip2.txt contents"},
 			},
-			skip: []string{"skip1.txt", "subdir/skip2.txt"},
+			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+				return copyHint{
+					skip: slices.Contains([]string{"skip1.txt", "subdir/skip2.txt"}, relPath),
+				}, nil
+			},
 			want: map[string]modeAndContents{
 				"file1.txt":      {0o600, "file1 contents"},
 				"dir1/file2.txt": {0o600, "file2 contents"},
 			},
 		},
 		{
-			name: "skipped_directory",
-			fromDirContents: map[string]modeAndContents{
+			name: "skipped_directory_skips_all_subsequent",
+			srcDirContents: map[string]modeAndContents{
 				"file1.txt":          {0o600, "file1 contents"},
 				"subdir/file2.txt":   {0o600, "file2 contents"},
 				"subdir/file3.txt":   {0o600, "file3 contents"},
 				"otherdir/file4.txt": {0o600, "file4 contents"},
 			},
-			skip: []string{"subdir"},
+			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+				if relPath == "subdir" {
+					return copyHint{
+						skip: true,
+					}, nil
+				}
+				if strings.HasPrefix(relPath, "subdir/") {
+					panic("no children of subdir/ should have been walked")
+				}
+				return copyHint{}, nil
+			},
 			want: map[string]modeAndContents{
 				"file1.txt":          {0o600, "file1 contents"},
 				"otherdir/file4.txt": {0o600, "file4 contents"},
@@ -414,7 +449,7 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "MkdirAll error should be returned",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
 			},
 			mkdirAllErr: fmt.Errorf("fake error"),
@@ -422,7 +457,7 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "Open error should be returned",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
 			},
 			openErr: fmt.Errorf("fake error"),
@@ -430,7 +465,7 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "OpenFile error should be returned",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
 			},
 			openFileErr: fmt.Errorf("fake error"),
@@ -438,7 +473,7 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "Stat error should be returned",
-			fromDirContents: map[string]modeAndContents{
+			srcDirContents: map[string]modeAndContents{
 				"dir/file.txt": {0o600, "file1 contents"},
 			},
 			statErr: fmt.Errorf("fake error"),
@@ -458,12 +493,12 @@ func TestCopyRecursive(t *testing.T) {
 
 			// Convert to OS-specific paths
 			convertKeysToPlatformPaths(
-				tc.fromDirContents,
-				tc.toDirInitialContents,
+				tc.srcDirContents,
+				tc.dstDirInitialContents,
 				tc.want,
 			)
 
-			if err := writeAll(fromDir, tc.fromDirContents); err != nil {
+			if err := writeAll(fromDir, tc.srcDirContents); err != nil {
 				t.Fatal(err)
 			}
 
@@ -473,7 +508,7 @@ func TestCopyRecursive(t *testing.T) {
 				from = filepath.Join(fromDir, tc.suffix)
 				to = filepath.Join(toDir, tc.suffix)
 			}
-			if err := writeAll(toDir, tc.toDirInitialContents); err != nil {
+			if err := writeAll(toDir, tc.dstDirInitialContents); err != nil {
 				t.Fatal(err)
 			}
 			fs := &errorFS{
@@ -485,13 +520,17 @@ func TestCopyRecursive(t *testing.T) {
 				statErr:     tc.statErr,
 			}
 			ctx := context.Background()
+
+			clk := clock.NewMock()
+			const unixTime = 1688609125
+			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
+
 			err := copyRecursive(ctx, &model.ConfigPos{}, &copyParams{
-				srcRoot:   from,
-				dstRoot:   to,
-				rfs:       fs,
-				overwrite: tc.overwrite,
-				dryRun:    tc.dryRun,
-				skip:      tc.skip,
+				srcRoot: from,
+				dstRoot: to,
+				dryRun:  tc.dryRun,
+				rfs:     fs,
+				visitor: tc.visitor,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
