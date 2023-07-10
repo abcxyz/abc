@@ -234,6 +234,7 @@ func TestCopyRecursive(t *testing.T) {
 		want                  map[string]modeAndContents
 		wantBackups           map[string]modeAndContents
 		dstDirInitialContents map[string]modeAndContents // only used in the tests for overwriting and backing up
+		dstDirInitialContents map[string]modeAndContents // only used in the tests for overwriting
 		mkdirAllErr           error
 		openErr               error
 		openFileErr           error

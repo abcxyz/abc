@@ -101,7 +101,7 @@ func TestParseFlags(t *testing.T) {
 				flagDest:           ".",
 				flagGitProtocol:    "https",
 				flagInputs:         map[string]string{},
-				flagLogLevel:       "warning",
+				flagLogLevel:       "warn",
 				flagForceOverwrite: false,
 				flagKeepTempDirs:   false,
 			},
@@ -660,9 +660,10 @@ func TestSafeRelPath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := safeRelPath(nil, toPlatformPath(tc.in))
+			got, err := safeRelPath(nil, filepath.FromSlash(tc.in))
 
-			if got, want := got, toPlatformPath(tc.want); got != want {
+			want := filepath.FromSlash(tc.want)
+			if got != want {
 				t.Errorf("safeRelPath(%s): expected %q to be %q", tc.in, got, want)
 			}
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
@@ -862,8 +863,8 @@ func writeAll(root string, files map[string]modeAndContents) error {
 func convertKeysToPlatformPaths[T any](maps ...map[string]T) {
 	for _, m := range maps {
 		for k, v := range m {
-			if diff := toPlatformPath(k); diff != k {
-				m[diff] = v
+			if newKey := filepath.FromSlash(k); newKey != k {
+				m[newKey] = v
 				delete(m, k)
 			}
 		}

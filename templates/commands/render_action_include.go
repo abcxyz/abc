@@ -37,13 +37,13 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		return err
 	}
 
-	skip := make(map[string]bool, len(inc.Skip))
+	skip := make(map[string]struct{}, len(inc.Skip))
 	for _, s := range inc.Skip {
 		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.inputs)
 		if err != nil {
 			return err
 		}
-		skip[skipRelPath] = true
+		skip[skipRelPath] = struct{}{}
 	}
 
 	for i, p := range inc.Paths {
@@ -89,7 +89,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 			// If we're copying the template root directory, automatically skip
 			// the spec.yaml file, because it's very unlikely that the user actually
 			// wants the spec file in the template output.
-			skipNow[sp.flagSpec] = true
+			skipNow[sp.flagSpec] = struct{}{}
 		}
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
@@ -105,7 +105,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 			rfs:     sp.fs,
 			srcRoot: absSrc,
 			visitor: func(relToAbsSrc string, de fs.DirEntry) (copyHint, error) {
-				if skipNow[relToAbsSrc] {
+				if _, ok := skipNow[relToAbsSrc]; ok {
 					return copyHint{
 						skip: true,
 					}, nil
@@ -116,10 +116,10 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 				if err != nil {
 					return copyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
 				}
-
 				if !de.IsDir() && inc.From.Val == "destination" {
 					sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
 				}
+
 				return copyHint{
 					// Allow later includes to replace earlier includes in the
 					// scratch directory. This doesn't affect whether files in
