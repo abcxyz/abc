@@ -21,14 +21,15 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands"
 	"github.com/abcxyz/pkg/cli"
 )
 
 var rootCmd = func() *cli.RootCommand {
 	return &cli.RootCommand{
-		Name:    "abc",
-		Version: "0.0.1",
+		Name:    version.Name,
+		Version: version.HumanVersion,
 		Commands: map[string]cli.CommandFactory{
 			"templates": func() cli.Command {
 				return &cli.RootCommand{
