@@ -254,7 +254,7 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 		cwd:          wd,
 		fs:           fSys,
 		getter:       gg,
-		stdout:       os.Stdout,
+		stdout:       r.Stdout(),
 		tempDirNamer: tempDirName,
 	})
 }
