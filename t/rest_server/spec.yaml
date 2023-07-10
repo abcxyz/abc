@@ -14,7 +14,7 @@
 
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
-desc: 'An example template for a simple HTTP/JSON REST server.'
+desc: 'A template for a simple HTTP/JSON REST server.'
 inputs:
   - name: 'automation_service_account'
     desc: 'Automation Service Account (ex: [account_name]@[project_id].iam.gserviceaccount.com)'
