@@ -71,7 +71,8 @@ jobs:
           docker push ${{ env.IMAGE }}
 
   deploy-service:
-    needs: ['image-release']
+needs:
+  - 'image-release'
     permissions:
       contents: 'read'
       id-token: 'write'
