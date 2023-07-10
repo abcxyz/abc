@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -52,17 +51,13 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	if err := realMain(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
+	if err := realMain(ctx); err != nil {
 		done()
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }
 
-// argsTrimmed should be os.Args[1:], or the equivalent for testing.
-func realMain(ctx context.Context, argsTrimmed []string, stdout, stderr io.Writer) error {
-	cmd := rootCmd()
-	cmd.SetStdout(stdout)
-	cmd.SetStderr(stderr)
-	return cmd.Run(ctx, argsTrimmed) //nolint:wrapcheck
+func realMain(ctx context.Context) error {
+	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }

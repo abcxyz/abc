@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"runtime"
 	"strings"
@@ -26,7 +25,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func TestRealMain(t *testing.T) {
+func TestRootCmd(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -77,9 +76,9 @@ func TestRealMain(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			stdout := &bytes.Buffer{}
-			stderr := &bytes.Buffer{}
-			err := realMain(ctx, tc.args, stdout, stderr)
+			rc := rootCmd()
+			_, stdout, stderr := rc.Pipe()
+			err := rc.Run(ctx, tc.args)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
