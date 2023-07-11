@@ -27,12 +27,9 @@ on:
   workflow_call:
     inputs:
       deploymentEnvironment:
-        type: 'choice'
+        type: 'string'
         description: 'Environment to deploy image to.'
         default: 'autopush'
-        options:
-          - 'autopush'
-          - 'production'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
