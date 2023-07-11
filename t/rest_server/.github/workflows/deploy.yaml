@@ -21,18 +21,18 @@ on:
         type: 'choice'
         description: 'Environment to deploy image to.'
         default: 'autopush'
-        options: 
-        - 'autopush'
-        - 'production'
+        options:
+          - 'autopush'
+          - 'production'
   workflow_call:
     inputs:
       deploymentEnvironment:
         type: 'choice'
         description: 'Environment to deploy image to.'
         default: 'autopush'
-        options: 
-        - 'autopush'
-        - 'production'
+        options:
+          - 'autopush'
+          - 'production'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
@@ -58,12 +58,12 @@ jobs:
       - name: 'Load variables from Autopush .env file'
         if: ${{ (inputs.deploymentEnvironment) == 'autopush' }}
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
-        with: 
+        with:
           env_file: '${{ env.AUTOPUSH_ENV_FILE }}'
       - name: 'Load variables from Production .env file'
         if: ${{ (inputs.deploymentEnvironment) == 'production' }}
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
-        with: 
+        with:
           env_file: '${{ env.PRODUCTION_ENV_FILE }}'
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
@@ -94,8 +94,8 @@ jobs:
           docker push ${{ env.IMAGE }}
 
   deploy-service:
-needs:
-  - 'image-release'
+    needs:
+      - 'image-release'
     permissions:
       contents: 'read'
       id-token: 'write'
