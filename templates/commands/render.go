@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -258,7 +257,15 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("os.UserHomeDir: %w", err)
 	}
-	backupDir := filepath.Join(homeDir, ".abc", "backups", strconv.FormatInt(time.Now().Unix(), 10))
+	randToken, err := randU64()
+	if err != nil {
+		return err
+	}
+	backupDir := filepath.Join(
+		homeDir,
+		".abc",
+		"backups",
+		fmt.Sprintf("%d-%d", time.Now().Unix(), randToken))
 
 	return r.realRun(ctx, &runParams{
 		backupDir:    backupDir,
