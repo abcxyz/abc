@@ -23,7 +23,6 @@ on:
         default: 'autopush'
         options:
           - 'autopush'
-          - 'production'
   workflow_call:
     inputs:
       deploymentEnvironment:
@@ -57,11 +56,6 @@ jobs:
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
         with:
           env_file: '${{ env.AUTOPUSH_ENV_FILE }}'
-      - name: 'Load variables from Production .env file'
-        if: "${{ inputs.deploymentEnvironment == 'production' }}"
-        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
-        with:
-          env_file: '${{ env.PRODUCTION_ENV_FILE }}'
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
