@@ -352,6 +352,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
 		visitor := func(relPath string, _ fs.DirEntry) (copyHint, error) {
+			_, ok := includedFromDest[relPath]
 			return copyHint{
 				backupIfExists: true,
 
@@ -362,7 +363,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				// ourself to write back to that file, even when
 				// --force-overwrite=false. When the template uses this feature,
 				// we know that the intent is to modify the files in place.
-				overwrite: r.flagForceOverwrite || includedFromDest[relPath],
+				overwrite: ok || r.flagForceOverwrite,
 			}, nil
 		}
 		params := &copyParams{
@@ -381,10 +382,10 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	return nil
 }
 
-func sliceToSet[T comparable](vals []T) map[T]bool {
-	out := make(map[T]bool, len(vals))
+func sliceToSet[T comparable](vals []T) map[T]struct{} {
+	out := make(map[T]struct{}, len(vals))
 	for _, v := range vals {
-		out[v] = true
+		out[v] = struct{}{}
 	}
 	return out
 }
