@@ -511,6 +511,7 @@ steps:
 			convertKeysToPlatformPaths(
 				tc.templateContents,
 				tc.existingDestContents,
+				tc.wantBackupContents,
 				tc.wantDestContents,
 				tc.wantScratchContents,
 				tc.wantTemplateContents,
@@ -867,6 +868,17 @@ func convertKeysToPlatformPaths[T any](maps ...map[string]T) {
 				m[newKey] = v
 				delete(m, k)
 			}
+		}
+	}
+}
+
+// toPlatformPaths converts each element of each input slice from a/b/c style
+// forward slash paths to platform-specific file paths. The slices are modified
+// in place.
+func toPlatformPaths(slices ...[]string) {
+	for _, s := range slices {
+		for i, elem := range s {
+			s[i] = filepath.FromSlash(elem)
 		}
 	}
 }

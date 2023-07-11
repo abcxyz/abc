@@ -523,6 +523,7 @@ func TestCopyRecursive(t *testing.T) {
 				tc.srcDirContents,
 				tc.dstDirInitialContents,
 				tc.want,
+				tc.wantBackups,
 			)
 
 			if err := writeAll(fromDir, tc.srcDirContents); err != nil {
