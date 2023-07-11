@@ -571,7 +571,7 @@ func TestCopyRecursive(t *testing.T) {
 			}
 
 			gotBackups := loadDirContents(t, backupDir)
-			if diff := cmp.Diff(gotBackups, tc.wantBackups, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(gotBackups, tc.wantBackups, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
 			}
 		})
