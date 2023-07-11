@@ -56,12 +56,12 @@ jobs:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
       - name: 'Load variables from Autopush .env file'
-        if: ${{ (inputs.deploymentEnvironment) == 'autopush' }}
+        if: ${{ inputs.deploymentEnvironment == 'autopush' }}
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
         with:
           env_file: '${{ env.AUTOPUSH_ENV_FILE }}'
       - name: 'Load variables from Production .env file'
-        if: ${{ (inputs.deploymentEnvironment) == 'production' }}
+        if: ${{ inputs.deploymentEnvironment == 'production' }}
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
         with:
           env_file: '${{ env.PRODUCTION_ENV_FILE }}'
@@ -106,7 +106,7 @@ jobs:
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
       - name: 'Load variables from bootstrap .env file'
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
-        with: 
+        with:
           env_file: '${{ env.BOOTSTRAP_ENV_FILE }}'
       - name: 'Google Auth'
         id: 'auth'
