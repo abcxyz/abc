@@ -80,14 +80,16 @@ func TestParseFlags(t *testing.T) {
 				"helloworld@v1",
 			},
 			want: &Render{
-				source:             "helloworld@v1",
-				flagSpec:           "my_spec.yaml",
-				flagDest:           "my_dir",
-				flagGitProtocol:    "https",
-				flagInputs:         map[string]string{"x": "y"},
-				flagLogLevel:       "info",
-				flagForceOverwrite: true,
-				flagKeepTempDirs:   true,
+				flags: renderFlags{
+					source:         "helloworld@v1",
+					spec:           "my_spec.yaml",
+					dest:           "my_dir",
+					gitProtocol:    "https",
+					inputs:         map[string]string{"x": "y"},
+					logLevel:       "info",
+					forceOverwrite: true,
+					keepTempDirs:   true,
+				},
 			},
 		},
 		{
@@ -96,14 +98,16 @@ func TestParseFlags(t *testing.T) {
 				"helloworld@v1",
 			},
 			want: &Render{
-				source:             "helloworld@v1",
-				flagSpec:           "./spec.yaml",
-				flagDest:           ".",
-				flagGitProtocol:    "https",
-				flagInputs:         map[string]string{},
-				flagLogLevel:       "warn",
-				flagForceOverwrite: false,
-				flagKeepTempDirs:   false,
+				flags: renderFlags{
+					source:         "helloworld@v1",
+					spec:           "./spec.yaml",
+					dest:           ".",
+					gitProtocol:    "https",
+					inputs:         map[string]string{},
+					logLevel:       "warn",
+					forceOverwrite: false,
+					keepTempDirs:   false,
+				},
 			},
 		},
 		{
@@ -127,6 +131,7 @@ func TestParseFlags(t *testing.T) {
 			}
 			opts := []cmp.Option{
 				cmp.AllowUnexported(Render{}),
+				cmp.AllowUnexported(renderFlags{}),
 				cmpopts.IgnoreFields(Render{}, "BaseCommand"),
 			}
 			if diff := cmp.Diff(r, tc.want, opts...); diff != "" {
@@ -456,12 +461,14 @@ steps:
 				tempDirNamer: tempDirNamer,
 			}
 			r := &Render{
-				flagDest:           dest,
-				flagForceOverwrite: tc.flagForceOverwrite,
-				flagInputs:         tc.flagInputs,
-				flagKeepTempDirs:   tc.flagKeepTempDirs,
-				flagSpec:           "spec.yaml",
-				source:             "github.com/myorg/myrepo",
+				flags: renderFlags{
+					dest:           dest,
+					forceOverwrite: tc.flagForceOverwrite,
+					inputs:         tc.flagInputs,
+					keepTempDirs:   tc.flagKeepTempDirs,
+					spec:           "spec.yaml",
+					source:         "github.com/myorg/myrepo",
+				},
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
@@ -470,12 +477,12 @@ steps:
 				t.Error(diff)
 			}
 
-			if fg.gotSource != r.source {
-				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.source)
+			if fg.gotSource != r.flags.source {
+				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.flags.source)
 			}
 
 			if tc.wantFlagInputs != nil {
-				if diff := cmp.Diff(r.flagInputs, tc.wantFlagInputs); diff != "" {
+				if diff := cmp.Diff(r.flags.inputs, tc.wantFlagInputs); diff != "" {
 					t.Errorf("flagInputs was not as expected; (-got,+want): %s", diff)
 				}
 			}

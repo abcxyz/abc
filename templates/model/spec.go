@@ -50,6 +50,7 @@ import (
 	"fmt"
 	"io"
 
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -151,9 +152,18 @@ func (i *Input) UnmarshalYAML(n *yaml.Node) error {
 
 // Validate implements Validator.
 func (i *Input) Validate() error {
+	var reservedNameErr error
+	// Reasons for reserved input names:
+	//  - "flags" is used as expose the CLI flags to the print action. If it was also
+	//    an input name, there would be a collision when trying to do {{.flags.foo}}
+	if slices.Contains([]string{"flags"}, i.Name.Val) {
+		reservedNameErr = i.Name.Pos.AnnotateErr(fmt.Errorf("input name %q is reserved, please pick a different name", i.Name.Val))
+	}
+
 	return errors.Join(
 		notZero(i.Pos, i.Name, "name"),
 		notZero(i.Pos, i.Desc, "desc"),
+		reservedNameErr,
 	)
 }
 

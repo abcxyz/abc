@@ -23,7 +23,12 @@ import (
 )
 
 func actionPrint(ctx context.Context, p *model.Print, sp *stepParams) error {
-	msg, err := parseAndExecuteGoTmpl(p.Message.Pos, p.Message.Val, sp.inputs)
+	inputsAndFlags := map[string]any{}
+	for k, v := range sp.inputs {
+		inputsAndFlags[k] = v
+	}
+	inputsAndFlags["flags"] = sp.flags.forTemplate()
+	msg, err := parseAndExecuteGoTmpl(p.Message.Pos, p.Message.Val, inputsAndFlags)
 	if err != nil {
 		return err
 	}
