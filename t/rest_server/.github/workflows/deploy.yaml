@@ -18,21 +18,21 @@ on:
   workflow_dispatch:
     inputs:
       deploymentEnvironment:
-        type: choice
-        description: Environment to deploy image to.
+        type: 'choice'
+        description: 'Environment to deploy image to.'
         default: 'autopush'
         options: 
-        - autopush
-        - production
+        - 'autopush'
+        - 'production'
   workflow_call:
     inputs:
       deploymentEnvironment:
-        type: choice
-        description: Environment to deploy image to.
+        type: 'choice'
+        description: 'Environment to deploy image to.'
         default: 'autopush'
         options: 
-        - autopush
-        - production
+        - 'autopush'
+        - 'production'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
