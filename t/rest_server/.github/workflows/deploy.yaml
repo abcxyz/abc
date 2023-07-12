@@ -48,7 +48,7 @@ jobs:
     steps:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
-      - name: 'Load variables from Autopush .env file'
+      - name: 'Load variables from .env file'
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
         with:
           env_file: '.github/config/${{inputs.deployment_environment}}.env'
