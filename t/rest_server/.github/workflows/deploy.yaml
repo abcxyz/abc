@@ -34,7 +34,7 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 
-# Define all env variables in the bootstrap files under 
+# Define all env variables in the bootstrap files under
 # .github/config/{{ environment }}.env
 # More environments are expected to be added in the future.
 
