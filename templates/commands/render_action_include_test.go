@@ -272,7 +272,7 @@ func TestActionInclude(t *testing.T) {
 			}
 
 			sp := &stepParams{
-				flagSpec: tc.flagSpec,
+				flags: &renderFlags{spec: tc.flagSpec},
 				fs: &errorFS{
 					renderFS: &realFS{},
 					statErr:  tc.statErr,

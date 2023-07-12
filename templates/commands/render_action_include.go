@@ -86,7 +86,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 			// If we're copying the template root directory, automatically skip
 			// the spec.yaml file, because it's very unlikely that the user actually
 			// wants the spec file in the template output.
-			skipNow[sp.flagSpec] = struct{}{}
+			skipNow[sp.flags.spec] = struct{}{}
 		}
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {

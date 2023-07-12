@@ -371,6 +371,17 @@ Params:
 - `message`: the message to show. May use template expressions (e.g.
   `{{.my_input}}`).
 
+  The print action has special access to an extra template variable named
+  `flags` containing the values of some of the command line flags. This can be
+  useful to print a message like
+  `Template rendering is done, now please to go the {{.flags.dest}} directory and run a certain command.`
+  The available values are:
+
+  - `{{.flags.dest}}`: the value of the the `--dest` flag, e.g. `.`
+  - `{{.flags.source}}`: the template location that's being rendered, e.g.
+    `github.com/abcxyz/abc.git//t/my_template`
+  - `{{.flags.spec}}`: the value of the `--spec` flag, e.g. `spec.yaml`
+
 Example:
 
 ```yaml
