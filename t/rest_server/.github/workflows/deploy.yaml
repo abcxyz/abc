@@ -13,7 +13,6 @@
 # limitations under the License.
 
 name: 'deploy'
-
 on:
   workflow_dispatch:
     inputs:
@@ -29,15 +28,12 @@ on:
         type: 'string'
         description: 'Environment to deploy image to.'
         default: 'autopush'
-
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
-
 # Define all env variables in the bootstrap files under
 # .github/config/{{ environment }}.env
 # More environments are expected to be added in the future.
-
 jobs:
   image-release:
     permissions:
@@ -49,7 +45,7 @@ jobs:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
       - name: 'Load variables from .env file'
-        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
+        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
         with:
           env_file: '.github/config/${{inputs.deployment_environment}}.env'
       - id: 'auth'
@@ -79,7 +75,6 @@ jobs:
       - name: 'Push Docker Image'
         run: |
           docker push ${{ env.IMAGE }}
-
   deploy-service:
     needs:
       - 'image-release'
@@ -92,7 +87,7 @@ jobs:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
       - name: 'Load variables from .env file'
-        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
+        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
         with:
           env_file: '.github/config/${{inputs.deployment_environment}}.env'
       - name: 'Google Auth'
