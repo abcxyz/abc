@@ -17,7 +17,7 @@ name: 'deploy'
 on:
   workflow_dispatch:
     inputs:
-      deploymentEnvironment:
+      deployment_environment:
         type: 'choice'
         description: 'Environment to deploy image to.'
         default: 'autopush'
@@ -25,7 +25,7 @@ on:
           - 'autopush'
   workflow_call:
     inputs:
-      deploymentEnvironment:
+      deployment_environment:
         type: 'string'
         description: 'Environment to deploy image to.'
         default: 'autopush'
@@ -34,12 +34,9 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 
-env:
-  # This should be the only env variable defined in this file. Define all other
-  # variables in the bootstrap file.
-  # More environments are expected to be added in the future.
-  AUTOPUSH_ENV_FILE: '.github/config/autopush.env'
-  PRODUCTION_ENV_FILE: '.github/config/production.env'
+# Define all env variables in the bootstrap files under 
+# .github/config/{{ environment }}.env
+# More environments are expected to be added in the future.
 
 jobs:
   image-release:
@@ -52,10 +49,9 @@ jobs:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
       - name: 'Load variables from Autopush .env file'
-        if: "${{ inputs.deploymentEnvironment == 'autopush' }}"
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
         with:
-          env_file: '${{ env.AUTOPUSH_ENV_FILE }}'
+          env_file: '.github/config/${{inputs.deployment_environment}}.env'
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
@@ -75,7 +71,7 @@ jobs:
           go-version: '1.20.2'
       - name: 'Build Go binary'
         run: |
-          CGO_ENABLED=0 GOOS=linux go build -o restserver .
+          CGO_ENABLED=0 go build -o restserver .
       - name: 'Build Docker Image'
         run: |
           docker build --tag ${{ env.IMAGE }} \
@@ -95,16 +91,10 @@ jobs:
     steps:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
-      - name: 'Load variables from Autopush .env file'
-        if: "${{ inputs.deploymentEnvironment == 'autopush' }}"
+      - name: 'Load variables from .env file'
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
         with:
-          env_file: '${{ env.AUTOPUSH_ENV_FILE }}'
-      - name: 'Load variables from Production .env file'
-        if: "${{ inputs.deploymentEnvironment == 'production' }}"
-        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@main'
-        with:
-          env_file: '${{ env.PRODUCTION_ENV_FILE }}'
+          env_file: '.github/config/${{inputs.deployment_environment}}.env'
       - name: 'Google Auth'
         id: 'auth'
         uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
