@@ -198,9 +198,14 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 // many of these, so they've been factored out into a struct to avoid having the
 // function parameter list be really long.
 type copyParams struct {
-	// backupDir provides the path at which files will be saved before they're
-	// overwritten.
-	backupDir string
+	// backupDirMaker will be called when we reach the first file that actually
+	// needs to be backed up. It should create a directory and return its path,
+	// either relative to the cwd or absolute. Use os.MkdirTemp() in real code
+	// and something hardcoded in tests.
+	backupDirMaker func(renderFS) (string, error)
+	// // backupDir provides the path at which files will be saved before they're
+	// // overwritten.
+	// backupDir string
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	dryRun bool
@@ -242,6 +247,7 @@ type copyHint struct {
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
+	backupDir := ""                                                                          // will be set once the backup dir is actually created
 	return fs.WalkDir(p.rfs, p.srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
 		logger := logging.FromContext(ctx)
 		if err != nil {
@@ -292,8 +298,13 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 			if !ch.overwrite {
 				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc) //nolint:wrapcheck
 			}
-			if ch.backupIfExists {
-				if err := backUp(ctx, p.rfs, p.backupDir, p.dstRoot, relToSrc); err != nil {
+			if ch.backupIfExists && !p.dryRun {
+				if backupDir == "" {
+					if backupDir, err = p.backupDirMaker(p.rfs); err != nil {
+						return fmt.Errorf("failed making backup directory: %w", err)
+					}
+				}
+				if err := backUp(ctx, p.rfs, backupDir, p.dstRoot, relToSrc); err != nil {
 					return err
 				}
 			}

@@ -587,11 +587,25 @@ steps:
 			}
 
 			gotBackupContents := loadDirWithoutMode(t, backupDir)
-			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents); diff != "" {
+			gotBackupContents = stripFirstPathElem(gotBackupContents)
+			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
+}
+
+// Since os.MkdirTemp adds an extra random token, we strip it back out to get
+// determistic results.
+func stripFirstPathElem(m map[string]string) map[string]string {
+	out := map[string]string{}
+	for k, v := range m {
+		// Panic in the case where k has no slashes; this is just a test helper.
+		elems := strings.Split(k, string(filepath.Separator))
+		newKey := filepath.Join(elems[1:]...)
+		out[newKey] = v
+	}
+	return out
 }
 
 func TestSafeRelPath(t *testing.T) {

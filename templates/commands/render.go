@@ -79,6 +79,7 @@ type renderFS interface {
 
 	// These methods correspond to methods in the "os" package of the same name.
 	MkdirAll(string, os.FileMode) error
+	MkdirTemp(string, string) (string, error)
 	OpenFile(string, int, os.FileMode) (*os.File, error)
 	ReadFile(string) ([]byte, error)
 	RemoveAll(string) error
@@ -199,6 +200,10 @@ func (r *realFS) MkdirAll(name string, perm os.FileMode) error {
 	return os.MkdirAll(name, perm) //nolint:wrapcheck
 }
 
+func (r *realFS) MkdirTemp(dir, pattern string) (string, error) {
+	return os.MkdirTemp(dir, pattern) //nolint:wrapcheck
+}
+
 func (r *realFS) Open(name string) (fs.File, error) {
 	return os.Open(name) //nolint:wrapcheck
 }
@@ -257,15 +262,11 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("os.UserHomeDir: %w", err)
 	}
-	randToken, err := randU64()
-	if err != nil {
-		return err
-	}
 	backupDir := filepath.Join(
 		homeDir,
 		".abc",
 		"backups",
-		fmt.Sprintf("%d-%d", time.Now().Unix(), randToken))
+		fmt.Sprint(time.Now().Unix()))
 
 	return r.realRun(ctx, &runParams{
 		backupDir:    backupDir,
@@ -373,13 +374,28 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				overwrite: ok || r.flagForceOverwrite,
 			}, nil
 		}
+
+		// We only want to call MkdirTemp once, and use the resulting backup
+		// directory for every step in this rendering operation.
+		var backupDir string
+		backupDirMaker := func(rfs renderFS) (string, error) {
+			if backupDir != "" {
+				return backupDir, nil
+			}
+			if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
+				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+			}
+			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
+			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+		}
+
 		params := &copyParams{
-			backupDir: rp.backupDir,
-			dryRun:    dryRun,
-			dstRoot:   r.flagDest,
-			rfs:       rp.fs,
-			srcRoot:   scratchDir,
-			visitor:   visitor,
+			backupDirMaker: backupDirMaker,
+			dryRun:         dryRun,
+			dstRoot:        r.flagDest,
+			rfs:            rp.fs,
+			srcRoot:        scratchDir,
+			visitor:        visitor,
 		}
 		if err := copyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
@@ -595,10 +611,9 @@ func (r *Render) setLogEnvVars() {
 // between the various template directories created by this program, such as
 // "template" or "scratch".
 //
-// We can't use os.MkdirTemp() for a go-getter output directory because
-// go-getter silently fails to clone a git repo into an existing (empty)
-// directory. go-getter assumes that the dir must already be a git repo if it
-// exists.
+// We can't use MkdirTemp() for a go-getter output directory because go-getter
+// silently fails to clone a git repo into an existing (empty) directory.
+// go-getter assumes that the dir must already be a git repo if it exists.
 func tempDirName(namePart string) (string, error) {
 	rnd, err := randU64()
 	if err != nil {

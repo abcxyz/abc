@@ -264,6 +264,26 @@ func TestCopyRecursive(t *testing.T) {
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 		},
 		{
+			name: "dry_run_with_overwrite_doesnt_make_backups",
+			srcDirContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "new contents"},
+			},
+			dstDirInitialContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+				return copyHint{
+					backupIfExists: true,
+					overwrite:      true,
+				}, nil
+			},
+			want: map[string]modeAndContents{
+				"file1.txt": {0o600, "old contents"},
+			},
+
+			dryRun: true,
+		},
+		{
 			name: "dry_run_without_overwrite_should_detect_conflicting_files",
 			dstDirInitialContents: map[string]modeAndContents{
 				"file1.txt": {0o600, "old contents"},
@@ -554,12 +574,12 @@ func TestCopyRecursive(t *testing.T) {
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
 			err := copyRecursive(ctx, &model.ConfigPos{}, &copyParams{
-				backupDir: backupDir,
-				srcRoot:   from,
-				dstRoot:   to,
-				dryRun:    tc.dryRun,
-				rfs:       fs,
-				visitor:   tc.visitor,
+				backupDirMaker: func(rf renderFS) (string, error) { return backupDir, nil },
+				srcRoot:        from,
+				dstRoot:        to,
+				dryRun:         tc.dryRun,
+				rfs:            fs,
+				visitor:        tc.visitor,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
