@@ -74,7 +74,6 @@ func main() {
 	lines, err := textio.Immediate(s, *input)
 	if err != nil {
 		log.Fatalf("Failed to read %v: %v", *input, err)
-		return
 	}
 
 	// Convert each line to a data model
