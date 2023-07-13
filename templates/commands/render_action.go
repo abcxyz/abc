@@ -142,7 +142,7 @@ var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"
 // there's no reason to print out spec file location in an error message. If
 // template execution fails because of a missing input variable, the error will
 // be wrapped in a unknownTemplateKeyError.
-func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, inputs map[string]string) (string, error) {
+func parseAndExecuteGoTmpl[T any](pos *model.ConfigPos, tmpl string, inputs map[string]T) (string, error) {
 	parsedTmpl, err := parseGoTmpl(tmpl)
 	if err != nil {
 		return "", model.ErrWithPos(pos, `error compiling as go-template: %w`, err) //nolint:wrapcheck

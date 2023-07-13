@@ -187,6 +187,12 @@ desc: 'b'
 nonexistent_field: 'oops'`,
 			wantUnmarshalErr: `invalid config near line 3 column 1: unknown field name "nonexistent_field"`,
 		},
+		{
+			name: "reserved_input_name",
+			in: `desc: 'foo'
+name: 'flags'`,
+			wantValidateErr: "is reserved",
+		},
 	}
 
 	for _, tc := range cases {

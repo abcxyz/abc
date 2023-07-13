@@ -32,6 +32,7 @@ func TestActionPrint(t *testing.T) {
 		name    string
 		in      string
 		inputs  map[string]string
+		flags   renderFlags
 		want    string
 		wantErr string
 	}{
@@ -54,6 +55,20 @@ func TestActionPrint(t *testing.T) {
 			inputs:  map[string]string{},
 			wantErr: `template referenced a nonexistent input variable name "name"`,
 		},
+		{
+			name: "flags_in_message",
+			in:   "{{.flags.dest}} {{.flags.source}} {{.flags.spec}}",
+			flags: renderFlags{
+				source:         "mysource",
+				dest:           "mydest",
+				gitProtocol:    "mygitprotocol",
+				logLevel:       "myloglevel",
+				forceOverwrite: true,
+				keepTempDirs:   true,
+				spec:           "myspec",
+			},
+			want: "mydest mysource myspec\n",
+		},
 	}
 
 	for _, tc := range cases {
@@ -66,6 +81,7 @@ func TestActionPrint(t *testing.T) {
 			sp := &stepParams{
 				stdout: &outBuf,
 				inputs: tc.inputs,
+				flags:  &tc.flags,
 			}
 			pr := &model.Print{
 				Message: model.String{

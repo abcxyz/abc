@@ -1,0 +1,112 @@
+# Copyright 2023 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: 'deploy'
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_environment:
+        type: 'choice'
+        description: 'Environment to deploy image to.'
+        default: 'autopush'
+        options:
+          - 'autopush'
+  workflow_call:
+    inputs:
+      deployment_environment:
+        type: 'string'
+        description: 'Environment to deploy image to.'
+        default: 'autopush'
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+# Define all env variables in the bootstrap files under
+# .github/config/{{ environment }}.env
+# More environments are expected to be added in the future.
+jobs:
+  image-release:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    name: 'Release Image'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout Repo'
+        uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
+      - name: 'Load variables from .env file'
+        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
+        with:
+          env_file: '.github/config/${{inputs.deployment_environment}}.env'
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
+        with:
+          token_format: 'access_token'
+          service_account: '${{ env.AUTOMATION_SERVICE_ACCOUNT }}'
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+      - name: 'Login to Artifact Registry'
+        uses: 'docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a' # ratchet:docker/login-action@v2
+        with:
+          registry: '${{ env.AR_LOCATION }}'
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+      - name: 'Setup Go'
+        uses: 'actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9' # ratchet:actions/setup-go@v4
+        with:
+          go-version: '1.20.2'
+      - name: 'Build Go binary'
+        run: |
+          CGO_ENABLED=0 go build -o restserver .
+      - name: 'Build Docker Image'
+        run: |
+          docker build --tag ${{ env.IMAGE }} \
+            --build-arg APP=restserver .
+      - name: 'Push Docker Image'
+        run: |
+          docker push ${{ env.IMAGE }}
+  deploy-service:
+    needs:
+      - 'image-release'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    name: 'Deploy Service'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout Repo'
+        uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
+      - name: 'Load variables from .env file'
+        uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
+        with:
+          env_file: '.github/config/${{inputs.deployment_environment}}.env'
+      - name: 'Google Auth'
+        id: 'auth'
+        uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
+        with:
+          token_format: 'access_token'
+          service_account: '${{ env.AUTOMATION_SERVICE_ACCOUNT }}'
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@62d4898025f6041e16b1068643bfc5a696863587' # ratchet:google-github-actions/setup-gcloud@v1
+        with:
+          version: '>= 363.0.0'
+      - name: 'Deploy to Cloud Run'
+        run: |-
+          gcloud run deploy ${{ env.CR_SERVICE }} \
+            --image ${{ env.IMAGE }} \
+            --quiet \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --format json
