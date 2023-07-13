@@ -73,16 +73,6 @@ type renderFlags struct {
 	spec           string
 }
 
-func (r *renderFlags) forTemplate() map[string]any {
-	// We only expose certain fields to go-templating; thse are the ones that we
-	// can imagine beneficial use cases for.
-	return map[string]any{
-		"dest":   r.dest,
-		"source": r.source,
-		"spec":   r.spec,
-	}
-}
-
 // Abstracts filesystem operations.
 //
 // We can't use os.DirFS or fs.StatFS because they lack some methods we need. So
