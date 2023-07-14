@@ -78,6 +78,9 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		// grabbing files from the destination directory, so we can modify files
 		// that already exist in the destination.
 		fromDir := sp.templateDir
+		if inc.From.Val == "destination" {
+			fromDir = sp.flags.dest
+		}
 		absSrc := filepath.Join(fromDir, walkRelPath)
 		absDst := filepath.Join(sp.scratchDir, relDst)
 
@@ -106,6 +109,15 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 					return copyHint{
 						skip: true,
 					}, nil
+				}
+
+				abs := filepath.Join(absSrc, relToAbsSrc)
+				relToFromDir, err := filepath.Rel(fromDir, abs)
+				if err != nil {
+					return copyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
+				}
+				if !de.IsDir() && inc.From.Val == "destination" {
+					sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
 				}
 
 				return copyHint{

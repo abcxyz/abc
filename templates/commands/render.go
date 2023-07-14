@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
@@ -46,6 +47,8 @@ const (
 
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
+	// Permission bits: rw------- .
+	ownerRWPerms = 0o600
 
 	defaultLogLevel = "warn"
 	defaultLogMode  = "dev"
@@ -82,6 +85,7 @@ type renderFS interface {
 
 	// These methods correspond to methods in the "os" package of the same name.
 	MkdirAll(string, os.FileMode) error
+	MkdirTemp(string, string) (string, error)
 	OpenFile(string, int, os.FileMode) (*os.File, error)
 	ReadFile(string) ([]byte, error)
 	RemoveAll(string) error
@@ -202,6 +206,10 @@ func (r *realFS) MkdirAll(name string, perm os.FileMode) error {
 	return os.MkdirAll(name, perm) //nolint:wrapcheck
 }
 
+func (r *realFS) MkdirTemp(dir, pattern string) (string, error) {
+	return os.MkdirTemp(dir, pattern) //nolint:wrapcheck
+}
+
 func (r *realFS) Open(name string) (fs.File, error) {
 	return os.Open(name) //nolint:wrapcheck
 }
@@ -256,7 +264,18 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("os.UserHomeDir: %w", err)
+	}
+	backupDir := filepath.Join(
+		homeDir,
+		".abc",
+		"backups",
+		fmt.Sprint(time.Now().Unix()))
+
 	return r.realRun(ctx, &runParams{
+		backupDir:    backupDir,
 		cwd:          wd,
 		fs:           fSys,
 		getter:       gg,
@@ -266,10 +285,11 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 }
 
 type runParams struct {
-	cwd    string
-	fs     renderFS
-	getter getterClient
-	stdout io.Writer
+	backupDir string
+	cwd       string
+	fs        renderFS
+	getter    getterClient
+	stdout    io.Writer
 
 	// Constructs a name for a temp directory that doesn't exist yet and won't
 	// collide with other directories. Doesn't actually create a directory, the
@@ -326,32 +346,61 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	tempDirs = append(tempDirs, scratchDir)
 	logger.Infof("created temporary scratch directory at: %s", scratchDir)
 
-	if err := executeSpec(ctx, spec, &stepParams{
+	sp := &stepParams{
 		flags:       &r.flags,
-		inputs:      r.flags.inputs,
 		fs:          rp.fs,
+		inputs:      r.flags.inputs,
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
-	}); err != nil {
+	}
+	if err := executeSpec(ctx, spec, sp); err != nil {
 		return err
 	}
+
+	includedFromDest := sliceToSet(sp.includedFromDest)
 
 	// Commit the contents of the scratch directory to the output directory. We
 	// first do a dry-run to check that the copy is likely to succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
+		visitor := func(relPath string, _ fs.DirEntry) (copyHint, error) {
+			_, ok := includedFromDest[relPath]
+			return copyHint{
+				backupIfExists: true,
+
+				// Special case: files that were "include"d from the
+				// *destination* directory (rather than the template directory),
+				// are always allowed to be overwritten. For example, if we grab
+				// file_to_modify.txt from the --dest dir, then we always allow
+				// ourself to write back to that file, even when
+				// --force-overwrite=false. When the template uses this feature,
+				// we know that the intent is to modify the files in place.
+				overwrite: ok || r.flags.forceOverwrite,
+			}, nil
+		}
+
+		// We only want to call MkdirTemp once, and use the resulting backup
+		// directory for every step in this rendering operation.
+		var backupDir string
+		backupDirMaker := func(rfs renderFS) (string, error) {
+			if backupDir != "" {
+				return backupDir, nil
+			}
+			if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
+				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+			}
+			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
+			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+		}
+
 		params := &copyParams{
-			srcRoot:   scratchDir,
-			dstRoot:   r.flags.dest,
-			rfs:       rp.fs,
-			overwrite: r.flags.forceOverwrite,
-			dryRun:    dryRun,
-			visitor: func(relPath string, _ fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					overwrite: r.flags.forceOverwrite,
-				}, nil
-			},
+			backupDirMaker: backupDirMaker,
+			dryRun:         dryRun,
+			dstRoot:        r.flags.dest,
+			rfs:            rp.fs,
+			srcRoot:        scratchDir,
+			visitor:        visitor,
 		}
 		if err := copyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
@@ -359,6 +408,14 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 
 	return nil
+}
+
+func sliceToSet[T comparable](vals []T) map[T]struct{} {
+	out := make(map[T]struct{}, len(vals))
+	for _, v := range vals {
+		out[v] = struct{}{}
+	}
+	return out
 }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.
@@ -414,12 +471,34 @@ func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
 }
 
 type stepParams struct {
-	flags       *renderFlags
-	fs          renderFS
-	inputs      map[string]string
+	flags *renderFlags
+	fs    renderFS
+
+	// inputs are the template values to plug in, provided by the user. Why is
+	// this separate from flags.inputs? Because these are the processed form,
+	// which includes defaults, and may include other sources like env vars and
+	// file inputs in the future.
+	inputs map[string]string
+
 	scratchDir  string
 	stdout      io.Writer
 	templateDir string
+
+	// Mutable fields that are updated by action* functions go below this line.
+
+	// includedFromDest is a list of every file (no directories) that was copied
+	// from the destination directory into the scratch directory. We want to
+	// track these because they are treated specially in the final phase of
+	// rendering. When we commit the template output from the scratch directory
+	// into the destination directory, these paths are always allowed to be
+	// overwritten. For other files not in this list, it's an error to try to
+	// write to an existing file. This whole scheme supports the feature of
+	// modifying files that already exist in the destination.
+	//
+	// These are paths relative to the --dest directory (which is the same thing
+	// as being relative to the scratch directory, the paths within these dirs
+	// are the same).
+	includedFromDest []string
 }
 
 func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error {
@@ -541,10 +620,9 @@ func (r *Render) setLogEnvVars() {
 // between the various template directories created by this program, such as
 // "template" or "scratch".
 //
-// We can't use os.MkdirTemp() for a go-getter output directory because
-// go-getter silently fails to clone a git repo into an existing (empty)
-// directory. go-getter assumes that the dir must already be a git repo if it
-// exists.
+// We can't use MkdirTemp() for a go-getter output directory because go-getter
+// silently fails to clone a git repo into an existing (empty) directory.
+// go-getter assumes that the dir must already be a git repo if it exists.
 func tempDirName(namePart string) (string, error) {
 	rnd, err := randU64()
 	if err != nil {
