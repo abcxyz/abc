@@ -346,9 +346,10 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	tempDirs = append(tempDirs, scratchDir)
 	logger.Infof("created temporary scratch directory at: %s", scratchDir)
 
-	sp := &stepParams{.flagDest,
+	sp := &stepParams{
 		flags:       &r.flags,
 		fs:          rp.fs,
+		inputs:      r.flags.inputs,
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
@@ -375,7 +376,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				// ourself to write back to that file, even when
 				// --force-overwrite=false. When the template uses this feature,
 				// we know that the intent is to modify the files in place.
-				overwrite: ok || r.flagForceOverwrite,
+				overwrite: ok || r.flags.forceOverwrite,
 			}, nil
 		}
 
@@ -396,7 +397,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		params := &copyParams{
 			backupDirMaker: backupDirMaker,
 			dryRun:         dryRun,
-			flags:          r.flags,
+			dstRoot:        r.flags.dest,
 			rfs:            rp.fs,
 			srcRoot:        scratchDir,
 			visitor:        visitor,
@@ -470,9 +471,15 @@ func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
 }
 
 type stepParams struct {
-	flags       *renderFlags
-	fs          renderFS
-	inputs      map[string]string
+	flags *renderFlags
+	fs    renderFS
+
+	// inputs are the template values to plug in, provided by the user. Why is
+	// this separate from flags.inputs? Because these are the processed form,
+	// which includes defaults, and may include other sources like env vars and
+	// file inputs in the future.
+	inputs map[string]string
+
 	scratchDir  string
 	stdout      io.Writer
 	templateDir string

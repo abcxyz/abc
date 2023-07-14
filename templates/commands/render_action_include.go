@@ -79,7 +79,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		// that already exist in the destination.
 		fromDir := sp.templateDir
 		if inc.From.Val == "destination" {
-			fromDir = sp.flagDest
+			fromDir = sp.flags.dest
 		}
 		absSrc := filepath.Join(fromDir, walkRelPath)
 		absDst := filepath.Join(sp.scratchDir, relDst)
