@@ -198,18 +198,23 @@ func (n *unknownTemplateKeyError) Is(other error) bool {
 // many of these, so they've been factored out into a struct to avoid having the
 // function parameter list be really long.
 type copyParams struct {
-	// srcRoot is the file or directory from which to copy.
-	srcRoot string
-	// dstRoot is the output directory.
-	dstRoot string
-	// rfs is the filesytem to use.
-	rfs renderFS
-	// overwrite files if they already exists, rather than the default behavior
-	// of returning error.
-	overwrite bool
+	// backupDirMaker will be called when we reach the first file that actually
+	// needs to be backed up. It should create a directory and return its path,
+	// either relative to the cwd or absolute. Use os.MkdirTemp() in real code
+	// and something hardcoded in tests.
+	backupDirMaker func(renderFS) (string, error)
+	// // backupDir provides the path at which files will be saved before they're
+	// // overwritten.
+	// backupDir string
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	dryRun bool
+	// dstRoot is the output directory.
+	dstRoot string
+	// srcRoot is the file or directory from which to copy.
+	srcRoot string
+	// rfs is the filesytem to use.
+	rfs renderFS
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	visitor copyVisitor
@@ -221,11 +226,16 @@ type copyParams struct {
 // basis, and also informs the of each file and directory being copied.
 type copyVisitor func(relPath string, de fs.DirEntry) (copyHint, error)
 
-// copyHint is returned from a copyVisitor to indicate how a given file or
-// directory should be handled.
 type copyHint struct {
-	// Overwrite the file in the destination if it already exists. The default
-	// is to conservatively fail without overwriting.
+	// Before overwriting a file in the destination dir, copy the preexisting
+	// contents of the file into ~/.abc/$timestamp. Only used if
+	// overwrite==true.
+	//
+	// This has no effect on directories, only files.
+	backupIfExists bool
+
+	// Overwrite files in the destination if they already exist. The default is
+	// to conservatively fail.
 	//
 	// This has no effect on directories, only files.
 	overwrite bool
@@ -237,6 +247,7 @@ type copyHint struct {
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
+	backupDir := ""                                                                          // will be set once the backup dir is actually created
 	return fs.WalkDir(p.rfs, p.srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
 		logger := logging.FromContext(ctx)
 		if err != nil {
@@ -287,6 +298,16 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 			if !ch.overwrite {
 				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc) //nolint:wrapcheck
 			}
+			if ch.backupIfExists && !p.dryRun {
+				if backupDir == "" {
+					if backupDir, err = p.backupDirMaker(p.rfs); err != nil {
+						return fmt.Errorf("failed making backup directory: %w", err)
+					}
+				}
+				if err := backUp(ctx, p.rfs, backupDir, p.dstRoot, relToSrc); err != nil {
+					return err
+				}
+			}
 		} else if !os.IsNotExist(err) {
 			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
 		}
@@ -333,4 +354,29 @@ func safeRelPath(pos *model.ConfigPos, p string) (string, error) {
 		return "", model.ErrWithPos(pos, `path %q must not contain ".."`, p) //nolint:wrapcheck
 	}
 	return strings.TrimLeft(p, string(filepath.Separator)), nil
+}
+
+// backUp saves the file $srcRoot/$relPath into backupDir.
+//
+// When we overwrite a file in the destination dir, we back up the old version
+// in case the user had uncommitted changes in that file that were unrelated to
+// abc.
+func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath string) error {
+	backupFile := filepath.Join(backupDir, relPath)
+	parent := filepath.Dir(backupFile)
+	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
+		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
+	}
+
+	fileToBackup := filepath.Join(srcRoot, relPath)
+
+	if err := copyFile(nil, rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
+		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
+			fileToBackup, backupFile, err)
+	}
+
+	logger := logging.FromContext(ctx)
+	logger.Infof("backed up previous contents of %s at %s", fileToBackup, backupFile)
+
+	return nil
 }

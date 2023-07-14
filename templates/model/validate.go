@@ -96,7 +96,7 @@ func extraFields(n *yaml.Node, knownFields []string) error {
 		}
 	}
 
-	return pos.AnnotateErr(fmt.Errorf("unknown field name %q", unknownField))
+	return pos.AnnotateErr(fmt.Errorf("unknown field name %q; valid choices are %v", unknownField, knownFields))
 }
 
 type validator interface {

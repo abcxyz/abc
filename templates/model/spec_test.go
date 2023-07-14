@@ -377,6 +377,47 @@ params:
 			},
 		},
 		{
+			name: "include_from_destination",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths: ['.']
+  from: 'destination'`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					From: String{Val: "destination"},
+					Paths: []String{
+						{
+							Val: ".",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "include_from_invalid",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths: ['.']
+  from: 'invalid'`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					From: String{Val: "invalid"},
+					Paths: []String{
+						{
+							Val: ".",
+						},
+					},
+				},
+			},
+			wantValidateErr: `"from" must be one of`,
+		},
+		{
 			name: "wrong_number_of_as_paths",
 			in: `desc: 'mydesc'
 action: 'include'
