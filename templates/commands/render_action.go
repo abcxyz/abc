@@ -41,6 +41,8 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // given visitor for each file. If the visitor returns modified file contents
 // for a given file, that file will be overwritten with the new contents.
 func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor) error {
+	logger := logging.FromContext(ctx).Named("walkAndModify")
+
 	relPath, err := safeRelPath(pos, relPath)
 	if err != nil {
 		return err
@@ -90,7 +92,7 @@ func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scra
 		if err := rfs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
 			return model.ErrWithPos(pos, "Writefile(): %w", err) //nolint:wrapcheck
 		}
-		logging.FromContext(ctx).Debugf("walkAndModify: wrote modification to %s", path)
+		logger.Debugw("wrote modification", "path", path)
 
 		return nil
 	})
@@ -248,9 +250,11 @@ type copyHint struct {
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
-	backupDir := ""                                                                          // will be set once the backup dir is actually created
+	logger := logging.FromContext(ctx).Named("copyRecursive")
+
+	backupDir := "" // will be set once the backup dir is actually created
+
 	return fs.WalkDir(p.rfs, p.srcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
-		logger := logging.FromContext(ctx)
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
@@ -271,7 +275,7 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		}
 
 		if ch.skip {
-			logger.Debugf("copyRecursive: walkdirfunc visitor skipped file: %s", relToSrc)
+			logger.Debugw("walkdir visitor skipped file", "path", relToSrc)
 			return fs.SkipDir
 		}
 
@@ -325,6 +329,8 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 }
 
 func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
+	logger := logging.FromContext(ctx).Named("copyFile")
+
 	readFile, err := rfs.Open(src)
 	if err != nil {
 		return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
@@ -344,7 +350,7 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst 
 	if _, err := io.Copy(writeFile, readFile); err != nil {
 		return fmt.Errorf("Copy(): %w", err)
 	}
-	logging.FromContext(ctx).Debugf("copyFile: from %s to %s", src, dst)
+	logger.Debugw("copied file", "source", src, "destination", dst)
 	return nil
 }
 
@@ -377,7 +383,7 @@ func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath strin
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.Infof("backed up previous contents of %s at %s", fileToBackup, backupFile)
+	logger.Infow("completed backup", "source", fileToBackup, "destination", backupFile)
 
 	return nil
 }

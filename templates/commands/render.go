@@ -343,7 +343,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 	tempDirs = append(tempDirs, scratchDir)
 	logger := logging.FromContext(ctx)
-	logger.Infof("created temporary scratch directory at: %s", scratchDir)
+	logger.Infow("created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
 		flags:       &r.flags,
@@ -390,7 +390,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 			}
 			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
-			logger.Infof("created backup directory at %s", backupDir)
+			logger.Infow("created backup directory", "path", backupDir)
 			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
 
@@ -467,11 +467,13 @@ func (r *Render) checkRequiredInputs(spec *model.Spec) []string {
 }
 
 func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
+	logger := logging.FromContext(ctx).Named("executeSpec")
+
 	for _, step := range spec.Steps {
 		if err := executeOneStep(ctx, step, sp); err != nil {
 			return err
 		}
-		logging.FromContext(ctx).Debugf("completed template action %s", step.Action.Val)
+		logger.Debugw("completed template action", "action", step.Action.Val)
 	}
 	return nil
 }
@@ -589,8 +591,11 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 		return templateDir, fmt.Errorf("go-getter.Get(): %w", err)
 	}
 	logger := logging.FromContext(ctx)
-	logger.Infof("created temporary template directory at: %s", templateDir)
-	logger.Infof("copied source template %s into temporary directory %s", r.flags.source, templateDir)
+	logger.Infow("created temporary template directory",
+		"path", templateDir)
+	logger.Infow("copied source template temporary directory",
+		"source", r.flags.source,
+		"destination", templateDir)
 	return templateDir, nil
 }
 
@@ -598,7 +603,8 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if r.flags.keepTempDirs {
-		logger.Infof("keeping temporary directories due to --keep-temp-dirs. Locations are: %v", tempDirs)
+		logger.Infow("keeping temporary directories due to --keep-temp-dirs",
+			"paths", tempDirs)
 		return nil
 	}
 	logger.Info("removing all temporary directories (skip this with --keep-temp-dirs)")
