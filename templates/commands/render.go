@@ -406,9 +406,9 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
 		}
 		if dryRun {
-			logger.Debug("template render (dry run) succeed")
+			logger.Debug("template render (dry run) succeeded")
 		} else {
-			logger.Debug("template render succeed")
+			logger.Debug("template render succeeded")
 		}
 	}
 
