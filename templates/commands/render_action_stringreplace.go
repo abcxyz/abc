@@ -42,7 +42,7 @@ func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepP
 			return err
 		}
 
-		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
+		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
 			return []byte(replacer.Replace(string(buf))), nil
 		}); err != nil {
 			return err

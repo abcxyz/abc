@@ -235,12 +235,12 @@ func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
-	r.setLogEnvVars()
-	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
-
 	if err := r.parseFlags(args); err != nil {
 		return err
 	}
+
+	r.setLogEnvVars()
+	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	fSys := r.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
@@ -313,8 +313,6 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err != nil {
 		return err
 	}
-	logger := logging.FromContext(ctx)
-	logger.Infof("created temporary template directory at: %s", templateDir)
 
 	safeSpecPath, err := safeRelPath(nil, r.flags.spec)
 	if err != nil {
@@ -344,6 +342,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
+	logger := logging.FromContext(ctx)
 	logger.Infof("created temporary scratch directory at: %s", scratchDir)
 
 	sp := &stepParams{
@@ -391,6 +390,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 			}
 			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
+			logger.Infof("created backup directory at %s", backupDir)
 			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
 
@@ -404,6 +404,11 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		}
 		if err := copyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
+		}
+		if dryRun {
+			logger.Debug("template render (dry run) succeed")
+		} else {
+			logger.Debug("template render succeed")
 		}
 	}
 
@@ -466,6 +471,7 @@ func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
 		if err := executeOneStep(ctx, step, sp); err != nil {
 			return err
 		}
+		logging.FromContext(ctx).Debugf("completed template action %s", step.Action.Val)
 	}
 	return nil
 }
@@ -578,12 +584,13 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 		Src:             r.flags.source,
 	}
 
-	res, err := rp.getter.Get(ctx, req)
+	_, err = rp.getter.Get(ctx, req)
 	if err != nil {
 		return templateDir, fmt.Errorf("go-getter.Get(): %w", err)
 	}
-
-	logging.FromContext(ctx).Debugf("copied source template %q into temporary directory %q", r.flags.source, res.Dst)
+	logger := logging.FromContext(ctx)
+	logger.Infof("created temporary template directory at: %s", templateDir)
+	logger.Infof("copied source template %s into temporary directory %s", r.flags.source, templateDir)
 	return templateDir, nil
 }
 
@@ -594,7 +601,7 @@ func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs 
 		logger.Infof("keeping temporary directories due to --keep-temp-dirs. Locations are: %v", tempDirs)
 		return nil
 	}
-	logger.Debugf("removing temporary directories (skip this with --keep-temp-dirs)")
+	logger.Info("removing all temporary directories (skip this with --keep-temp-dirs)")
 
 	var merr error
 	for _, p := range tempDirs {

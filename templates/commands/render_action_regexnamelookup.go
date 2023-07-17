@@ -43,7 +43,7 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 	}
 
 	for _, p := range rn.Paths {
-		if err := walkAndModify(p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
+		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
 			for i, rn := range rn.Replacements {
 				cr := compiledRegexes[i]
 				allMatches := cr.FindAllSubmatchIndex(b, -1)
