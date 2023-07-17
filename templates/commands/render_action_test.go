@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/benbjohnson/clock"
 	"github.com/google/go-cmp/cmp"
@@ -209,7 +210,8 @@ func TestWalkAndModify(t *testing.T) {
 				statErr:      tc.statErr,
 				writeFileErr: tc.writeFileErr,
 			}
-			err := walkAndModify(nil, fs, scratchDir, tc.relPath, tc.visitor)
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			err := walkAndModify(ctx, nil, fs, scratchDir, tc.relPath, tc.visitor)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

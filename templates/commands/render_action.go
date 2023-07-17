@@ -40,7 +40,7 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // Recursively traverses the directory or file scratchDir/relPath, calling the
 // given visitor for each file. If the visitor returns modified file contents
 // for a given file, that file will be overwritten with the new contents.
-func walkAndModify(pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor) error {
+func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor) error {
 	relPath, err := safeRelPath(pos, relPath)
 	if err != nil {
 		return err
@@ -90,6 +90,7 @@ func walkAndModify(pos *model.ConfigPos, rfs renderFS, scratchDir, relPath strin
 		if err := rfs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
 			return model.ErrWithPos(pos, "Writefile(): %w", err) //nolint:wrapcheck
 		}
+		logging.FromContext(ctx).Debugf("walkAndModify: wrote modification to %s", path)
 
 		return nil
 	})
@@ -319,11 +320,11 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
 		mode := srcInfo.Mode().Perm()
-		return copyFile(pos, p.rfs, path, dst, mode, p.dryRun)
+		return copyFile(ctx, pos, p.rfs, path, dst, mode, p.dryRun)
 	})
 }
 
-func copyFile(pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
+func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
 	readFile, err := rfs.Open(src)
 	if err != nil {
 		return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
@@ -343,7 +344,7 @@ func copyFile(pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileM
 	if _, err := io.Copy(writeFile, readFile); err != nil {
 		return fmt.Errorf("Copy(): %w", err)
 	}
-
+	logging.FromContext(ctx).Debugf("copyFile: from %s to %s", src, dst)
 	return nil
 }
 
@@ -370,7 +371,7 @@ func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath strin
 
 	fileToBackup := filepath.Join(srcRoot, relPath)
 
-	if err := copyFile(nil, rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
+	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
 		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
 			fileToBackup, backupFile, err)
 	}
