@@ -270,7 +270,7 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 }
 
 // RunWithFlags renders a template according to the given flags, taking the
-// template form rf.Source and producing output in rf.Dest. This should be
+// template from rf.Source and producing output in rf.Dest. This should be
 // considered an unstable API and is primarily intended for testing. Use at your
 // own risk and accept the possibility of breaking changes.
 func (r *Render) RunWithFlags(ctx context.Context, rf *RenderFlags) error {
