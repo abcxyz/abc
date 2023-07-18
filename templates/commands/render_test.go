@@ -525,6 +525,7 @@ steps:
 			backupDir := filepath.Join(tempDir, "backups")
 			rfs := &realFS{}
 			fg := &fakeGetter{
+				t:      t,
 				err:    tc.getterErr,
 				output: tc.templateContents,
 			}
@@ -761,6 +762,7 @@ func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 type fakeGetter struct {
+	t         *testing.T
 	gotSource string
 	output    map[string]string
 	err       error
@@ -771,6 +773,6 @@ func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetR
 	if f.err != nil {
 		return nil, f.err
 	}
-	abctestutil.WriteAllDefaultMode(nil, req.Dst, f.output)
+	abctestutil.WriteAllDefaultMode(f.t, req.Dst, f.output)
 	return &getter.GetResult{Dst: req.Dst}, nil
 }
