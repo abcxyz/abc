@@ -32,7 +32,7 @@ func TestActionPrint(t *testing.T) {
 		name    string
 		in      string
 		inputs  map[string]string
-		flags   renderFlags
+		flags   RenderFlags
 		want    string
 		wantErr string
 	}{
@@ -58,14 +58,14 @@ func TestActionPrint(t *testing.T) {
 		{
 			name: "flags_in_message",
 			in:   "{{.flags.dest}} {{.flags.source}} {{.flags.spec}}",
-			flags: renderFlags{
-				source:         "mysource",
-				dest:           "mydest",
-				gitProtocol:    "mygitprotocol",
-				logLevel:       "myloglevel",
-				forceOverwrite: true,
-				keepTempDirs:   true,
-				spec:           "myspec",
+			flags: RenderFlags{
+				Source:         "mysource",
+				Dest:           "mydest",
+				GitProtocol:    "mygitprotocol",
+				LogLevel:       "myloglevel",
+				ForceOverwrite: true,
+				KeepTempDirs:   true,
+				Spec:           "myspec",
 			},
 			want: "mydest mysource myspec\n",
 		},

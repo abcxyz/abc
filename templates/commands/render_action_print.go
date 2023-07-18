@@ -45,12 +45,12 @@ func actionPrint(ctx context.Context, p *model.Print, sp *stepParams) error {
 	return nil
 }
 
-func flagsForTemplate(r *renderFlags) map[string]any {
+func flagsForTemplate(r *RenderFlags) map[string]any {
 	// We only expose certain fields the print action; these are the ones that
 	// we have beneficial use cases for and that don't encourage bad API use.
 	return map[string]any{
-		"dest":   r.dest,
-		"source": r.source,
-		"spec":   r.spec,
+		"dest":   r.Dest,
+		"source": r.Source,
+		"spec":   r.Spec,
 	}
 }

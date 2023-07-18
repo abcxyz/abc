@@ -56,24 +56,50 @@ const (
 
 type Render struct {
 	cli.BaseCommand
-	flags renderFlags
+	flags *RenderFlags
 
 	testFS     renderFS
 	testGetter getterClient
 }
 
-type renderFlags struct {
+// RenderFlags describes what template to render and how.
+type RenderFlags struct {
 	// Positional arguments:
-	source string
+
+	// Source is the location of the input template to be rendered.
+	//
+	// Example: github.com/abcxyz/abc.git//t/rest_server
+	Source string
 
 	// Flag arguments (--foo):
-	dest           string
-	gitProtocol    string
-	logLevel       string
-	forceOverwrite bool
-	inputs         map[string]string // these are just the --input values from flags; doesn't inclue values from config file or env vars
-	keepTempDirs   bool
-	spec           string
+
+	// Dest is the local directory where the template output will be written.
+	// It's OK for it to already exist or not.
+	Dest string
+
+	// GitProtocol is not yet used.
+	GitProtocol string
+
+	// LogLevel is one of debug|info|warn|error|panic.
+	LogLevel string
+
+	// ForceOverwrite lets existing output files in the Dest directory be overwritten
+	// with the output of the template.
+	ForceOverwrite bool
+
+	// Inputs provide values that are substituted into the template. The keys in
+	// this map must match the input names in the Source template's spec.yaml
+	// file.
+	Inputs map[string]string // these are just the --input values from flags; doesn't inclue values from config file or env vars
+
+	// KeepTempDirs prevents the cleanup of temporary directories after rendering is complete.
+	// This can be useful for debugging a failing template.
+	KeepTempDirs bool
+
+	// Spec is the relative path within the template of the YAML file that
+	// specifies how the template is rendered. This will often be just
+	// "spec.yaml".
+	Spec string
 }
 
 // Abstracts filesystem operations.
@@ -123,14 +149,14 @@ are accepted:
     remote tarball.`
 }
 
-func (r *Render) Flags() *cli.FlagSet {
+func (r *RenderFlags) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
 	f := set.NewSection("RENDER OPTIONS")
 	f.StringVar(&cli.StringVar{
 		Name:    "spec",
 		Example: "path/to/spec.yaml",
-		Target:  &r.flags.spec,
+		Target:  &r.Spec,
 		Default: "./spec.yaml",
 		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
 	})
@@ -138,7 +164,7 @@ func (r *Render) Flags() *cli.FlagSet {
 		Name:    "dest",
 		Aliases: []string{"d"},
 		Example: "/my/git/dir",
-		Target:  &r.flags.dest,
+		Target:  &r.Dest,
 		Default: ".",
 		Predict: predict.Dirs("*"),
 		Usage:   "Required. The target directory in which to write the output files.",
@@ -146,25 +172,25 @@ func (r *Render) Flags() *cli.FlagSet {
 	f.StringMapVar(&cli.StringMapVar{
 		Name:    "input",
 		Example: "foo=bar",
-		Target:  &r.flags.inputs,
+		Target:  &r.Inputs,
 		Usage:   "The key=val pairs of template values; may be repeated.",
 	})
 	f.StringVar(&cli.StringVar{
 		Name:    "log-level",
 		Example: "info",
 		Default: defaultLogLevel,
-		Target:  &r.flags.logLevel,
+		Target:  &r.LogLevel,
 		Usage:   "How verbose to log; any of debug|info|warn|error.",
 	})
 	f.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
-		Target:  &r.flags.forceOverwrite,
+		Target:  &r.ForceOverwrite,
 		Default: false,
 		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
 	})
 	f.BoolVar(&cli.BoolVar{
 		Name:    "keep-temp-dirs",
-		Target:  &r.flags.keepTempDirs,
+		Target:  &r.KeepTempDirs,
 		Default: false,
 		Usage:   "Preserve the temp directories instead of deleting them normally.",
 	})
@@ -174,7 +200,7 @@ func (r *Render) Flags() *cli.FlagSet {
 		Name:    "git-protocol",
 		Example: "https",
 		Default: "https",
-		Target:  &r.flags.gitProtocol,
+		Target:  &r.GitProtocol,
 		Predict: predict.Set([]string{"https", "ssh"}),
 		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
 	})
@@ -182,7 +208,7 @@ func (r *Render) Flags() *cli.FlagSet {
 	return set
 }
 
-func (r *Render) parseFlags(args []string) error {
+func (r *RenderFlags) Parse(args []string) error {
 	flagSet := r.Flags()
 
 	if err := flagSet.Parse(args); err != nil {
@@ -194,7 +220,7 @@ func (r *Render) parseFlags(args []string) error {
 		return flag.ErrHelp
 	}
 
-	r.flags.source = parsedArgs[0]
+	r.Source = parsedArgs[0]
 
 	return nil
 }
@@ -235,9 +261,20 @@ func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 func (r *Render) Run(ctx context.Context, args []string) error {
-	if err := r.parseFlags(args); err != nil {
+	rf := &RenderFlags{}
+	if err := rf.Parse(args); err != nil {
 		return err
 	}
+
+	return r.RunWithFlags(ctx, rf)
+}
+
+// RunWithFlags renders a template according to the given flags, taking the
+// template form rf.Source and producing output in rf.Dest. This should be
+// considered an unstable API and is primarily intended for testing. Use at your
+// own risk and accept the possibility of breaking changes.
+func (r *Render) RunWithFlags(ctx context.Context, rf *RenderFlags) error {
+	r.flags = rf
 
 	r.setLogEnvVars()
 	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
@@ -247,7 +284,7 @@ func (r *Render) Run(ctx context.Context, args []string) error {
 		fSys = &realFS{}
 	}
 
-	if err := destOK(fSys, r.flags.dest); err != nil {
+	if err := destOK(fSys, r.flags.Dest); err != nil {
 		return err
 	}
 
@@ -314,9 +351,9 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	safeSpecPath, err := safeRelPath(nil, r.flags.spec)
+	safeSpecPath, err := safeRelPath(nil, r.flags.Spec)
 	if err != nil {
-		return fmt.Errorf("invalid --spec path %q: %w", r.flags.spec, err)
+		return fmt.Errorf("invalid --spec path %q: %w", r.flags.Spec, err)
 	}
 
 	spec, err := loadSpecFile(rp.fs, templateDir, safeSpecPath)
@@ -346,9 +383,9 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	logger.Infow("created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
-		flags:       &r.flags,
+		flags:       r.flags,
 		fs:          rp.fs,
-		inputs:      r.flags.inputs,
+		inputs:      r.flags.Inputs,
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
@@ -375,7 +412,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				// ourself to write back to that file, even when
 				// --force-overwrite=false. When the template uses this feature,
 				// we know that the intent is to modify the files in place.
-				overwrite: ok || r.flags.forceOverwrite,
+				overwrite: ok || r.flags.ForceOverwrite,
 			}, nil
 		}
 
@@ -397,9 +434,9 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		params := &copyParams{
 			backupDirMaker: backupDirMaker,
 			dryRun:         dryRun,
-			dstRoot:        r.flags.dest,
-			rfs:            rp.fs,
+			dstRoot:        r.flags.Dest,
 			srcRoot:        scratchDir,
+			rfs:            rp.fs,
 			visitor:        visitor,
 		}
 		if err := copyRecursive(ctx, nil, params); err != nil {
@@ -430,8 +467,8 @@ func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
 		specInputs[v.Name.Val] = struct{}{}
 	}
 
-	unknownInputs := make([]string, 0, len(r.flags.inputs))
-	for key := range r.flags.inputs {
+	unknownInputs := make([]string, 0, len(r.flags.Inputs))
+	for key := range r.flags.Inputs {
 		if _, ok := specInputs[key]; !ok {
 			unknownInputs = append(unknownInputs, key)
 		}
@@ -444,19 +481,22 @@ func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
 
 // collapseDefaultInputs defaults any missing input flags if default is set.
 func (r *Render) collapseDefaultInputs(spec *model.Spec) {
+	if r.flags.Inputs == nil {
+		r.flags.Inputs = map[string]string{}
+	}
 	for _, input := range spec.Inputs {
-		if _, ok := r.flags.inputs[input.Name.Val]; !ok && input.Default != nil {
-			r.flags.inputs[input.Name.Val] = input.Default.Val
+		if _, ok := r.flags.Inputs[input.Name.Val]; !ok && input.Default != nil {
+			r.flags.Inputs[input.Name.Val] = input.Default.Val
 		}
 	}
 }
 
 // checkRequiredInputs checks for missing input flags returns them as a slice.
 func (r *Render) checkRequiredInputs(spec *model.Spec) []string {
-	requiredInputs := make([]string, 0, len(r.flags.inputs))
+	requiredInputs := make([]string, 0, len(r.flags.Inputs))
 
 	for _, input := range spec.Inputs {
-		if _, ok := r.flags.inputs[input.Name.Val]; !ok {
+		if _, ok := r.flags.Inputs[input.Name.Val]; !ok {
 			requiredInputs = append(requiredInputs, input.Name.Val)
 		}
 	}
@@ -479,7 +519,7 @@ func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
 }
 
 type stepParams struct {
-	flags *renderFlags
+	flags *RenderFlags
 	fs    renderFS
 
 	// inputs are the template values to plug in, provided by the user. Why is
@@ -583,7 +623,7 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 		Dst:             templateDir,
 		GetMode:         getter.ModeAny,
 		Pwd:             rp.cwd,
-		Src:             r.flags.source,
+		Src:             r.flags.Source,
 	}
 
 	_, err = rp.getter.Get(ctx, req)
@@ -594,7 +634,7 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 	logger.Infow("created temporary template directory",
 		"path", templateDir)
 	logger.Infow("copied source template temporary directory",
-		"source", r.flags.source,
+		"source", r.flags.Source,
 		"destination", templateDir)
 	return templateDir, nil
 }
@@ -602,7 +642,7 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
 func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
-	if r.flags.keepTempDirs {
+	if r.flags.KeepTempDirs {
 		logger.Infow("keeping temporary directories due to --keep-temp-dirs",
 			"paths", tempDirs)
 		return nil
@@ -621,8 +661,8 @@ func (r *Render) setLogEnvVars() {
 		os.Setenv("ABC_LOG_MODE", defaultLogMode)
 	}
 
-	if r.flags.logLevel != "" {
-		os.Setenv("ABC_LOG_LEVEL", r.flags.logLevel)
+	if r.flags.LogLevel != "" {
+		os.Setenv("ABC_LOG_LEVEL", r.flags.LogLevel)
 	} else if os.Getenv("ABC_LOG_LEVEL") == "" {
 		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
 	}
