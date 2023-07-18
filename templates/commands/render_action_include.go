@@ -79,7 +79,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		// that already exist in the destination.
 		fromDir := sp.templateDir
 		if inc.From.Val == "destination" {
-			fromDir = sp.flags.dest
+			fromDir = sp.flags.Dest
 		}
 		absSrc := filepath.Join(fromDir, walkRelPath)
 		absDst := filepath.Join(sp.scratchDir, relDst)
@@ -89,7 +89,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 			// If we're copying the template root directory, automatically skip
 			// the spec.yaml file, because it's very unlikely that the user actually
 			// wants the spec file in the template output.
-			skipNow[sp.flags.spec] = struct{}{}
+			skipNow[sp.flags.Spec] = struct{}{}
 		}
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {

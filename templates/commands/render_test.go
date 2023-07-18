@@ -64,7 +64,7 @@ func TestParseFlags(t *testing.T) {
 	cases := []struct {
 		name    string
 		args    []string
-		want    *Render
+		want    RenderFlags
 		wantErr string
 	}{
 		{
@@ -79,17 +79,15 @@ func TestParseFlags(t *testing.T) {
 				"--keep-temp-dirs",
 				"helloworld@v1",
 			},
-			want: &Render{
-				flags: renderFlags{
-					source:         "helloworld@v1",
-					spec:           "my_spec.yaml",
-					dest:           "my_dir",
-					gitProtocol:    "https",
-					inputs:         map[string]string{"x": "y"},
-					logLevel:       "info",
-					forceOverwrite: true,
-					keepTempDirs:   true,
-				},
+			want: RenderFlags{
+				Source:         "helloworld@v1",
+				Spec:           "my_spec.yaml",
+				Dest:           "my_dir",
+				GitProtocol:    "https",
+				Inputs:         map[string]string{"x": "y"},
+				LogLevel:       "info",
+				ForceOverwrite: true,
+				KeepTempDirs:   true,
 			},
 		},
 		{
@@ -97,17 +95,15 @@ func TestParseFlags(t *testing.T) {
 			args: []string{
 				"helloworld@v1",
 			},
-			want: &Render{
-				flags: renderFlags{
-					source:         "helloworld@v1",
-					spec:           "./spec.yaml",
-					dest:           ".",
-					gitProtocol:    "https",
-					inputs:         map[string]string{},
-					logLevel:       "warn",
-					forceOverwrite: false,
-					keepTempDirs:   false,
-				},
+			want: RenderFlags{
+				Source:         "helloworld@v1",
+				Spec:           "./spec.yaml",
+				Dest:           ".",
+				GitProtocol:    "https",
+				Inputs:         map[string]string{},
+				LogLevel:       "warn",
+				ForceOverwrite: false,
+				KeepTempDirs:   false,
 			},
 		},
 		{
@@ -121,8 +117,8 @@ func TestParseFlags(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Render{}
-			err := r.parseFlags(tc.args)
+			var r RenderFlags
+			err := r.Parse(tc.args)
 			if err != nil || tc.wantErr != "" {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
@@ -130,9 +126,7 @@ func TestParseFlags(t *testing.T) {
 				return
 			}
 			opts := []cmp.Option{
-				cmp.AllowUnexported(Render{}),
-				cmp.AllowUnexported(renderFlags{}),
-				cmpopts.IgnoreFields(Render{}, "BaseCommand"),
+				cmp.AllowUnexported(RenderFlags{}),
 			}
 			if diff := cmp.Diff(r, tc.want, opts...); diff != "" {
 				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", r, tc.want, diff)
@@ -548,13 +542,13 @@ steps:
 				tempDirNamer: tempDirNamer,
 			}
 			r := &Render{
-				flags: renderFlags{
-					dest:           dest,
-					forceOverwrite: tc.flagForceOverwrite,
-					inputs:         tc.flagInputs,
-					keepTempDirs:   tc.flagKeepTempDirs,
-					spec:           "spec.yaml",
-					source:         "github.com/myorg/myrepo",
+				flags: &RenderFlags{
+					Dest:           dest,
+					ForceOverwrite: tc.flagForceOverwrite,
+					Inputs:         tc.flagInputs,
+					KeepTempDirs:   tc.flagKeepTempDirs,
+					Spec:           "spec.yaml",
+					Source:         "github.com/myorg/myrepo",
 				},
 			}
 
@@ -564,12 +558,12 @@ steps:
 				t.Error(diff)
 			}
 
-			if fg.gotSource != r.flags.source {
-				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.flags.source)
+			if fg.gotSource != r.flags.Source {
+				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.flags.Source)
 			}
 
 			if tc.wantFlagInputs != nil {
-				if diff := cmp.Diff(r.flags.inputs, tc.wantFlagInputs); diff != "" {
+				if diff := cmp.Diff(r.flags.Inputs, tc.wantFlagInputs); diff != "" {
 					t.Errorf("flagInputs was not as expected; (-got,+want): %s", diff)
 				}
 			}
