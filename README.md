@@ -87,14 +87,35 @@ and write the result to a local directory.
 
 ## One-time CLI installation
 
-The quick answer is to just run
-`go install github.com/abcxyz/abc/cmd/abc@latest` .
+There are two ways to install:
 
-This only works if you have `go` installed (https://go.dev/doc/install) and have
-the Go binary directory in your `$PATH` (try `PATH=$PATH:~/go/bin`).
+1.  The most official way:
 
-This is the temporary installation process until we start formally releasing
-precompiled binaries.
+    - Go to https://github.com/abcxyz/abc/releases
+    - Pick the most recent release that isn't an `-alpha` or `-rc` or anything,
+      just `vX.Y.Z`
+    - Download the `.tar.gz` file that matches your OS and CPU:
+
+      - Linux: you probably want `linux_amd64`, unless you're doing something
+        weird and awesome, and in that case you don't need advice
+      - Mac: `darwin` means macOS. `arm64` means M1/M2 macs. So a recent Macbook
+        Pro would use `darwin_arm64`, while an older Intel Mac would use
+        `darwin_amd64`
+
+      Example `curl` command, please substitute the version number you're
+      downloading:
+
+          $ curl -O -L https://github.com/abcxyz/abc/releases/download/v1.2.3/abc_1.2.3_linux_amd64.tar.gz
+
+    - Unpack the tar file:
+
+          $ tar xvzf abc_1.2.3_linux_amd64.tar.gz
+
+    - Now you will have an `abc` file that you can run. Perhaps place it in your
+      `$PATH`.
+
+2.  Alternatively, if you already have a Go programming environment set up, just
+    run `go install github.com/abcxyz/abc/cmd/abc@latest`.
 
 ## Rendering a template
 
@@ -565,3 +586,33 @@ with the corresponding inputs:
   params:
     paths: ['hello.html']
 ```
+
+## Release guide for team members
+
+To build and publish a new version of `abc`, including publishing binaries for
+all supported OSes and architectures, you just push a new tag containing the
+version number, as follows.
+
+- Find the previously released version. You can do this by looking at the git
+  tags or by looking at the frontpage of this repo on the right side under the
+  "Releases" section.
+- Figure out the version number to use. We use "semantic versioning"
+  (https://semver.org), which means our version numbers look like
+  `MAJOR.MINOR.PATCH`. Quoting semver.org:
+
+        increment the MAJOR version when you make incompatible API changes
+        increment the MINOR version when you add functionality in a backward compatible manner
+        increment the PATCH version when you make backward compatible bug fixes
+
+  The most important thing is that if we change an API or command-line user
+  journey in a way that could break an existing use-case, we must increment the
+  major version.
+
+- Push a signed tag in git, with the tag named with your version number, with a
+  message saying why you're creating this release. For example:
+
+      $ git tag -s -a v0.2.1 -m 'Release the bugfix for crashing during leap second'
+      $ git push origin v0.2.1
+
+- A GitHub workflow will be triggered by the tag push and will handle
+  everything. You will see the new release created within a few minutes.
