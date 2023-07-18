@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/abcxyz/abc/templates/model"
+	abctestutil "github.com/abcxyz/abc/testutil"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -226,9 +227,7 @@ func TestActionRegexReplace(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			if err := writeAllDefaultMode(scratchDir, tc.initContents); err != nil {
-				t.Fatal(err)
-			}
+			abctestutil.WriteAllDefaultMode(t, scratchDir, tc.initContents)
 
 			ctx := context.Background()
 			sp := &stepParams{
@@ -241,7 +240,7 @@ func TestActionRegexReplace(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := loadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output differed from expected, (-got,+want): %s", diff)
 			}

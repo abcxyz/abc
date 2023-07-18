@@ -16,7 +16,6 @@ package commands
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -28,6 +27,7 @@ import (
 	"testing/fstest"
 
 	"github.com/abcxyz/abc/templates/model"
+	abctestutil "github.com/abcxyz/abc/testutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -507,7 +507,7 @@ steps:
 			t.Parallel()
 
 			// Convert to OS-specific paths
-			convertKeysToPlatformPaths(
+			abctestutil.KeysToPlatformPaths(
 				tc.templateContents,
 				tc.existingDestContents,
 				tc.wantBackupContents,
@@ -518,9 +518,7 @@ steps:
 
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
-			if err := writeAllDefaultMode(dest, tc.existingDestContents); err != nil {
-				t.Fatal(err)
-			}
+			abctestutil.WriteAllDefaultMode(t, dest, tc.existingDestContents)
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
@@ -572,22 +570,22 @@ steps:
 				t.Errorf("template output was not as expected; (-got,+want): %s", diff)
 			}
 
-			gotTemplateContents := loadDirWithoutMode(t, filepath.Join(tempDir, templateDirNamePart))
+			gotTemplateContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, templateDirNamePart))
 			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, cmpFileMode); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotScratchContents := loadDirWithoutMode(t, filepath.Join(tempDir, scratchDirNamePart))
+			gotScratchContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, scratchDirNamePart))
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpFileMode); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotDestContents := loadDirWithoutMode(t, dest)
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, dest)
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, cmpFileMode); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotBackupContents := loadDirWithoutMode(t, backupDir)
+			gotBackupContents := abctestutil.LoadDirWithoutMode(t, backupDir)
 			gotBackupContents = stripFirstPathElem(gotBackupContents)
 			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
@@ -700,63 +698,6 @@ func modelStrings(ss []string) []model.String {
 	return out
 }
 
-// Read all the files recursively under "dir", returning their contents as a
-// map[filename]->contents. Returns nil if dir doesn't exist.
-func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
-	t.Helper()
-
-	if _, err := os.Stat(dir); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-		t.Fatal(err)
-	}
-	out := map[string]modeAndContents{}
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("ReadFile(): %w", err)
-		}
-		rel, err := filepath.Rel(dir, path)
-		if err != nil {
-			return fmt.Errorf("Rel(): %w", err)
-		}
-		fi, err := d.Info()
-		if err != nil {
-			t.Fatal(err)
-		}
-		out[rel] = modeAndContents{
-			Mode:     fi.Mode(),
-			Contents: string(contents),
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("WalkDir(): %v", err)
-	}
-	return out
-}
-
-func loadDirWithoutMode(t *testing.T, dir string) map[string]string {
-	t.Helper()
-
-	withMode := loadDirContents(t, dir)
-	if withMode == nil {
-		return nil
-	}
-	out := map[string]string{}
-	for name, mc := range withMode {
-		out[name] = mc.Contents
-	}
-	return out
-}
-
 // A renderFS implementation that can inject errors for testing.
 type errorFS struct {
 	renderFS
@@ -830,70 +771,6 @@ func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetR
 	if f.err != nil {
 		return nil, f.err
 	}
-	if err := writeAllDefaultMode(req.Dst, f.output); err != nil {
-		return nil, err
-	}
+	abctestutil.WriteAllDefaultMode(nil, req.Dst, f.output)
 	return &getter.GetResult{Dst: req.Dst}, nil
-}
-
-type modeAndContents struct {
-	Mode     os.FileMode
-	Contents string
-}
-
-// writeAllDefaultMode wraps writeAll and sets file permissions to 0600.
-func writeAllDefaultMode(root string, files map[string]string) error {
-	withMode := map[string]modeAndContents{}
-	for name, contents := range files {
-		withMode[name] = modeAndContents{
-			Mode:     0o600,
-			Contents: contents,
-		}
-	}
-	return writeAll(root, withMode)
-}
-
-// writeAll saves the given file contents with the given permissions.
-func writeAll(root string, files map[string]modeAndContents) error {
-	for path, mc := range files {
-		fullPath := filepath.Join(root, path)
-		dir := filepath.Dir(fullPath)
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return fmt.Errorf("MkdirAll(%q): %w", dir, err)
-		}
-		if err := os.WriteFile(fullPath, []byte(mc.Contents), mc.Mode); err != nil {
-			return fmt.Errorf("WriteFile(%q): %w", fullPath, err)
-		}
-		// The user's may have prevented the file from being created with the
-		// desired permissions. Use chmod to really set the desired permissions.
-		if err := os.Chmod(fullPath, mc.Mode); err != nil {
-			return fmt.Errorf("Chmod(): %w", err)
-		}
-	}
-
-	return nil
-}
-
-// convertKeysToPlatformPaths is a helper that converts the keys in all of the
-// given maps to a platform-specific file path. The maps are modified in place.
-func convertKeysToPlatformPaths[T any](maps ...map[string]T) {
-	for _, m := range maps {
-		for k, v := range m {
-			if newKey := filepath.FromSlash(k); newKey != k {
-				m[newKey] = v
-				delete(m, k)
-			}
-		}
-	}
-}
-
-// toPlatformPaths converts each element of each input slice from a/b/c style
-// forward slash paths to platform-specific file paths. The slices are modified
-// in place.
-func toPlatformPaths(slices ...[]string) {
-	for _, s := range slices {
-		for i, elem := range s {
-			s[i] = filepath.FromSlash(elem)
-		}
-	}
 }
