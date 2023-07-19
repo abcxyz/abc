@@ -32,6 +32,7 @@ var (
 	input    = flag.String("input-csv-path", "", "The path of the input MySQL CSV dumped .")
 	database = flag.String("spanner-database", "", "The path of the output Spanner database.")
 	table    = flag.String("spanner-table", "", "The name of the output Spanner table.")
+	dryRun   = flag.Bool("dry-run", true, "whether the specified run is a dry run")
 )
 
 type DataModel struct {
@@ -79,6 +80,14 @@ func main() {
 	// Convert each line to a data model
 	dataModels := emitResult(s, lines)
 
+	// Turn on dry run monitor
+	log.Println(*dryRun)
+	if *dryRun {
+		log.Println("dry run start")
+		// TODO: print out dry run result
+		return
+	}
+	// Write data into database
 	spannerio.Write(s, *database, *table, dataModels)
 
 	// Run the pipeline.
