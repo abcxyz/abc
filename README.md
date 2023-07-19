@@ -85,7 +85,7 @@ tool. "Rendering" a template is when you use the `abc` CLI to download some
 template code, do some substitution to replace parts of it with your own values,
 and write the result to a local directory.
 
-## One-time CLI installation
+## Installation
 
 There are two ways to install:
 
@@ -105,11 +105,7 @@ There are two ways to install:
       Example `curl` command, please substitute the version number you're
       downloading:
 
-          $ curl -O -L https://github.com/abcxyz/abc/releases/download/v1.2.3/abc_1.2.3_linux_amd64.tar.gz
-
-    - Unpack the tar file:
-
-          $ tar xvzf abc_1.2.3_linux_amd64.tar.gz
+          $ curl -sSL https://github.com/abcxyz/abc/releases/download/v1.2.3/abc_1.2.3_linux_amd64.tar.gz | tar -xzv abc
 
     - Now you will have an `abc` file that you can run. Perhaps place it in your
       `$PATH`.
@@ -586,33 +582,3 @@ with the corresponding inputs:
   params:
     paths: ['hello.html']
 ```
-
-## Release guide for team members
-
-To build and publish a new version of `abc`, including publishing binaries for
-all supported OSes and architectures, you just push a new tag containing the
-version number, as follows.
-
-- Find the previously released version. You can do this by looking at the git
-  tags or by looking at the frontpage of this repo on the right side under the
-  "Releases" section.
-- Figure out the version number to use. We use "semantic versioning"
-  (https://semver.org), which means our version numbers look like
-  `MAJOR.MINOR.PATCH`. Quoting semver.org:
-
-        increment the MAJOR version when you make incompatible API changes
-        increment the MINOR version when you add functionality in a backward compatible manner
-        increment the PATCH version when you make backward compatible bug fixes
-
-  The most important thing is that if we change an API or command-line user
-  journey in a way that could break an existing use-case, we must increment the
-  major version.
-
-- Push a signed tag in git, with the tag named with your version number, with a
-  message saying why you're creating this release. For example:
-
-      $ git tag -s -a v0.2.1 -m 'Release the bugfix for crashing during leap second'
-      $ git push origin v0.2.1
-
-- A GitHub workflow will be triggered by the tag push and will handle
-  everything. You will see the new release created within a few minutes.
