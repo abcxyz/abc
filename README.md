@@ -96,11 +96,10 @@ There are two ways to install:
       just `vX.Y.Z`
     - Download the `.tar.gz` file that matches your OS and CPU:
 
-      - Linux: you probably want `linux_amd64`, unless you're doing something
-        weird and awesome, and in that case you don't need advice
-      - Mac: `darwin` means macOS. `arm64` means M1/M2 macs. So a recent Macbook
-        Pro would use `darwin_arm64`, while an older Intel Mac would use
-        `darwin_amd64`
+      - Linux: `linux_amd64`
+      - Mac:
+        - M1/M2/later: `darwin_arm64`
+        - Intel: `darwin_amd64`
 
       Example `curl` command, please substitute the version number you're
       downloading:
