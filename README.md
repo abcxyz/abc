@@ -85,16 +85,32 @@ tool. "Rendering" a template is when you use the `abc` CLI to download some
 template code, do some substitution to replace parts of it with your own values,
 and write the result to a local directory.
 
-## One-time CLI installation
+## Installation
 
-The quick answer is to just run
-`go install github.com/abcxyz/abc/cmd/abc@latest` .
+There are two ways to install:
 
-This only works if you have `go` installed (https://go.dev/doc/install) and have
-the Go binary directory in your `$PATH` (try `PATH=$PATH:~/go/bin`).
+1.  The most official way:
 
-This is the temporary installation process until we start formally releasing
-precompiled binaries.
+    - Go to https://github.com/abcxyz/abc/releases
+    - Pick the most recent release that isn't an `-alpha` or `-rc` or anything,
+      just `vX.Y.Z`
+    - Download the `.tar.gz` file that matches your OS and CPU:
+
+      - Linux: `linux_amd64`
+      - Mac:
+        - M1/M2/later: `darwin_arm64`
+        - Intel: `darwin_amd64`
+
+      Example `curl` command, please substitute the version number you're
+      downloading:
+
+          $ curl -sSL https://github.com/abcxyz/abc/releases/download/v1.2.3/abc_1.2.3_linux_amd64.tar.gz | tar -xzv abc
+
+    - Now you will have an `abc` file that you can run. Perhaps place it in your
+      `$PATH`.
+
+2.  Alternatively, if you already have a Go programming environment set up, just
+    run `go install github.com/abcxyz/abc/cmd/abc@latest`.
 
 ## Rendering a template
 
