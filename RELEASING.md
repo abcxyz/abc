@@ -26,4 +26,7 @@ version number, as follows.
       $ git push origin v0.2.1
 
 - A GitHub workflow will be triggered by the tag push and will handle
-  everything. You will see the new release created within a few minutes.
+  everything. You will see the new release created within a few minutes. If not,
+  look for failed
+  [Release workflow runs](https://github.com/abcxyz/abc/actions/workflows/release.yml)
+  and look at their logs.
