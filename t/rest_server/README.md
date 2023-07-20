@@ -25,7 +25,7 @@ This will output a file named `main.go` in your working directory containing
 the transformed program.
 
     ```shell
-    $ abc templates render github.com/abcxyz/abc.git//t/rest_server
+    $ abc templates render github.com/abcxyz/abc.git/t/rest_server
     ```
 
 1. Run the transformed program:
