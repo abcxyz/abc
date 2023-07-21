@@ -23,9 +23,11 @@ import (
 	"strings"
 
 	"github.com/apache/beam/sdks/v2/go/pkg/beam"
+	"github.com/apache/beam/sdks/v2/go/pkg/beam/core/metrics"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/spannerio"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/textio"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/runners/direct"
+	"github.com/apache/beam/sdks/v2/go/pkg/beam/x/beamx"
 )
 
 var (
@@ -34,6 +36,8 @@ var (
 	table    = flag.String("spanner-table", "", "The name of the output Spanner table.")
 	dryRun   = flag.Bool("dry-run", true, "whether the specified run is a dry run")
 )
+
+var count = beam.NewCounter("dry-run", "count")
 
 type DataModel struct {
 	/*
@@ -53,7 +57,7 @@ func parseDataModel(record []string) *DataModel {
 }
 
 // emitResult emits data models to be written to Spanner
-func emitResult(s beam.Scope, lines beam.PCollection) beam.PCollection {
+func emitResult(ctx context.Context, s beam.Scope, lines beam.PCollection) beam.PCollection {
 	dataModels := beam.ParDo(s, func(line string, emit func(*DataModel)) {
 		reader := csv.NewReader(strings.NewReader(line))
 		csvLine, err := reader.Read()
@@ -61,8 +65,16 @@ func emitResult(s beam.Scope, lines beam.PCollection) beam.PCollection {
 			log.Fatalf("Failed to read record: %v", err)
 		}
 		emit(parseDataModel(csvLine))
+		count.Inc(ctx, 1)
 	}, lines)
+
 	return dataModels
+}
+
+func ctxWithPtransformID(id string) context.Context {
+	ctx := context.Background()
+	ctx = metrics.SetPTransformID(ctx, id)
+	return ctx
 }
 
 func main() {
@@ -77,14 +89,18 @@ func main() {
 		log.Fatalf("Failed to read %v: %v", *input, err)
 	}
 
-	// Convert each line to a data model
-	dataModels := emitResult(s, lines)
+	ctx := ctxWithPtransformID("pipeline")
 
-	// Turn on dry run monitor
-	log.Println(*dryRun)
+	// Convert each line to a data model
+	dataModels := emitResult(ctx, s, lines)
+
+	// Verify data on dry run mode
 	if *dryRun {
-		log.Println("dry run start")
-		// TODO: print out dry run result
+		log.Println("dry run start....")
+		if _, err := beamx.RunWithMetrics(ctx, p); err != nil {
+			log.Fatalf("Pipeline failed: %v", err)
+		}
+		metrics.DumpToOutFromContext(ctx)
 		return
 	}
 	// Write data into database
