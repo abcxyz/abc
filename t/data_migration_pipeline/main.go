@@ -39,7 +39,7 @@ var (
 	flagDryRun   = flag.Bool("dry-run", false, "whether the specified run is a dry run")
 )
 
-var count = beam.NewCounter("dry-run", "count")
+var count = beam.NewCounter("data-migration-pipeline", "total-record-count")
 
 type DataModel struct {
 	/*
@@ -97,18 +97,18 @@ func main() {
 	dataModels := emitResult(ctx, s, lines)
 
 	// Verify data on dry run mode
+	if _, err := beamx.RunWithMetrics(ctx, p); err != nil {
+		log.Fatalf("Pipeline failed: %v", err)
+	}
+	metrics.DumpToLog(ctx)
+
+	// Terminate the pipeline if the dry run mode is active
 	if *flagDryRun {
-		log.Println("dry run start....")
-		if _, err := beamx.RunWithMetrics(ctx, p); err != nil {
-			log.Fatalf("Pipeline failed: %v", err)
-		}
-		metrics.DumpToOutFromContext(ctx)
 		return
 	}
 
 	// Write data into database
 	spannerio.Write(s, *flagDatabase, *flagTable, dataModels)
-
 	// Run the pipeline.
 	if _, err := direct.Execute(ctx, p); err != nil {
 		log.Fatalf("Pipeline failed: %v", err)

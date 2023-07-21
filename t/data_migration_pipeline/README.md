@@ -45,11 +45,17 @@ When pipeline starts, the client library automatically checks for SPANNER_EMULAT
     ```shell
     $ export SPANNER_EMULATOR_HOST=localhost:9010
     ```
-1. Run the data migration pipeline.
+1. Run the data migration pipeline in dry run mode. Verify metrics like total record count. 
+    ```shell
+    $ go run main.go -input-csv-path "test-data.csv" -spanner-database "projects/[your-project-id]/instances/test-instance/databases/testdb" -spanner-table "mytable" -dry-run=true
+    ```
+    - flag `-dry-run=true` is to active the dry run mode.
+
+1. Run the data migration pipeline in the real run and write into Spanner.
+
     ```shell
     $ go run main.go -input-csv-path "test-data.csv" -spanner-database "projects/[your-project-id]/instances/test-instance/databases/testdb" -spanner-table "mytable"
     ```
-    - Add `-dry-run=true` to active the dry run mode.
 
 1. Verify the MySQL CSV dump has been successfully migrated to your Spanner database
     ```shell
