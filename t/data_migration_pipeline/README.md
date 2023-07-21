@@ -49,7 +49,7 @@ When pipeline starts, the client library automatically checks for SPANNER_EMULAT
     ```shell
     $ go run main.go -input-csv-path "test-data.csv" -spanner-database "projects/[your-project-id]/instances/test-instance/databases/testdb" -spanner-table "mytable"
     ```
-    - The default is under dry run mode. Add `-dry-run=false` to deactive the dry run mode.
+    - Add `-dry-run=true` to active the dry run mode.
 
 1. Verify the MySQL CSV dump has been successfully migrated to your Spanner database
     ```shell

@@ -20,7 +20,9 @@ import (
 	"encoding/csv"
 	"flag"
 	"log"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/apache/beam/sdks/v2/go/pkg/beam"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/core/metrics"
@@ -31,10 +33,10 @@ import (
 )
 
 var (
-	input    = flag.String("input-csv-path", "", "The path of the input MySQL CSV dumped .")
-	database = flag.String("spanner-database", "", "The path of the output Spanner database.")
-	table    = flag.String("spanner-table", "", "The name of the output Spanner table.")
-	dryRun   = flag.Bool("dry-run", true, "whether the specified run is a dry run")
+	flagInput    = flag.String("input-csv-path", "", "The path of the input MySQL CSV dumped .")
+	flagDatabase = flag.String("spanner-database", "", "The path of the output Spanner database.")
+	flagTable    = flag.String("spanner-table", "", "The name of the output Spanner table.")
+	flagDryRun   = flag.Bool("dry-run", false, "whether the specified run is a dry run")
 )
 
 var count = beam.NewCounter("dry-run", "count")
@@ -71,31 +73,31 @@ func emitResult(ctx context.Context, s beam.Scope, lines beam.PCollection) beam.
 	return dataModels
 }
 
-func ctxWithPtransformID(id string) context.Context {
-	ctx := context.Background()
-	ctx = metrics.SetPTransformID(ctx, id)
-	return ctx
-}
-
 func main() {
+	// Handle context cancellation.
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	// Set up metric
+	ctx = metrics.SetPTransformID(ctx, "pipeline")
+
 	flag.Parse()
 	beam.Init()
 
 	// Create the pipeline object and the root scope
 	p, s := beam.NewPipelineWithRoot()
 
-	lines, err := textio.Immediate(s, *input)
+	lines, err := textio.Immediate(s, *flagInput)
 	if err != nil {
-		log.Fatalf("Failed to read %v: %v", *input, err)
+		log.Fatalf("Failed to read %v: %v", *flagInput, err)
 	}
-
-	ctx := ctxWithPtransformID("pipeline")
 
 	// Convert each line to a data model
 	dataModels := emitResult(ctx, s, lines)
 
 	// Verify data on dry run mode
-	if *dryRun {
+	if *flagDryRun {
 		log.Println("dry run start....")
 		if _, err := beamx.RunWithMetrics(ctx, p); err != nil {
 			log.Fatalf("Pipeline failed: %v", err)
@@ -103,11 +105,12 @@ func main() {
 		metrics.DumpToOutFromContext(ctx)
 		return
 	}
+
 	// Write data into database
-	spannerio.Write(s, *database, *table, dataModels)
+	spannerio.Write(s, *flagDatabase, *flagTable, dataModels)
 
 	// Run the pipeline.
-	if _, err := direct.Execute(context.Background(), p); err != nil {
+	if _, err := direct.Execute(ctx, p); err != nil {
 		log.Fatalf("Pipeline failed: %v", err)
 	}
 }
