@@ -29,7 +29,6 @@ import (
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/spannerio"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/textio"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/runners/direct"
-	"github.com/apache/beam/sdks/v2/go/pkg/beam/x/beamx"
 )
 
 var (
@@ -80,7 +79,7 @@ func main() {
 	defer cancel()
 
 	// Set up metric
-	ctx = metrics.SetPTransformID(ctx, "pipeline")
+	ctx = metrics.SetPTransformID(ctx, "emitResult")
 
 	flag.Parse()
 	beam.Init()
@@ -97,20 +96,19 @@ func main() {
 	dataModels := emitResult(ctx, s, lines)
 
 	// Verify data on dry run mode
-	if _, err := beamx.RunWithMetrics(ctx, p); err != nil {
+	if _, err := direct.Execute(ctx, p); err != nil {
 		log.Fatalf("Pipeline failed: %v", err)
 	}
+
 	metrics.DumpToLog(ctx)
 
 	// Terminate the pipeline if the dry run mode is active
 	if *flagDryRun {
+		log.Println("dry run is completed")
 		return
 	}
 
 	// Write data into database
 	spannerio.Write(s, *flagDatabase, *flagTable, dataModels)
-	// Run the pipeline.
-	if _, err := direct.Execute(ctx, p); err != nil {
-		log.Fatalf("Pipeline failed: %v", err)
-	}
+
 }
