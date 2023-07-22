@@ -22,7 +22,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -36,7 +35,6 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
-	"github.com/posener/complete/v2/predict"
 )
 
 const (
@@ -54,7 +52,7 @@ const (
 	defaultLogMode  = "dev"
 )
 
-type Render struct {
+type RenderCommand struct {
 	cli.BaseCommand
 	flags *RenderFlags
 
@@ -62,44 +60,91 @@ type Render struct {
 	testGetter getterClient
 }
 
-// RenderFlags describes what template to render and how.
-type RenderFlags struct {
-	// Positional arguments:
+// Desc implements cli.Command.
+func (c *RenderCommand) Desc() string {
+	return "instantiate a template to setup a new app or add config files"
+}
 
-	// Source is the location of the input template to be rendered.
-	//
-	// Example: github.com/abcxyz/abc.git//t/rest_server
-	Source string
+func (c *RenderCommand) Help() string {
+	return `
+Usage: {{ COMMAND }} [options] <source>
 
-	// Flag arguments (--foo):
+The {{ COMMAND }} command renders the given template.
 
-	// Dest is the local directory where the template output will be written.
-	// It's OK for it to already exist or not.
-	Dest string
+The "<source>" is the location of the template to be instantiated. Many forms
+are accepted:
 
-	// GitProtocol is not yet used.
-	GitProtocol string
+  - "helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1;
+    this is for a template owned by abcxyz.
+  - "myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision
+    v1; this is for a template not owned by abcxyz but still on GitHub.
+  - "mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git
+    repo but not owned by abcxyz and not on GitHub.
+  - "mylocaltarball.tgz" is for a template not in git but present on the local
+    filesystem.
+  - "http://example.com/myremotetarball.tgz" os for a non-Git template in a
+    remote tarball.`
+}
 
-	// LogLevel is one of debug|info|warn|error|panic.
-	LogLevel string
+func (c *RenderCommand) Run(ctx context.Context, args []string) error {
+	rf := &RenderFlags{}
+	if err := rf.Parse(args); err != nil {
+		return err
+	}
 
-	// ForceOverwrite lets existing output files in the Dest directory be overwritten
-	// with the output of the template.
-	ForceOverwrite bool
+	return c.RunWithFlags(ctx, rf)
+}
 
-	// Inputs provide values that are substituted into the template. The keys in
-	// this map must match the input names in the Source template's spec.yaml
-	// file.
-	Inputs map[string]string // these are just the --input values from flags; doesn't inclue values from config file or env vars
+// RunWithFlags renders a template according to the given flags, taking the
+// template form rf.Source and producing output in rf.Dest. This should be
+// considered an unstable API and is primarily intended for testing. Use at your
+// own risk and accept the possibility of breaking changes.
+func (c *RenderCommand) RunWithFlags(ctx context.Context, rf *RenderFlags) error {
+	c.flags = rf
 
-	// KeepTempDirs prevents the cleanup of temporary directories after rendering is complete.
-	// This can be useful for debugging a failing template.
-	KeepTempDirs bool
+	c.setLogEnvVars()
+	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
-	// Spec is the relative path within the template of the YAML file that
-	// specifies how the template is rendered. This will often be just
-	// "spec.yaml".
-	Spec string
+	fSys := c.testFS // allow filesystem interaction to be faked for testing
+	if fSys == nil {
+		fSys = &realFS{}
+	}
+
+	if err := destOK(fSys, c.flags.Dest); err != nil {
+		return err
+	}
+
+	gg := c.testGetter
+	if gg == nil {
+		gg = &getter.Client{
+			Getters:       getter.Getters,
+			Decompressors: getter.Decompressors,
+		}
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("os.Getwd(): %w", err)
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("os.UserHomeDir: %w", err)
+	}
+	backupDir := filepath.Join(
+		homeDir,
+		".abc",
+		"backups",
+		fmt.Sprint(time.Now().Unix()))
+
+	return c.realRun(ctx, &runParams{
+		backupDir:    backupDir,
+		cwd:          wd,
+		fs:           fSys,
+		getter:       gg,
+		stdout:       c.Stdout(),
+		tempDirNamer: tempDirName,
+	})
 }
 
 // Abstracts filesystem operations.
@@ -121,108 +166,6 @@ type renderFS interface {
 // Allows the github.com/hashicorp/go-getter/Client to be faked.
 type getterClient interface {
 	Get(ctx context.Context, req *getter.Request) (*getter.GetResult, error)
-}
-
-// Desc implements cli.Command.
-func (r *Render) Desc() string {
-	return "instantiate a template to setup a new app or add config files"
-}
-
-func (r *Render) Help() string {
-	return `
-Usage: {{ COMMAND }} [options] <source>
-
-The {{ COMMAND }} command renders the given template.
-
-The "<source>" is the location of the template to be instantiated. Many forms
-are accepted:
-
-  - "helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1;
-    this is for a template owned by abcxyz.
-  - "myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision
-    v1; this is for a template not owned by abcxyz but still on GitHub.
-  - "mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git
-    repo but not owned by abcxyz and not on GitHub.
-  - "mylocaltarball.tgz" is for a template not in git but present on the local
-    filesystem.
-  - "http://example.com/myremotetarball.tgz" os for a non-Git template in a
-    remote tarball.`
-}
-
-func (r *RenderFlags) Flags() *cli.FlagSet {
-	set := cli.NewFlagSet()
-
-	f := set.NewSection("RENDER OPTIONS")
-	f.StringVar(&cli.StringVar{
-		Name:    "spec",
-		Example: "path/to/spec.yaml",
-		Target:  &r.Spec,
-		Default: "./spec.yaml",
-		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
-	})
-	f.StringVar(&cli.StringVar{
-		Name:    "dest",
-		Aliases: []string{"d"},
-		Example: "/my/git/dir",
-		Target:  &r.Dest,
-		Default: ".",
-		Predict: predict.Dirs("*"),
-		Usage:   "Required. The target directory in which to write the output files.",
-	})
-	f.StringMapVar(&cli.StringMapVar{
-		Name:    "input",
-		Example: "foo=bar",
-		Target:  &r.Inputs,
-		Usage:   "The key=val pairs of template values; may be repeated.",
-	})
-	f.StringVar(&cli.StringVar{
-		Name:    "log-level",
-		Example: "info",
-		Default: defaultLogLevel,
-		Target:  &r.LogLevel,
-		Usage:   "How verbose to log; any of debug|info|warn|error.",
-	})
-	f.BoolVar(&cli.BoolVar{
-		Name:    "force-overwrite",
-		Target:  &r.ForceOverwrite,
-		Default: false,
-		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
-	})
-	f.BoolVar(&cli.BoolVar{
-		Name:    "keep-temp-dirs",
-		Target:  &r.KeepTempDirs,
-		Default: false,
-		Usage:   "Preserve the temp directories instead of deleting them normally.",
-	})
-
-	g := set.NewSection("GIT OPTIONS")
-	g.StringVar(&cli.StringVar{
-		Name:    "git-protocol",
-		Example: "https",
-		Default: "https",
-		Target:  &r.GitProtocol,
-		Predict: predict.Set([]string{"https", "ssh"}),
-		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
-	})
-
-	return set
-}
-
-func (r *RenderFlags) Parse(args []string) error {
-	flagSet := r.Flags()
-
-	if err := flagSet.Parse(args); err != nil {
-		return fmt.Errorf("failed to parse flags: %w", err)
-	}
-
-	parsedArgs := flagSet.Args()
-	if len(parsedArgs) != 1 {
-		return flag.ErrHelp
-	}
-
-	r.Source = parsedArgs[0]
-
-	return nil
 }
 
 // This is the non-test implementation of the filesystem interface.
@@ -260,67 +203,6 @@ func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm) //nolint:wrapcheck
 }
 
-func (r *Render) Run(ctx context.Context, args []string) error {
-	rf := &RenderFlags{}
-	if err := rf.Parse(args); err != nil {
-		return err
-	}
-
-	return r.RunWithFlags(ctx, rf)
-}
-
-// RunWithFlags renders a template according to the given flags, taking the
-// template form rf.Source and producing output in rf.Dest. This should be
-// considered an unstable API and is primarily intended for testing. Use at your
-// own risk and accept the possibility of breaking changes.
-func (r *Render) RunWithFlags(ctx context.Context, rf *RenderFlags) error {
-	r.flags = rf
-
-	r.setLogEnvVars()
-	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
-
-	fSys := r.testFS // allow filesystem interaction to be faked for testing
-	if fSys == nil {
-		fSys = &realFS{}
-	}
-
-	if err := destOK(fSys, r.flags.Dest); err != nil {
-		return err
-	}
-
-	gg := r.testGetter
-	if gg == nil {
-		gg = &getter.Client{
-			Getters:       getter.Getters,
-			Decompressors: getter.Decompressors,
-		}
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("os.Getwd(): %w", err)
-	}
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("os.UserHomeDir: %w", err)
-	}
-	backupDir := filepath.Join(
-		homeDir,
-		".abc",
-		"backups",
-		fmt.Sprint(time.Now().Unix()))
-
-	return r.realRun(ctx, &runParams{
-		backupDir:    backupDir,
-		cwd:          wd,
-		fs:           fSys,
-		getter:       gg,
-		stdout:       r.Stdout(),
-		tempDirNamer: tempDirName,
-	})
-}
-
 type runParams struct {
 	backupDir string
 	cwd       string
@@ -336,14 +218,14 @@ type runParams struct {
 }
 
 // realRun is for testability; it's Run() with fakeable interfaces.
-func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
+func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	var tempDirs []string
 	defer func() {
-		err := r.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
+		err := c.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
 		outErr = errors.Join(outErr, err)
 	}()
 
-	templateDir, err := r.copyTemplate(ctx, rp)
+	templateDir, err := c.copyTemplate(ctx, rp)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
@@ -351,9 +233,9 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	safeSpecPath, err := safeRelPath(nil, r.flags.Spec)
+	safeSpecPath, err := safeRelPath(nil, c.flags.Spec)
 	if err != nil {
-		return fmt.Errorf("invalid --spec path %q: %w", r.flags.Spec, err)
+		return fmt.Errorf("invalid --spec path %q: %w", c.flags.Spec, err)
 	}
 
 	spec, err := loadSpecFile(rp.fs, templateDir, safeSpecPath)
@@ -361,13 +243,13 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	if unknownInputs := r.checkUnknownInputs(spec); len(unknownInputs) > 0 {
+	if unknownInputs := c.checkUnknownInputs(spec); len(unknownInputs) > 0 {
 		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
 
-	r.collapseDefaultInputs(spec)
+	c.collapseDefaultInputs(spec)
 
-	if requiredInputs := r.checkRequiredInputs(spec); len(requiredInputs) > 0 {
+	if requiredInputs := c.checkRequiredInputs(spec); len(requiredInputs) > 0 {
 		return fmt.Errorf("missing required input(s): %s", strings.Join(requiredInputs, ", "))
 	}
 
@@ -383,9 +265,9 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	logger.Infow("created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
-		flags:       r.flags,
+		flags:       c.flags,
 		fs:          rp.fs,
-		inputs:      r.flags.Inputs,
+		inputs:      c.flags.Inputs,
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
@@ -412,7 +294,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				// ourself to write back to that file, even when
 				// --force-overwrite=false. When the template uses this feature,
 				// we know that the intent is to modify the files in place.
-				overwrite: ok || r.flags.ForceOverwrite,
+				overwrite: ok || c.flags.ForceOverwrite,
 			}, nil
 		}
 
@@ -434,7 +316,7 @@ func (r *Render) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		params := &copyParams{
 			backupDirMaker: backupDirMaker,
 			dryRun:         dryRun,
-			dstRoot:        r.flags.Dest,
+			dstRoot:        c.flags.Dest,
 			srcRoot:        scratchDir,
 			rfs:            rp.fs,
 			visitor:        visitor,
@@ -461,14 +343,14 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.
-func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
+func (c *RenderCommand) checkUnknownInputs(spec *model.Spec) []string {
 	specInputs := make(map[string]any, len(spec.Inputs))
 	for _, v := range spec.Inputs {
 		specInputs[v.Name.Val] = struct{}{}
 	}
 
-	unknownInputs := make([]string, 0, len(r.flags.Inputs))
-	for key := range r.flags.Inputs {
+	unknownInputs := make([]string, 0, len(c.flags.Inputs))
+	for key := range c.flags.Inputs {
 		if _, ok := specInputs[key]; !ok {
 			unknownInputs = append(unknownInputs, key)
 		}
@@ -480,23 +362,23 @@ func (r *Render) checkUnknownInputs(spec *model.Spec) []string {
 }
 
 // collapseDefaultInputs defaults any missing input flags if default is set.
-func (r *Render) collapseDefaultInputs(spec *model.Spec) {
-	if r.flags.Inputs == nil {
-		r.flags.Inputs = map[string]string{}
+func (c *RenderCommand) collapseDefaultInputs(spec *model.Spec) {
+	if c.flags.Inputs == nil {
+		c.flags.Inputs = map[string]string{}
 	}
 	for _, input := range spec.Inputs {
-		if _, ok := r.flags.Inputs[input.Name.Val]; !ok && input.Default != nil {
-			r.flags.Inputs[input.Name.Val] = input.Default.Val
+		if _, ok := c.flags.Inputs[input.Name.Val]; !ok && input.Default != nil {
+			c.flags.Inputs[input.Name.Val] = input.Default.Val
 		}
 	}
 }
 
 // checkRequiredInputs checks for missing input flags returns them as a slice.
-func (r *Render) checkRequiredInputs(spec *model.Spec) []string {
-	requiredInputs := make([]string, 0, len(r.flags.Inputs))
+func (c *RenderCommand) checkRequiredInputs(spec *model.Spec) []string {
+	requiredInputs := make([]string, 0, len(c.flags.Inputs))
 
 	for _, input := range spec.Inputs {
-		if _, ok := r.flags.Inputs[input.Name.Val]; !ok {
+		if _, ok := c.flags.Inputs[input.Name.Val]; !ok {
 			requiredInputs = append(requiredInputs, input.Name.Val)
 		}
 	}
@@ -613,7 +495,7 @@ func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error
 // Downloads the template and returns the name of the temp directory where it
 // was saved. If error is returned, then the returned directory name may or may
 // not exist, and may or may not be empty.
-func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
+func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
 	templateDir, err := rp.tempDirNamer(templateDirNamePart)
 	if err != nil {
 		return "", err
@@ -623,7 +505,7 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 		Dst:             templateDir,
 		GetMode:         getter.ModeAny,
 		Pwd:             rp.cwd,
-		Src:             r.flags.Source,
+		Src:             c.flags.Source,
 	}
 
 	_, err = rp.getter.Get(ctx, req)
@@ -634,15 +516,15 @@ func (r *Render) copyTemplate(ctx context.Context, rp *runParams) (string, error
 	logger.Infow("created temporary template directory",
 		"path", templateDir)
 	logger.Infow("copied source template temporary directory",
-		"source", r.flags.Source,
+		"source", c.flags.Source,
 		"destination", templateDir)
 	return templateDir, nil
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
-func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
+func (c *RenderCommand) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
-	if r.flags.KeepTempDirs {
+	if c.flags.KeepTempDirs {
 		logger.Infow("keeping temporary directories due to --keep-temp-dirs",
 			"paths", tempDirs)
 		return nil
@@ -656,13 +538,13 @@ func (r *Render) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs 
 	return merr
 }
 
-func (r *Render) setLogEnvVars() {
+func (c *RenderCommand) setLogEnvVars() {
 	if os.Getenv("ABC_LOG_MODE") == "" {
 		os.Setenv("ABC_LOG_MODE", defaultLogMode)
 	}
 
-	if r.flags.LogLevel != "" {
-		os.Setenv("ABC_LOG_LEVEL", r.flags.LogLevel)
+	if c.flags.LogLevel != "" {
+		os.Setenv("ABC_LOG_LEVEL", c.flags.LogLevel)
 	} else if os.Getenv("ABC_LOG_LEVEL") == "" {
 		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
 	}

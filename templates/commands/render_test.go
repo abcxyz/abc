@@ -541,7 +541,7 @@ steps:
 				stdout:       stdoutBuf,
 				tempDirNamer: tempDirNamer,
 			}
-			r := &Render{
+			r := &RenderCommand{
 				flags: &RenderFlags{
 					Dest:           dest,
 					ForceOverwrite: tc.flagForceOverwrite,
