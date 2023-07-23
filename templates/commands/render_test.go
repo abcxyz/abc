@@ -17,7 +17,6 @@ package commands
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -28,6 +27,7 @@ import (
 	"testing/fstest"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -58,7 +58,7 @@ var cmpFileMode = cmp.Comparer(func(a, b fs.FileMode) bool {
 	return a == b
 })
 
-func TestParseFlags(t *testing.T) {
+func TestRenderFlags_Parse(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -109,27 +109,28 @@ func TestParseFlags(t *testing.T) {
 		{
 			name:    "required_source_is_missing",
 			args:    []string{},
-			wantErr: flag.ErrHelp.Error(),
+			wantErr: "missing <source> file",
 		},
 	}
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var r RenderFlags
-			err := r.Parse(tc.args)
+
+			var cmd RenderCommand
+			cmd.SetLookupEnv(cli.MapLookuper(nil))
+
+			err := cmd.Flags().Parse(tc.args)
 			if err != nil || tc.wantErr != "" {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
 				}
 				return
 			}
-			opts := []cmp.Option{
-				cmp.AllowUnexported(RenderFlags{}),
-			}
-			if diff := cmp.Diff(r, tc.want, opts...); diff != "" {
-				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", r, tc.want, diff)
+			if diff := cmp.Diff(cmd.renderFlags, tc.want); diff != "" {
+				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.renderFlags, tc.want, diff)
 			}
 		})
 	}
@@ -542,7 +543,7 @@ steps:
 				tempDirNamer: tempDirNamer,
 			}
 			r := &RenderCommand{
-				flags: &RenderFlags{
+				renderFlags: RenderFlags{
 					Dest:           dest,
 					ForceOverwrite: tc.flagForceOverwrite,
 					Inputs:         tc.flagInputs,
@@ -558,12 +559,12 @@ steps:
 				t.Error(diff)
 			}
 
-			if fg.gotSource != r.flags.Source {
-				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.flags.Source)
+			if fg.gotSource != r.renderFlags.Source {
+				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.renderFlags.Source)
 			}
 
 			if tc.wantFlagInputs != nil {
-				if diff := cmp.Diff(r.flags.Inputs, tc.wantFlagInputs); diff != "" {
+				if diff := cmp.Diff(r.renderFlags.Inputs, tc.wantFlagInputs); diff != "" {
 					t.Errorf("flagInputs was not as expected; (-got,+want): %s", diff)
 				}
 			}

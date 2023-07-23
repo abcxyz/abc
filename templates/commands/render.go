@@ -54,7 +54,7 @@ const (
 
 type RenderCommand struct {
 	cli.BaseCommand
-	flags *RenderFlags
+	renderFlags RenderFlags
 
 	testFS     renderFS
 	testGetter getterClient
@@ -86,31 +86,25 @@ are accepted:
     remote tarball.`
 }
 
-func (c *RenderCommand) Run(ctx context.Context, args []string) error {
-	rf := &RenderFlags{}
-	if err := rf.Parse(args); err != nil {
-		return err
-	}
-
-	return c.RunWithFlags(ctx, rf)
+func (c *RenderCommand) Flags() *cli.FlagSet {
+	set := c.NewFlagSet()
+	c.renderFlags.Register(set)
+	return set
 }
 
-// RunWithFlags renders a template according to the given flags, taking the
-// template form rf.Source and producing output in rf.Dest. This should be
-// considered an unstable API and is primarily intended for testing. Use at your
-// own risk and accept the possibility of breaking changes.
-func (c *RenderCommand) RunWithFlags(ctx context.Context, rf *RenderFlags) error {
-	c.flags = rf
+func (c *RenderCommand) Run(ctx context.Context, args []string) error {
+	if err := c.Flags().Parse(args); err != nil {
+		return fmt.Errorf("failed to parse flags: %w", err)
+	}
 
 	c.setLogEnvVars()
-	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	fSys := c.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
 		fSys = &realFS{}
 	}
 
-	if err := destOK(fSys, c.flags.Dest); err != nil {
+	if err := destOK(fSys, c.renderFlags.Dest); err != nil {
 		return err
 	}
 
@@ -122,14 +116,14 @@ func (c *RenderCommand) RunWithFlags(ctx context.Context, rf *RenderFlags) error
 		}
 	}
 
-	wd, err := os.Getwd()
+	wd, err := c.WorkingDir()
 	if err != nil {
-		return fmt.Errorf("os.Getwd(): %w", err)
+		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return fmt.Errorf("os.UserHomeDir: %w", err)
+		return fmt.Errorf("failed to get home dir: %w", err)
 	}
 	backupDir := filepath.Join(
 		homeDir,
@@ -233,9 +227,9 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 		return err
 	}
 
-	safeSpecPath, err := safeRelPath(nil, c.flags.Spec)
+	safeSpecPath, err := safeRelPath(nil, c.renderFlags.Spec)
 	if err != nil {
-		return fmt.Errorf("invalid --spec path %q: %w", c.flags.Spec, err)
+		return fmt.Errorf("invalid --spec path %q: %w", c.renderFlags.Spec, err)
 	}
 
 	spec, err := loadSpecFile(rp.fs, templateDir, safeSpecPath)
@@ -265,9 +259,9 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 	logger.Infow("created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
-		flags:       c.flags,
+		flags:       &c.renderFlags,
 		fs:          rp.fs,
-		inputs:      c.flags.Inputs,
+		inputs:      c.renderFlags.Inputs,
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
@@ -294,7 +288,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 				// ourself to write back to that file, even when
 				// --force-overwrite=false. When the template uses this feature,
 				// we know that the intent is to modify the files in place.
-				overwrite: ok || c.flags.ForceOverwrite,
+				overwrite: ok || c.renderFlags.ForceOverwrite,
 			}, nil
 		}
 
@@ -316,7 +310,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 		params := &copyParams{
 			backupDirMaker: backupDirMaker,
 			dryRun:         dryRun,
-			dstRoot:        c.flags.Dest,
+			dstRoot:        c.renderFlags.Dest,
 			srcRoot:        scratchDir,
 			rfs:            rp.fs,
 			visitor:        visitor,
@@ -349,8 +343,8 @@ func (c *RenderCommand) checkUnknownInputs(spec *model.Spec) []string {
 		specInputs[v.Name.Val] = struct{}{}
 	}
 
-	unknownInputs := make([]string, 0, len(c.flags.Inputs))
-	for key := range c.flags.Inputs {
+	unknownInputs := make([]string, 0, len(c.renderFlags.Inputs))
+	for key := range c.renderFlags.Inputs {
 		if _, ok := specInputs[key]; !ok {
 			unknownInputs = append(unknownInputs, key)
 		}
@@ -363,22 +357,22 @@ func (c *RenderCommand) checkUnknownInputs(spec *model.Spec) []string {
 
 // collapseDefaultInputs defaults any missing input flags if default is set.
 func (c *RenderCommand) collapseDefaultInputs(spec *model.Spec) {
-	if c.flags.Inputs == nil {
-		c.flags.Inputs = map[string]string{}
+	if c.renderFlags.Inputs == nil {
+		c.renderFlags.Inputs = map[string]string{}
 	}
 	for _, input := range spec.Inputs {
-		if _, ok := c.flags.Inputs[input.Name.Val]; !ok && input.Default != nil {
-			c.flags.Inputs[input.Name.Val] = input.Default.Val
+		if _, ok := c.renderFlags.Inputs[input.Name.Val]; !ok && input.Default != nil {
+			c.renderFlags.Inputs[input.Name.Val] = input.Default.Val
 		}
 	}
 }
 
 // checkRequiredInputs checks for missing input flags returns them as a slice.
 func (c *RenderCommand) checkRequiredInputs(spec *model.Spec) []string {
-	requiredInputs := make([]string, 0, len(c.flags.Inputs))
+	requiredInputs := make([]string, 0, len(c.renderFlags.Inputs))
 
 	for _, input := range spec.Inputs {
-		if _, ok := c.flags.Inputs[input.Name.Val]; !ok {
+		if _, ok := c.renderFlags.Inputs[input.Name.Val]; !ok {
 			requiredInputs = append(requiredInputs, input.Name.Val)
 		}
 	}
@@ -505,7 +499,7 @@ func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string
 		Dst:             templateDir,
 		GetMode:         getter.ModeAny,
 		Pwd:             rp.cwd,
-		Src:             c.flags.Source,
+		Src:             c.renderFlags.Source,
 	}
 
 	_, err = rp.getter.Get(ctx, req)
@@ -516,7 +510,7 @@ func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string
 	logger.Infow("created temporary template directory",
 		"path", templateDir)
 	logger.Infow("copied source template temporary directory",
-		"source", c.flags.Source,
+		"source", c.renderFlags.Source,
 		"destination", templateDir)
 	return templateDir, nil
 }
@@ -524,7 +518,7 @@ func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
 func (c *RenderCommand) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
-	if c.flags.KeepTempDirs {
+	if c.renderFlags.KeepTempDirs {
 		logger.Infow("keeping temporary directories due to --keep-temp-dirs",
 			"paths", tempDirs)
 		return nil
@@ -543,8 +537,8 @@ func (c *RenderCommand) setLogEnvVars() {
 		os.Setenv("ABC_LOG_MODE", defaultLogMode)
 	}
 
-	if c.flags.LogLevel != "" {
-		os.Setenv("ABC_LOG_LEVEL", c.flags.LogLevel)
+	if c.renderFlags.LogLevel != "" {
+		os.Setenv("ABC_LOG_LEVEL", c.renderFlags.LogLevel)
 	} else if os.Getenv("ABC_LOG_LEVEL") == "" {
 		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
 	}
