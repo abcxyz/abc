@@ -39,16 +39,24 @@ Once configured, your gcloud commands will be sent to the emulator instead of th
     $ gcloud spanner databases create testdb --instance=test-instance --ddl='CREATE TABLE mytable (Id STRING(36)) PRIMARY KEY(Id)'
     ```
    - make sure the local Spanner emulator runs in a separated tab.
-
+     
 7. Point your client libraries to the emulator.
 When pipeline starts, the client library automatically checks for SPANNER_EMULATOR_HOST and connects to the emulator if it is running.
     ```shell
     $ export SPANNER_EMULATOR_HOST=localhost:9010
     ```
-1. Run the data migration pipeline.
+1. Run the data migration pipeline in dry run mode. Verify metrics like total record count. 
+    ```shell
+    $ go run main.go -input-csv-path "test-data.csv" -spanner-database "projects/[your-project-id]/instances/test-instance/databases/testdb" -spanner-table "mytable" -dry-run=true
+    ```
+    - flag `-dry-run=true` is to active the dry run mode.
+
+1. Run the data migration pipeline in the real run and write into Spanner.
+
     ```shell
     $ go run main.go -input-csv-path "test-data.csv" -spanner-database "projects/[your-project-id]/instances/test-instance/databases/testdb" -spanner-table "mytable"
     ```
+
 1. Verify the MySQL CSV dump has been successfully migrated to your Spanner database
     ```shell
     $ gcloud spanner databases execute-sql testdb --instance=test-instance --sql='SELECT * FROM mytable'

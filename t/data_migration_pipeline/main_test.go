@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"github.com/apache/beam/sdks/v2/go/pkg/beam"
@@ -53,9 +54,9 @@ func TestEmitResult(t *testing.T) {
 
 			beam.Init()
 			p, s := beam.NewPipelineWithRoot()
-
+			ctx := context.Background()
 			csvPCol := beam.CreateList(s, tc.input)
-			dataModels := emitResult(s, csvPCol)
+			dataModels := emitResult(ctx, s, csvPCol)
 
 			passert.Equals(s, dataModels, beam.CreateList(s, tc.want))
 			ptest.RunAndValidate(t, p)
