@@ -181,6 +181,7 @@ type Step struct {
 	RegexReplace    *RegexReplace    `yaml:"-"`
 	RegexNameLookup *RegexNameLookup `yaml:"-"`
 	StringReplace   *StringReplace   `yaml:"-"`
+	Append          *Append          `yaml:"-"`
 	GoTemplate      *GoTemplate      `yaml:"-"`
 }
 
@@ -224,6 +225,10 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 		s.StringReplace = new(StringReplace)
 		unmarshalInto = s.StringReplace
 		s.StringReplace.Pos = s.Pos
+	case "append":
+		s.Append = new(Append)
+		unmarshalInto = s.Append
+		s.Append.Pos = s.Pos
 	case "go_template":
 		s.GoTemplate = new(GoTemplate)
 		unmarshalInto = s.GoTemplate
@@ -256,6 +261,7 @@ func (s *Step) Validate() error {
 		validateUnlessNil(s.RegexReplace),
 		validateUnlessNil(s.RegexNameLookup),
 		validateUnlessNil(s.StringReplace),
+		validateUnlessNil(s.Append),
 		validateUnlessNil(s.GoTemplate),
 	)
 }
@@ -569,6 +575,41 @@ func (s *StringReplacement) UnmarshalYAML(n *yaml.Node) error {
 	s.Pos = yamlPos(n)
 
 	return nil
+}
+
+// Append is an action that appends some output to the end of the file.
+type Append struct {
+	// Pos is the YAML file location where this object started.
+	Pos *ConfigPos `yaml:"-"`
+
+	Path String `yaml:"path"`
+	With String `yaml:"with"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (s *Append) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"path", "with"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType Append
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*s = Append(*shadow)
+	s.Pos = yamlPos(n)
+
+	return nil
+}
+
+// Validate implements Validator.
+func (s *Append) Validate() error {
+	return errors.Join(
+		notZero(s.Pos, s.Path, "path"),
+		notZero(s.Pos, s.With, "with"),
+	)
 }
 
 // GoTemplate is an action that executes one more files as a Go template,

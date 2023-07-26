@@ -599,6 +599,7 @@ params:
   - fakefield: 'abc' `,
 			wantUnmarshalErr: `unknown field name "fakefield"`,
 		},
+		// TODO: add Append tests
 		{
 			name: "string_replace_success",
 			in: `desc: 'mydesc'
