@@ -689,3 +689,91 @@ func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
 		t.Errorf("errors.As() returned false, should return true when called with an error of type %T", as)
 	}
 }
+
+func TestToLowerSnakeCase(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "simple_success",
+			input: "THIS-IS-A-TEST-123",
+			want:  "this_is_a_test_123",
+		},
+		{
+			name:  "handles_spaces",
+			input: "THIS IS A TEST 123",
+			want:  "this_is_a_test_123",
+		},
+		{
+			name:  "handle_empty",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "removes_special_characters",
+			input: "!@#$%^&*()+=,.<>\n\r\t/?'\"[{]}\\|`~;:`]",
+			want:  "",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := toLowerSnakeCase(tc.input)
+			if got, want := got, tc.want; got != want {
+				t.Errorf("expected %s to be %s", got, want)
+			}
+		})
+	}
+}
+
+func TestToUppperSnakeCase(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "simple",
+			input: "this-is-a-test-123",
+			want:  "THIS_IS_A_TEST_123",
+		},
+		{
+			name:  "handles_spaces",
+			input: "this is a test 123",
+			want:  "THIS_IS_A_TEST_123",
+		},
+		{
+			name:  "handles_empty",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "removes_special_characters",
+			input: "!@#$%^&*()+=,.<>\n\r\t/?'\"[{]}\\|`~;:`]",
+			want:  "",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := toUpperSnakeCase(tc.input)
+			if got, want := got, tc.want; got != want {
+				t.Errorf("expected %s to be %s", got, want)
+			}
+		})
+	}
+}
