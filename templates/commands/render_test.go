@@ -129,8 +129,8 @@ func TestRenderFlags_Parse(t *testing.T) {
 				}
 				return
 			}
-			if diff := cmp.Diff(cmd.renderFlags, tc.want); diff != "" {
-				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.renderFlags, tc.want, diff)
+			if diff := cmp.Diff(cmd.flags, tc.want); diff != "" {
+				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.flags, tc.want, diff)
 			}
 		})
 	}
@@ -543,7 +543,7 @@ steps:
 				tempDirNamer: tempDirNamer,
 			}
 			r := &RenderCommand{
-				renderFlags: RenderFlags{
+				flags: RenderFlags{
 					Dest:           dest,
 					ForceOverwrite: tc.flagForceOverwrite,
 					Inputs:         tc.flagInputs,
@@ -559,12 +559,12 @@ steps:
 				t.Error(diff)
 			}
 
-			if fg.gotSource != r.renderFlags.Source {
-				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.renderFlags.Source)
+			if fg.gotSource != r.flags.Source {
+				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.flags.Source)
 			}
 
 			if tc.wantFlagInputs != nil {
-				if diff := cmp.Diff(r.renderFlags.Inputs, tc.wantFlagInputs); diff != "" {
+				if diff := cmp.Diff(r.flags.Inputs, tc.wantFlagInputs); diff != "" {
 					t.Errorf("flagInputs was not as expected; (-got,+want): %s", diff)
 				}
 			}
