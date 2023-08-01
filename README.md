@@ -408,6 +408,23 @@ Example:
       thing'
 ```
 
+### Action: `append`
+
+Appends a string on the end of a given file. File must already exist.
+
+Params:
+- `path`: File in which to do the replacement.
+  May use template expressions (e.g. `{{.my_input}}`).
+- `with`: String to append to the file.
+
+Example:
+```yaml
+- action: 'append'
+  params:
+    path: 'foo.html'
+    with: '</html>\n'
+```
+
 ### Action: `string_replace`
 
 Within a given list of files and/or directories, replaces all occurrences of a

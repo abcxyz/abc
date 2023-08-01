@@ -26,10 +26,14 @@ func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
 		return err
 	}
 
+	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.inputs)
+	if err != nil {
+		return err
+	}
+
 	if err := walkAndModify(ctx, ap.Path.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
-		// todo: this only works well if encoding of file is same as the string
 		// todo: should we add a newline before/after appending or leave that to user?
-		return append(buf, []byte(ap.With.Val)...), nil
+		return append(buf, []byte(with)...), nil
 	}); err != nil {
 		return err
 	}

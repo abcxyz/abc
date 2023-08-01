@@ -433,18 +433,20 @@ type stepParams struct {
 
 func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error {
 	switch {
-	case step.Print != nil:
-		return actionPrint(ctx, step.Print, sp)
-	case step.Include != nil:
-		return actionInclude(ctx, step.Include, sp)
-	case step.RegexReplace != nil:
-		return actionRegexReplace(ctx, step.RegexReplace, sp)
-	case step.RegexNameLookup != nil:
-		return actionRegexNameLookup(ctx, step.RegexNameLookup, sp)
-	case step.StringReplace != nil:
-		return actionStringReplace(ctx, step.StringReplace, sp)
+	case step.Append != nil:
+		return actionAppend(ctx, step.Append, sp)
 	case step.GoTemplate != nil:
 		return actionGoTemplate(ctx, step.GoTemplate, sp)
+	case step.Include != nil:
+		return actionInclude(ctx, step.Include, sp)
+	case step.Print != nil:
+		return actionPrint(ctx, step.Print, sp)
+	case step.RegexNameLookup != nil:
+		return actionRegexNameLookup(ctx, step.RegexNameLookup, sp)
+	case step.RegexReplace != nil:
+		return actionRegexReplace(ctx, step.RegexReplace, sp)
+	case step.StringReplace != nil:
+		return actionStringReplace(ctx, step.StringReplace, sp)
 	default:
 		return fmt.Errorf("internal error: unknown step action type %q", step.Action.Val)
 	}

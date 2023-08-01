@@ -235,6 +235,38 @@ func TestUnmarshalStep(t *testing.T) {
 		wantValidateErr  string
 	}{
 		{
+			name: "append_success",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  path: 'a.txt'
+  with: 'jkl'`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "append"},
+				Append: &Append{
+					Path: String{Val: "a.txt"},
+					With: String{Val: "jkl"},
+				},
+			},
+		},
+		{
+			name: "append_missing_with_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  path: 'a.txt'`,
+			wantValidateErr: `invalid config near line 4 column 3: field "with" is required`,
+		},
+		{
+			name: "append_missing_path_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  with: 'def'`,
+			wantValidateErr: `invalid config near line 4 column 3: field "path" is required`,
+		},
+		{
 			name: "print_success",
 			in: `desc: 'Print a message'
 action: 'print'
@@ -599,7 +631,6 @@ params:
   - fakefield: 'abc' `,
 			wantUnmarshalErr: `unknown field name "fakefield"`,
 		},
-		// TODO: add Append tests
 		{
 			name: "string_replace_success",
 			in: `desc: 'mydesc'

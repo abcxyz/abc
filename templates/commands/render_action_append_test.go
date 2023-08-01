@@ -35,8 +35,8 @@ func TestActionAppend(t *testing.T) {
 		with   string
 		inputs map[string]string
 
-		initialContents string
-		want            string
+		initialContents map[string]string
+		want            map[string]string
 		wantErr         string
 
 		readFileErr error // no need to test all errors here, see TestWalkAndModify
@@ -45,154 +45,60 @@ func TestActionAppend(t *testing.T) {
 			name:            "simple_success",
 			path:            "my_file.txt",
 			with:            "foobar",
-			initialContents: "abc foo def",
-			want:            "abc foo deffoobar",
-		},
-		// TODO: rest of tests
-		{
-			name:  "multiple_files_should_work",
-			paths: []string{""},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_file.txt":       "abc foo def",
-				"my_other_file.txt": "abc foo def",
-			},
-			want: map[string]string{
-				"my_file.txt":       "abc bar def",
-				"my_other_file.txt": "abc bar def",
-			},
+			initialContents: map[string]string{"my_file.txt": "abc foo def"},
+			want:            map[string]string{"my_file.txt": "abc foo deffoobar"},
 		},
 		{
-			name:  "no_replacement_needed_should_noop",
-			paths: []string{""},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_file.txt": "abc def",
-			},
-			want: map[string]string{
-				"my_file.txt": "abc def",
-			},
+			name:            "empty_file_works",
+			path:            "my_file.txt",
+			with:            "foo",
+			initialContents: map[string]string{"my_file.txt": ""},
+			want:            map[string]string{"my_file.txt": "foo"},
+		},
+		// TODO: discuss in code review if this is desired behavior.
+		{
+			name:            "missing_file_errors",
+			path:            "my_file.txt",
+			with:            "foo",
+			initialContents: map[string]string{},
+			wantErr:         "doesn't exist in the scratch directory",
 		},
 		{
-			name:  "empty_file_should_noop",
-			paths: []string{""},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_file.txt": "",
-			},
-			want: map[string]string{
-				"my_file.txt": "",
-			},
-		},
-		{
-			name:  "templated_replacement_should_succeed",
-			paths: []string{"my_{{.filename_adjective}}_file.txt"},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "sand{{.old_suffix}}"},
-					With:      model.String{Val: "hot{{.new_suffix}}"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_cool_file.txt":  "sandwich",
-				"ignored_filed.txt": "ignored",
-			},
+			name:            "templated_name_and_text_should_succeed",
+			path:            "my_{{.filename_adjective}}_file.txt",
+			with:            "{{.to_append}}",
+			initialContents: map[string]string{"my_meow.wav_file.txt": "sandwich"},
 			inputs: map[string]string{
-				"filename_adjective": "cool",
-				"old_suffix":         "wich", //nolint:misspell
-				"new_suffix":         "dog",
+				"filename_adjective": "meow.wav",
+				"to_append":          "meowmoewmoewmoew\nmeow",
 			},
-			want: map[string]string{
-				"my_cool_file.txt":  "hotdog",
-				"ignored_filed.txt": "ignored",
-			},
+			want: map[string]string{"my_meow.wav_file.txt": "sandwichmeowmoewmoewmoew\nmeow"},
 		},
 		{
-			name:  "templated_filename_missing_input_should_fail",
-			paths: []string{"{{.myinput}}"},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_file.txt": "foo",
-			},
-			inputs: map[string]string{},
-			want: map[string]string{
-				"my_file.txt": "foo",
-			},
-			wantErr: `nonexistent input variable name "myinput"`,
+			name:            "templated_filename_missing_input_should_fail",
+			path:            "{{.bad_name}}",
+			initialContents: map[string]string{"uhoh.wmv": "foo"},
+			inputs:          map[string]string{},
+			want:            map[string]string{"uhoh.wmv": "foo"},
+			wantErr:         `nonexistent input variable name "bad_name"`,
 		},
 		{
-			name:  "templated_toreplace_missing_input_should_fail",
-			paths: []string{""},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "{{.myinput}}"},
-					With:      model.String{Val: "bar"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_file.txt": "foo",
-			},
-			inputs: map[string]string{},
-			want: map[string]string{
-				"my_file.txt": "foo",
-			},
-			wantErr: `nonexistent input variable name "myinput"`,
+			name:            "templated_with_missing_input_should_fail",
+			path:            "my_file.txt",
+			with:            "{{.bad_name}}",
+			initialContents: map[string]string{"my_file.txt": "foo"},
+			inputs:          map[string]string{"not": "right"},
+			want:            map[string]string{"my_file.txt": "foo"},
+			wantErr:         `nonexistent input variable name "bad_name"`,
 		},
 		{
-			name:  "templated_with_missing_input_should_fail",
-			paths: []string{""},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "{{.myinput}}"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_file.txt": "foo",
-			},
-			inputs: map[string]string{},
-			want: map[string]string{
-				"my_file.txt": "foo",
-			},
-			wantErr: `nonexistent input variable name "myinput"`,
-		},
-		{
-			name:  "fs_errors_should_be_returned",
-			paths: []string{"my_file.txt"},
-			replacements: []*model.StringReplacement{
-				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
-				},
-			},
-			initialContents: map[string]string{
-				"my_file.txt": "abc foo def",
-			},
-			want: map[string]string{
-				"my_file.txt": "abc foo def",
-			},
-			readFileErr: fmt.Errorf("fake error for testing"),
-			wantErr:     "fake error for testing",
+			name:            "fs_errors_should_be_returned",
+			path:            "my_file.txt",
+			with:            "foo",
+			initialContents: map[string]string{"my_file.txt": "foo"},
+			want:            map[string]string{"my_file.txt": "foo"},
+			readFileErr:     fmt.Errorf("fake error for testing"),
+			wantErr:         "fake error for testing",
 		},
 	}
 
@@ -207,9 +113,15 @@ func TestActionAppend(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			sr := &model.StringReplace{
-				Paths:        modelStrings(tc.paths),
-				Replacements: tc.replacements,
+			sr := &model.Append{
+				Path: model.String{
+					Pos: &model.ConfigPos{},
+					Val: tc.path,
+				},
+				With: model.String{
+					Pos: &model.ConfigPos{},
+					Val: tc.with,
+				},
 			}
 			sp := &stepParams{
 				fs: &errorFS{
@@ -219,7 +131,7 @@ func TestActionAppend(t *testing.T) {
 				scratchDir: scratchDir,
 				inputs:     tc.inputs,
 			}
-			err := actionStringReplace(context.Background(), sr, sp)
+			err := actionAppend(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

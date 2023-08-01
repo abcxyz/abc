@@ -176,13 +176,13 @@ type Step struct {
 	Action String `yaml:"action"`
 
 	// Each action type has a field below. Only one of these will be set.
-	Print           *Print           `yaml:"-"`
-	Include         *Include         `yaml:"-"`
-	RegexReplace    *RegexReplace    `yaml:"-"`
-	RegexNameLookup *RegexNameLookup `yaml:"-"`
-	StringReplace   *StringReplace   `yaml:"-"`
 	Append          *Append          `yaml:"-"`
 	GoTemplate      *GoTemplate      `yaml:"-"`
+	Include         *Include         `yaml:"-"`
+	Print           *Print           `yaml:"-"`
+	RegexNameLookup *RegexNameLookup `yaml:"-"`
+	RegexReplace    *RegexReplace    `yaml:"-"`
+	StringReplace   *StringReplace   `yaml:"-"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
