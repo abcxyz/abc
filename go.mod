@@ -3,10 +3,11 @@ module github.com/abcxyz/abc
 go 1.20
 
 require (
-	github.com/abcxyz/pkg v0.6.0
+	github.com/abcxyz/pkg v0.6.1-0.20230804153849-6d2123cfd90a
 	github.com/benbjohnson/clock v1.3.5
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-getter/v2 v2.2.1
+	github.com/mattn/go-isatty v0.0.19
 	github.com/posener/complete/v2 v2.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	gopkg.in/yaml.v3 v3.0.1
@@ -31,7 +32,6 @@ require (
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.0.11 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/posener/script v1.2.0 // indirect

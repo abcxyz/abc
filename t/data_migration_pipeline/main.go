@@ -110,5 +110,4 @@ func main() {
 
 	// Write data into database
 	spannerio.Write(s, *flagDatabase, *flagTable, dataModels)
-
 }
