@@ -61,6 +61,7 @@ func TestActionAppend(t *testing.T) {
 			path:            "my_file.txt",
 			with:            "foo",
 			initialContents: map[string]string{},
+			want:            map[string]string{},
 			wantErr:         "doesn't exist in the scratch directory",
 		},
 		{
