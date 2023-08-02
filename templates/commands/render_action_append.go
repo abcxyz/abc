@@ -33,8 +33,6 @@ func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
 	}
 
 	if !ap.SkipEnsureNewline.Val {
-		// TODO: would we rather just cast to bytes than take dependency?
-		// TODO: do we need to support \r\n?
 		if !strings.HasSuffix(with, "\n") {
 			with = with + "\n"
 		}
