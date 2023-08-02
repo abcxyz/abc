@@ -79,13 +79,13 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "(?m:\\n$)"},
-						With:  model.String{Val: ""},
+						Regex: model.String{Val: "(?m:apple$)"},
+						With:  model.String{Val: "apple."},
 					},
 				},
 			},
 			want: map[string]string{
-				"a.txt": "apple bananabanana appleapple apple",
+				"a.txt": "apple banana\nbanana apple.\napple apple.\n",
 			},
 		},
 		{
