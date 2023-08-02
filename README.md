@@ -473,6 +473,11 @@ Params:
     readability. Use a non-capturing group (like `(?:abc)|(?:abc)`) if you need
     grouping without capturing.
 
+    Note that by default, RE2 doesn't use multiline mode, so ^ and $ will match
+    the start and end of the entire file, rather than each line. To enter
+    multiline mode you need to set the flag by including this: `(?flags:re m)`.
+    More information available in RE2 docs.
+
   - `with`: a string to that will replace regex matches (or, if the
     `subgroup_to_replace` field is set, will replace only that subgroup). May
     use template expressions and may use
