@@ -30,32 +30,54 @@ func TestActionAppend(t *testing.T) {
 	// These test cases are fairly minimal because all the heavy lifting is done
 	// in walkAndModify which has its own comprehensive test suite.
 	cases := []struct {
-		name   string
-		path   string
-		with   string
-		inputs map[string]string
+		name              string
+		path              string
+		with              string
+		skipEnsureNewline bool
+		inputs            map[string]string
 
 		initialContents map[string]string
 		want            map[string]string
 		wantErr         string
-
-		readFileErr error // no need to test all errors here, see TestWalkAndModify
+		readFileErr     error // no need to test all errors here, see TestWalkAndModify
 	}{
 		{
 			name:            "simple_success",
 			path:            "my_file.txt",
 			with:            "foobar",
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
-			want:            map[string]string{"my_file.txt": "abc foo deffoobar"},
+			want:            map[string]string{"my_file.txt": "abc foo deffoobar\n"},
+		},
+		{
+			name:            "simple_success_newline",
+			path:            "my_file.txt",
+			with:            "foobar",
+			initialContents: map[string]string{"my_file.txt": "abc foo def\n"},
+			want:            map[string]string{"my_file.txt": "abc foo def\nfoobar\n"},
+		},
+		{
+			name:              "skip_ensure_newline_success_no_newline",
+			path:              "my_file.txt",
+			with:              "foobar",
+			skipEnsureNewline: true,
+			initialContents:   map[string]string{"my_file.txt": "abc foo def"},
+			want:              map[string]string{"my_file.txt": "abc foo deffoobar"},
+		},
+		{
+			name:              "skip_ensure_newline_success_newline_provided",
+			path:              "my_file.txt",
+			with:              "foobar\n",
+			skipEnsureNewline: true,
+			initialContents:   map[string]string{"my_file.txt": "abc foo def"},
+			want:              map[string]string{"my_file.txt": "abc foo deffoobar\n"},
 		},
 		{
 			name:            "empty_file_works",
 			path:            "my_file.txt",
 			with:            "foo",
 			initialContents: map[string]string{"my_file.txt": ""},
-			want:            map[string]string{"my_file.txt": "foo"},
+			want:            map[string]string{"my_file.txt": "foo\n"},
 		},
-		// TODO: discuss in code review if this is desired behavior.
 		{
 			name:            "missing_file_errors",
 			path:            "my_file.txt",
@@ -73,7 +95,7 @@ func TestActionAppend(t *testing.T) {
 				"filename_adjective": "meow.wav",
 				"to_append":          "meowmoewmoewmoew\nmeow",
 			},
-			want: map[string]string{"my_meow.wav_file.txt": "sandwichmeowmoewmoewmoew\nmeow"},
+			want: map[string]string{"my_meow.wav_file.txt": "sandwichmeowmoewmoewmoew\nmeow\n"},
 		},
 		{
 			name:            "templated_filename_missing_input_should_fail",
@@ -122,6 +144,10 @@ func TestActionAppend(t *testing.T) {
 				With: model.String{
 					Pos: &model.ConfigPos{},
 					Val: tc.with,
+				},
+				SkipEnsureNewline: model.Bool{
+					Pos: &model.ConfigPos{},
+					Val: tc.skipEnsureNewline,
 				},
 			}
 			sp := &stepParams{

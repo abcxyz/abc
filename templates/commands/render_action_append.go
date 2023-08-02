@@ -16,6 +16,7 @@ package commands
 
 import (
 	"context"
+	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
 )
@@ -31,8 +32,15 @@ func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
 		return err
 	}
 
+	if !ap.SkipEnsureNewline.Val {
+		// TODO: would we rather just cast to bytes than take dependency?
+		// TODO: do we need to support \r\n?
+		if !strings.HasSuffix(with, "\n") {
+			with = with + "\n"
+		}
+	}
+
 	if err := walkAndModify(ctx, ap.Path.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
-		// todo: should we add a newline before/after appending or leave that to user?
 		return append(buf, []byte(with)...), nil
 	}); err != nil {
 		return err

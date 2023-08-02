@@ -240,13 +240,15 @@ func TestUnmarshalStep(t *testing.T) {
 action: 'append'
 params:
   path: 'a.txt'
-  with: 'jkl'`,
+  with: 'jkl'
+  skip-ensure-newline: true`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "append"},
 				Append: &Append{
-					Path: String{Val: "a.txt"},
-					With: String{Val: "jkl"},
+					Path:              String{Val: "a.txt"},
+					With:              String{Val: "jkl"},
+					SkipEnsureNewline: Bool{Val: true},
 				},
 			},
 		},
@@ -265,6 +267,16 @@ action: 'append'
 params:
   with: 'def'`,
 			wantValidateErr: `invalid config near line 4 column 3: field "path" is required`,
+		},
+		{
+			name: "append_non_bool_skip_ensure_newline_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  path: 'a.txt'
+  with: 'jkl'
+  skip-ensure-newline: pizza`,
+			wantUnmarshalErr: "cannot unmarshal !!str `pizza` into bool",
 		},
 		{
 			name: "print_success",

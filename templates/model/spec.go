@@ -582,13 +582,14 @@ type Append struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	Path String `yaml:"path"`
-	With String `yaml:"with"`
+	Path              String `yaml:"path"`
+	With              String `yaml:"with"`
+	SkipEnsureNewline Bool   `yaml:"skip-ensure-newline"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Append) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"path", "with"}
+	knownYAMLFields := []string{"path", "with", "skip-ensure-newline"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}

@@ -211,7 +211,7 @@ Template rendering has a few phases:
       params:
         paths: ['main.go']
     ```
-  - The `string_replace`, `regex_replace`, `regex_name_lookup`, and
+  - The `append`, `string_replace`, `regex_replace`, `regex_name_lookup`, and
     `go_template` actions transform the files that are in the scratch directory
     at the time they're executed.
 - Once all steps are executed, the contents of the scratch directory are copied
@@ -276,7 +276,7 @@ on the `action`:
 
 ```yaml
 desc: 'An optional human-readable description of what this step is for'
-action: 'action-name' # One of 'include', 'print', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template
+action: 'action-name' # One of 'include', 'print', 'append', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template
 params:
   foo: bar # The params differ depending on the action
 ```
@@ -410,12 +410,17 @@ Example:
 
 ### Action: `append`
 
-Appends a string on the end of a given file. File must already exist.
+Appends a string on the end of a given file. File must already exist. If no
+newline at tend of `with` parameter, one will be added unless
+`skip-ensure-newline` is set to `true`.
 
 Params:
 - `path`: File in which to do the replacement.
   May use template expressions (e.g. `{{.my_input}}`).
 - `with`: String to append to the file.
+- `skip-ensure-newline`: Bool (default false). When true, a `with` not ending
+  in a newline will result in a file with no terminating newline. If `false`, a
+  newline will be added automatically if not provided.
 
 Example:
 ```yaml
@@ -423,6 +428,7 @@ Example:
   params:
     path: 'foo.html'
     with: '</html>\n'
+    skip-ensure-newline: false
 ```
 
 ### Action: `string_replace`
