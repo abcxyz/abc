@@ -15,8 +15,8 @@
 package commands
 
 import (
-	"flag"
 	"fmt"
+	"strings"
 
 	"github.com/abcxyz/pkg/cli"
 	"github.com/posener/complete/v2/predict"
@@ -62,9 +62,7 @@ type RenderFlags struct {
 	Spec string
 }
 
-func (r *RenderFlags) Flags() *cli.FlagSet {
-	set := cli.NewFlagSet()
-
+func (r *RenderFlags) Register(set *cli.FlagSet) {
 	f := set.NewSection("RENDER OPTIONS")
 	f.StringVar(&cli.StringVar{
 		Name:    "spec",
@@ -73,6 +71,7 @@ func (r *RenderFlags) Flags() *cli.FlagSet {
 		Default: "./spec.yaml",
 		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
 	})
+
 	f.StringVar(&cli.StringVar{
 		Name:    "dest",
 		Aliases: []string{"d"},
@@ -82,12 +81,14 @@ func (r *RenderFlags) Flags() *cli.FlagSet {
 		Predict: predict.Dirs("*"),
 		Usage:   "Required. The target directory in which to write the output files.",
 	})
+
 	f.StringMapVar(&cli.StringMapVar{
 		Name:    "input",
 		Example: "foo=bar",
 		Target:  &r.Inputs,
 		Usage:   "The key=val pairs of template values; may be repeated.",
 	})
+
 	f.StringVar(&cli.StringVar{
 		Name:    "log-level",
 		Example: "info",
@@ -95,12 +96,14 @@ func (r *RenderFlags) Flags() *cli.FlagSet {
 		Target:  &r.LogLevel,
 		Usage:   "How verbose to log; any of debug|info|warn|error.",
 	})
+
 	f.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
 		Target:  &r.ForceOverwrite,
 		Default: false,
 		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
 	})
+
 	f.BoolVar(&cli.BoolVar{
 		Name:    "keep-temp-dirs",
 		Target:  &r.KeepTempDirs,
@@ -118,22 +121,13 @@ func (r *RenderFlags) Flags() *cli.FlagSet {
 		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
 	})
 
-	return set
-}
+	// Default source to the first CLI argument, if given
+	set.AfterParse(func(existingErr error) error {
+		r.Source = strings.TrimSpace(set.Arg(0))
+		if r.Source == "" {
+			return fmt.Errorf("missing <source> file")
+		}
 
-func (r *RenderFlags) Parse(args []string) error {
-	flagSet := r.Flags()
-
-	if err := flagSet.Parse(args); err != nil {
-		return fmt.Errorf("failed to parse flags: %w", err)
-	}
-
-	parsedArgs := flagSet.Args()
-	if len(parsedArgs) != 1 {
-		return flag.ErrHelp
-	}
-
-	r.Source = parsedArgs[0]
-
-	return nil
+		return nil
+	})
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
 )
 
 var rootCmd = func() *cli.RootCommand {
@@ -50,6 +51,8 @@ func main() {
 	ctx, done := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
+
+	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	if err := realMain(ctx); err != nil {
 		done()
