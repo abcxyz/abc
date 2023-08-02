@@ -256,13 +256,13 @@ func (s *Step) Validate() error {
 	// The "action" field is implicitly validated by UnmarshalYAML, so not included here.
 	return errors.Join(
 		notZero(s.Pos, s.Desc, "desc"),
-		validateUnlessNil(s.Print),
-		validateUnlessNil(s.Include),
-		validateUnlessNil(s.RegexReplace),
-		validateUnlessNil(s.RegexNameLookup),
-		validateUnlessNil(s.StringReplace),
 		validateUnlessNil(s.Append),
 		validateUnlessNil(s.GoTemplate),
+		validateUnlessNil(s.Include),
+		validateUnlessNil(s.Print),
+		validateUnlessNil(s.RegexNameLookup),
+		validateUnlessNil(s.RegexReplace),
+		validateUnlessNil(s.StringReplace),
 	)
 }
 
