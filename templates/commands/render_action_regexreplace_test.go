@@ -53,6 +53,42 @@ func TestActionRegexReplace(t *testing.T) {
 			},
 		},
 		{
+			name: "default_multiline_false",
+			initContents: map[string]string{
+				"a.txt": "apple banana\nbanana apple\napple apple\n", //nolint:dupword
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"."}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex: model.String{Val: "\\n$"},
+						With:  model.String{Val: ""},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": "apple banana\nbanana apple\napple apple", //nolint:dupword
+			},
+		},
+		{
+			name: "override_multiline_true",
+			initContents: map[string]string{
+				"a.txt": "apple banana\nbanana apple\napple apple\n", //nolint:dupword
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"."}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex: model.String{Val: "(?m:apple$)"},
+						With:  model.String{Val: "apple."},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": "apple banana\nbanana apple.\napple apple.\n", //nolint:dupword
+			},
+		},
+		{
 			name: "multiple_matches_should_work",
 			initContents: map[string]string{
 				"a.txt": "alpha foo gamma foo",
