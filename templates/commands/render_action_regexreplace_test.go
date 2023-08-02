@@ -198,6 +198,100 @@ func TestActionRegexReplace(t *testing.T) {
 			},
 		},
 		{
+			name: "replace_subgroup",
+			initContents: map[string]string{
+				"a.txt": "alpha beta gamma",
+			},
+			inputs: map[string]string{
+				"myinput": "alligator",
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"."}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex:             model.String{Val: `alpha (?P<mygroup>beta) gamma`},
+						With:              model.String{Val: `{{.myinput}}`},
+						SubgroupToReplace: model.String{Val: "mygroup"},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": "alpha alligator gamma",
+			},
+		},
+		{
+			name: "replace_multiple_subgroups",
+			initContents: map[string]string{
+				"a.txt": "alpha beta gamma",
+			},
+			inputs: map[string]string{
+				"reptile": "alligator",
+				"tree":    "maple",
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"."}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex:             model.String{Val: `alpha (?P<mygroup>beta) gamma`},
+						With:              model.String{Val: `{{.reptile}}`},
+						SubgroupToReplace: model.String{Val: "mygroup"},
+					},
+					{
+						Regex:             model.String{Val: `[a-z]+ [a-z]+ (?P<mygroup>gamma)`},
+						With:              model.String{Val: `{{.tree}}`},
+						SubgroupToReplace: model.String{Val: "mygroup"},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": "alpha alligator maple",
+			},
+		},
+		{
+			name: "normal_mode_doesnt_catch_line_begin_end_as_anchors",
+			initContents: map[string]string{
+				"a.txt": `alpha
+beta
+gamma`,
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"."}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex: model.String{Val: "^beta$"},
+						With:  model.String{Val: "shouldnt_appear"},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": `alpha
+beta
+gamma`,
+			},
+		},
+		{
+			name: "multiline_mode_should_match_line_begin_and_end",
+			initContents: map[string]string{
+				"a.txt": `alpha
+beta
+gamma`,
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"."}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex: model.String{Val: "(?m:^beta$)"},
+						With:  model.String{Val: "brontosaurus"},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": `alpha
+brontosaurus
+gamma`,
+			},
+		},
+		{
 			name: "multiple_files_should_work",
 			initContents: map[string]string{
 				"a.txt": "alpha foo gamma",
