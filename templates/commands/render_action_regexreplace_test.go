@@ -61,7 +61,7 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "\n$"},
+						Regex: model.String{Val: "\\n$"},
 						With:  model.String{Val: ""},
 					},
 				},
@@ -79,7 +79,7 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*model.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "(?flags:re m)\n$"},
+						Regex: model.String{Val: "(?m:\\n$)"},
 						With:  model.String{Val: ""},
 					},
 				},
