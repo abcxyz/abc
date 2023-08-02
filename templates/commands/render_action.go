@@ -121,15 +121,21 @@ func templateAndCompileRegexes(regexes []model.String, inputs map[string]string)
 // templateFuncs returns a function map for adding functions to go templates.
 func templateFuncs() template.FuncMap {
 	return map[string]interface{}{
-		"contains":   strings.Contains,
-		"replace":    strings.Replace,
-		"replaceAll": strings.ReplaceAll,
-		"split":      strings.Split,
-		"toLower":    strings.ToLower,
-		"toUpper":    strings.ToUpper,
-		"trimPrefix": strings.TrimPrefix,
-		"trimSuffix": strings.TrimSuffix,
-		"trimSpace":  strings.TrimSpace,
+		"contains":          strings.Contains,
+		"replace":           strings.Replace,
+		"replaceAll":        strings.ReplaceAll,
+		"split":             strings.Split,
+		"toLower":           strings.ToLower,
+		"toUpper":           strings.ToUpper,
+		"trimPrefix":        strings.TrimPrefix,
+		"trimSuffix":        strings.TrimSuffix,
+		"trimSpace":         strings.TrimSpace,
+		"toSnakeCase":       toSnakeCase,
+		"toLowerSnakeCase":  toLowerSnakeCase,
+		"toUpperSnakeCase":  toUpperSnakeCase,
+		"toHyphenCase":      toHyphenCase,
+		"toLowerHyphenCase": toLowerHyphenCase,
+		"toUpperHyphenCase": toUpperHyphenCase,
 	}
 }
 

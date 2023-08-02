@@ -54,7 +54,7 @@ const (
 
 type RenderCommand struct {
 	cli.BaseCommand
-	flags *RenderFlags
+	flags RenderFlags
 
 	testFS     renderFS
 	testGetter getterClient
@@ -86,24 +86,18 @@ are accepted:
     remote tarball.`
 }
 
-func (c *RenderCommand) Run(ctx context.Context, args []string) error {
-	rf := &RenderFlags{}
-	if err := rf.Parse(args); err != nil {
-		return err
-	}
-
-	return c.RunWithFlags(ctx, rf)
+func (c *RenderCommand) Flags() *cli.FlagSet {
+	set := c.NewFlagSet()
+	c.flags.Register(set)
+	return set
 }
 
-// RunWithFlags renders a template according to the given flags, taking the
-// template form rf.Source and producing output in rf.Dest. This should be
-// considered an unstable API and is primarily intended for testing. Use at your
-// own risk and accept the possibility of breaking changes.
-func (c *RenderCommand) RunWithFlags(ctx context.Context, rf *RenderFlags) error {
-	c.flags = rf
+func (c *RenderCommand) Run(ctx context.Context, args []string) error {
+	if err := c.Flags().Parse(args); err != nil {
+		return fmt.Errorf("failed to parse flags: %w", err)
+	}
 
 	c.setLogEnvVars()
-	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	fSys := c.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
@@ -122,14 +116,14 @@ func (c *RenderCommand) RunWithFlags(ctx context.Context, rf *RenderFlags) error
 		}
 	}
 
-	wd, err := os.Getwd()
+	wd, err := c.WorkingDir()
 	if err != nil {
-		return fmt.Errorf("os.Getwd(): %w", err)
+		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return fmt.Errorf("os.UserHomeDir: %w", err)
+		return fmt.Errorf("failed to get home dir: %w", err)
 	}
 	backupDir := filepath.Join(
 		homeDir,
@@ -265,7 +259,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 	logger.Infow("created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
-		flags:       c.flags,
+		flags:       &c.flags,
 		fs:          rp.fs,
 		inputs:      c.flags.Inputs,
 		scratchDir:  scratchDir,

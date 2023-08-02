@@ -116,7 +116,7 @@ func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEnt
 			}
 		}
 		replaceAtStartIdx := oneMatch[subgroupNum*2] // bounds have already been checked in the caller
-		replaceAtEndIdx := oneMatch[subgroupNum+1]
+		replaceAtEndIdx := oneMatch[subgroupNum*2+1]
 		b = append(b[:replaceAtStartIdx],
 			append([]byte(replacementTemplateExpanded),
 				b[replaceAtEndIdx:]...)...)
