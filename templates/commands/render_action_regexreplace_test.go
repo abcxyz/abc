@@ -55,7 +55,7 @@ func TestActionRegexReplace(t *testing.T) {
 		{
 			name: "default_multiline_false",
 			initContents: map[string]string{
-				"a.txt": "apple banana\nbanana apple\napple apple\n",
+				"a.txt": "apple banana\nbanana apple\napple apple\n", //nolint:dupword
 			},
 			rr: &model.RegexReplace{
 				Paths: modelStrings([]string{"."}),
@@ -67,13 +67,13 @@ func TestActionRegexReplace(t *testing.T) {
 				},
 			},
 			want: map[string]string{
-				"a.txt": "apple banana\nbanana apple\napple apple",
+				"a.txt": "apple banana\nbanana apple\napple apple", //nolint:dupword
 			},
 		},
 		{
 			name: "override_multiline_true",
 			initContents: map[string]string{
-				"a.txt": "apple banana\nbanana apple\napple apple\n",
+				"a.txt": "apple banana\nbanana apple\napple apple\n", //nolint:dupword
 			},
 			rr: &model.RegexReplace{
 				Paths: modelStrings([]string{"."}),
@@ -85,7 +85,7 @@ func TestActionRegexReplace(t *testing.T) {
 				},
 			},
 			want: map[string]string{
-				"a.txt": "apple banana\nbanana apple.\napple apple.\n",
+				"a.txt": "apple banana\nbanana apple.\napple apple.\n", //nolint:dupword
 			},
 		},
 		{
