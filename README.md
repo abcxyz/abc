@@ -214,6 +214,8 @@ Template rendering has a few phases:
   - The `append`, `string_replace`, `regex_replace`, `regex_name_lookup`, and
     `go_template` actions transform the files that are in the scratch directory
     at the time they're executed.
+    - This means that for example a string_replace after an append will affect
+      the appended text, but if put before it will not. 
 - Once all steps are executed, the contents of the scratch directory are copied
   to the output directory.
 
@@ -411,14 +413,14 @@ Example:
 ### Action: `append`
 
 Appends a string on the end of a given file. File must already exist. If no
-newline at tend of `with` parameter, one will be added unless
-`skip-ensure-newline` is set to `true`.
+newline at end of `with` parameter, one will be added unless
+`skip_ensure_newline` is set to `true`.
 
 Params:
 - `path`: File in which to do the replacement.
   May use template expressions (e.g. `{{.my_input}}`).
 - `with`: String to append to the file.
-- `skip-ensure-newline`: Bool (default false). When true, a `with` not ending
+- `skip_ensure_newline`: Bool (default false). When true, a `with` not ending
   in a newline will result in a file with no terminating newline. If `false`, a
   newline will be added automatically if not provided.
 
@@ -428,7 +430,7 @@ Example:
   params:
     path: 'foo.html'
     with: '</html>\n'
-    skip-ensure-newline: false
+    skip_ensure_newline: false
 ```
 
 ### Action: `string_replace`

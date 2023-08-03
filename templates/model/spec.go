@@ -584,12 +584,12 @@ type Append struct {
 
 	Path              String `yaml:"path"`
 	With              String `yaml:"with"`
-	SkipEnsureNewline Bool   `yaml:"skip-ensure-newline"`
+	SkipEnsureNewline Bool   `yaml:"skip_ensure_newline"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Append) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"path", "with", "skip-ensure-newline"}
+	knownYAMLFields := []string{"path", "with", "skip_ensure_newline"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}

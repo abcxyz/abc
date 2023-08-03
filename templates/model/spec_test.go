@@ -241,7 +241,7 @@ action: 'append'
 params:
   path: 'a.txt'
   with: 'jkl'
-  skip-ensure-newline: true`,
+  skip_ensure_newline: true`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "append"},
@@ -275,7 +275,7 @@ action: 'append'
 params:
   path: 'a.txt'
   with: 'jkl'
-  skip-ensure-newline: pizza`,
+  skip_ensure_newline: pizza`,
 			wantUnmarshalErr: "cannot unmarshal !!str `pizza` into bool",
 		},
 		{
