@@ -289,8 +289,9 @@ directory.
 Params:
 
 - `paths`: a list of files and/or directories to copy. These may use template
-  expressions (e.g. `{{.my_input}}`). By default, the output location of each
-  file is the same as its location in the template directory.
+  expressions (e.g. `{{.my_input}}`). Directories will be crawled recursively
+  and every file underneath will be processed. By default, the output location
+  of each file is the same as its location in the template directory.
 - `as`: as list of output locations relative to the output directory. This can
   be used to make the output location(s) different than the input locations. If
   `as` is present, its length must be equal to the length of `paths`; that is,
@@ -416,7 +417,8 @@ given string with a given replacement string.
 Params:
 
 - `paths`: a list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`).
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
 - `replacements`: a list of objects, each having the form:
   - `to_replace`: the string to search for. May use template expressions (e.g.
     `{{.my_input}}`).
@@ -444,7 +446,8 @@ Within a given list of files and/or directories, replace a regular expression
 Params:
 
 - `paths`: A list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`).
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
 - `replacements`: a list of objects, each having the form:
 
   - `regex`: an
@@ -458,8 +461,8 @@ Params:
 
     Note that by default, RE2 doesn't use multiline mode, so ^ and $ will match
     the start and end of the entire file, rather than each line. To enter
-    multiline mode you need to set the flag by including this: `(?m:YOUR_REGEX_HERE)`.
-    More information available in RE2 docs.
+    multiline mode you need to set the flag by including this:
+    `(?m:YOUR_REGEX_HERE)`. More information available in RE2 docs.
 
   - `with`: a string to that will replace regex matches (or, if the
     `subgroup_to_replace` field is set, will replace only that subgroup). May
@@ -534,7 +537,8 @@ subgroup with the input variable whose name matches the subgroup name.
 Params:
 
 - `paths`: A list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`).
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
 - `replacements`: a list of objects, each having the form:
   - `regex`: an
     [RE2 regular expression](https://github.com/google/re2/wiki/Syntax)
@@ -559,8 +563,9 @@ Executes a file as a Go template, replacing the file with the template output.
 Params:
 
 - `paths`: A list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`). These files will be
-  rendered with Go's
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed. These files
+  will be rendered with Go's
   [text/template templating language](https://pkg.go.dev/text/template).
 
 #### Example:
