@@ -4,12 +4,6 @@ Enables GCP services for a specific project in an environment specified by the [
 
 1. [Install the `abc` binary](https://github.com/abcxyz/abc/blob/main/README.md#installation).
 
-1. cd into the resources/[product_id] directory
-
-    ```shell
-    $ cd gcp-org-terraform-template/resources/[product_id]
-    ```
-
 1. Render this template, this will output several Terraform files that can be applied to a GCP project. See spec.yaml for more details.
 
 1. Terraform init and apply the project changes.

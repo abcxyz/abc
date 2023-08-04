@@ -22,9 +22,10 @@ desc: |
     -input="product_id=abc-demo" \
     -input="project_id=abc-demo-a-6a5eab" \
     -input="services=artifactregistry.googleapis.com,iam.googleapis.com,run.googleapis.com" \
-    -input="environment=autopush" \
+    -input="environment=integration" \
     -input="bucket_name=abcxyz-tycho-terraform-state-f916" \
     -input="bucket_prefix=infra" \
+    -dest="./resources/abc-demo" \
     -spec="spec.yaml" \
     ~/gitrepos/abc/t/gcp_project_services
 
