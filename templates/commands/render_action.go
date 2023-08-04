@@ -33,14 +33,6 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var (
-	// snakeCaseKeep are all the characters to keep for generating snake_case strings.
-	snakeCaseKeep = regexp.MustCompile(`[^a-zA-Z0-9-_ ]+`)
-
-	// snakeCaseReplace are all the characters to replace with underscores to generate snake_case strings.
-	snakeCaseReplace = regexp.MustCompile(`[- ]+`)
-)
-
 // Called with the contents of a file, and returns the new contents of the file
 // to be written.
 type walkAndModifyVisitor func([]byte) ([]byte, error)
@@ -129,44 +121,22 @@ func templateAndCompileRegexes(regexes []model.String, inputs map[string]string)
 // templateFuncs returns a function map for adding functions to go templates.
 func templateFuncs() template.FuncMap {
 	return map[string]interface{}{
-		"contains":         strings.Contains,
-		"replace":          strings.Replace,
-		"replaceAll":       strings.ReplaceAll,
-		"split":            strings.Split,
-		"toLower":          strings.ToLower,
-		"toLowerSnakeCase": toLowerSnakeCase,
-		"toSnakeCase":      toSnakeCase,
-		"toUpper":          strings.ToUpper,
-		"toUpperSnakeCase": toUpperSnakeCase,
-		"trimPrefix":       strings.TrimPrefix,
-		"trimSuffix":       strings.TrimSuffix,
-		"trimSpace":        strings.TrimSpace,
+		"contains":          strings.Contains,
+		"replace":           strings.Replace,
+		"replaceAll":        strings.ReplaceAll,
+		"split":             strings.Split,
+		"toLower":           strings.ToLower,
+		"toUpper":           strings.ToUpper,
+		"trimPrefix":        strings.TrimPrefix,
+		"trimSuffix":        strings.TrimSuffix,
+		"trimSpace":         strings.TrimSpace,
+		"toSnakeCase":       toSnakeCase,
+		"toLowerSnakeCase":  toLowerSnakeCase,
+		"toUpperSnakeCase":  toUpperSnakeCase,
+		"toHyphenCase":      toHyphenCase,
+		"toLowerHyphenCase": toLowerHyphenCase,
+		"toUpperHyphenCase": toUpperHyphenCase,
 	}
-}
-
-// toSnakeCase converts a string to snake_case by removing all characters
-// (except alphanumeric, hyphens, underscores and spaces) and replacing
-// any hyphens or spaces with underscores.
-func toSnakeCase(v string) string {
-	response := snakeCaseKeep.ReplaceAllString(v, "")
-	response = snakeCaseReplace.ReplaceAllString(response, "_")
-	return response
-}
-
-// toLowerSnakeCase converts a string to snake_case by removing all characters
-// (except alphanumeric, hyphens, underscores and spaces) and replacing
-// any hyphens or spaces with underscores. The result is then returned
-// as a lower case string.
-func toLowerSnakeCase(v string) string {
-	return strings.ToLower(toSnakeCase(v))
-}
-
-// toUpperSnakeCase converts a string to snake_case by removing all characters
-// (except alphanumeric, hyphens, underscores and spaces) and replacing
-// any hyphens or spaces with underscores. The result is then returned
-// as a upper case string.
-func toUpperSnakeCase(v string) string {
-	return strings.ToUpper(toSnakeCase(v))
 }
 
 // A template parser helper to remove the boilerplate of parsing with our
