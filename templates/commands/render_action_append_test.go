@@ -31,7 +31,7 @@ func TestActionAppend(t *testing.T) {
 	// in walkAndModify which has its own comprehensive test suite.
 	cases := []struct {
 		name              string
-		path              string
+		paths             []string
 		with              string
 		skipEnsureNewline bool
 		inputs            map[string]string
@@ -43,21 +43,51 @@ func TestActionAppend(t *testing.T) {
 	}{
 		{
 			name:            "simple_success",
-			path:            "my_file.txt",
+			paths:           []string{"my_file.txt"},
 			with:            "foobar",
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc foo deffoobar\n"},
 		},
 		{
+			name:  "multiple_files_should_work",
+			paths: []string{"my_file.txt", "another_file.txt"},
+			with:  "foobar",
+			initialContents: map[string]string{
+				"my_file.txt":      "abc foo def",
+				"another_file.txt": "hi!",
+				"don't_modify.txt": "don't change me!",
+			},
+			want: map[string]string{
+				"my_file.txt":      "abc foo deffoobar\n",
+				"another_file.txt": "hi!foobar\n",
+				"don't_modify.txt": "don't change me!",
+			},
+		},
+		{
+			name:  "directory_path_should_work",
+			paths: []string{"a/"},
+			with:  "foobar",
+			initialContents: map[string]string{
+				"a/my_file.txt":        "abc foo def",
+				"a/b/another_file.txt": "hi!",
+				"don't_modify.txt":     "don't change me!",
+			},
+			want: map[string]string{
+				"a/my_file.txt":        "abc foo deffoobar\n",
+				"a/b/another_file.txt": "hi!foobar\n",
+				"don't_modify.txt":     "don't change me!",
+			},
+		},
+		{
 			name:            "simple_success_newline",
-			path:            "my_file.txt",
+			paths:           []string{"my_file.txt"},
 			with:            "foobar",
 			initialContents: map[string]string{"my_file.txt": "abc foo def\n"},
 			want:            map[string]string{"my_file.txt": "abc foo def\nfoobar\n"},
 		},
 		{
 			name:              "skip_ensure_newline_success_no_newline",
-			path:              "my_file.txt",
+			paths:             []string{"my_file.txt"},
 			with:              "foobar",
 			skipEnsureNewline: true,
 			initialContents:   map[string]string{"my_file.txt": "abc foo def"},
@@ -65,7 +95,7 @@ func TestActionAppend(t *testing.T) {
 		},
 		{
 			name:              "skip_ensure_newline_success_newline_provided",
-			path:              "my_file.txt",
+			paths:             []string{"my_file.txt"},
 			with:              "foobar\n",
 			skipEnsureNewline: true,
 			initialContents:   map[string]string{"my_file.txt": "abc foo def"},
@@ -73,14 +103,14 @@ func TestActionAppend(t *testing.T) {
 		},
 		{
 			name:            "empty_file_works",
-			path:            "my_file.txt",
+			paths:           []string{"my_file.txt"},
 			with:            "foo",
 			initialContents: map[string]string{"my_file.txt": ""},
 			want:            map[string]string{"my_file.txt": "foo\n"},
 		},
 		{
 			name:            "missing_file_errors",
-			path:            "my_file.txt",
+			paths:           []string{"my_file.txt"},
 			with:            "foo",
 			initialContents: map[string]string{},
 			want:            map[string]string{},
@@ -88,7 +118,7 @@ func TestActionAppend(t *testing.T) {
 		},
 		{
 			name:            "templated_name_and_text_should_succeed",
-			path:            "my_{{.filename_adjective}}_file.txt",
+			paths:           []string{"my_{{.filename_adjective}}_file.txt"},
 			with:            "{{.to_append}}",
 			initialContents: map[string]string{"my_meow.wav_file.txt": "sandwich"},
 			inputs: map[string]string{
@@ -99,7 +129,7 @@ func TestActionAppend(t *testing.T) {
 		},
 		{
 			name:            "templated_filename_missing_input_should_fail",
-			path:            "{{.bad_name}}",
+			paths:           []string{"{{.bad_name}}"},
 			initialContents: map[string]string{"uhoh.wmv": "foo"},
 			inputs:          map[string]string{},
 			want:            map[string]string{"uhoh.wmv": "foo"},
@@ -107,7 +137,7 @@ func TestActionAppend(t *testing.T) {
 		},
 		{
 			name:            "templated_with_missing_input_should_fail",
-			path:            "my_file.txt",
+			paths:           []string{"my_file.txt"},
 			with:            "{{.bad_name}}",
 			initialContents: map[string]string{"my_file.txt": "foo"},
 			inputs:          map[string]string{"not": "right"},
@@ -116,7 +146,7 @@ func TestActionAppend(t *testing.T) {
 		},
 		{
 			name:            "fs_errors_should_be_returned",
-			path:            "my_file.txt",
+			paths:           []string{"my_file.txt"},
 			with:            "foo",
 			initialContents: map[string]string{"my_file.txt": "foo"},
 			want:            map[string]string{"my_file.txt": "foo"},
@@ -137,10 +167,7 @@ func TestActionAppend(t *testing.T) {
 			}
 
 			sr := &model.Append{
-				Path: model.String{
-					Pos: &model.ConfigPos{},
-					Val: tc.path,
-				},
+				Paths: modelStrings(tc.paths),
 				With: model.String{
 					Pos: &model.ConfigPos{},
 					Val: tc.with,

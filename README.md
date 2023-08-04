@@ -416,8 +416,11 @@ Appends a string on the end of a given file. File must already exist. If no
 newline at end of `with` parameter, one will be added unless
 `skip_ensure_newline` is set to `true`.
 
+If you need to remove an existing trailing newline before appending, use
+`regex_replace` instead.
+
 Params:
-- `path`: File in which to do the replacement.
+- `paths`: List of files and/or directory trees to append to end of.
   May use template expressions (e.g. `{{.my_input}}`).
 - `with`: String to append to the file.
 - `skip_ensure_newline`: Bool (default false). When true, a `with` not ending
@@ -428,7 +431,7 @@ Example:
 ```yaml
 - action: 'append'
   params:
-    path: 'foo.html'
+    paths: ['foo.html', 'web/']
     with: '</html>\n'
     skip_ensure_newline: false
 ```

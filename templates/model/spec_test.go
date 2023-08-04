@@ -239,14 +239,17 @@ func TestUnmarshalStep(t *testing.T) {
 			in: `desc: 'mydesc'
 action: 'append'
 params:
-  path: 'a.txt'
+  paths: ['a.txt', 'b.txt']
   with: 'jkl'
   skip_ensure_newline: true`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "append"},
 				Append: &Append{
-					Path:              String{Val: "a.txt"},
+					Paths: []String{
+						String{Val: "a.txt"},
+						String{Val: "b.txt"},
+					},
 					With:              String{Val: "jkl"},
 					SkipEnsureNewline: Bool{Val: true},
 				},
@@ -257,23 +260,23 @@ params:
 			in: `desc: 'mydesc'
 action: 'append'
 params:
-  path: 'a.txt'`,
+  paths: ['a.txt']`,
 			wantValidateErr: `invalid config near line 4 column 3: field "with" is required`,
 		},
 		{
-			name: "append_missing_path_field_should_fail",
+			name: "append_missing_paths_field_should_fail",
 			in: `desc: 'mydesc'
 action: 'append'
 params:
   with: 'def'`,
-			wantValidateErr: `invalid config near line 4 column 3: field "path" is required`,
+			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
 		},
 		{
 			name: "append_non_bool_skip_ensure_newline_field_should_fail",
 			in: `desc: 'mydesc'
 action: 'append'
 params:
-  path: 'a.txt'
+  paths: ['a.txt']
   with: 'jkl'
   skip_ensure_newline: pizza`,
 			wantUnmarshalErr: "cannot unmarshal !!str `pizza` into bool",

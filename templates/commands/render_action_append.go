@@ -22,11 +22,6 @@ import (
 )
 
 func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
-	path, err := parseAndExecuteGoTmpl(ap.Path.Pos, ap.Path.Val, sp.inputs)
-	if err != nil {
-		return err
-	}
-
 	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.inputs)
 	if err != nil {
 		return err
@@ -38,10 +33,17 @@ func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
 		}
 	}
 
-	if err := walkAndModify(ctx, ap.Path.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
-		return append(buf, []byte(with)...), nil
-	}); err != nil {
-		return err
+	for _, p := range ap.Paths {
+		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
+		if err != nil {
+			return err
+		}
+
+		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
+			return append(buf, []byte(with)...), nil
+		}); err != nil {
+			return err
+		}
 	}
 
 	return nil
