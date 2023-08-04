@@ -42,8 +42,7 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // for a given file, that file will be overwritten with the new contents.
 // The seen map ensures that the same file isn't visited multiple times in subsequent
 // calls. It must be non-nil.
-func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string,
-	v walkAndModifyVisitor, seen map[string]struct{}) error {
+func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor, seen map[string]struct{}) error {
 	logger := logging.FromContext(ctx).Named("walkAndModify")
 	if seen == nil {
 		// Intentionally forcing caller to initialize map to discourage them from just calling with nil and not using

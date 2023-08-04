@@ -71,7 +71,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				},
 			},
 			want: map[string]string{
-				"a.txt": "alpha foofoo gamma delta", //nolint:dupword
+				"a.txt": "alpha foofoo gamma delta",
 			},
 		},
 		{

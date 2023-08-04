@@ -258,8 +258,8 @@ func TestWalkAndModify_Seen(t *testing.T) {
 			visitor:         fooToFooFooVisitor,
 			relPaths:        []string{"foo/", ".", "foo/my_file.txt"},
 			seen:            map[string]struct{}{},
-			initialContents: map[string]string{"foo/my_file.txt": "foo foo"},
-			want:            map[string]string{"foo/my_file.txt": "foofoo foofoo"},
+			initialContents: map[string]string{"foo/my_file.txt": "foo foo"},       //nolint:dupword
+			want:            map[string]string{"foo/my_file.txt": "foofoo foofoo"}, //nolint:dupword
 		},
 		{
 			name:     "separate_directories_should_not_double_count_files",
@@ -267,12 +267,12 @@ func TestWalkAndModify_Seen(t *testing.T) {
 			relPaths: []string{"foo/", "bar/my_file.txt", "baz/"},
 			seen:     map[string]struct{}{},
 			initialContents: map[string]string{
-				"foo/my_file.txt": "foo foo",
+				"foo/my_file.txt": "foo foo", //nolint:dupword
 				"bar/my_file.txt": "moo foo",
 				"baz/my_file.txt": "foo loo",
 			},
 			want: map[string]string{
-				"foo/my_file.txt": "foofoo foofoo",
+				"foo/my_file.txt": "foofoo foofoo", //nolint:dupword
 				"bar/my_file.txt": "moo foofoo",
 				"baz/my_file.txt": "foofoo loo",
 			},
@@ -283,12 +283,12 @@ func TestWalkAndModify_Seen(t *testing.T) {
 			relPaths: []string{"foo/", "bar/my_file.txt", "baz/"},
 			seen:     nil,
 			initialContents: map[string]string{
-				"foo/my_file.txt": "foo foo",
+				"foo/my_file.txt": "foo foo", //nolint:dupword
 				"bar/my_file.txt": "moo foo",
 				"baz/my_file.txt": "foo loo",
 			},
 			want: map[string]string{
-				"foo/my_file.txt": "foo foo",
+				"foo/my_file.txt": "foo foo", //nolint:dupword
 				"bar/my_file.txt": "moo foo",
 				"baz/my_file.txt": "foo loo",
 			},
