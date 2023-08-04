@@ -15,7 +15,19 @@
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
-desc: 'Enables Cloud Run and associated services for a resource project in a given environment'
+desc: |
+  'Enables Cloud Run and associated services for a resource project in a given environment.'
+  Usage:
+    $ abc templates render \
+    -input="product_id=abc-demo" \
+    -input="project_id=abc-demo-a-6a5eab" \
+    -input="services=artifactregistry.googleapis.com,iam.googleapis.com,run.googleapis.com" \
+    -input="environment=autopush" \
+    -input="bucket_name=abcxyz-tycho-terraform-state-f916" \
+    -input="bucket_prefix=infra" \
+    -spec="spec.yaml" \
+    ~/gitrepos/abc/t/gcp_project_services
+
 inputs:
   - name: 'product_id'
     desc: 'The id of the product to create'
@@ -25,7 +37,6 @@ inputs:
 
   - name: 'services'
     desc: 'A list of services to enable for each project'
-    default: 'artifactregistry.googleapis.com,iam.googleapis.com,run.googleapis.com'
 
   - name: 'environment'
     desc: 'The environment to enable services on'
@@ -35,7 +46,6 @@ inputs:
 
   - name: 'bucket_prefix'
     desc: 'The Terraform state bucket prefix'
-    default: 'gcp-org'
 
 steps:
   - desc: 'Include some files and directories'

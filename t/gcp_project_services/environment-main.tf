@@ -4,7 +4,7 @@ locals {
 
 resource "google_project_service" "services" {
   for_each = toset([
-    {{/* Replace comma with quote-comma-newline-fourspaces. Because TODO */ -}}
+    {{/* Replace comma with quote-comma-newline-fourspaces for proper formatting of services to enable*/ -}}
     "{{replaceAll .services "," "\",\n    \""}}",
   ])
 
