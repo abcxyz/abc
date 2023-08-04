@@ -53,6 +53,24 @@ func TestActionRegexReplace(t *testing.T) {
 			},
 		},
 		{
+			name: "same_file_only_processed_once",
+			initContents: map[string]string{
+				"a.txt": "alpha foo gamma",
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"a.txt", ".", "a.txt"}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex: model.String{Val: "foo"},
+						With:  model.String{Val: "foofoo"},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": "alpha foofoo gamma",
+			},
+		},
+		{
 			name: "default_multiline_false",
 			initContents: map[string]string{
 				"a.txt": "apple banana\nbanana apple\napple apple\n", //nolint:dupword

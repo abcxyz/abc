@@ -42,6 +42,7 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 		return err
 	}
 
+	seen := map[string]struct{}{}
 	for _, p := range rn.Paths {
 		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
 			for i, rn := range rn.Replacements {
@@ -55,7 +56,7 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 				}
 			}
 			return b, nil
-		}); err != nil {
+		}, seen); err != nil {
 			return err
 		}
 	}

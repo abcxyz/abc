@@ -40,8 +40,17 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // Recursively traverses the directory or file scratchDir/relPath, calling the
 // given visitor for each file. If the visitor returns modified file contents
 // for a given file, that file will be overwritten with the new contents.
-func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor) error {
+// The seen map ensures that the same file isn't visited multiple times in subsequent
+// calls. It must be non-nil.
+func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string,
+	v walkAndModifyVisitor, seen map[string]struct{}) error {
 	logger := logging.FromContext(ctx).Named("walkAndModify")
+	if seen == nil {
+		// Intentionally forcing caller to initialize map to discourage them from just calling with nil and not using
+		// the map for future calls.
+		return fmt.Errorf("to avoid handling the same file multiple times, the seen map provided to " +
+			"walkAndModify must be non-nil")
+	}
 
 	relPath, err := safeRelPath(pos, relPath)
 	if err != nil {
@@ -64,6 +73,10 @@ func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scra
 			return nil
 		}
 
+		if _, ok := seen[path]; ok {
+			// File already processed.
+			return nil
+		}
 		oldBuf, err := rfs.ReadFile(path)
 		if err != nil {
 			return model.ErrWithPos(pos, "Readfile(): %w", err) //nolint:wrapcheck
@@ -81,6 +94,8 @@ func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scra
 		if err != nil {
 			return fmt.Errorf("when processing template file %q: %w", relToScratchDir, err)
 		}
+
+		seen[path] = struct{}{}
 
 		if bytes.Equal(oldBuf, newBuf) {
 			// If file contents are unchanged, there's no need to write.

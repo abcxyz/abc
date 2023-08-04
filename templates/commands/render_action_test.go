@@ -211,11 +211,118 @@ func TestWalkAndModify(t *testing.T) {
 				writeFileErr: tc.writeFileErr,
 			}
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			err := walkAndModify(ctx, nil, fs, scratchDir, tc.relPath, tc.visitor)
+			err := walkAndModify(ctx, nil, fs, scratchDir, tc.relPath, tc.visitor, map[string]struct{}{})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
 
+			got := loadDirWithoutMode(t, scratchDir)
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
+			}
+		})
+	}
+}
+
+func TestWalkAndModify_Seen(t *testing.T) {
+	t.Parallel()
+
+	fooToFooFooVisitor := func(buf []byte) ([]byte, error) {
+		return bytes.ReplaceAll(buf, []byte("foo"), []byte("foofoo")), nil
+	}
+
+	cases := []struct {
+		name            string
+		visitor         walkAndModifyVisitor
+		relPaths        []string
+		seen            map[string]struct{}
+		initialContents map[string]string
+		want            map[string]string
+		wantErr         string
+
+		// fakeable errors
+		readFileErr  error
+		statErr      error
+		writeFileErr error
+	}{
+		{
+			name:            "repeated_file_should_modify_once",
+			visitor:         fooToFooFooVisitor,
+			relPaths:        []string{"my_file.txt", "my_file.txt"},
+			seen:            map[string]struct{}{},
+			initialContents: map[string]string{"my_file.txt": "abc foo def"},
+			want:            map[string]string{"my_file.txt": "abc foofoo def"},
+		},
+		{
+			name:            "directory_and_file_should_modify_once",
+			visitor:         fooToFooFooVisitor,
+			relPaths:        []string{"foo/", ".", "foo/my_file.txt"},
+			seen:            map[string]struct{}{},
+			initialContents: map[string]string{"foo/my_file.txt": "foo foo"},
+			want:            map[string]string{"foo/my_file.txt": "foofoo foofoo"},
+		},
+		{
+			name:     "separate_directories_should_not_double_count_files",
+			visitor:  fooToFooFooVisitor,
+			relPaths: []string{"foo/", "bar/my_file.txt", "baz/"},
+			seen:     map[string]struct{}{},
+			initialContents: map[string]string{
+				"foo/my_file.txt": "foo foo",
+				"bar/my_file.txt": "moo foo",
+				"baz/my_file.txt": "foo loo",
+			},
+			want: map[string]string{
+				"foo/my_file.txt": "foofoo foofoo",
+				"bar/my_file.txt": "moo foofoo",
+				"baz/my_file.txt": "foofoo loo",
+			},
+		},
+		{
+			name:     "nil_seen_map_should_fail",
+			visitor:  fooToFooFooVisitor,
+			relPaths: []string{"foo/", "bar/my_file.txt", "baz/"},
+			seen:     nil,
+			initialContents: map[string]string{
+				"foo/my_file.txt": "foo foo",
+				"bar/my_file.txt": "moo foo",
+				"baz/my_file.txt": "foo loo",
+			},
+			want: map[string]string{
+				"foo/my_file.txt": "foo foo",
+				"bar/my_file.txt": "moo foo",
+				"baz/my_file.txt": "foo loo",
+			},
+			wantErr: "the seen map provided to walkAndModify must be non-nil",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(tc.initialContents, tc.want)
+
+			scratchDir := t.TempDir()
+			if err := writeAllDefaultMode(scratchDir, tc.initialContents); err != nil {
+				t.Fatal(err)
+			}
+
+			fs := &errorFS{
+				renderFS: &realFS{},
+
+				readFileErr:  tc.readFileErr,
+				statErr:      tc.statErr,
+				writeFileErr: tc.writeFileErr,
+			}
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			for _, path := range tc.relPaths {
+				err := walkAndModify(ctx, nil, fs, scratchDir, path, tc.visitor, tc.seen)
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Error(diff)
+				}
+			}
 			got := loadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)

@@ -66,6 +66,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 		}
 	}
 
+	seen := map[string]struct{}{}
 	for _, p := range rr.Paths {
 		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
 			for i, rr := range rr.Replacements {
@@ -79,7 +80,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 				}
 			}
 			return b, nil
-		}); err != nil {
+		}, seen); err != nil {
 			return err
 		}
 	}

@@ -58,6 +58,22 @@ func TestActionStringReplace(t *testing.T) {
 			},
 		},
 		{
+			name:  "same_file_only_processed_once",
+			paths: []string{"my_file.txt", ".", "my_file.txt"},
+			replacements: []*model.StringReplacement{
+				{
+					ToReplace: model.String{Val: "foo"},
+					With:      model.String{Val: "foofoo"},
+				},
+			},
+			initialContents: map[string]string{
+				"my_file.txt": "abc foo def",
+			},
+			want: map[string]string{
+				"my_file.txt": "abc foofoo def",
+			},
+		},
+		{
 			name:  "multiple_files_should_work",
 			paths: []string{""},
 			replacements: []*model.StringReplacement{

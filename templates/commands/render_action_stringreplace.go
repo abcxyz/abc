@@ -36,6 +36,7 @@ func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepP
 	}
 	replacer := strings.NewReplacer(replacerArgs...)
 
+	seen := map[string]struct{}{}
 	for _, p := range sr.Paths {
 		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
 		if err != nil {
@@ -44,7 +45,7 @@ func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepP
 
 		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
 			return []byte(replacer.Replace(string(buf))), nil
-		}); err != nil {
+		}, seen); err != nil {
 			return err
 		}
 	}
