@@ -247,8 +247,8 @@ params:
 				Action: String{Val: "append"},
 				Append: &Append{
 					Paths: []String{
-						String{Val: "a.txt"},
-						String{Val: "b.txt"},
+						{Val: "a.txt"},
+						{Val: "b.txt"},
 					},
 					With:              String{Val: "jkl"},
 					SkipEnsureNewline: Bool{Val: true},
