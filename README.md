@@ -421,7 +421,8 @@ If you need to remove an existing trailing newline before appending, use
 
 Params:
 - `paths`: List of files and/or directory trees to append to end of.
-  May use template expressions (e.g. `{{.my_input}}`).
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
 - `with`: String to append to the file.
 - `skip_ensure_newline`: Bool (default false). When true, a `with` not ending
   in a newline will result in a file with no terminating newline. If `false`, a
