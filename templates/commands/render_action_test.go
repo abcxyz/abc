@@ -689,3 +689,122 @@ func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
 		t.Errorf("errors.As() returned false, should return true when called with an error of type %T", as)
 	}
 }
+
+// These are basic tests to ensure the template functions are mounted. More
+// exhaustive tests are at template_funcs_test.go
+func TestTemplateFuncs(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		tmpl    string
+		inputs  map[string]any
+		want    string
+		wantErr string
+	}{
+		{
+			name: "contains_true",
+			tmpl: `{{ contains "food" "foo" }}`,
+			want: "true",
+		},
+		{
+			name: "contains_false",
+			tmpl: `{{ contains "food" "bar" }}`,
+			want: "false",
+		},
+		{
+			name: "replace",
+			tmpl: `{{ replace "food" "foo" "bar" 1 }}`,
+			want: "bard",
+		},
+		{
+			name: "replaceAll",
+			tmpl: `{{ replaceAll "food food food" "foo" "bar" }}`,
+			want: "bard bard bard",
+		},
+		{
+			name: "sortStrings",
+			tmpl: `{{ .strings | sortStrings }}`,
+			inputs: map[string]any{
+				"strings": []string{"zebra", "car", "foo"},
+			},
+			want: "[car foo zebra]",
+		},
+		{
+			name: "split",
+			tmpl: `{{ split "a,b,c" "," }}`,
+			want: "[a b c]",
+		},
+		{
+			name: "toLower",
+			tmpl: `{{ toLower "AbCD" }}`,
+			want: "abcd",
+		},
+		{
+			name: "toUpper",
+			tmpl: `{{ toUpper "AbCD" }}`,
+			want: "ABCD",
+		},
+		{
+			name: "trimPrefix",
+			tmpl: `{{ trimPrefix "foobarbaz" "foo" }}`,
+			want: "barbaz",
+		},
+		{
+			name: "trimSuffix",
+			tmpl: `{{ trimSuffix "foobarbaz" "baz" }}`,
+			want: "foobar",
+		},
+		{
+			name: "toSnakeCase",
+			tmpl: `{{ toSnakeCase "foo-bar-baz" }}`,
+			want: "foo_bar_baz",
+		},
+		{
+			name: "toLowerSnakeCase",
+			tmpl: `{{ toLowerSnakeCase "foo-bar-baz" }}`,
+			want: "foo_bar_baz",
+		},
+		{
+			name: "toUpperSnakeCase",
+			tmpl: `{{ toUpperSnakeCase "foo-bar-baz" }}`,
+			want: "FOO_BAR_BAZ",
+		},
+		{
+			name: "toHyphenCase",
+			tmpl: `{{ toHyphenCase "foo_bar_baz" }}`,
+			want: "foo-bar-baz",
+		},
+		{
+			name: "toLowerHyphenCase",
+			tmpl: `{{ toLowerHyphenCase "foo_bar_baz" }}`,
+			want: "foo-bar-baz",
+		},
+		{
+			name: "toUpperHyphenCase",
+			tmpl: `{{ toUpperHyphenCase "foo-bar-baz" }}`,
+			want: "FOO-BAR-BAZ",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			pos := &model.ConfigPos{
+				Line: 1,
+			}
+
+			got, err := parseAndExecuteGoTmpl(pos, tc.tmpl, tc.inputs)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("template output was not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}

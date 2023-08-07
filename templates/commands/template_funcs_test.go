@@ -14,7 +14,12 @@
 
 package commands
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"golang.org/x/exp/slices"
+)
 
 func TestToSnakeCase(t *testing.T) {
 	t.Parallel()
@@ -125,6 +130,61 @@ func TestToHyphenCase(t *testing.T) {
 			got = toUpperHyphenCase(tc.input)
 			if got, want := got, tc.wantUpper; got != want {
 				t.Errorf("expected upper %s to be %s", got, want)
+			}
+		})
+	}
+}
+
+func TestSortStrings(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		input []string
+		want  []string
+	}{
+		{
+			name:  "nil",
+			input: nil,
+			want:  nil,
+		},
+		{
+			name:  "empty",
+			input: []string{},
+			want:  []string{},
+		},
+		{
+			name:  "single",
+			input: []string{"foo"},
+			want:  []string{"foo"},
+		},
+		{
+			name:  "ordered",
+			input: []string{"abc", "def", "hij"},
+			want:  []string{"abc", "def", "hij"},
+		},
+		{
+			name:  "sorts",
+			input: []string{"foo", "bar", "baz", "app"},
+			want:  []string{"app", "bar", "baz", "foo"},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			original := slices.Clone(tc.input)
+
+			got := sortStrings(tc.input)
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("incorrect strings (-got,+want): %s", diff)
+			}
+
+			if diff := cmp.Diff(tc.input, original); diff != "" {
+				t.Errorf("original input was modified (-got,+want): %s", diff)
 			}
 		})
 	}

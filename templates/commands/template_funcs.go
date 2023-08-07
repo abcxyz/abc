@@ -17,6 +17,8 @@ package commands
 import (
 	"regexp"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 var (
@@ -81,4 +83,13 @@ func toLowerHyphenCase(v string) string {
 // as a upper case string.
 func toUpperHyphenCase(v string) string {
 	return strings.ToUpper(toHyphenCase(v))
+}
+
+// sortStrings sorts the given list of strings. Go's built-in sorting behavior
+// modifies the string in place. It would be very weird if rendering a template
+// changed the order of an input further down the stack.
+func sortStrings(in []string) []string {
+	cp := slices.Clone(in)
+	slices.Sort(cp)
+	return cp
 }
