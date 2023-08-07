@@ -23,15 +23,9 @@ A branch protection rule will be established to enforce checks on each pull requ
     $ mkdir ~/react_template
     $ cd ~/react_template
     ```
-1. Install the `abc` binary
+1. Install the `abc` [instructions](https://github.com/abcxyz/abc#user-guide)
 
-    ```shell
-    $ go install github.com/abcxyz/abc/cmd/abc@latest
-    $ abc --help
-    ```
-
-    This only works if you have go installed (https://go.dev/doc/install) and have the Go binary directory in your $PATH (try PATH=$PATH:~/go/bin).
-
+   
 
 1. Execute the template defined in the `t` directory.
 This will output a file named `main.go` in your working directory containing
@@ -42,21 +36,19 @@ the transformed program.
     ```
 
 ## Available Scripts
-prerequests: `node.js` and `npm`. If not, follow the download steps [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
+prerequisites: `node.js` and `npm`. If not, follow the download steps [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
 
 In the project directory, you can run:
 
 ### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Runs the app in the development mode. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+The page will reload when you make changes. You may also see any lint errors in the console.
 
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.\
+Launches the test runner in the interactive watch mode.
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
 ### `npm run lint`
@@ -69,10 +61,12 @@ Automatically fix the code problem with Eslint, Prettier and GTS.
 
 ### `npm run build`
 
-Builds the app for production to the `build` folder.\
+Builds the app for production to the `build` folder. 
+
 It correctly bundles React in production mode and optimizes the build for the best performance.
 
-The build is minified and the filenames include the hashes.\
+The build is minified and the filenames include the hashes. 
+
 Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
