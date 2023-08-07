@@ -125,6 +125,9 @@ func templateFuncs() template.FuncMap {
 		"replace":    strings.Replace,
 		"replaceAll": strings.ReplaceAll,
 		"sortStrings": func(in []string) []string {
+			// The default sort.Strings behavior modifies the string in place. I
+			// thought it would be very weird if rendering a template changed the
+			// order of an input further down the stack.
 			cp := append([]string{}, in...)
 			sort.Strings(cp)
 			return cp
