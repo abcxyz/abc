@@ -22,7 +22,6 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestActionAppend(t *testing.T) {
@@ -192,7 +191,7 @@ func TestActionAppend(t *testing.T) {
 			}
 
 			got := loadDirWithoutMode(t, scratchDir)
-			if diff := cmp.Diff(got, tc.want, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}
 		})
