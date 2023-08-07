@@ -691,7 +691,7 @@ func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
 }
 
 // These are basic tests to ensure the template functions are mounted. More
-// exhaustive tests are at template_funcs_test.go
+// exhaustive tests are at template_funcs_test.go.
 func TestTemplateFuncs(t *testing.T) {
 	t.Parallel()
 
@@ -720,7 +720,7 @@ func TestTemplateFuncs(t *testing.T) {
 		{
 			name: "replaceAll",
 			tmpl: `{{ replaceAll "food food food" "foo" "bar" }}`,
-			want: "bard bard bard",
+			want: "bard bard bard", //nolint:dupword // expected
 		},
 		{
 			name: "sortStrings",
