@@ -703,7 +703,6 @@ func modelStrings(ss []string) []model.String {
 
 // Read all the files recursively under "dir", returning their contents as a
 // map[filename]->contents. Returns nil if dir doesn't exist.
-// Converts \ path separators to /.
 func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
 	t.Helper()
 
@@ -733,7 +732,7 @@ func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
 		if err != nil {
 			t.Fatal(err)
 		}
-		out[filepath.ToSlash(rel)] = modeAndContents{
+		out[rel] = modeAndContents{
 			Mode:     fi.Mode(),
 			Contents: string(contents),
 		}
