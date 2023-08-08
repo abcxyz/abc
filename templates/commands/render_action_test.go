@@ -90,18 +90,24 @@ func TestWalkAndModify(t *testing.T) {
 			name:     "multiple_replacements_multiple_paths_should_work",
 			visitor:  fooToBarVisitor,
 			relPaths: []string{"my_file.txt", "b/"},
-			initialContents: map[string]string{"my_file.txt": "foo foo",
-				"b/my_file.txt": "foo foo"}, //nolint:dupword
+			initialContents: map[string]string{
+				"my_file.txt":   "foo foo", //nolint:dupword
+				"b/my_file.txt": "foo foo", //nolint:dupword
+			},
 			want: map[string]string{"my_file.txt": "bar bar", "b/my_file.txt": "bar bar"}, //nolint:dupword
 		},
 		{
 			name:     "dot_dir_should_work",
 			visitor:  fooToBarVisitor,
 			relPaths: []string{"."},
-			initialContents: map[string]string{"my_file.txt": "abc foo def",
-				"my_other_file.txt": "abc foo fed"},
-			want: map[string]string{"my_file.txt": "abc bar def",
-				"my_other_file.txt": "abc bar fed"},
+			initialContents: map[string]string{
+				"my_file.txt":       "abc foo def",
+				"my_other_file.txt": "abc foo fed",
+			},
+			want: map[string]string{
+				"my_file.txt":       "abc bar def",
+				"my_other_file.txt": "abc bar fed",
+			},
 		},
 		{
 			name:            "empty_path_means_root_should_work",
