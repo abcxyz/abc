@@ -30,6 +30,8 @@ inputs:
     desc: 'Cloud Run Region (ex: us-west1)'
   - name: 'project_id'
     desc: 'GCP Project ID'
+  - name: 'backend_url'
+    desc: 'Cloud Run backend API URL'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
@@ -54,6 +56,13 @@ steps:
           with: 'REGION={{.region}}'
         - to_replace: 'PROJECT_ID=[project_id]'
           with: 'PROJECT_ID={{.project_id}}'
+  - desc: 'Render template with input variables'
+    action: 'string_replace'
+    params:
+      paths: ['src/App.tsx']
+      replacements:
+        - to_replace: '[backend_url]'
+          with: '{{.backend_url}}'
   - desc: 'Print user instructions'
     action: 'print'
     params:
