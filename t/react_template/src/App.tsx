@@ -14,25 +14,10 @@
 
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid';
-import {useEffect, useState} from 'react';
 
 const logo = require('./img/bets-platform-logo.png');
 
 const App = () => {
-  const [message, setMessage] = useState('Waiting response...');
-  useEffect(() => {
-    fetch('https://rest-server-demo-5nsxs6u22q-uw.a.run.app/', {
-      method: 'GET',
-    })
-      .then(response => response.json())
-      .then(data => {
-        setMessage(data.message);
-      })
-      .catch(err => {
-        console.log(err);
-      });
-  }, []);
-
   return (
     <Grid
       container
@@ -46,7 +31,7 @@ const App = () => {
       <Grid item xs={3}>
         <img src={logo} alt="bets-platform" height={200} />
         <Typography variant="h4" textAlign="center">
-          {message}
+          hellow world
         </Typography>
       </Grid>
     </Grid>
