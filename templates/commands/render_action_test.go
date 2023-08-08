@@ -690,33 +690,100 @@ func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
 	}
 }
 
-func TestToLowerSnakeCase(t *testing.T) {
+// These are basic tests to ensure the template functions are mounted. More
+// exhaustive tests are at template_funcs_test.go.
+func TestTemplateFuncs(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name  string
-		input string
-		want  string
+		name    string
+		tmpl    string
+		inputs  map[string]any
+		want    string
+		wantErr string
 	}{
 		{
-			name:  "simple_success",
-			input: "THIS-IS-A-TEST-123",
-			want:  "this_is_a_test_123",
+			name: "contains_true",
+			tmpl: `{{ contains "food" "foo" }}`,
+			want: "true",
 		},
 		{
-			name:  "handles_spaces",
-			input: "THIS IS A TEST 123",
-			want:  "this_is_a_test_123",
+			name: "contains_false",
+			tmpl: `{{ contains "food" "bar" }}`,
+			want: "false",
 		},
 		{
-			name:  "handle_empty",
-			input: "",
-			want:  "",
+			name: "replace",
+			tmpl: `{{ replace "food" "foo" "bar" 1 }}`,
+			want: "bard",
 		},
 		{
-			name:  "removes_special_characters",
-			input: "!@#$%^&*()+=,.<>\n\r\t/?'\"[{]}\\|`~;:`]",
-			want:  "",
+			name: "replaceAll",
+			tmpl: `{{ replaceAll "food food food" "foo" "bar" }}`,
+			want: "bard bard bard", //nolint:dupword // expected
+		},
+		{
+			name: "sortStrings",
+			tmpl: `{{ .strings | sortStrings }}`,
+			inputs: map[string]any{
+				"strings": []string{"zebra", "car", "foo"},
+			},
+			want: "[car foo zebra]",
+		},
+		{
+			name: "split",
+			tmpl: `{{ split "a,b,c" "," }}`,
+			want: "[a b c]",
+		},
+		{
+			name: "toLower",
+			tmpl: `{{ toLower "AbCD" }}`,
+			want: "abcd",
+		},
+		{
+			name: "toUpper",
+			tmpl: `{{ toUpper "AbCD" }}`,
+			want: "ABCD",
+		},
+		{
+			name: "trimPrefix",
+			tmpl: `{{ trimPrefix "foobarbaz" "foo" }}`,
+			want: "barbaz",
+		},
+		{
+			name: "trimSuffix",
+			tmpl: `{{ trimSuffix "foobarbaz" "baz" }}`,
+			want: "foobar",
+		},
+		{
+			name: "toSnakeCase",
+			tmpl: `{{ toSnakeCase "foo-bar-baz" }}`,
+			want: "foo_bar_baz",
+		},
+		{
+			name: "toLowerSnakeCase",
+			tmpl: `{{ toLowerSnakeCase "foo-bar-baz" }}`,
+			want: "foo_bar_baz",
+		},
+		{
+			name: "toUpperSnakeCase",
+			tmpl: `{{ toUpperSnakeCase "foo-bar-baz" }}`,
+			want: "FOO_BAR_BAZ",
+		},
+		{
+			name: "toHyphenCase",
+			tmpl: `{{ toHyphenCase "foo_bar_baz" }}`,
+			want: "foo-bar-baz",
+		},
+		{
+			name: "toLowerHyphenCase",
+			tmpl: `{{ toLowerHyphenCase "foo_bar_baz" }}`,
+			want: "foo-bar-baz",
+		},
+		{
+			name: "toUpperHyphenCase",
+			tmpl: `{{ toUpperHyphenCase "foo-bar-baz" }}`,
+			want: "FOO-BAR-BAZ",
 		},
 	}
 
@@ -726,53 +793,17 @@ func TestToLowerSnakeCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := toLowerSnakeCase(tc.input)
-			if got, want := got, tc.want; got != want {
-				t.Errorf("expected %s to be %s", got, want)
+			pos := &model.ConfigPos{
+				Line: 1,
 			}
-		})
-	}
-}
 
-func TestToUppperSnakeCase(t *testing.T) {
-	t.Parallel()
+			got, err := parseAndExecuteGoTmpl(pos, tc.tmpl, tc.inputs)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
 
-	cases := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "simple",
-			input: "this-is-a-test-123",
-			want:  "THIS_IS_A_TEST_123",
-		},
-		{
-			name:  "handles_spaces",
-			input: "this is a test 123",
-			want:  "THIS_IS_A_TEST_123",
-		},
-		{
-			name:  "handles_empty",
-			input: "",
-			want:  "",
-		},
-		{
-			name:  "removes_special_characters",
-			input: "!@#$%^&*()+=,.<>\n\r\t/?'\"[{]}\\|`~;:`]",
-			want:  "",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			got := toUpperSnakeCase(tc.input)
-			if got, want := got, tc.want; got != want {
-				t.Errorf("expected %s to be %s", got, want)
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("template output was not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
