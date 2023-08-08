@@ -42,74 +42,78 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // for a given file, that file will be overwritten with the new contents.
 // The seen map ensures that the same file isn't visited multiple times in subsequent
 // calls. It must be non-nil.
-func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor, seen map[string]struct{}) error {
+func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPaths []model.String, v walkAndModifyVisitor) error {
 	logger := logging.FromContext(ctx).Named("walkAndModify")
-	if seen == nil {
-		// Intentionally forcing caller to initialize map to discourage them from just calling with nil and not using
-		// the map for future calls.
-		return fmt.Errorf("to avoid handling the same file multiple times, the seen map provided to " +
-			"walkAndModify must be non-nil")
-	}
+	seen := map[string]struct{}{}
 
-	relPath, err := safeRelPath(pos, relPath)
-	if err != nil {
-		return err
-	}
-	walkFrom := filepath.Join(scratchDir, relPath)
-	if _, err := rfs.Stat(walkFrom); err != nil {
-		if os.IsNotExist(err) {
-			return model.ErrWithPos(pos, `path %q doesn't exist in the scratch directory, did you forget to "include" it first?"`, relPath) //nolint:wrapcheck
-		}
-		return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
-	}
-
-	return filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error { //nolint:wrapcheck
+	for _, relPathPos := range relPaths {
+		relPathPos := relPathPos
+		pos := relPathPos.Pos
+		relPath := relPathPos.Val
+		relPath, err := safeRelPath(pos, relPath)
 		if err != nil {
-			// There was some filesystem error. Give up.
-			return model.ErrWithPos(pos, "%w", err) //nolint:wrapcheck
+			return err
 		}
-		if d.IsDir() {
+		walkFrom := filepath.Join(scratchDir, relPath)
+		if _, err := rfs.Stat(walkFrom); err != nil {
+			if os.IsNotExist(err) {
+				return model.ErrWithPos(pos, `path %q doesn't exist in the scratch directory, did you forget to "include" it first?"`, relPath) //nolint:wrapcheck
+			}
+			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
+		}
+
+		err = filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error { //nolint:wrapcheck
+			if err != nil {
+				// There was some filesystem error. Give up.
+				return model.ErrWithPos(pos, "%w", err) //nolint:wrapcheck
+			}
+			if d.IsDir() {
+				return nil
+			}
+
+			if _, ok := seen[path]; ok {
+				// File already processed.
+				return nil
+			}
+			oldBuf, err := rfs.ReadFile(path)
+			if err != nil {
+				return model.ErrWithPos(pos, "Readfile(): %w", err) //nolint:wrapcheck
+			}
+
+			relToScratchDir, err := filepath.Rel(scratchDir, path)
+			if err != nil {
+				return model.ErrWithPos(pos, "Rel(): %w", err) //nolint:wrapcheck
+			}
+
+			// We must clone oldBuf to guarantee that the callee won't change the
+			// underlying bytes. We rely on an unmodified oldBuf below in the call
+			// to bytes.Equal.
+			newBuf, err := v(bytes.Clone(oldBuf))
+			if err != nil {
+				return fmt.Errorf("when processing template file %q: %w", relToScratchDir, err)
+			}
+
+			seen[path] = struct{}{}
+
+			if bytes.Equal(oldBuf, newBuf) {
+				// If file contents are unchanged, there's no need to write.
+				return nil
+			}
+
+			// The permissions in the following WriteFile call will be ignored
+			// because the file already exists.
+			if err := rfs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
+				return model.ErrWithPos(pos, "Writefile(): %w", err) //nolint:wrapcheck
+			}
+			logger.Debugw("wrote modification", "path", path)
+
 			return nil
-		}
-
-		if _, ok := seen[path]; ok {
-			// File already processed.
-			return nil
-		}
-		oldBuf, err := rfs.ReadFile(path)
+		})
 		if err != nil {
-			return model.ErrWithPos(pos, "Readfile(): %w", err) //nolint:wrapcheck
+			return err
 		}
-
-		relToScratchDir, err := filepath.Rel(scratchDir, path)
-		if err != nil {
-			return model.ErrWithPos(pos, "Rel(): %w", err) //nolint:wrapcheck
-		}
-
-		// We must clone oldBuf to guarantee that the callee won't change the
-		// underlying bytes. We rely on an unmodified oldBuf below in the call
-		// to bytes.Equal.
-		newBuf, err := v(bytes.Clone(oldBuf))
-		if err != nil {
-			return fmt.Errorf("when processing template file %q: %w", relToScratchDir, err)
-		}
-
-		seen[path] = struct{}{}
-
-		if bytes.Equal(oldBuf, newBuf) {
-			// If file contents are unchanged, there's no need to write.
-			return nil
-		}
-
-		// The permissions in the following WriteFile call will be ignored
-		// because the file already exists.
-		if err := rfs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
-			return model.ErrWithPos(pos, "Writefile(): %w", err) //nolint:wrapcheck
-		}
-		logger.Debugw("wrote modification", "path", path)
-
-		return nil
-	})
+	}
+	return nil
 }
 
 func templateAndCompileRegexes(regexes []model.String, inputs map[string]string) ([]*regexp.Regexp, error) {

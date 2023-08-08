@@ -41,10 +41,14 @@ func TestWalkAndModify(t *testing.T) {
 		return bytes.ReplaceAll(buf, []byte("foo"), []byte("bar")), nil
 	}
 
+	fooToFooFooVisitor := func(buf []byte) ([]byte, error) {
+		return bytes.ReplaceAll(buf, []byte("foo"), []byte("foofoo")), nil
+	}
+
 	cases := []struct {
 		name            string
 		visitor         walkAndModifyVisitor
-		relPath         string
+		relPaths        []string
 		initialContents map[string]string
 		want            map[string]string
 		wantErr         string
@@ -57,63 +61,87 @@ func TestWalkAndModify(t *testing.T) {
 		{
 			name:            "simple_single_file_replacement_should_work",
 			visitor:         fooToBarVisitor,
-			relPath:         "my_file.txt",
+			relPaths:        []string{"my_file.txt"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc bar def"},
+		},
+		{
+			name:            "repeated_file_only_visited_once",
+			visitor:         fooToFooFooVisitor,
+			relPaths:        []string{"my_file.txt", "my_file.txt"},
+			initialContents: map[string]string{"my_file.txt": "abc foo def"},
+			want:            map[string]string{"my_file.txt": "abc foofoo def"},
+		},
+		{
+			name:            "repeated_file_directory_only_visited_once",
+			visitor:         fooToFooFooVisitor,
+			relPaths:        []string{"my_file.txt", ".", "./my_file.txt", "./", "/"},
+			initialContents: map[string]string{"my_file.txt": "abc foo def"},
+			want:            map[string]string{"my_file.txt": "abc foofoo def"},
 		},
 		{
 			name:            "multiple_replacements_should_work",
 			visitor:         fooToBarVisitor,
-			relPath:         "my_file.txt",
+			relPaths:        []string{"my_file.txt"},
 			initialContents: map[string]string{"my_file.txt": "foo foo"}, //nolint:dupword
 			want:            map[string]string{"my_file.txt": "bar bar"}, //nolint:dupword
 		},
 		{
-			name:            "dot_dir_should_work",
-			visitor:         fooToBarVisitor,
-			relPath:         ".",
-			initialContents: map[string]string{"my_file.txt": "abc foo def"},
-			want:            map[string]string{"my_file.txt": "abc bar def"},
+			name:     "multiple_replacements_multiple_paths_should_work",
+			visitor:  fooToBarVisitor,
+			relPaths: []string{"my_file.txt", "b/"},
+			initialContents: map[string]string{"my_file.txt": "foo foo",
+				"b/my_file.txt": "foo foo"}, //nolint:dupword
+			want: map[string]string{"my_file.txt": "bar bar", "b/my_file.txt": "bar bar"}, //nolint:dupword
+		},
+		{
+			name:     "dot_dir_should_work",
+			visitor:  fooToBarVisitor,
+			relPaths: []string{"."},
+			initialContents: map[string]string{"my_file.txt": "abc foo def",
+				"my_other_file.txt": "abc foo fed"},
+			want: map[string]string{"my_file.txt": "abc bar def",
+				"my_other_file.txt": "abc bar fed"},
 		},
 		{
 			name:            "empty_path_means_root_should_work",
 			visitor:         fooToBarVisitor,
-			relPath:         ".",
+			relPaths:        []string{"."},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc bar def"},
 		},
 		{
 			name:            "dot_dir_with_trailing_slash_should_work",
 			visitor:         fooToBarVisitor,
-			relPath:         "./",
+			relPaths:        []string{"./"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc bar def"},
 		},
 		{
 			name:            "single_subdir_should_work",
 			visitor:         fooToBarVisitor,
-			relPath:         "./dir",
+			relPaths:        []string{"./dir"},
 			initialContents: map[string]string{"dir/my_file.txt": "abc foo def"},
 			want:            map[string]string{"dir/my_file.txt": "abc bar def"},
 		},
 		{
 			name:            "named_file_in_subdir_should_work",
 			visitor:         fooToBarVisitor,
-			relPath:         "dir/my_file.txt",
+			relPaths:        []string{"dir/my_file.txt"},
 			initialContents: map[string]string{"dir/my_file.txt": "abc foo def"},
 			want:            map[string]string{"dir/my_file.txt": "abc bar def"},
 		},
 		{
 			name:            "deeply_nested_dirs_should_work",
 			visitor:         fooToBarVisitor,
-			relPath:         "dir1",
+			relPaths:        []string{"dir1"},
 			initialContents: map[string]string{"dir1/dir2/dir3/dir4/my_file.txt": "abc foo def"},
 			want:            map[string]string{"dir1/dir2/dir3/dir4/my_file.txt": "abc bar def"},
 		},
 		{
-			name:    "one_included_dir_one_excluded",
-			visitor: fooToBarVisitor,
-			relPath: "dir1",
+			name:     "one_included_dir_one_excluded",
+			visitor:  fooToBarVisitor,
+			relPaths: []string{"dir1"},
 			initialContents: map[string]string{
 				"dir1/should_change.txt":     "abc foo def",
 				"dir2/should_not_change.txt": "ghi foo jkl",
@@ -126,7 +154,7 @@ func TestWalkAndModify(t *testing.T) {
 		{
 			name:            "nonexistent_path_should_fail",
 			visitor:         fooToBarVisitor,
-			relPath:         "nonexistent",
+			relPaths:        []string{"nonexistent"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc foo def"},
 			wantErr:         "doesn't exist in the scratch directory",
@@ -134,7 +162,7 @@ func TestWalkAndModify(t *testing.T) {
 		{
 			name:            "dot_dot_traversal_should_fail",
 			visitor:         fooToBarVisitor,
-			relPath:         "abc/..",
+			relPaths:        []string{"abc/.."},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc foo def"},
 			wantErr:         `must not contain ".."`,
@@ -142,21 +170,21 @@ func TestWalkAndModify(t *testing.T) {
 		{
 			name:            "absolute_path_should_become_relative",
 			visitor:         fooToBarVisitor,
-			relPath:         "/my_file.txt",
+			relPaths:        []string{"/my_file.txt"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc bar def"},
 		},
 		{
 			name:            "empty_file_should_be_ignored",
 			visitor:         fooToBarVisitor,
-			relPath:         ".",
+			relPaths:        []string{"."},
 			initialContents: map[string]string{"my_file.txt": ""},
 			want:            map[string]string{"my_file.txt": ""},
 		},
 		{
 			name:            "writefile_should_not_be_called_if_contents_unchanged",
 			visitor:         fooToBarVisitor,
-			relPath:         ".",
+			relPaths:        []string{"."},
 			initialContents: map[string]string{"my_file.txt": "abc"},
 			want:            map[string]string{"my_file.txt": "abc"},
 			writeFileErr:    fmt.Errorf("WriteFile should not have been called"),
@@ -164,7 +192,7 @@ func TestWalkAndModify(t *testing.T) {
 		{
 			name:            "stat_error_should_be_returned",
 			visitor:         fooToBarVisitor,
-			relPath:         ".",
+			relPaths:        []string{"."},
 			initialContents: map[string]string{"my_file.txt": "foo"},
 			want:            map[string]string{"my_file.txt": "foo"},
 			statErr:         fmt.Errorf("fake error for testing"),
@@ -173,7 +201,7 @@ func TestWalkAndModify(t *testing.T) {
 		{
 			name:            "readfile_error_should_be_returned",
 			visitor:         fooToBarVisitor,
-			relPath:         ".",
+			relPaths:        []string{"."},
 			initialContents: map[string]string{"my_file.txt": "foo"},
 			want:            map[string]string{"my_file.txt": "foo"},
 			readFileErr:     fmt.Errorf("fake error for testing"),
@@ -182,7 +210,7 @@ func TestWalkAndModify(t *testing.T) {
 		{
 			name:            "writefile_error_should_be_returned",
 			visitor:         fooToBarVisitor,
-			relPath:         ".",
+			relPaths:        []string{"."},
 			initialContents: map[string]string{"my_file.txt": "foo"},
 			want:            map[string]string{"my_file.txt": "foo"},
 			writeFileErr:    fmt.Errorf("fake error for testing"),
@@ -210,119 +238,19 @@ func TestWalkAndModify(t *testing.T) {
 				statErr:      tc.statErr,
 				writeFileErr: tc.writeFileErr,
 			}
+
+			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
+
+			for _, p := range tc.relPaths {
+				relPathsPositions = append(relPathsPositions, model.String{Val: p})
+			}
+
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			err := walkAndModify(ctx, nil, fs, scratchDir, tc.relPath, tc.visitor, map[string]struct{}{})
+			err := walkAndModify(ctx, fs, scratchDir, relPathsPositions, tc.visitor)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
 
-			got := loadDirWithoutMode(t, scratchDir)
-			if diff := cmp.Diff(got, tc.want); diff != "" {
-				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
-			}
-		})
-	}
-}
-
-func TestWalkAndModify_Seen(t *testing.T) {
-	t.Parallel()
-
-	fooToFooFooVisitor := func(buf []byte) ([]byte, error) {
-		return bytes.ReplaceAll(buf, []byte("foo"), []byte("foofoo")), nil
-	}
-
-	cases := []struct {
-		name            string
-		visitor         walkAndModifyVisitor
-		relPaths        []string
-		seen            map[string]struct{}
-		initialContents map[string]string
-		want            map[string]string
-		wantErr         string
-
-		// fakeable errors
-		readFileErr  error
-		statErr      error
-		writeFileErr error
-	}{
-		{
-			name:            "repeated_file_should_modify_once",
-			visitor:         fooToFooFooVisitor,
-			relPaths:        []string{"my_file.txt", "my_file.txt"},
-			seen:            map[string]struct{}{},
-			initialContents: map[string]string{"my_file.txt": "abc foo def"},
-			want:            map[string]string{"my_file.txt": "abc foofoo def"},
-		},
-		{
-			name:            "directory_and_file_should_modify_once",
-			visitor:         fooToFooFooVisitor,
-			relPaths:        []string{"foo/", ".", "foo/my_file.txt"},
-			seen:            map[string]struct{}{},
-			initialContents: map[string]string{"foo/my_file.txt": "foo foo"},       //nolint:dupword
-			want:            map[string]string{"foo/my_file.txt": "foofoo foofoo"}, //nolint:dupword
-		},
-		{
-			name:     "separate_directories_should_not_double_count_files",
-			visitor:  fooToFooFooVisitor,
-			relPaths: []string{"foo/", "bar/my_file.txt", "baz/"},
-			seen:     map[string]struct{}{},
-			initialContents: map[string]string{
-				"foo/my_file.txt": "foo foo", //nolint:dupword
-				"bar/my_file.txt": "moo foo",
-				"baz/my_file.txt": "foo loo",
-			},
-			want: map[string]string{
-				"foo/my_file.txt": "foofoo foofoo", //nolint:dupword
-				"bar/my_file.txt": "moo foofoo",
-				"baz/my_file.txt": "foofoo loo",
-			},
-		},
-		{
-			name:     "nil_seen_map_should_fail",
-			visitor:  fooToFooFooVisitor,
-			relPaths: []string{"foo/", "bar/my_file.txt", "baz/"},
-			seen:     nil,
-			initialContents: map[string]string{
-				"foo/my_file.txt": "foo foo", //nolint:dupword
-				"bar/my_file.txt": "moo foo",
-				"baz/my_file.txt": "foo loo",
-			},
-			want: map[string]string{
-				"foo/my_file.txt": "foo foo", //nolint:dupword
-				"bar/my_file.txt": "moo foo",
-				"baz/my_file.txt": "foo loo",
-			},
-			wantErr: "the seen map provided to walkAndModify must be non-nil",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			// Convert to OS-specific paths
-			convertKeysToPlatformPaths(tc.initialContents, tc.want)
-
-			scratchDir := t.TempDir()
-			if err := writeAllDefaultMode(scratchDir, tc.initialContents); err != nil {
-				t.Fatal(err)
-			}
-
-			fs := &errorFS{
-				renderFS: &realFS{},
-
-				readFileErr:  tc.readFileErr,
-				statErr:      tc.statErr,
-				writeFileErr: tc.writeFileErr,
-			}
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			for _, path := range tc.relPaths {
-				err := walkAndModify(ctx, nil, fs, scratchDir, path, tc.visitor, tc.seen)
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Error(diff)
-				}
-			}
 			got := loadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
