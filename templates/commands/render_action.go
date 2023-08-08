@@ -37,11 +37,13 @@ import (
 // to be written.
 type walkAndModifyVisitor func([]byte) ([]byte, error)
 
-// Recursively traverses the directory or file scratchDir/relPath, calling the
-// given visitor for each file. If the visitor returns modified file contents
-// for a given file, that file will be overwritten with the new contents.
-// The seen map ensures that the same file isn't visited multiple times in subsequent
-// calls. It must be non-nil.
+// For each given path, recursively traverses the directory or file
+// scratchDir/relPath, calling the given visitor for each file. If the visitor
+// returns modified file contents for a given file, that file will be
+// overwritten with the new contents.
+//
+// A file will only be touched once per call, even if multiple paths include
+// it.
 func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPaths []model.String, v walkAndModifyVisitor) error {
 	logger := logging.FromContext(ctx).Named("walkAndModify")
 	seen := map[string]struct{}{}
