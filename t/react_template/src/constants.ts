@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export const DEMO_TITLE = "Sandwich In the Box";
-export const LOGIN_TEXT = "Login";
-export const LOGOUT_TEXT = "Logout";
+export const DEMO_TITLE = 'Sandwich In the Box';
+export const LOGIN_TEXT = 'Login';
+export const LOGOUT_TEXT = 'Logout';

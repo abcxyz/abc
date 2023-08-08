@@ -28,7 +28,12 @@
     "lint": "npm run gts:lint",
     "fix": "npm run gts:fix",
     "cy:open": "cypress open",
-    "cy:test": "cypress run"
+    "cy:test": "cypress run",
+    "clean": "gts clean",
+    "compile": "tsc",
+    "prepare": "npm run compile",
+    "pretest": "npm run compile",
+    "posttest": "npm run lint"
   },
   "eslintConfig": {
     "extends": [
