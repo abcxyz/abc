@@ -146,6 +146,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Convert to OS-specific paths
+			convertKeysToPlatformPaths(tc.want)
+
 			scratchDir := t.TempDir()
 			if err := writeAllDefaultMode(scratchDir, tc.initContents); err != nil {
 				t.Fatal(err)
