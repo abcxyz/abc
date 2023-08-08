@@ -21,7 +21,7 @@ const logo = require('./img/bets-platform-logo.png');
 const App = () => {
   const [message, setMessage] = useState('Waiting response...');
   useEffect(() => {
-    fetch('https://rest-server-demo-5nsxs6u22q-uw.a.run.app/', {
+    fetch('[backend_url]', {
       method: 'GET',
     })
       .then(response => response.json())
