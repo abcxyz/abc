@@ -31,7 +31,7 @@ const App = () => {
       <Grid item xs={3}>
         <img src={logo} alt="bets-platform" height={200} />
         <Typography variant="h4" textAlign="center">
-          hellow world
+          Hello World
         </Typography>
       </Grid>
     </Grid>
