@@ -49,7 +49,6 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 	seen := map[string]struct{}{}
 
 	for _, relPathPos := range relPaths {
-		relPathPos := relPathPos
 		pos := relPathPos.Pos
 		relPath := relPathPos.Val
 		relPath, err := safeRelPath(pos, relPath)
@@ -75,6 +74,7 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 
 			if _, ok := seen[path]; ok {
 				// File already processed.
+				logger.Debugw("skipping file as already seen", "path", path)
 				return nil
 			}
 			oldBuf, err := rfs.ReadFile(path)
@@ -112,7 +112,7 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 			return nil
 		})
 		if err != nil {
-			return fmt.Errorf("walkAndModify error for action: %w", err)
+			return err //nolint:wrapcheck
 		}
 	}
 	return nil
