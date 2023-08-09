@@ -17,5 +17,5 @@ import App from './App';
 
 test('renders learn react text', () => {
   render(<App />);
-  expect(screen.getByText(/Hello World/i)).toBeInTheDocument();
+  expect(screen.getByText(/Waiting response/i)).toBeInTheDocument();
 });
