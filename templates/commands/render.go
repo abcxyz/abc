@@ -101,6 +101,7 @@ func (c *RenderCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	c.setLogEnvVars()
+	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	fSys := c.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
