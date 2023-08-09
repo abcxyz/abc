@@ -35,7 +35,6 @@ func TestActionInclude(t *testing.T) {
 		templateContents     map[string]modeAndContents
 		destDirContents      map[string]modeAndContents
 		inputs               map[string]string
-		flagSpec             string
 		wantScratchContents  map[string]modeAndContents
 		wantIncludedFromDest []string
 		statErr              error
@@ -98,6 +97,18 @@ func TestActionInclude(t *testing.T) {
 			},
 			wantScratchContents: map[string]modeAndContents{
 				"myfile.txt": {0o600, "my file contents"},
+			},
+		},
+		{
+			name: "including_multiple_times_should_succeed",
+			include: &model.Include{
+				Paths: modelStrings([]string{"foo/myfile.txt", "foo/", "foo/myfile.txt"}),
+			},
+			templateContents: map[string]modeAndContents{
+				"foo/myfile.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"foo/myfile.txt": {0o600, "my file contents"},
 			},
 		},
 		{
@@ -228,7 +239,6 @@ func TestActionInclude(t *testing.T) {
 			include: &model.Include{
 				Paths: modelStrings([]string{"."}),
 			},
-			flagSpec: "spec.yaml",
 			templateContents: map[string]modeAndContents{
 				"file1.txt": {0o600, "my file contents"},
 				"spec.yaml": {0o600, "spec contents"},
@@ -242,7 +252,6 @@ func TestActionInclude(t *testing.T) {
 			include: &model.Include{
 				Paths: modelStrings([]string{"."}),
 			},
-			flagSpec: "spec.yaml",
 			templateContents: map[string]modeAndContents{
 				"file1.txt":        {0o600, "my file contents"},
 				"subdir/spec.yaml": {0o600, "spec contents"},
@@ -339,7 +348,6 @@ func TestActionInclude(t *testing.T) {
 
 			sp := &stepParams{
 				flags: &RenderFlags{
-					Spec: tc.flagSpec,
 					Dest: destDir,
 				},
 				fs: &errorFS{

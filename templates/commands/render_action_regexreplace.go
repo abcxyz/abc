@@ -66,24 +66,21 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 		}
 	}
 
-	for _, p := range rr.Paths {
-		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
-			for i, rr := range rr.Replacements {
-				cr := compiledRegexes[i]
-				allMatches := cr.FindAllSubmatchIndex(b, -1)
+	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, rr.Paths, func(b []byte) ([]byte, error) {
+		for i, rr := range rr.Replacements {
+			cr := compiledRegexes[i]
+			allMatches := cr.FindAllSubmatchIndex(b, -1)
 
-				var err error
-				b, err = replaceWithTemplate(allMatches, b, rr, cr, sp.inputs)
-				if err != nil {
-					return nil, err
-				}
+			var err error
+			b, err = replaceWithTemplate(allMatches, b, rr, cr, sp.inputs)
+			if err != nil {
+				return nil, err
 			}
-			return b, nil
-		}); err != nil {
-			return err
 		}
+		return b, nil
+	}); err != nil {
+		return err
 	}
-
 	return nil
 }
 

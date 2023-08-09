@@ -34,7 +34,9 @@ func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) 
 			return err
 		}
 
-		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, walkRelPath, func(b []byte) ([]byte, error) {
+		relPathPos := model.String{Pos: p.Pos, Val: walkRelPath}
+
+		if err := walkAndModify(ctx, sp.fs, sp.scratchDir, []model.String{relPathPos}, func(b []byte) ([]byte, error) {
 			executed, err := parseAndExecuteGoTmpl(nil, string(b), sp.inputs)
 			if err != nil {
 				return nil, fmt.Errorf("failed executing file as Go template: %w", err)
