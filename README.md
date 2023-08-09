@@ -65,9 +65,8 @@ Examples of template locations:
   files are staged during transformations before being written to the output
   directory. Use `--log-level` verbosity of `info` or higher to see the
   locations of the directories.
-- `--no-prompt`: normally, the user will be prompted for inputs that are needed
-  by the template but are not supplied by `--inputs`. This flag will skip such
-  prompting and just fail if there are any missing inputs.
+- `--prompt`: the user will be prompted for inputs that are needed by the
+  template but are not supplied by `--inputs`.
 
 #### Logging
 
@@ -215,7 +214,7 @@ Template rendering has a few phases:
     `go_template` actions transform the files that are in the scratch directory
     at the time they're executed.
     - This means that for example a string_replace after an append will affect
-      the appended text, but if put before it will not. 
+      the appended text, but if put before it will not.
 - Once all steps are executed, the contents of the scratch directory are copied
   to the output directory.
 
@@ -421,15 +420,17 @@ If you need to remove an existing trailing newline before appending, use
 `regex_replace` instead.
 
 Params:
-- `paths`: List of files and/or directory trees to append to end of.
-  May use template expressions (e.g. `{{.my_input}}`). Directories will be
-  crawled recursively and every file underneath will be processed.
+
+- `paths`: List of files and/or directory trees to append to end of. May use
+  template expressions (e.g. `{{.my_input}}`). Directories will be crawled
+  recursively and every file underneath will be processed.
 - `with`: String to append to the file.
-- `skip_ensure_newline`: Bool (default false). When true, a `with` not ending
-  in a newline will result in a file with no terminating newline. If `false`, a
+- `skip_ensure_newline`: Bool (default false). When true, a `with` not ending in
+  a newline will result in a file with no terminating newline. If `false`, a
   newline will be added automatically if not provided.
 
 Example:
+
 ```yaml
 - action: 'append'
   params:
