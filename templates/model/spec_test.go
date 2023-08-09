@@ -235,6 +235,53 @@ func TestUnmarshalStep(t *testing.T) {
 		wantValidateErr  string
 	}{
 		{
+			name: "append_success",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  paths: ['a.txt', 'b.txt']
+  with: 'jkl'
+  skip_ensure_newline: true`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "append"},
+				Append: &Append{
+					Paths: []String{
+						{Val: "a.txt"},
+						{Val: "b.txt"},
+					},
+					With:              String{Val: "jkl"},
+					SkipEnsureNewline: Bool{Val: true},
+				},
+			},
+		},
+		{
+			name: "append_missing_with_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  paths: ['a.txt']`,
+			wantValidateErr: `invalid config near line 4 column 3: field "with" is required`,
+		},
+		{
+			name: "append_missing_paths_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  with: 'def'`,
+			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
+		},
+		{
+			name: "append_non_bool_skip_ensure_newline_field_should_fail",
+			in: `desc: 'mydesc'
+action: 'append'
+params:
+  paths: ['a.txt']
+  with: 'jkl'
+  skip_ensure_newline: pizza`,
+			wantUnmarshalErr: "cannot unmarshal !!str `pizza` into bool",
+		},
+		{
 			name: "print_success",
 			in: `desc: 'Print a message'
 action: 'print'

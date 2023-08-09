@@ -211,9 +211,11 @@ Template rendering has a few phases:
       params:
         paths: ['main.go']
     ```
-  - The `string_replace`, `regex_replace`, `regex_name_lookup`, and
+  - The `append`, `string_replace`, `regex_replace`, `regex_name_lookup`, and
     `go_template` actions transform the files that are in the scratch directory
     at the time they're executed.
+    - This means that for example a string_replace after an append will affect
+      the appended text, but if put before it will not. 
 - Once all steps are executed, the contents of the scratch directory are copied
   to the output directory.
 
@@ -276,7 +278,7 @@ on the `action`:
 
 ```yaml
 desc: 'An optional human-readable description of what this step is for'
-action: 'action-name' # One of 'include', 'print', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template
+action: 'action-name' # One of 'include', 'print', 'append', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template
 params:
   foo: bar # The params differ depending on the action
 ```
@@ -289,8 +291,9 @@ directory.
 Params:
 
 - `paths`: a list of files and/or directories to copy. These may use template
-  expressions (e.g. `{{.my_input}}`). By default, the output location of each
-  file is the same as its location in the template directory.
+  expressions (e.g. `{{.my_input}}`). Directories will be crawled recursively
+  and every file underneath will be processed. By default, the output location
+  of each file is the same as its location in the template directory.
 - `as`: as list of output locations relative to the output directory. This can
   be used to make the output location(s) different than the input locations. If
   `as` is present, its length must be equal to the length of `paths`; that is,
@@ -408,6 +411,33 @@ Example:
       thing'
 ```
 
+### Action: `append`
+
+Appends a string on the end of a given file. File must already exist. If no
+newline at end of `with` parameter, one will be added unless
+`skip_ensure_newline` is set to `true`.
+
+If you need to remove an existing trailing newline before appending, use
+`regex_replace` instead.
+
+Params:
+- `paths`: List of files and/or directory trees to append to end of.
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
+- `with`: String to append to the file.
+- `skip_ensure_newline`: Bool (default false). When true, a `with` not ending
+  in a newline will result in a file with no terminating newline. If `false`, a
+  newline will be added automatically if not provided.
+
+Example:
+```yaml
+- action: 'append'
+  params:
+    paths: ['foo.html', 'web/']
+    with: '</html>\n'
+    skip_ensure_newline: false
+```
+
 ### Action: `string_replace`
 
 Within a given list of files and/or directories, replaces all occurrences of a
@@ -416,7 +446,8 @@ given string with a given replacement string.
 Params:
 
 - `paths`: a list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`).
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
 - `replacements`: a list of objects, each having the form:
   - `to_replace`: the string to search for. May use template expressions (e.g.
     `{{.my_input}}`).
@@ -444,7 +475,8 @@ Within a given list of files and/or directories, replace a regular expression
 Params:
 
 - `paths`: A list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`).
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
 - `replacements`: a list of objects, each having the form:
 
   - `regex`: an
@@ -458,8 +490,8 @@ Params:
 
     Note that by default, RE2 doesn't use multiline mode, so ^ and $ will match
     the start and end of the entire file, rather than each line. To enter
-    multiline mode you need to set the flag by including this: `(?m:YOUR_REGEX_HERE)`.
-    More information available in RE2 docs.
+    multiline mode you need to set the flag by including this:
+    `(?m:YOUR_REGEX_HERE)`. More information available in RE2 docs.
 
   - `with`: a string to that will replace regex matches (or, if the
     `subgroup_to_replace` field is set, will replace only that subgroup). May
@@ -534,7 +566,8 @@ subgroup with the input variable whose name matches the subgroup name.
 Params:
 
 - `paths`: A list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`).
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed.
 - `replacements`: a list of objects, each having the form:
   - `regex`: an
     [RE2 regular expression](https://github.com/google/re2/wiki/Syntax)
@@ -559,8 +592,9 @@ Executes a file as a Go template, replacing the file with the template output.
 Params:
 
 - `paths`: A list of files and/or directories in which to do the replacement.
-  May use template expressions (e.g. `{{.my_input}}`). These files will be
-  rendered with Go's
+  May use template expressions (e.g. `{{.my_input}}`). Directories will be
+  crawled recursively and every file underneath will be processed. These files
+  will be rendered with Go's
   [text/template templating language](https://pkg.go.dev/text/template).
 
 #### Example:
