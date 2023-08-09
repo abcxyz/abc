@@ -57,7 +57,7 @@ func TestActionPrint(t *testing.T) {
 		},
 		{
 			name: "flags_in_message",
-			in:   "{{.flags.dest}} {{.flags.source}} {{.flags.spec}}",
+			in:   "{{.flags.dest}} {{.flags.source}}",
 			flags: RenderFlags{
 				Source:         "mysource",
 				Dest:           "mydest",
@@ -65,9 +65,8 @@ func TestActionPrint(t *testing.T) {
 				LogLevel:       "myloglevel",
 				ForceOverwrite: true,
 				KeepTempDirs:   true,
-				Spec:           "myspec",
 			},
-			want: "mydest mysource myspec\n",
+			want: "mydest mysource\n",
 		},
 	}
 

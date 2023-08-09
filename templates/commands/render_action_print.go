@@ -51,6 +51,5 @@ func flagsForTemplate(r *RenderFlags) map[string]any {
 	return map[string]any{
 		"dest":   r.Dest,
 		"source": r.Source,
-		"spec":   r.Spec,
 	}
 }
