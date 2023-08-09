@@ -57,24 +57,12 @@ type RenderFlags struct {
 	// This can be useful for debugging a failing template.
 	KeepTempDirs bool
 
-	// Spec is the relative path within the template of the YAML file that
-	// specifies how the template is rendered. This will often be just
-	// "spec.yaml".
-	Spec string
-
 	// Whether to prompt the user for template inputs.
 	Prompt bool
 }
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
 	f := set.NewSection("RENDER OPTIONS")
-	f.StringVar(&cli.StringVar{
-		Name:    "spec",
-		Example: "path/to/spec.yaml",
-		Target:  &r.Spec,
-		Default: "./spec.yaml",
-		Usage:   "The path of the .yaml file within the unpacked template directory that specifies how the template is rendered.",
-	})
 
 	f.StringVar(&cli.StringVar{
 		Name:    "dest",
@@ -165,6 +153,5 @@ func (r *RenderFlags) DeepCopy() *RenderFlags {
 		LogLevel:       r.LogLevel,
 		Prompt:         r.Prompt,
 		Source:         r.Source,
-		Spec:           r.Spec,
 	}
 }

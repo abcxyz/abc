@@ -52,6 +52,9 @@ const (
 
 	defaultLogLevel = "warn"
 	defaultLogMode  = "dev"
+
+	// The spec file is always located in the template root dir and named spec.yaml.
+	specName = "spec.yaml"
 )
 
 type RenderCommand struct {
@@ -229,12 +232,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 		return err
 	}
 
-	safeSpecPath, err := safeRelPath(nil, c.flags.Spec)
-	if err != nil {
-		return fmt.Errorf("invalid --spec path %q: %w", c.flags.Spec, err)
-	}
-
-	spec, err := loadSpecFile(rp.fs, templateDir, safeSpecPath)
+	spec, err := loadSpecFile(rp.fs, templateDir, specName)
 	if err != nil {
 		return err
 	}
