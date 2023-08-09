@@ -238,6 +238,20 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "spec_yaml_should_be_skipped_even_with_dot_slash",
+			include: &model.Include{
+				Paths: modelStrings([]string{"."}),
+			},
+			flagSpec: "./spec.yaml",
+			templateContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "my file contents"},
+				"spec.yaml": {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "my file contents"},
+			},
+		},
+		{
 			name: "spec_yaml_in_subdir_should_not_be_skipped",
 			include: &model.Include{
 				Paths: modelStrings([]string{"."}),
