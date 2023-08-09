@@ -11,13 +11,27 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+import {useState, useEffect} from 'react';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid';
 
 const logo = require('./img/bets-platform-logo.png');
 
 const App = () => {
+  const [message, setMessage] = useState('Waiting response...');
+  useEffect(() => {
+    fetch('[backend_url]', {
+      method: 'GET',
+    })
+      .then(response => response.json())
+      .then(data => {
+        setMessage(data.message);
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  }, []);
+
   return (
     <Grid
       container
@@ -31,7 +45,7 @@ const App = () => {
       <Grid item xs={3}>
         <img src={logo} alt="bets-platform" height={200} />
         <Typography variant="h4" textAlign="center">
-          Hello World
+          {message}
         </Typography>
       </Grid>
     </Grid>

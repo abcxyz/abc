@@ -38,8 +38,12 @@ import (
 type walkAndModifyVisitor func([]byte) ([]byte, error)
 
 // Recursively traverses the directory or file scratchDir/relPath, calling the
-// given visitor for each file. If the visitor returns modified file contents
-// for a given file, that file will be overwritten with the new contents.
+// given visitor for each file. If relPath is a single file, then the visitor
+// will be called for just that one file. If relPath is a directory, then the
+// visitor will be called for all files under that directory, recursively.
+//
+// If the visitor returns modified file contents for a given file, that file
+// will be overwritten with the new contents.
 func walkAndModify(ctx context.Context, pos *model.ConfigPos, rfs renderFS, scratchDir, relPath string, v walkAndModifyVisitor) error {
 	logger := logging.FromContext(ctx).Named("walkAndModify")
 

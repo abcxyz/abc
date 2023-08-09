@@ -14,14 +14,55 @@
 
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
-
-desc:
-  'An example template using React library'
+desc: 'An example template using React library'
+inputs:
+  - name: 'automation_service_account'
+    desc: 'Automation Service Account (ex: [account_name]@[project_id].iam.gserviceaccount.com)'
+  - name: 'wif_provider'
+    desc: 'Workload Identity Federation Provider (ex: projects/[project_id]/locations/global/workloadIdentityPools/[WIF_pool_name]/providers/[provider_name])'
+  - name: 'ar_repository'
+    desc: 'Artifact Registry Repository (ex: ci-images)'
+  - name: 'ar_location'
+    desc: 'Artifact Registry Location (ex: us-docker.pkg.dev)'
+  - name: 'cr_service'
+    desc: 'Cloud Run Service (ex: hello-jupiter-api)'
+  - name: 'region'
+    desc: 'Cloud Run Region (ex: us-west1)'
+  - name: 'project_id'
+    desc: 'GCP Project ID'
+  - name: 'backend_url'
+    desc: 'Cloud Run backend API URL'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['.']
+  - desc: 'Replace sentinel values with real input values'
+    action: 'string_replace'
+    params:
+      paths: ['.github/config']
+      replacements:
+        - to_replace: 'AUTOMATION_SERVICE_ACCOUNT=[automation_service_account]'
+          with: 'AUTOMATION_SERVICE_ACCOUNT={{.automation_service_account}}'
+        - to_replace: 'WIF_PROVIDER=[wif_provider]'
+          with: 'WIF_PROVIDER={{.wif_provider}}'
+        - to_replace: 'AR_REPOSITORY=[ar_repository]'
+          with: 'AR_REPOSITORY={{.ar_repository}}'
+        - to_replace: 'AR_LOCATION=[ar_location]'
+          with: 'AR_LOCATION={{.ar_location}}'
+        - to_replace: 'CR_SERVICE=[cr_service]'
+          with: 'CR_SERVICE={{.cr_service}}'
+        - to_replace: 'REGION=[region]'
+          with: 'REGION={{.region}}'
+        - to_replace: 'PROJECT_ID=[project_id]'
+          with: 'PROJECT_ID={{.project_id}}'
+  - desc: 'Render template with input variables'
+    action: 'string_replace'
+    params:
+      paths: ['src/App.tsx']
+      replacements:
+        - to_replace: '[backend_url]'
+          with: '{{.backend_url}}'
   - desc: 'Print user instructions'
     action: 'print'
     params:
