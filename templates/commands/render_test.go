@@ -70,7 +70,6 @@ func TestRenderFlags_Parse(t *testing.T) {
 		{
 			name: "all_flags_present",
 			args: []string{
-				"--spec", "my_spec.yaml",
 				"--dest", "my_dir",
 				"--git-protocol", "https",
 				"--input", "x=y",
@@ -81,7 +80,6 @@ func TestRenderFlags_Parse(t *testing.T) {
 			},
 			want: RenderFlags{
 				Source:         "helloworld@v1",
-				Spec:           "my_spec.yaml",
 				Dest:           "my_dir",
 				GitProtocol:    "https",
 				Inputs:         map[string]string{"x": "y"},
@@ -97,7 +95,6 @@ func TestRenderFlags_Parse(t *testing.T) {
 			},
 			want: RenderFlags{
 				Source:         "helloworld@v1",
-				Spec:           "./spec.yaml",
 				Dest:           ".",
 				GitProtocol:    "https",
 				Inputs:         map[string]string{},
@@ -220,7 +217,6 @@ steps:
 		existingDestContents map[string]string
 		flagInputs           map[string]string
 		flagKeepTempDirs     bool
-		flagSpec             string
 		flagForceOverwrite   bool
 		getterErr            error
 		removeAllErr         error
@@ -262,7 +258,6 @@ steps:
 				"defaulted_input": "default",
 			},
 			flagKeepTempDirs: true,
-			flagSpec:         "spec.yaml",
 			templateContents: map[string]string{
 				"spec.yaml":            specContents,
 				"file1.txt":            "my favorite color is blue",
@@ -295,7 +290,6 @@ steps:
 				"defaulted_input": "default",
 			},
 			flagKeepTempDirs: true,
-			flagSpec:         "spec.yaml",
 			templateContents: map[string]string{
 				"spec.yaml": "this is an unparseable YAML file *&^#%$",
 			},
@@ -548,7 +542,6 @@ steps:
 					ForceOverwrite: tc.flagForceOverwrite,
 					Inputs:         tc.flagInputs,
 					KeepTempDirs:   tc.flagKeepTempDirs,
-					Spec:           "spec.yaml",
 					Source:         "github.com/myorg/myrepo",
 				},
 			}

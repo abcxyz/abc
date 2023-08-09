@@ -11,17 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+import {useState, useEffect} from 'react';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid';
-import {useEffect, useState} from 'react';
 
 const logo = require('./img/bets-platform-logo.png');
 
 const App = () => {
   const [message, setMessage] = useState('Waiting response...');
   useEffect(() => {
-    fetch('https://rest-server-demo-5nsxs6u22q-uw.a.run.app/', {
+    fetch('[backend_url]', {
       method: 'GET',
     })
       .then(response => response.json())
