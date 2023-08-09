@@ -100,6 +100,18 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "including_multiple_times_should_succeed",
+			include: &model.Include{
+				Paths: modelStrings([]string{"foo/myfile.txt", "foo/", "foo/myfile.txt"}),
+			},
+			templateContents: map[string]modeAndContents{
+				"foo/myfile.txt": {0o600, "my file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"foo/myfile.txt": {0o600, "my file contents"},
+			},
+		},
+		{
 			name: "templated_filename_nonexistent_input_var_should_fail",
 			include: &model.Include{
 				Paths: modelStrings([]string{"{{.filename}}"}),

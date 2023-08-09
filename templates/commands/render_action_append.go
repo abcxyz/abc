@@ -33,17 +33,20 @@ func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
 		}
 	}
 
+	paths := make([]model.String, 0, len(ap.Paths))
+
 	for _, p := range ap.Paths {
 		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
 		if err != nil {
 			return err
 		}
+		paths = append(paths, model.String{Pos: p.Pos, Val: path})
+	}
 
-		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, path, func(buf []byte) ([]byte, error) {
-			return append(buf, []byte(with)...), nil
-		}); err != nil {
-			return err
-		}
+	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(buf []byte) ([]byte, error) {
+		return append(buf, []byte(with)...), nil
+	}); err != nil {
+		return err
 	}
 
 	return nil

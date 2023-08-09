@@ -42,24 +42,21 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 		return err
 	}
 
-	for _, p := range rn.Paths {
-		if err := walkAndModify(ctx, p.Pos, sp.fs, sp.scratchDir, p.Val, func(b []byte) ([]byte, error) {
-			for i, rn := range rn.Replacements {
-				cr := compiledRegexes[i]
-				allMatches := cr.FindAllSubmatchIndex(b, -1)
+	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, rn.Paths, func(b []byte) ([]byte, error) {
+		for i, rn := range rn.Replacements {
+			cr := compiledRegexes[i]
+			allMatches := cr.FindAllSubmatchIndex(b, -1)
 
-				var err error
-				b, err = replaceWithNameLookup(allMatches, b, rn, cr, sp.inputs)
-				if err != nil {
-					return nil, err
-				}
+			var err error
+			b, err = replaceWithNameLookup(allMatches, b, rn, cr, sp.inputs)
+			if err != nil {
+				return nil, err
 			}
-			return b, nil
-		}); err != nil {
-			return err
 		}
+		return b, nil
+	}); err != nil {
+		return err
 	}
-
 	return nil
 }
 

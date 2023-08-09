@@ -55,6 +55,26 @@ func TestActionRegexNameLookup(t *testing.T) {
 			},
 		},
 		{
+			name: "same_file_only_processed_once",
+			initContents: map[string]string{
+				"a.txt": "alpha foo gamma delta",
+			},
+			inputs: map[string]string{
+				"my_input": "foofoo",
+			},
+			rr: &model.RegexNameLookup{
+				Paths: modelStrings([]string{"."}),
+				Replacements: []*model.RegexNameLookupEntry{
+					{
+						Regex: model.String{Val: `(?P<my_input>foo)`},
+					},
+				},
+			},
+			want: map[string]string{
+				"a.txt": "alpha foofoo gamma delta",
+			},
+		},
+		{
 			name: "missing_template_variable_should_fail",
 			initContents: map[string]string{
 				"a.txt": "alpha beta gamma",
