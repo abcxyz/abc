@@ -399,35 +399,26 @@ func (c *RenderCommand) promptForInputs(ctx context.Context, spec *model.Spec) e
 				defaultStr = `""`
 			}
 			fmt.Fprintf(tw, "\nDefault:\t%s", defaultStr)
-			tw.Flush()
-
-			// Design note: we can't treat "empty string" as meaning "use
-			// the default value" because empty string is a legitimate input
-			// value.
-
-			fmt.Fprintf(sb, "\n\nAccept the (d)efault or (p)rovide your own value? (d/p): ")
-			got, err := c.Prompt(ctx, sb.String())
-			if err != nil {
-				return err //nolint:wrapcheck
-			}
-			switch got {
-			case "d":
-				c.flags.Inputs[i.Name.Val] = i.Default.Val
-				continue
-			case "p":
-				break
-			default:
-				return fmt.Errorf("invalid input choice %q", got)
-			}
 		}
+
 		tw.Flush()
 
-		fmt.Fprintf(sb, "\n\nEnter value: ")
-		got, err := c.Prompt(ctx, sb.String())
+		if i.Default != nil {
+			fmt.Fprintf(sb, "\n\nEnter value, or leave empty to accept default: ")
+		} else {
+			fmt.Fprintf(sb, "\n\nEnter value: ")
+		}
+
+		inputVal, err := c.Prompt(ctx, sb.String())
 		if err != nil {
 			return fmt.Errorf("failed to prompt for user input: %w", err)
 		}
-		c.flags.Inputs[i.Name.Val] = got
+
+		if inputVal == "" && i.Default != nil {
+			inputVal = i.Default.Val
+		}
+
+		c.flags.Inputs[i.Name.Val] = inputVal
 	}
 	return nil
 }

@@ -775,7 +775,7 @@ Enter value: `,
 			},
 		},
 		{
-			name: "two_inputs_one_provided_one_prompt",
+			name: "two_inputs_of_which_one_is_provided_and_one_prompted",
 			inputs: []*model.Input{
 				{
 					Name: model.String{Val: "animal"},
@@ -824,8 +824,8 @@ Input name:   animal
 Description:  your favorite animal
 Default:      shark
 
-Accept the (d)efault or (p)rovide your own value? (d/p): `,
-					thenRespond: "d\n",
+Enter value, or leave empty to accept default: `,
+					thenRespond: "\n",
 				},
 			},
 			want: map[string]string{
@@ -848,12 +848,8 @@ Input name:   animal
 Description:  your favorite animal
 Default:      shark
 
-Accept the (d)efault or (p)rovide your own value? (d/p): `,
-					thenRespond: "p\n",
-				},
-				{
-					waitForPrompt: "Enter value: ",
-					thenRespond:   "alligator\n",
+Enter value, or leave empty to accept default: `,
+					thenRespond: "alligator\n",
 				},
 			},
 			want: map[string]string{
@@ -876,35 +872,13 @@ Input name:   animal
 Description:  your favorite animal
 Default:      ""
 
-Accept the (d)efault or (p)rovide your own value? (d/p): `,
-					thenRespond: "d\n",
+Enter value, or leave empty to accept default: `,
+					thenRespond: "\n",
 				},
 			},
 			want: map[string]string{
 				"animal": "",
 			},
-		},
-		{
-			name: "invalid_choice_should_error",
-			inputs: []*model.Input{
-				{
-					Name:    model.String{Val: "animal"},
-					Desc:    model.String{Val: "your favorite animal"},
-					Default: &model.String{Val: "frog"},
-				},
-			},
-			dialog: []dialogStep{
-				{
-					waitForPrompt: `
-Input name:   animal
-Description:  your favorite animal
-Default:      frog
-
-Accept the (d)efault or (p)rovide your own value? (d/p): `,
-					thenRespond: "lololololol\n",
-				},
-			},
-			wantErr: "invalid input choice",
 		},
 	}
 
