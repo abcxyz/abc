@@ -306,7 +306,7 @@ type Include struct {
 	Pos *ConfigPos `yaml:"-"`
 
 	Paths       []String `yaml:"paths"`
-	From        String
+	From        String   `yaml:"from"`
 	As          []String `yaml:"as"`
 	StripPrefix String   `yaml:"strip_prefix"`
 	AddPrefix   String   `yaml:"add_prefix"`
