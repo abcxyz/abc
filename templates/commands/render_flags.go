@@ -126,7 +126,8 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Usage: "Prompt the user for template inputs that weren't provided as flags.",
 	})
 
-	f.BoolVar(&cli.BoolVar{
+	t := set.NewSection("TEMPLATE AUTHORS")
+	t.BoolVar(&cli.BoolVar{
 		Name:    "debug-scratch-contents",
 		Target:  &r.DebugScratchContents,
 		Default: false,
