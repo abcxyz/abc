@@ -63,9 +63,8 @@ Examples of template locations:
   files are staged during transformations before being written to the output
   directory. Use `--log-level` verbosity of `info` or higher to see the
   locations of the directories.
-- `--no-prompt`: normally, the user will be prompted for inputs that are needed
-  by the template but are not supplied by `--inputs`. This flag will skip such
-  prompting and just fail if there are any missing inputs.
+- `--prompt`: the user will be prompted for inputs that are needed by the
+  template but are not supplied by `--inputs`.
 
 #### Logging
 

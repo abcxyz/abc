@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
@@ -33,6 +35,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/go-getter/v2"
+	"golang.org/x/exp/maps"
 )
 
 // cmpFileMode is a cmp option that handles the conflict between Unix and
@@ -413,7 +416,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantErr: `missing required input(s): emoji_suffix, name_to_greet`,
+			wantErr: `missing input(s): emoji_suffix, name_to_greet`,
 		},
 		{
 			name: "plain_destination_include",
@@ -680,6 +683,373 @@ func TestSafeRelPath(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestPromptForInputs(t *testing.T) {
+	t.Parallel()
+
+	type dialogStep struct {
+		waitForPrompt string
+		thenRespond   string // should end with newline
+	}
+	cases := []struct {
+		name          string
+		inputs        []*model.Input
+		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
+		dialog        []dialogStep
+		want          map[string]string
+		wantErr       string
+	}{
+		{
+			name: "single_input_prompt",
+			inputs: []*model.Input{
+				{
+					Name: model.String{Val: "animal"},
+					Desc: model.String{Val: "your favorite animal"},
+				},
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   animal
+Description:  your favorite animal
+
+Enter value: `,
+					thenRespond: "alligator\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "alligator",
+			},
+		},
+		{
+			name: "multiple_input_prompts",
+			inputs: []*model.Input{
+				{
+					Name: model.String{Val: "animal"},
+					Desc: model.String{Val: "your favorite animal"},
+				},
+				{
+					Name: model.String{Val: "car"},
+					Desc: model.String{Val: "your favorite car"},
+				},
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   animal
+Description:  your favorite animal
+
+Enter value: `,
+					thenRespond: "alligator\n",
+				},
+				{
+					waitForPrompt: `
+Input name:   car
+Description:  your favorite car
+
+Enter value: `,
+					thenRespond: "Ford Bronco 🐎\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "alligator",
+				"car":    "Ford Bronco 🐎",
+			},
+		},
+		{
+			name: "single_input_should_not_be_prompted_if_provided_by_command_line_flags",
+			inputs: []*model.Input{
+				{
+					Name: model.String{Val: "animal"},
+					Desc: model.String{Val: "your favorite animal"},
+				},
+			},
+			flagInputVals: map[string]string{
+				"animal": "alligator",
+			},
+			dialog: nil,
+			want: map[string]string{
+				"animal": "alligator",
+			},
+		},
+		{
+			name: "two_inputs_of_which_one_is_provided_and_one_prompted",
+			inputs: []*model.Input{
+				{
+					Name: model.String{Val: "animal"},
+					Desc: model.String{Val: "your favorite animal"},
+				},
+				{
+					Name: model.String{Val: "car"},
+					Desc: model.String{Val: "your favorite car"},
+				},
+			},
+			flagInputVals: map[string]string{
+				"animal": "duck",
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   car
+Description:  your favorite car
+
+Enter value: `,
+					thenRespond: "Peugeot\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "duck",
+				"car":    "Peugeot",
+			},
+		},
+		{
+			name:   "template_has_no_inputs",
+			inputs: []*model.Input{},
+		},
+		{
+			name: "single_input_with_default_accepted",
+			inputs: []*model.Input{
+				{
+					Name:    model.String{Val: "animal"},
+					Desc:    model.String{Val: "your favorite animal"},
+					Default: &model.String{Val: "shark"},
+				},
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   animal
+Description:  your favorite animal
+Default:      shark
+
+Enter value, or leave empty to accept default: `,
+					thenRespond: "\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "shark",
+			},
+		},
+		{
+			name: "single_input_with_default_not_accepted",
+			inputs: []*model.Input{
+				{
+					Name:    model.String{Val: "animal"},
+					Desc:    model.String{Val: "your favorite animal"},
+					Default: &model.String{Val: "shark"},
+				},
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   animal
+Description:  your favorite animal
+Default:      shark
+
+Enter value, or leave empty to accept default: `,
+					thenRespond: "alligator\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "alligator",
+			},
+		},
+		{
+			name: "default_empty_string_should_be_printed_quoted",
+			inputs: []*model.Input{
+				{
+					Name:    model.String{Val: "animal"},
+					Desc:    model.String{Val: "your favorite animal"},
+					Default: &model.String{Val: ""},
+				},
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   animal
+Description:  your favorite animal
+Default:      ""
+
+Enter value, or leave empty to accept default: `,
+					thenRespond: "\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			flagInputVals := map[string]string{}
+			if tc.flagInputVals != nil {
+				flagInputVals = maps.Clone(tc.flagInputVals)
+			}
+
+			cmd := &RenderCommand{
+				flags: RenderFlags{
+					Inputs: flagInputVals,
+				},
+			}
+
+			stdinReader, stdinWriter := io.Pipe()
+			stdoutReader, stdoutWriter := io.Pipe()
+			_, stderrWriter := io.Pipe()
+
+			cmd.SetStdin(stdinReader)
+			cmd.SetStdout(stdoutWriter)
+			cmd.SetStderr(stderrWriter)
+
+			ctx := context.Background()
+			errCh := make(chan error)
+			go func() {
+				defer close(errCh)
+				errCh <- cmd.promptForInputs(ctx, &model.Spec{
+					Inputs: tc.inputs,
+				})
+			}()
+
+			for _, ds := range tc.dialog {
+				readWithTimeout(t, stdoutReader, ds.waitForPrompt)
+				writeWithTimeout(t, stdinWriter, ds.thenRespond)
+			}
+
+			select {
+			case err := <-errCh:
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("timed out waiting for background goroutine to finish")
+			}
+			if diff := cmp.Diff(cmd.flags.Inputs, tc.want, cmpopts.EquateEmpty()); diff != "" {
+				t.Fatalf("input values were different than expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestPromptForInputs_CanceledContext(t *testing.T) {
+	t.Parallel()
+
+	cmd := &RenderCommand{
+		flags: RenderFlags{
+			Inputs: map[string]string{},
+		},
+	}
+
+	stdinReader, _ := io.Pipe()
+	stdoutReader, stdoutWriter := io.Pipe()
+	_, stderrWriter := io.Pipe()
+
+	cmd.SetStdin(stdinReader)
+	cmd.SetStdout(stdoutWriter)
+	cmd.SetStderr(stderrWriter)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error)
+	go func() {
+		defer close(errCh)
+		errCh <- cmd.promptForInputs(ctx, &model.Spec{
+			Inputs: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+				},
+			},
+		})
+	}()
+
+	go func() {
+		for {
+			// Read and discard prompt printed to the user.
+			if _, err := stdoutReader.Read(make([]byte, 1024)); err != nil {
+				return
+			}
+		}
+	}()
+
+	cancel()
+	var err error
+	select {
+	case err = <-errCh:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the background goroutine to finish")
+	}
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("got an error %v, want context.Canceled", err)
+	}
+
+	stdoutWriter.Close() // terminate the background goroutine blocking on stdoutReader.Read()
+}
+
+// readWithTimeout does a single read from the given reader. It calls Fatal if
+// that read fails or the returned string doesn't contain wantSubStr. May leak a
+// goroutine on timeout.
+func readWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
+	tb.Helper()
+
+	tb.Logf("readWith starting with %q", wantSubstr)
+
+	var got string
+	errCh := make(chan error)
+	go func() {
+		defer close(errCh)
+		buf := make([]byte, 64*1_000)
+		tb.Log("to Read")
+		n, err := r.Read(buf)
+		tb.Log("from Read")
+		if err != nil {
+			errCh <- err
+			return
+		}
+		got = string(buf[:n])
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			tb.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		tb.Fatalf("timed out waiting to read %q", wantSubstr)
+	}
+
+	if !strings.Contains(got, wantSubstr) {
+		tb.Fatalf("got a prompt %q, but wanted a prompt containing %q", got, wantSubstr)
+	}
+}
+
+// writeWithTimeout does a single write to the given writer. It calls Fatal
+// if that read doesn't contain wantSubStr. May leak a goroutine on timeout.
+func writeWithTimeout(tb testing.TB, w io.Writer, msg string) {
+	tb.Helper()
+
+	tb.Logf("writeWithTimeout starting with %q", msg)
+
+	errCh := make(chan error)
+	go func() {
+		defer close(errCh)
+		tb.Log("to Write")
+		_, err := w.Write([]byte(msg))
+		tb.Log("from Write")
+		errCh <- err
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			tb.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		tb.Fatalf("timed out waiting to write %q", msg)
 	}
 }
 

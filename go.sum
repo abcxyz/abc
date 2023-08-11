@@ -1,5 +1,5 @@
-github.com/abcxyz/pkg v0.6.0 h1:7PAptxYBJogvRZVavNUtebHuQcwmaVLsHTNKBN2c1B4=
-github.com/abcxyz/pkg v0.6.0/go.mod h1:o77xCBUAbROyUSLlqjSstEWCzMtJj7MOenc2d8hXQAQ=
+github.com/abcxyz/pkg v0.6.1-0.20230804153849-6d2123cfd90a h1:neenr6kgJFbQ5oyVX4aRdQ85jEZPU5Ej76fTQYSz17A=
+github.com/abcxyz/pkg v0.6.1-0.20230804153849-6d2123cfd90a/go.mod h1:8avl7V9M3hafYjEFftb/c3eDlzgO6x6d4qzWv2uLyIY=
 github.com/benbjohnson/clock v1.3.5 h1:VvXlSJBzZpA/zum6Sj74hxwYI2DIxRWuNIoXAzHZz5o=
 github.com/benbjohnson/clock v1.3.5/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d h1:xDfNPAt8lFiC1UJrqV3uuy861HCTo708pDMbjHHdCas=

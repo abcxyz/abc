@@ -29,12 +29,14 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
+	"github.com/mattn/go-isatty"
 )
 
 const (
@@ -236,14 +238,8 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 		return err
 	}
 
-	if unknownInputs := c.checkUnknownInputs(spec); len(unknownInputs) > 0 {
-		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
-	}
-
-	c.collapseDefaultInputs(spec)
-
-	if requiredInputs := c.checkRequiredInputs(spec); len(requiredInputs) > 0 {
-		return fmt.Errorf("missing required input(s): %s", strings.Join(requiredInputs, ", "))
+	if err := c.resolveInputs(ctx, spec); err != nil {
+		return err
 	}
 
 	scratchDir, err := rp.tempDirNamer(scratchDirNamePart)
@@ -354,6 +350,80 @@ func (c *RenderCommand) checkUnknownInputs(spec *model.Spec) []string {
 	return unknownInputs
 }
 
+// resolveInputs combines flags, user prompts, and defaults to get the full set
+// of template inputs.
+func (c *RenderCommand) resolveInputs(ctx context.Context, spec *model.Spec) error {
+	if unknownInputs := c.checkUnknownInputs(spec); len(unknownInputs) > 0 {
+		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+	}
+
+	if c.flags.Prompt {
+		isATTY := (c.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
+		if !isATTY {
+			return fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
+		}
+
+		if err := c.promptForInputs(ctx, spec); err != nil {
+			return err
+		}
+	} else {
+		c.collapseDefaultInputs(spec)
+		if missing := c.checkInputsMissing(spec); len(missing) > 0 {
+			return fmt.Errorf("missing input(s): %s", strings.Join(missing, ", "))
+		}
+	}
+
+	return nil
+}
+
+// promptForInputs looks for template inputs that were not provided on the
+// command line and prompts the user for them. This mutates c.flags.Inputs.
+//
+// This must only be called when the user specified --prompt and the input is a
+// terminal (or in a test).
+func (c *RenderCommand) promptForInputs(ctx context.Context, spec *model.Spec) error {
+	for _, i := range spec.Inputs {
+		if _, ok := c.flags.Inputs[i.Name.Val]; ok {
+			// Don't prompt if the cmdline had an --input for this key.
+			continue
+		}
+		sb := &strings.Builder{}
+		tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
+		fmt.Fprintf(tw, "\nInput name:\t%s", i.Name.Val)
+		fmt.Fprintf(tw, "\nDescription:\t%s", i.Desc.Val)
+
+		if i.Default != nil {
+			defaultStr := i.Default.Val
+			if defaultStr == "" {
+				// When empty string is the default, print it differently so
+				// the user can actually see what's happening.
+				defaultStr = `""`
+			}
+			fmt.Fprintf(tw, "\nDefault:\t%s", defaultStr)
+		}
+
+		tw.Flush()
+
+		if i.Default != nil {
+			fmt.Fprintf(sb, "\n\nEnter value, or leave empty to accept default: ")
+		} else {
+			fmt.Fprintf(sb, "\n\nEnter value: ")
+		}
+
+		inputVal, err := c.Prompt(ctx, sb.String())
+		if err != nil {
+			return fmt.Errorf("failed to prompt for user input: %w", err)
+		}
+
+		if inputVal == "" && i.Default != nil {
+			inputVal = i.Default.Val
+		}
+
+		c.flags.Inputs[i.Name.Val] = inputVal
+	}
+	return nil
+}
+
 // collapseDefaultInputs defaults any missing input flags if default is set.
 func (c *RenderCommand) collapseDefaultInputs(spec *model.Spec) {
 	if c.flags.Inputs == nil {
@@ -366,19 +436,19 @@ func (c *RenderCommand) collapseDefaultInputs(spec *model.Spec) {
 	}
 }
 
-// checkRequiredInputs checks for missing input flags returns them as a slice.
-func (c *RenderCommand) checkRequiredInputs(spec *model.Spec) []string {
-	requiredInputs := make([]string, 0, len(c.flags.Inputs))
+// checkInputsMissing checks for missing input flags returns them as a slice.
+func (c *RenderCommand) checkInputsMissing(spec *model.Spec) []string {
+	missing := make([]string, 0, len(c.flags.Inputs))
 
 	for _, input := range spec.Inputs {
 		if _, ok := c.flags.Inputs[input.Name.Val]; !ok {
-			requiredInputs = append(requiredInputs, input.Name.Val)
+			missing = append(missing, input.Name.Val)
 		}
 	}
 
-	sort.Strings(requiredInputs)
+	sort.Strings(missing)
 
-	return requiredInputs
+	return missing
 }
 
 func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
