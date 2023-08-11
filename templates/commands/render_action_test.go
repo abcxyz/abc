@@ -476,6 +476,7 @@ func TestCopyRecursive(t *testing.T) {
 				"dir1/file2.txt":   {0o600, "file2 contents"},
 				"skip1.txt":        {0o600, "skip1.txt contents"},
 				"subdir/skip2.txt": {0o600, "skip2.txt contents"},
+				"z.txt":            {0o600, "z.txt contents"},
 			},
 			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
 				return copyHint{
@@ -485,6 +486,7 @@ func TestCopyRecursive(t *testing.T) {
 			want: map[string]modeAndContents{
 				"file1.txt":      {0o600, "file1 contents"},
 				"dir1/file2.txt": {0o600, "file2 contents"},
+				"z.txt":          {0o600, "z.txt contents"},
 			},
 		},
 		{
