@@ -304,8 +304,11 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		}
 
 		if ch.skip {
-			logger.Debugw("walkdir visitor skipped file", "path", relToSrc)
-			return fs.SkipDir
+			logger.Debugw("walkdir visitor skipped file or directory", "path", relToSrc)
+			if de.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 
 		if de.IsDir() {
