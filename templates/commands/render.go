@@ -454,13 +454,48 @@ func (c *RenderCommand) checkInputsMissing(spec *model.Spec) []string {
 func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
 	logger := logging.FromContext(ctx).Named("executeSpec")
 
-	for _, step := range spec.Steps {
+	for i, step := range spec.Steps {
 		if err := executeOneStep(ctx, step, sp); err != nil {
 			return err
 		}
 		logger.Debugw("completed template action", "action", step.Action.Val)
+		if sp.flags.DebugScratchContents {
+			contents, err := scratchContents(ctx, i, step, sp)
+			if err != nil {
+				return err
+			}
+			logger.Info(contents)
+		}
 	}
 	return nil
+}
+
+func scratchContents(ctx context.Context, stepIdx int, step *model.Step, sp *stepParams) (string, error) {
+	sb := &strings.Builder{}
+	fmt.Fprintf(sb, "Scratch dir contents after step %d (starting from 0), which is action type %q, defined at spec file line %d:\n",
+		stepIdx, step.Action.Val, step.Action.Pos.Line)
+	err := filepath.WalkDir(sp.scratchDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err // some filesystem error happened
+		}
+		if d.IsDir() {
+			// it's not possible to have an empty directory in the
+			// scratch directory, and directory names will be shown as
+			// part of filenames, so we don't show plain directory
+			// names. Like in Git.
+			return nil
+		}
+		rel, err := filepath.Rel(sp.scratchDir, path)
+		if err != nil {
+			return fmt.Errorf("filepath.Rel(): %w", err)
+		}
+		fmt.Fprintf(sb, "  %s\n", rel)
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("error crawling scratch directory: %w", err)
+	}
+	return sb.String(), nil
 }
 
 type stepParams struct {
