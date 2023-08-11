@@ -59,6 +59,10 @@ type RenderFlags struct {
 
 	// Whether to prompt the user for template inputs.
 	Prompt bool
+
+	// DebugScratchContents causes the contents of the scratch directory to be
+	// logged at level INFO after each step of the spec.yaml.
+	DebugScratchContents bool
 }
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
@@ -120,6 +124,13 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Default: false,
 
 		Usage: "Prompt the user for template inputs that weren't provided as flags.",
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "debug-scratch-contents",
+		Target:  &r.DebugScratchContents,
+		Default: false,
+		Usage:   "Print the contents of the scratch directory after each step; for debugging spec.yaml files",
 	})
 
 	g := set.NewSection("GIT OPTIONS")

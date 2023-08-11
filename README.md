@@ -43,6 +43,10 @@ Examples of template locations:
 
 #### Flags
 
+- `--debug-scratch-contents`: for template authors, not regular users. This will
+  print the contents of the scratch directory after executing each step of the
+  spec.yaml. Useful for debugging errors like
+  `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`
 - `--dest <output_dir>`: the directory on the local filesystem to write output
   to. Defaults to the current directory. If it doesn't exist, it will be
   created.
