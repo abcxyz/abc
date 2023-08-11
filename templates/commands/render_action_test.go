@@ -480,7 +480,7 @@ func TestCopyRecursive(t *testing.T) {
 			},
 			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
 				return copyHint{
-					skip: slices.Contains([]string{"skip1.txt", "subdir/skip2.txt"}, relPath),
+					skip: slices.Contains([]string{"skip1.txt", filepath.Join("subdir", "skip2.txt")}, relPath),
 				}, nil
 			},
 			want: map[string]modeAndContents{
