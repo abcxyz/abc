@@ -42,7 +42,16 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 		return err
 	}
 
-	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, rn.Paths, func(b []byte) ([]byte, error) {
+	paths := make([]model.String, 0, len(rn.Paths))
+	for _, p := range rn.Paths {
+		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, model.String{Pos: p.Pos, Val: path})
+	}
+
+	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(b []byte) ([]byte, error) {
 		for i, rn := range rn.Replacements {
 			cr := compiledRegexes[i]
 			allMatches := cr.FindAllSubmatchIndex(b, -1)
