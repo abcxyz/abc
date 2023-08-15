@@ -158,6 +158,27 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"b.txt": "alpha foo foo delta", //nolint:dupword
 			},
 		},
+		{
+			name: "templated_filename",
+			initContents: map[string]string{
+				"a.txt": "alpha beta gamma",
+			},
+			rr: &model.RegexNameLookup{
+				Paths: modelStrings([]string{"{{.filename}}"}),
+				Replacements: []*model.RegexNameLookupEntry{
+					{
+						Regex: model.String{Val: "(?P<cake>beta)"},
+					},
+				},
+			},
+			inputs: map[string]string{
+				"filename": "a.txt",
+				"cake":     "chocolate",
+			},
+			want: map[string]string{
+				"a.txt": "alpha chocolate gamma",
+			},
+		},
 	}
 
 	for _, tc := range cases {

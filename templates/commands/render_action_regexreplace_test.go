@@ -365,6 +365,27 @@ gamma`,
 				"b.txt": "sigma bar chi",
 			},
 		},
+		{
+			name: "templated_filename",
+			initContents: map[string]string{
+				"a.txt": "alpha foo gamma",
+			},
+			rr: &model.RegexReplace{
+				Paths: modelStrings([]string{"{{.filename}}"}),
+				Replacements: []*model.RegexReplaceEntry{
+					{
+						Regex: model.String{Val: "foo"},
+						With:  model.String{Val: "bar"},
+					},
+				},
+			},
+			inputs: map[string]string{
+				"filename": "a.txt",
+			},
+			want: map[string]string{
+				"a.txt": "alpha bar gamma",
+			},
+		},
 	}
 
 	for _, tc := range cases {
