@@ -26,7 +26,13 @@ var (
 
 	// Version is the main package version. This can be overridden by the build
 	// process.
-	Version = "source"
+	Version = func() string {
+		info, ok := debug.ReadBuildInfo()
+		if !ok {
+			return "source"
+		}
+		return info.Main.Version // e.g. "v0.0.1-alpha6.0.20230815191505-8628f8201363"
+	}()
 
 	// Commit is the git sha. This can be overridden by the build process.
 	Commit = func() string {
