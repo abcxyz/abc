@@ -24,10 +24,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Returns error if the given model's value is equal to the zero value for type T.
+func notZeroModel[T comparable](pos *ConfigPos, x valWithPos[T], fieldName string) error {
+	return notZero(pos, x.Val, fieldName)
+}
+
 // Returns error if the given value is equal to the zero value for type T.
-func notZero[T comparable](pos *ConfigPos, x valWithPos[T], fieldName string) error {
+func notZero[T comparable](pos *ConfigPos, t T, fieldName string) error {
 	var zero T
-	if x.Val == zero {
+	if t == zero {
 		return pos.AnnotateErr(fmt.Errorf("field %q is required", fieldName))
 	}
 	return nil
@@ -52,7 +57,7 @@ func isValidRegexGroupName(s String, fieldName string) error {
 	return nil
 }
 
-// Returns error of x.Val is not one of the given allowed choices.
+// Returns error if x.Val is not one of the given allowed choices.
 func oneOf[T comparable](pos *ConfigPos, x valWithPos[T], allowed []T, fieldName string) error {
 	if slices.Contains(allowed, x.Val) {
 		return nil
