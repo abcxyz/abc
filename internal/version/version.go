@@ -14,10 +14,7 @@
 
 package version
 
-import (
-	"runtime"
-	"runtime/debug"
-)
+import "github.com/abcxyz/pkg/buildinfo"
 
 var (
 	// Name is the name of the binary. This can be overridden by the build
@@ -26,28 +23,13 @@ var (
 
 	// Version is the main package version. This can be overridden by the build
 	// process.
-	Version = func() string {
-		info, ok := debug.ReadBuildInfo()
-		if !ok {
-			return "source"
-		}
-		return info.Main.Version // e.g. "v0.0.1-alpha6.0.20230815191505-8628f8201363"
-	}()
+	Version = buildinfo.Version()
 
 	// Commit is the git sha. This can be overridden by the build process.
-	Commit = func() string {
-		if info, ok := debug.ReadBuildInfo(); ok {
-			for _, setting := range info.Settings {
-				if setting.Key == "vcs.revision" {
-					return setting.Value
-				}
-			}
-		}
-		return "HEAD"
-	}()
+	Commit = buildinfo.Commit()
 
 	// OSArch is the operating system and architecture combination.
-	OSArch = runtime.GOOS + "/" + runtime.GOARCH
+	OSArch = buildinfo.OSArch()
 
 	// HumanVersion is the compiled version.
 	HumanVersion = Name + " " + Version + " (" + Commit + ", " + OSArch + ")"
