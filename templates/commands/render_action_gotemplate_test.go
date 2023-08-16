@@ -171,7 +171,7 @@ func TestActionGoTemplate(t *testing.T) {
 			ctx := context.Background()
 			sp := &stepParams{
 				fs:         &realFS{},
-				inputs:     tc.inputs,
+				scope:      newScope(tc.inputs),
 				scratchDir: scratchDir,
 			}
 			err := actionGoTemplate(ctx, tc.gt, sp)

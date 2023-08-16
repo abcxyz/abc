@@ -28,18 +28,18 @@ import (
 )
 
 func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) error {
-	stripPrefixStr, err := parseAndExecuteGoTmpl(inc.StripPrefix.Pos, inc.StripPrefix.Val, sp.inputs)
+	stripPrefixStr, err := parseAndExecuteGoTmpl(inc.StripPrefix.Pos, inc.StripPrefix.Val, sp.scope)
 	if err != nil {
 		return err
 	}
-	addPrefixStr, err := parseAndExecuteGoTmpl(inc.AddPrefix.Pos, inc.AddPrefix.Val, sp.inputs)
+	addPrefixStr, err := parseAndExecuteGoTmpl(inc.AddPrefix.Pos, inc.AddPrefix.Val, sp.scope)
 	if err != nil {
 		return err
 	}
 
 	skip := make(map[string]struct{}, len(inc.Skip))
 	for _, s := range inc.Skip {
-		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.inputs)
+		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.scope)
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 
 	for i, p := range inc.Paths {
 		// Paths may contain template expressions, so render them first.
-		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
+		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
 		if err != nil {
 			return err
 		}
@@ -63,7 +63,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 		//  - len(inc.As) == len(inc.Paths)
 		var as string
 		if len(inc.As) > 0 {
-			as, err = parseAndExecuteGoTmpl(inc.As[i].Pos, inc.As[i].Val, sp.inputs)
+			as, err = parseAndExecuteGoTmpl(inc.As[i].Pos, inc.As[i].Val, sp.scope)
 			if err != nil {
 				return err
 			}

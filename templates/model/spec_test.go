@@ -190,8 +190,8 @@ nonexistent_field: 'oops'`,
 		{
 			name: "reserved_input_name",
 			in: `desc: 'foo'
-name: 'flags'`,
-			wantValidateErr: "is reserved",
+name: '_name_with_leading_underscore'`,
+			wantValidateErr: "are reserved",
 		},
 	}
 

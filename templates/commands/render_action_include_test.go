@@ -356,7 +356,7 @@ func TestActionInclude(t *testing.T) {
 				},
 				scratchDir:  scratchDir,
 				templateDir: templateDir,
-				inputs:      tc.inputs,
+				scope:       newScope(tc.inputs),
 			}
 			err := actionInclude(ctx, tc.include, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

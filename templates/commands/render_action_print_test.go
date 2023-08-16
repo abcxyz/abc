@@ -57,7 +57,7 @@ func TestActionPrint(t *testing.T) {
 		},
 		{
 			name: "flags_in_message",
-			in:   "{{.flags.dest}} {{.flags.source}}",
+			in:   "{{._flag_dest}} {{._flag_source}}",
 			flags: RenderFlags{
 				Source:         "mysource",
 				Dest:           "mydest",
@@ -79,7 +79,7 @@ func TestActionPrint(t *testing.T) {
 			var outBuf bytes.Buffer
 			sp := &stepParams{
 				stdout: &outBuf,
-				inputs: tc.inputs,
+				scope:  newScope(tc.inputs),
 				flags:  &tc.flags,
 			}
 			pr := &model.Print{

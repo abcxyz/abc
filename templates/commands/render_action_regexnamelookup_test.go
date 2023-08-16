@@ -198,7 +198,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 			ctx := context.Background()
 			sp := &stepParams{
 				fs:         &realFS{},
-				inputs:     tc.inputs,
+				scope:      newScope(tc.inputs),
 				scratchDir: scratchDir,
 			}
 			err := actionRegexNameLookup(ctx, tc.rr, sp)

@@ -695,7 +695,7 @@ func TestParseAndExecute(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseAndExecuteGoTmpl(tc.pos, tc.tmpl, tc.inputs)
+			got, err := parseAndExecuteGoTmpl(tc.pos, tc.tmpl, newScope(tc.inputs))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
@@ -741,7 +741,7 @@ func TestTemplateFuncs(t *testing.T) {
 	cases := []struct {
 		name    string
 		tmpl    string
-		inputs  map[string]any
+		inputs  map[string]string
 		want    string
 		wantErr string
 	}{
@@ -767,10 +767,7 @@ func TestTemplateFuncs(t *testing.T) {
 		},
 		{
 			name: "sortStrings",
-			tmpl: `{{ .strings | sortStrings }}`,
-			inputs: map[string]any{
-				"strings": []string{"zebra", "car", "foo"},
-			},
+			tmpl: `{{ split "zebra,car,foo" "," | sortStrings }}`,
 			want: "[car foo zebra]",
 		},
 		{
@@ -840,7 +837,7 @@ func TestTemplateFuncs(t *testing.T) {
 				Line: 1,
 			}
 
-			got, err := parseAndExecuteGoTmpl(pos, tc.tmpl, tc.inputs)
+			got, err := parseAndExecuteGoTmpl(pos, tc.tmpl, newScope(map[string]string{}))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

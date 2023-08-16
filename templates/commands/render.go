@@ -256,7 +256,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 	sp := &stepParams{
 		flags:       &c.flags,
 		fs:          rp.fs,
-		inputs:      c.flags.Inputs,
+		scope:       newScope(c.flags.Inputs),
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
@@ -502,11 +502,10 @@ type stepParams struct {
 	flags *RenderFlags
 	fs    renderFS
 
-	// inputs are the template values to plug in, provided by the user. Why is
-	// this separate from flags.inputs? Because these are the processed form,
-	// which includes defaults, and may include other sources like env vars and
-	// file inputs in the future.
-	inputs map[string]string
+	// Scope contains all variable names that are in scope. This includes
+	// user-provided inputs, as well as any programmatically created variables
+	// like for_each keys.
+	scope *scope
 
 	scratchDir  string
 	stdout      io.Writer
