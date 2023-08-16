@@ -113,7 +113,7 @@ func (s *Spec) Validate() error {
 	return errors.Join(
 		oneOf(s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
 		oneOf(s.Pos, s.Kind, []string{"Template"}, "kind"),
-		notZero(s.Pos, s.Desc, "desc"),
+		notZeroModel(s.Pos, s.Desc, "desc"),
 		nonEmptySlice(s.Pos, s.Steps, "steps"),
 		validateEach(s.Inputs),
 		validateEach(s.Steps),
@@ -159,8 +159,8 @@ func (i *Input) Validate() error {
 	}
 
 	return errors.Join(
-		notZero(i.Pos, i.Name, "name"),
-		notZero(i.Pos, i.Desc, "desc"),
+		notZeroModel(i.Pos, i.Name, "name"),
+		notZeroModel(i.Pos, i.Desc, "desc"),
 		reservedNameErr,
 	)
 }
@@ -175,6 +175,7 @@ type Step struct {
 
 	// Each action type has a field below. Only one of these will be set.
 	Append          *Append          `yaml:"-"`
+	ForEach         *ForEach         `yaml:"-"`
 	GoTemplate      *GoTemplate      `yaml:"-"`
 	Include         *Include         `yaml:"-"`
 	Print           *Print           `yaml:"-"`
@@ -203,34 +204,38 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 	// on the value of "action".
 	var unmarshalInto any
 	switch s.Action.Val {
-	case "print":
-		s.Print = new(Print)
-		unmarshalInto = s.Print
-		s.Print.Pos = s.Pos // Set an approximate position in case yaml unmarshaling fails later
-	case "include":
-		s.Include = new(Include)
-		unmarshalInto = s.Include
-		s.Include.Pos = s.Pos
-	case "regex_replace":
-		s.RegexReplace = new(RegexReplace)
-		unmarshalInto = s.RegexReplace
-		s.RegexReplace.Pos = s.Pos
-	case "regex_name_lookup":
-		s.RegexNameLookup = new(RegexNameLookup)
-		unmarshalInto = s.RegexNameLookup
-		s.RegexNameLookup.Pos = s.Pos
-	case "string_replace":
-		s.StringReplace = new(StringReplace)
-		unmarshalInto = s.StringReplace
-		s.StringReplace.Pos = s.Pos
 	case "append":
 		s.Append = new(Append)
 		unmarshalInto = s.Append
 		s.Append.Pos = s.Pos
+	case "for_each":
+		s.ForEach = new(ForEach)
+		unmarshalInto = s.ForEach
+		s.ForEach.Pos = s.Pos
 	case "go_template":
 		s.GoTemplate = new(GoTemplate)
 		unmarshalInto = s.GoTemplate
 		s.GoTemplate.Pos = s.Pos
+	case "include":
+		s.Include = new(Include)
+		unmarshalInto = s.Include
+		s.Include.Pos = s.Pos
+	case "print":
+		s.Print = new(Print)
+		unmarshalInto = s.Print
+		s.Print.Pos = s.Pos // Set an approximate position in case yaml unmarshaling fails later
+	case "regex_name_lookup":
+		s.RegexNameLookup = new(RegexNameLookup)
+		unmarshalInto = s.RegexNameLookup
+		s.RegexNameLookup.Pos = s.Pos
+	case "regex_replace":
+		s.RegexReplace = new(RegexReplace)
+		unmarshalInto = s.RegexReplace
+		s.RegexReplace.Pos = s.Pos
+	case "string_replace":
+		s.StringReplace = new(StringReplace)
+		unmarshalInto = s.StringReplace
+		s.StringReplace.Pos = s.Pos
 	case "":
 		return s.Pos.AnnotateErr(fmt.Errorf(`missing "action" field in this step`))
 	default:
@@ -253,8 +258,9 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 func (s *Step) Validate() error {
 	// The "action" field is implicitly validated by UnmarshalYAML, so not included here.
 	return errors.Join(
-		notZero(s.Pos, s.Desc, "desc"),
+		notZeroModel(s.Pos, s.Desc, "desc"),
 		validateUnlessNil(s.Append),
+		validateUnlessNil(s.ForEach),
 		validateUnlessNil(s.GoTemplate),
 		validateUnlessNil(s.Include),
 		validateUnlessNil(s.Print),
@@ -294,7 +300,7 @@ func (p *Print) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (p *Print) Validate() error {
 	return errors.Join(
-		notZero(p.Pos, p.Message, "message"),
+		notZeroModel(p.Pos, p.Message, "message"),
 	)
 }
 
@@ -412,8 +418,8 @@ func (r *RegexReplaceEntry) Validate() error {
 	}
 
 	return errors.Join(
-		notZero(r.Pos, r.Regex, "regex"),
-		notZero(r.Pos, r.With, "with"),
+		notZeroModel(r.Pos, r.Regex, "regex"),
+		notZeroModel(r.Pos, r.With, "with"),
 		subgroupErr,
 	)
 }
@@ -482,7 +488,7 @@ type RegexNameLookupEntry struct {
 func (r *RegexNameLookupEntry) Validate() error {
 	return errors.Join(
 
-		notZero(r.Pos, r.Regex, "regex"),
+		notZeroModel(r.Pos, r.Regex, "regex"),
 	)
 }
 
@@ -553,8 +559,8 @@ type StringReplacement struct {
 
 func (s *StringReplacement) Validate() error {
 	return errors.Join(
-		notZero(s.Pos, s.ToReplace, "to_replace"),
-		notZero(s.Pos, s.With, "with"),
+		notZeroModel(s.Pos, s.ToReplace, "to_replace"),
+		notZeroModel(s.Pos, s.With, "with"),
 	)
 }
 
@@ -607,7 +613,7 @@ func (s *Append) UnmarshalYAML(n *yaml.Node) error {
 func (s *Append) Validate() error {
 	return errors.Join(
 		nonEmptySlice(s.Pos, s.Paths, "paths"),
-		notZero(s.Pos, s.With, "with"),
+		notZeroModel(s.Pos, s.With, "with"),
 	)
 }
 
@@ -642,4 +648,84 @@ func (g *GoTemplate) UnmarshalYAML(n *yaml.Node) error {
 func (g *GoTemplate) Validate() error {
 	// Checking that the input paths are valid will happen later.
 	return errors.Join(nonEmptySlice(g.Pos, g.Paths, "paths"))
+}
+
+type ForEach struct {
+	// Pos is the YAML file location where this object started.
+	Pos *ConfigPos `yaml:"-"`
+
+	Iterator *ForEachIterator `yaml:"iterator"`
+	Steps    []*Step          `yaml:"steps"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (f *ForEach) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"iterator", "steps"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType ForEach
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*f = ForEach(*shadow)
+	f.Pos = yamlPos(n)
+
+	return nil
+}
+
+func (f *ForEach) Validate() error {
+	return errors.Join(
+		notZero(f.Pos, f.Iterator, "iterator"),
+		nonEmptySlice(f.Pos, f.Steps, "steps"),
+		validateUnlessNil(f.Iterator),
+		validateEach(f.Steps),
+	)
+}
+
+type ForEachIterator struct {
+	// Pos is the YAML file location where this object started.
+	Pos *ConfigPos `yaml:"-"`
+
+	// The name by which the range value is accessed.
+	Key String `yaml:"key"`
+
+	// Exactly one of the following fields must be set.
+
+	// Values is a list to range over, e.g. ["dev", "prod"]
+	Values []String `yaml:"values"`
+	// ValuesFrom is a CEL expression returning a list of strings to range over.
+	ValuesFrom *String `yaml:"values_from"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (f *ForEachIterator) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"key", "values", "values_from"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType ForEachIterator
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*f = ForEachIterator(*shadow)
+	f.Pos = yamlPos(n)
+
+	return nil
+}
+
+func (f *ForEachIterator) Validate() error {
+	var exclusivityErr error
+	if (len(f.Values) > 0 && f.ValuesFrom != nil) || (len(f.Values) == 0 && f.ValuesFrom == nil) {
+		exclusivityErr = errors.New(`exactly one of the fields "values" or "values_from" must be set`)
+	}
+
+	return errors.Join(
+		notZeroModel(f.Pos, f.Key, "key"),
+		exclusivityErr,
+	)
 }

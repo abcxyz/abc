@@ -721,6 +721,172 @@ params:
   paths: []`,
 			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
 		},
+		{
+			name: "for_each_range_over_list",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    key: 'environment'
+    values: ['dev', 'prod']
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+    - desc: 'another action'
+      action: 'print'
+      params:
+        message: 'yet another message'
+`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "for_each"},
+				ForEach: &ForEach{
+					Iterator: &ForEachIterator{
+						Key: String{Val: "environment"},
+						Values: []String{
+							{Val: "dev"},
+							{Val: "prod"},
+						},
+					},
+					Steps: []*Step{
+						{
+							Desc:   String{Val: "print some stuff"},
+							Action: String{Val: "print"},
+							Print: &Print{
+								Message: String{Val: `Hello, {{.name}}`},
+							},
+						},
+						{
+							Desc:   String{Val: "another action"},
+							Action: String{Val: "print"},
+							Print: &Print{
+								Message: String{Val: "yet another message"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "for_each_range_over_expression",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    key: 'environment'
+    values_from: 'my_cel_expression'
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+    - desc: 'another action'
+      action: 'print'
+      params:
+        message: 'yet another message'
+`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "for_each"},
+				ForEach: &ForEach{
+					Iterator: &ForEachIterator{
+						Key:        String{Val: "environment"},
+						ValuesFrom: &String{Val: "my_cel_expression"},
+					},
+					Steps: []*Step{
+						{
+							Desc:   String{Val: "print some stuff"},
+							Action: String{Val: "print"},
+							Print: &Print{
+								Message: String{Val: `Hello, {{.name}}`},
+							},
+						},
+						{
+							Desc:   String{Val: "another action"},
+							Action: String{Val: "print"},
+							Print: &Print{
+								Message: String{Val: "yet another message"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "for_each_missing_values",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    key: 'environment'
+    # missing the "values" here
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+`,
+			wantValidateErr: `exactly one of the fields "values" or "values_from" must be set`,
+		},
+		{
+			name: "for_each_missing_key",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    # key: 'environment'
+    values: ['dev', 'prod']
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+`,
+			wantValidateErr: `field "key" is required`,
+		},
+		{
+			name: "for_each_missing_iterator",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+`,
+			wantValidateErr: `field "iterator" is required`,
+		},
+		{
+			name: "for_each_values_and_values_from",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    key: 'environment'
+    values: ['dev', 'prod']
+    values_from: 'cel_expression'
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+`,
+			wantValidateErr: `exactly one of the fields "values" or "values_from" must be set`,
+		},
+		{
+			name: "for_each_no_steps",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    key: 'environment'
+    values: ['dev', 'prod']
+`,
+			wantValidateErr: `field "steps" is required`,
+		},
 	}
 
 	for _, tc := range cases {
