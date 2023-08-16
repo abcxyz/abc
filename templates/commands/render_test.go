@@ -184,6 +184,7 @@ func TestDestOK(t *testing.T) {
 func TestRealRun(t *testing.T) {
 	t.Parallel()
 
+	// Many (but not all) of the subtests use this spec.yaml.
 	specContents := `
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
@@ -496,6 +497,28 @@ steps:
 			wantBackupContents: map[string]string{
 				"file_a.txt": "purple is my favorite color",
 			},
+		},
+		{
+			name: "for_each",
+			templateContents: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+  - desc: 'Iterate over environments'
+    action: 'for_each'
+    params:
+      iterator:
+        key: 'env'
+        values: ['production', 'dev']
+      steps:
+        - desc: 'Print a message'
+          action: 'print'
+          params:
+            message: 'Working on environment {{.env}}'
+`,
+			},
+			wantStdout: "Working on environment production\nWorking on environment dev\n",
 		},
 	}
 
