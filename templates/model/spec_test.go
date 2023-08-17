@@ -887,6 +887,38 @@ params:
 `,
 			wantValidateErr: `field "steps" is required`,
 		},
+		{
+			name: "for_each_values_wrong_type",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    key: 'environment'
+    values: 'prod'  # invalid, should be a list of string
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+`,
+			wantUnmarshalErr: `line 6: cannot unmarshal`,
+		},
+		{
+			name: "for_each_values_from_wrong_type",
+			in: `desc: 'mydesc'
+action: 'for_each'
+params:
+  iterator:
+    key: 'environment'
+    values_from: ['dev', 'prod'] # invalid, should be string
+  steps:
+    - desc: 'print some stuff'
+      action: 'print'
+      params:
+        message: 'Hello, {{.name}}'
+`,
+			wantUnmarshalErr: `line 6: cannot unmarshal`,
+		},
 	}
 
 	for _, tc := range cases {
