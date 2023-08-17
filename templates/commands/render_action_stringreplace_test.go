@@ -244,7 +244,7 @@ func TestActionStringReplace(t *testing.T) {
 					readFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,
-				inputs:     tc.inputs,
+				scope:      newScope(tc.inputs),
 			}
 			err := actionStringReplace(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

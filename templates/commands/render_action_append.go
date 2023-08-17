@@ -22,7 +22,7 @@ import (
 )
 
 func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
-	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.inputs)
+	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.scope)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
 	paths := make([]model.String, 0, len(ap.Paths))
 
 	for _, p := range ap.Paths {
-		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
+		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
 		if err != nil {
 			return err
 		}

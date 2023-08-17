@@ -186,7 +186,7 @@ func TestActionAppend(t *testing.T) {
 					readFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,
-				inputs:     tc.inputs,
+				scope:      newScope(tc.inputs),
 			}
 			err := actionAppend(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

@@ -405,7 +405,7 @@ gamma`,
 			ctx := context.Background()
 			sp := &stepParams{
 				fs:         &realFS{},
-				inputs:     tc.inputs,
+				scope:      newScope(tc.inputs),
 				scratchDir: scratchDir,
 			}
 			err := actionRegexReplace(ctx, tc.rr, sp)

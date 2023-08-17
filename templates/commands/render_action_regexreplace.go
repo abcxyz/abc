@@ -36,7 +36,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 	for i, rp := range rr.Replacements {
 		uncompiled[i] = rp.Regex
 	}
-	compiledRegexes, err := templateAndCompileRegexes(uncompiled, sp.inputs)
+	compiledRegexes, err := templateAndCompileRegexes(uncompiled, sp.scope)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 
 	paths := make([]model.String, 0, len(rr.Paths))
 	for _, p := range rr.Paths {
-		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.inputs)
+		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
 		if err != nil {
 			return err
 		}
@@ -81,7 +81,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 			allMatches := cr.FindAllSubmatchIndex(b, -1)
 
 			var err error
-			b, err = replaceWithTemplate(allMatches, b, rr, cr, sp.inputs)
+			b, err = replaceWithTemplate(allMatches, b, rr, cr, sp.scope)
 			if err != nil {
 				return nil, err
 			}
@@ -93,7 +93,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 	return nil
 }
 
-func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEntry, re *regexp.Regexp, inputs map[string]string) ([]byte, error) {
+func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEntry, re *regexp.Regexp, scope *scope) ([]byte, error) {
 	// Why iterate in reverse? We have to replace starting at the end of the
 	// file working toward the beginning, so when we replace part of
 	// the buffer it doesn't invalidate the indices of the other
@@ -107,7 +107,7 @@ func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEnt
 		// use regex subgroups to reference template variables to support people
 		// trying to be super clever with their templates. Like:
 		// {{.${mysubgroup}}}
-		replacementTemplateExpanded, err := parseAndExecuteGoTmpl(rr.With.Pos, string(replacementRegexExpanded), inputs)
+		replacementTemplateExpanded, err := parseAndExecuteGoTmpl(rr.With.Pos, string(replacementRegexExpanded), scope)
 		if err != nil {
 			return nil, err
 		}

@@ -120,11 +120,11 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 	return nil
 }
 
-func templateAndCompileRegexes(regexes []model.String, inputs map[string]string) ([]*regexp.Regexp, error) {
+func templateAndCompileRegexes(regexes []model.String, scope *scope) ([]*regexp.Regexp, error) {
 	compiled := make([]*regexp.Regexp, len(regexes))
 	var merr error
 	for i, re := range regexes {
-		templated, err := parseAndExecuteGoTmpl(re.Pos, re.Val, inputs)
+		templated, err := parseAndExecuteGoTmpl(re.Pos, re.Val, scope)
 		if err != nil {
 			merr = errors.Join(merr, err)
 			continue
@@ -174,7 +174,7 @@ var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"
 // there's no reason to print out spec file location in an error message. If
 // template execution fails because of a missing input variable, the error will
 // be wrapped in a unknownTemplateKeyError.
-func parseAndExecuteGoTmpl[T any](pos *model.ConfigPos, tmpl string, inputs map[string]T) (string, error) {
+func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *scope) (string, error) {
 	parsedTmpl, err := parseGoTmpl(tmpl)
 	if err != nil {
 		return "", model.ErrWithPos(pos, `error compiling as go-template: %w`, err) //nolint:wrapcheck
@@ -182,20 +182,23 @@ func parseAndExecuteGoTmpl[T any](pos *model.ConfigPos, tmpl string, inputs map[
 
 	// As of go1.20, if the template references a nonexistent variable, then the
 	// returned error will be of type *errors.errorString; unfortunately there's
-	// no distinctive error type we can use to detect this particular error. We
-	// only get this error because we asked for Option("missingkey=error") when
-	// parsing the template. Otherwise it would silently insert "<no value>".
+	// no distinctive error type we can use to detect this particular error.
+	//
+	// We only get this error because we asked for Option("missingkey=error")
+	// when parsing the template. Otherwise it would silently insert "<no
+	// value>".
 	var sb strings.Builder
-	if err := parsedTmpl.Execute(&sb, inputs); err != nil {
+	vars := scope.All()
+	if err := parsedTmpl.Execute(&sb, vars); err != nil {
 		// If this error looks like a missing key error, then replace it with a
 		// more helpful error.
 		matches := templateKeyErrRegex.FindStringSubmatch(err.Error())
 		if matches != nil {
-			inputKeys := maps.Keys(inputs)
-			sort.Strings(inputKeys)
+			varNames := maps.Keys(vars)
+			sort.Strings(varNames)
 			err = &unknownTemplateKeyError{
 				key:           matches[1],
-				availableKeys: inputKeys,
+				availableKeys: varNames,
 				wrapped:       err,
 			}
 		}
