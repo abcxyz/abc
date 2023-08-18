@@ -47,7 +47,7 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // If the visitor returns modified file contents for a given file, that file
 // will be overwritten with the new contents.
 func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPaths []model.String, v walkAndModifyVisitor) error {
-	logger := logging.FromContext(ctx).Named("walkAndModify")
+	logger := logging.FromContext(ctx).With("logger", "walkAndModify")
 	seen := map[string]struct{}{}
 
 	for _, relPathPos := range relPaths {
@@ -76,7 +76,7 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 
 			if _, ok := seen[path]; ok {
 				// File already processed.
-				logger.Debugw("skipping file as already seen", "path", path)
+				logger.DebugContext(ctx, "skipping file as already seen", "path", path)
 				return nil
 			}
 			oldBuf, err := rfs.ReadFile(path)
@@ -109,7 +109,7 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 			if err := rfs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
 				return model.ErrWithPos(pos, "Writefile(): %w", err) //nolint:wrapcheck
 			}
-			logger.Debugw("wrote modification", "path", path)
+			logger.DebugContext(ctx, "wrote modification", "path", path)
 
 			return nil
 		})
@@ -294,7 +294,7 @@ type copyHint struct {
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
-	logger := logging.FromContext(ctx).Named("copyRecursive")
+	logger := logging.FromContext(ctx).With("logger", "copyRecursive")
 
 	backupDir := "" // will be set once the backup dir is actually created
 
@@ -319,7 +319,7 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		}
 
 		if ch.skip {
-			logger.Debugw("walkdir visitor skipped file or directory", "path", relToSrc)
+			logger.DebugContext(ctx, "walkdir visitor skipped file or directory", "path", relToSrc)
 			if de.IsDir() {
 				return fs.SkipDir
 			}
@@ -376,7 +376,7 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 }
 
 func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
-	logger := logging.FromContext(ctx).Named("copyFile")
+	logger := logging.FromContext(ctx).With("logger", "copyFile")
 
 	readFile, err := rfs.Open(src)
 	if err != nil {
@@ -397,7 +397,7 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst 
 	if _, err := io.Copy(writeFile, readFile); err != nil {
 		return fmt.Errorf("Copy(): %w", err)
 	}
-	logger.Debugw("copied file", "source", src, "destination", dst)
+	logger.DebugContext(ctx, "copied file", "source", src, "destination", dst)
 	return nil
 }
 
@@ -430,7 +430,7 @@ func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath strin
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.Infow("completed backup", "source", fileToBackup, "destination", backupFile)
+	logger.InfoContext(ctx, "completed backup", "source", fileToBackup, "destination", backupFile)
 
 	return nil
 }
