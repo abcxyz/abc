@@ -261,7 +261,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 		stdout:      rp.stdout,
 		templateDir: templateDir,
 	}
-	if err := executeSpec(ctx, spec, sp); err != nil {
+	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
 		return err
 	}
 
@@ -451,10 +451,10 @@ func (c *RenderCommand) checkInputsMissing(spec *model.Spec) []string {
 	return missing
 }
 
-func executeSpec(ctx context.Context, spec *model.Spec, sp *stepParams) error {
+func executeSteps(ctx context.Context, steps []*model.Step, sp *stepParams) error {
 	logger := logging.FromContext(ctx).Named("executeSpec")
 
-	for i, step := range spec.Steps {
+	for i, step := range steps {
 		if err := executeOneStep(ctx, step, sp); err != nil {
 			return err
 		}
@@ -528,10 +528,20 @@ type stepParams struct {
 	includedFromDest []string
 }
 
+// WithScope returns a copy of this stepParams with a new inner variable scope
+// containing some extra variable bindings.
+func (s *stepParams) WithScope(vars map[string]string) *stepParams {
+	out := *s
+	out.scope = s.scope.With(vars)
+	return &out
+}
+
 func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error {
 	switch {
 	case step.Append != nil:
 		return actionAppend(ctx, step.Append, sp)
+	case step.ForEach != nil:
+		return actionForEach(ctx, step.ForEach, sp)
 	case step.GoTemplate != nil:
 		return actionGoTemplate(ctx, step.GoTemplate, sp)
 	case step.Include != nil:

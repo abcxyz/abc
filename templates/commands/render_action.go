@@ -207,6 +207,18 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *scope) (str
 	return sb.String(), nil
 }
 
+func parseAndExecuteGoTmplAll(ss []model.String, scope *scope) ([]string, error) {
+	out := make([]string, len(ss))
+	for i, in := range ss {
+		var err error
+		out[i], err = parseAndExecuteGoTmpl(in.Pos, in.Val, scope)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
 // unknownTemplateKeyError is an error that will be returned when a template
 // references a variable that's nonexistent.
 type unknownTemplateKeyError struct {
