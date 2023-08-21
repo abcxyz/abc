@@ -237,7 +237,7 @@ func (n *unknownTemplateKeyError) Unwrap() error {
 }
 
 func (n *unknownTemplateKeyError) Is(other error) bool {
-	_, ok := other.(*unknownTemplateKeyError) //nolint:errorlint
+	_, ok := other.(*unknownTemplateKeyError)
 	return ok
 }
 

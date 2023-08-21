@@ -40,6 +40,20 @@ var rootCmd = func() *cli.RootCommand {
 						"render": func() cli.Command {
 							return &commands.RenderCommand{}
 						},
+						"test": func() cli.Command {
+							return &cli.RootCommand{
+								Name:        "test",
+								Description: "subcommands for validating template rendering with golden tests",
+								Commands: map[string]cli.CommandFactory{
+									"record": func() cli.Command {
+										return &commands.TestRecordCommand{}
+									},
+									"verify": func() cli.Command {
+										return &commands.TestVerifyCommand{}
+									},
+								},
+							}
+						},
 					},
 				}
 			},
