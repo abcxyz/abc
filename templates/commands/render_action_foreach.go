@@ -16,7 +16,6 @@ package commands
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/abcxyz/abc/templates/model"
 )
@@ -35,7 +34,15 @@ func actionForEach(ctx context.Context, fe *model.ForEach, sp *stepParams) error
 			return err
 		}
 	} else {
-		return fmt.Errorf("not implemented. for_each with values_from is not supported yet")
+		prog, err := celCompile(ctx, sp.scope, *fe.Iterator.ValuesFrom)
+		if err != nil {
+			return err
+		}
+
+		err = celEval(ctx, sp.scope, fe.Iterator.ValuesFrom.Pos, prog, &values)
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, keyVal := range values {

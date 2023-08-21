@@ -48,8 +48,8 @@ func (c *ConfigPos) AnnotateErr(err error) error {
 		return nil
 	}
 
-	pos := "(position unknown)" // This can happen when field values are defaults, rather that coming from the config file
-	if *c != (ConfigPos{}) {
+	pos := "(position unavailable)" // This can happen when field values are defaults, rather that coming from the config file
+	if c != nil && *c != (ConfigPos{}) {
 		pos = fmt.Sprintf("line %d column %d", c.Line, c.Column)
 	}
 
