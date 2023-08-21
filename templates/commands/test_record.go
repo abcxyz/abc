@@ -48,11 +48,6 @@ For every test case, it is expected that
 template input params.`
 }
 
-func (c *TestRecordCommand) Flags() *cli.FlagSet {
-	set := c.NewFlagSet()
-	return set
-}
-
 func (c *TestRecordCommand) Run(ctx context.Context, args []string) error {
 	return fmt.Errorf("Unimplemented")
 }
