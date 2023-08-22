@@ -37,7 +37,7 @@ var port = flag.String("port", defaultPort, "Specifies server port to listen on.
 func handleHello(h *renderer.Renderer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := logging.FromContext(r.Context())
-		logger.Info("handling request")
+		logger.InfoContext(ctx, "handling request")
 		h.RenderJSON(w, http.StatusOK, map[string]string{"message": "hello world"})
 	})
 }
@@ -50,7 +50,7 @@ func realMain(ctx context.Context) error {
 	// Don't provide filesystem as we don't have templates to render.
 	h, err := renderer.New(ctx, nil,
 		renderer.WithOnError(func(err error) {
-			logger.Errorw("failed to render", "error", err)
+			logger.ErrorContext(ctx, "failed to render", "error", err)
 		}))
 	if err != nil {
 		return fmt.Errorf("failed to create renderer for main server: %w", err)
@@ -59,12 +59,12 @@ func realMain(ctx context.Context) error {
 	r := chi.NewRouter()
 	r.Mount("/", handleHello(h))
 	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		logger.Debugw("Route registered", "http_method", method, "route", route)
+		logger.DebugContext(ctx, "Route registered", "http_method", method, "route", route)
 		return nil
 	}
 
 	if err := chi.Walk(r, walkFunc); err != nil {
-		logger.Errorw("error walking routes", "error", err)
+		logger.ErrorContext(ctx, "error walking routes", "error", err)
 	}
 
 	httpServer := &http.Server{
@@ -73,7 +73,7 @@ func realMain(ctx context.Context) error {
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 
-	logger.Info("starting server on ", *port)
+	logger.InfoContext(ctx, "starting server on ", *port)
 	server, err := serving.New(*port)
 	if err != nil {
 		return fmt.Errorf("error creating server: %w", err)
@@ -97,5 +97,5 @@ func main() {
 		done() // deferred function calls won't execute due to logger.Fatal() never returning
 		logger.Fatal(err)
 	}
-	logger.Info("completed")
+	logger.InfoContext(ctx, "completed")
 }

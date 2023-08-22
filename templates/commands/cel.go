@@ -86,9 +86,9 @@ func celCompile(ctx context.Context, scope *scope, expr model.String) (cel.Progr
 		return nil, expr.Pos.AnnotateErr(fmt.Errorf("failed constructing CEL program: %w", err)) //nolint:wrapcheck
 	}
 
-	logger := logging.FromContext(ctx).Named("celCompile")
 	latency := time.Since(startedAt)
-	logger.Debugw("cel compilation and loading time",
+	logger := logging.FromContext(ctx).With("logger", "celCompile")
+	logger.DebugContext(ctx, "cel compilation time",
 		"duration_usec", latency.Microseconds(),
 		"duration_human", latency.String())
 
@@ -132,9 +132,9 @@ func celEval(ctx context.Context, scope *scope, pos *model.ConfigPos, prog cel.P
 
 	outRefVal.Set(reflect.ValueOf(celAny))
 
-	logger := logging.FromContext(ctx).Named("celEval")
 	latency := time.Since(startedAt)
-	logger.Debugw("cel evaluation time",
+	logger := logging.FromContext(ctx).With("logger", "celEval")
+	logger.DebugContext(ctx, "cel evaluation time",
 		"duration_usec", latency.Microseconds(),
 		"duration_human", latency.String())
 
