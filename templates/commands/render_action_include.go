@@ -47,8 +47,8 @@ func includePath(ctx context.Context, inc *model.IncludePath, sp *stepParams) er
 		return err
 	}
 
-	skip := make(map[string]struct{}, len(inc.Exclude))
-	for _, s := range inc.Exclude {
+	skip := make(map[string]struct{}, len(inc.Skip))
+	for _, s := range inc.Skip {
 		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.scope)
 		if err != nil {
 			return err

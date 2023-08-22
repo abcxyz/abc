@@ -411,13 +411,13 @@ params:
 			},
 		},
 		{
-			name: "include_with_exclude",
+			name: "include_with_skip",
 			in: `desc: 'mydesc'
 action: 'include'
 params:
   paths:
     - paths: ['.']
-      exclude: ['x/y']`,
+      skip: ['x/y']`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
@@ -429,7 +429,7 @@ params:
 									Val: ".",
 								},
 							},
-							Exclude: []String{
+							Skip: []String{
 								{
 									Val: "x/y",
 								},

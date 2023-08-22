@@ -344,16 +344,16 @@ type IncludePath struct {
 
 	AddPrefix   String   `yaml:"add_prefix"`
 	As          []String `yaml:"as"`
-	Exclude     []String `yaml:"exclude"`
 	From        String   `yaml:"from"`
 	OnConflict  String   `yaml:"on_conflict"`
 	Paths       []String `yaml:"paths"`
+	Skip        []String `yaml:"skip"`
 	StripPrefix String   `yaml:"strip_prefix"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"add_prefix", "as", "exclude", "from", "on_conflict", "paths", "strip_prefix"}
+	knownYAMLFields := []string{"add_prefix", "as", "from", "on_conflict", "paths", "skip", "strip_prefix"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
