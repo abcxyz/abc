@@ -28,7 +28,7 @@ package model
 //    A. In the case of the Step struct, we want to do polymorphic decoding
 //       based on the value of the "action" field.
 //
-// Q3. Why is validation done as a separate pass instead of in UnmarshalYAML()?
+// Q2. Why is validation done as a separate pass instead of in UnmarshalYAML()?
 // A. Because there's a very specific edge case that we need to avoid.
 //    UnmarshalYAML() is only called for YAML objects that have at least one
 //    field that's specified in the input YAML. This can happen if an object
