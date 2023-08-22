@@ -107,10 +107,9 @@ type Input struct {
 	// Pos is the YAML file location where this object started.
 	Pos ConfigPos `yaml:"-"`
 
-	Name    String      `yaml:"name"`
-	Desc    String      `yaml:"desc"`
-	Default *String     `yaml:"default,omitempty"`
-	Rules   []InputRule `yaml:"rules"`
+	Name    String  `yaml:"name"`
+	Desc    String  `yaml:"desc"`
+	Default *String `yaml:"default,omitempty"`
 }
 
 // unmarshalPlain unmarshals the yaml node n into the struct pointer outPtr, as
@@ -131,7 +130,7 @@ func unmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields
 	fields := reflect.VisibleFields(reflect.TypeOf(outPtr).Elem())
 
 	// Calculate the set of allowed/known field names in the YAML.
-	var yamlFieldNames []string
+	yamlFieldNames := make([]string, 0, len(fields)+len(extraYAMLFields))
 	for _, field := range fields {
 		commaJoined := field.Tag.Get("yaml")
 		key, _, _ := strings.Cut(commaJoined, ",")
@@ -188,11 +187,6 @@ func (i *Input) Validate() error {
 		notZeroModel(&i.Pos, i.Desc, "desc"),
 		reservedNameErr,
 	)
-}
-
-type InputRule struct {
-	Rule    String
-	Message String
 }
 
 // Step represents one of the work steps involved in rendering a template.
@@ -538,10 +532,10 @@ func (a *Append) UnmarshalYAML(n *yaml.Node) error {
 }
 
 // Validate implements Validator.
-func (s *Append) Validate() error {
+func (a *Append) Validate() error {
 	return errors.Join(
-		nonEmptySlice(&s.Pos, s.Paths, "paths"),
-		notZeroModel(&s.Pos, s.With, "with"),
+		nonEmptySlice(&a.Pos, a.Paths, "paths"),
+		notZeroModel(&a.Pos, a.With, "with"),
 	)
 }
 
