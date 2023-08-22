@@ -205,7 +205,8 @@ steps:
 - desc: 'Include some files and directories'
   action: 'include'
   params:
-    paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
+    paths:
+      - paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
 - desc: 'Replace "blue" with "red"'
   action: 'string_replace'
   params:
@@ -430,11 +431,9 @@ steps:
   - desc: 'Include from destination'
     action: 'include'
     params:
-        from: 'destination'
         paths:
-          - 'myfile.txt'
-          - 'subdir_a'
-          - 'subdir_b/file_b.txt'
+            - paths: ['myfile.txt', 'subdir_a', 'subdir_b/file_b.txt']
+              from: 'destination'
   - desc: 'Replace "purple" with "red"'
     action: 'string_replace'
     params:
@@ -471,14 +470,14 @@ steps:
   - desc: 'Include from destination'
     action: 'include'
     params:
-        from: 'destination'
         paths:
-          - 'file_a.txt'
+            - paths: ['file_a.txt']
+              from: 'destination'
   - desc: 'Include from template'
     action: 'include'
     params:
         paths:
-        - 'file_b.txt'
+            - paths: ['file_b.txt']
   - desc: 'Replace "purple" with "red"'
     action: 'string_replace'
     params:

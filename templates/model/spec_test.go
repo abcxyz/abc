@@ -325,18 +325,21 @@ params: `,
 action: 'include'
 params:
   paths:
-    - 'a/b/c'
-    - 'x/y.txt'`,
+    - paths: ['a/b/c', 'x/y.txt']`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
 				Include: &Include{
-					Paths: []String{
+					Paths: []*IncludePath{
 						{
-							Val: "a/b/c",
-						},
-						{
-							Val: "x/y.txt",
+							Paths: []String{
+								{
+									Val: "a/b/c",
+								},
+								{
+									Val: "x/y.txt",
+								},
+							},
 						},
 					},
 				},
@@ -348,24 +351,27 @@ params:
 action: 'include'
 params:
   paths:
-    - 'a/b/c'
-    - 'x/y.txt'
-  strip_prefix: 'a/b'
-  add_prefix: 'c/d'`,
+    - paths: ['a/b/c', 'x/y.txt']
+      strip_prefix: 'a/b'
+      add_prefix: 'c/d'`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
 				Include: &Include{
-					Paths: []String{
+					Paths: []*IncludePath{
 						{
-							Val: "a/b/c",
-						},
-						{
-							Val: "x/y.txt",
+							Paths: []String{
+								{
+									Val: "a/b/c",
+								},
+								{
+									Val: "x/y.txt",
+								},
+							},
+							StripPrefix: String{Val: "a/b"},
+							AddPrefix:   String{Val: "c/d"},
 						},
 					},
-					StripPrefix: String{Val: "a/b"},
-					AddPrefix:   String{Val: "c/d"},
 				},
 			},
 		},
@@ -374,50 +380,60 @@ params:
 			in: `desc: 'mydesc'
 action: 'include'
 params:
-  paths: ['a/b/c', 'd/e/f']
-  as: ['x/y/z', 'q/r/s']`,
+  paths:
+    - paths: ['a/b/c', 'd/e/f']
+      as: ['x/y/z', 'q/r/s']`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
 				Include: &Include{
-					Paths: []String{
+					Paths: []*IncludePath{
 						{
-							Val: "a/b/c",
-						},
-						{
-							Val: "d/e/f",
-						},
-					},
-					As: []String{
-						{
-							Val: "x/y/z",
-						},
-						{
-							Val: "q/r/s",
+							Paths: []String{
+								{
+									Val: "a/b/c",
+								},
+								{
+									Val: "d/e/f",
+								},
+							},
+							As: []String{
+								{
+									Val: "x/y/z",
+								},
+								{
+									Val: "q/r/s",
+								},
+							},
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "include_with_skip",
+			name: "include_with_exclude",
 			in: `desc: 'mydesc'
 action: 'include'
 params:
-  paths: ['.']
-  skip: ['x/y']`,
+  paths:
+    - paths: ['.']
+      exclude: ['x/y']`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
 				Include: &Include{
-					Paths: []String{
+					Paths: []*IncludePath{
 						{
-							Val: ".",
-						},
-					},
-					Skip: []String{
-						{
-							Val: "x/y",
+							Paths: []String{
+								{
+									Val: ".",
+								},
+							},
+							Exclude: []String{
+								{
+									Val: "x/y",
+								},
+							},
 						},
 					},
 				},
@@ -428,16 +444,23 @@ params:
 			in: `desc: 'mydesc'
 action: 'include'
 params:
-  paths: ['.']
-  from: 'destination'`,
+  paths:
+    - paths: ['.']
+      from: 'destination'`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
 				Include: &Include{
-					From: String{Val: "destination"},
-					Paths: []String{
+					Paths: []*IncludePath{
 						{
-							Val: ".",
+							Paths: []String{
+								{
+									Val: ".",
+								},
+							},
+							From: String{
+								Val: "destination",
+							},
 						},
 					},
 				},
@@ -448,16 +471,23 @@ params:
 			in: `desc: 'mydesc'
 action: 'include'
 params:
-  paths: ['.']
-  from: 'invalid'`,
+  paths:
+    - paths: ['.']
+      from: 'invalid'`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
 				Include: &Include{
-					From: String{Val: "invalid"},
-					Paths: []String{
+					Paths: []*IncludePath{
 						{
-							Val: ".",
+							Paths: []String{
+								{
+									Val: ".",
+								},
+							},
+							From: String{
+								Val: "invalid",
+							},
 						},
 					},
 				},
@@ -469,29 +499,34 @@ params:
 			in: `desc: 'mydesc'
 action: 'include'
 params:
-  paths: ['a/b/c', 'd/e/f']
-  as: ['x/y/z', 'q/r/s', 't/u/v']`,
+  paths:
+    - paths: ['a/b/c', 'd/e/f']
+      as: ['x/y/z', 'q/r/s', 't/u/v']`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
 				Include: &Include{
-					Paths: []String{
+					Paths: []*IncludePath{
 						{
-							Val: "a/b/c",
-						},
-						{
-							Val: "d/e/f",
-						},
-					},
-					As: []String{
-						{
-							Val: "x/y/z",
-						},
-						{
-							Val: "q/r/s",
-						},
-						{
-							Val: "t/u/v",
+							Paths: []String{
+								{
+									Val: "a/b/c",
+								},
+								{
+									Val: "d/e/f",
+								},
+							},
+							As: []String{
+								{
+									Val: "x/y/z",
+								},
+								{
+									Val: "q/r/s",
+								},
+								{
+									Val: "t/u/v",
+								},
+							},
 						},
 					},
 				},

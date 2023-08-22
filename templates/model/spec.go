@@ -309,17 +309,12 @@ type Include struct {
 	// Pos is the YAML file location where this object started.
 	Pos *ConfigPos `yaml:"-"`
 
-	Paths       []String `yaml:"paths"`
-	From        String   `yaml:"from"`
-	As          []String `yaml:"as"`
-	StripPrefix String   `yaml:"strip_prefix"`
-	AddPrefix   String   `yaml:"add_prefix"`
-	Skip        []String `yaml:"skip"`
+	Paths []*IncludePath `yaml:"paths"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"add_prefix", "as", "from", "paths", "skip", "strip_prefix"}
+	knownYAMLFields := []string{"paths"}
 	if err := extraFields(n, knownYAMLFields); err != nil {
 		return err
 	}
@@ -337,6 +332,45 @@ func (i *Include) UnmarshalYAML(n *yaml.Node) error {
 
 // Validate implements Validator.
 func (i *Include) Validate() error {
+	return errors.Join(
+		validateEach(i.Paths),
+		nonEmptySlice(i.Pos, i.Paths, "paths"),
+	)
+}
+
+// IncludePath represents an object for controlling the behavior of included files.
+type IncludePath struct {
+	Pos *ConfigPos `yaml:"-"`
+
+	AddPrefix   String   `yaml:"add_prefix"`
+	As          []String `yaml:"as"`
+	Exclude     []String `yaml:"exclude"`
+	From        String   `yaml:"from"`
+	OnConflict  String   `yaml:"on_conflict"`
+	Paths       []String `yaml:"paths"`
+	StripPrefix String   `yaml:"strip_prefix"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
+	knownYAMLFields := []string{"add_prefix", "as", "exclude", "from", "on_conflict", "paths", "strip_prefix"}
+	if err := extraFields(n, knownYAMLFields); err != nil {
+		return err
+	}
+	type shadowType IncludePath
+	shadow := &shadowType{} // see "Q2" in file comment above
+
+	if err := n.Decode(shadow); err != nil {
+		return err
+	}
+	*i = IncludePath(*shadow)
+	i.Pos = yamlPos(n)
+
+	return nil
+}
+
+// Validate implements Validator.
+func (i *IncludePath) Validate() error {
 	var exclusivityErr error
 	if len(i.As) != 0 {
 		if i.StripPrefix.Val != "" || i.AddPrefix.Val != "" {
