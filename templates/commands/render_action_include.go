@@ -53,7 +53,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 			return err
 		}
 
-		walkRelPath, err = safeRelPath(inc.Pos, walkRelPath)
+		walkRelPath, err = safeRelPath(&inc.Pos, walkRelPath)
 		if err != nil {
 			return err
 		}
