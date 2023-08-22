@@ -45,8 +45,14 @@ var (
 				[]*cel.Type{cel.StringType, cel.StringType},
 				types.NewListType(types.StringType),
 				cel.BinaryBinding(func(lhs, rhs ref.Val) ref.Val {
-					toSplit := lhs.Value().(string)
-					splitOn := rhs.Value().(string)
+					toSplit, ok := lhs.Value().(string)
+					if !ok {
+						return types.NewErr("internal error: lhs was %T but should have been a string", lhs.Value())
+					}
+					splitOn, ok := rhs.Value().(string)
+					if !ok {
+						return types.NewErr("internal error: rhs was %T but should have been a string", rhs.Value())
+					}
 					tokens := strings.Split(toSplit, splitOn)
 					return types.NewStringList(celRegistry, tokens)
 				}),
@@ -67,22 +73,24 @@ func celCompile(ctx context.Context, scope *scope, expr model.String) (cel.Progr
 
 	env, err := cel.NewEnv(celOpts...)
 	if err != nil {
-		return nil, expr.Pos.AnnotateErr(fmt.Errorf("internal error: failed configuring CEL environment: %w", err))
+		return nil, expr.Pos.AnnotateErr(fmt.Errorf("internal error: failed configuring CEL environment: %w", err)) //nolint:wrapcheck
 	}
 
 	ast, issues := env.Compile(expr.Val)
 	if err := issues.Err(); err != nil {
-		return nil, expr.Pos.AnnotateErr(fmt.Errorf("failed compiling CEL expression: %w", err))
+		return nil, expr.Pos.AnnotateErr(fmt.Errorf("failed compiling CEL expression: %w", err)) //nolint:wrapcheck
 	}
 
 	prog, err := env.Program(ast)
 	if err != nil {
-		return nil, expr.Pos.AnnotateErr(fmt.Errorf("failed constructing CEL program: %w", err))
+		return nil, expr.Pos.AnnotateErr(fmt.Errorf("failed constructing CEL program: %w", err)) //nolint:wrapcheck
 	}
 
 	logger := logging.FromContext(ctx).Named("celCompile")
 	latency := time.Since(startedAt)
-	logger.Debugw("CEL compilation and loading time", "duration_usec", latency.Microseconds())
+	logger.Debugw("cel compilation and loading time",
+		"duration_usec", latency.Microseconds(),
+		"duration_human", latency.String())
 
 	return prog, nil
 }
@@ -107,7 +115,7 @@ func celEval(ctx context.Context, scope *scope, pos *model.ConfigPos, prog cel.P
 
 	celOut, _, err := prog.Eval(scopeMapAny)
 	if err != nil {
-		return pos.AnnotateErr(fmt.Errorf("failed executing CEL expression: %w", err))
+		return pos.AnnotateErr(fmt.Errorf("failed executing CEL expression: %w", err)) //nolint:wrapcheck
 	}
 
 	outPtrRefVal := reflect.ValueOf(outPtr)
@@ -119,14 +127,16 @@ func celEval(ctx context.Context, scope *scope, pos *model.ConfigPos, prog cel.P
 
 	celAny, err := celOut.ConvertToNative(outRefVal.Type())
 	if err != nil {
-		return pos.AnnotateErr(fmt.Errorf("CEL expression result couldn't be converted to %s. The CEL engine error was: %w", outRefVal.Type(), err))
+		return pos.AnnotateErr(fmt.Errorf("CEL expression result couldn't be converted to %s. The CEL engine error was: %w", outRefVal.Type(), err)) //nolint:wrapcheck
 	}
 
 	outRefVal.Set(reflect.ValueOf(celAny))
 
 	logger := logging.FromContext(ctx).Named("celEval")
 	latency := time.Since(startedAt)
-	logger.Debugw("CEL evaluation time", "duration_usec", latency.Microseconds())
+	logger.Debugw("cel evaluation time",
+		"duration_usec", latency.Microseconds(),
+		"duration_human", latency.String())
 
 	return nil
 }
