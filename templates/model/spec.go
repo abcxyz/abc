@@ -37,15 +37,39 @@ package model
 //    unmarshaling.
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"reflect"
 	"strings"
+	"sync"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
+
+// This is a gross hack, but it's the best idea we have so far. We need parsing
+// logic to know what apiVersion is being parsed, but there's no way to plumb
+// that information into UnmarshalYAML() methods. We're forced to use mutable
+// global state. We therefore use a mutex to ensure that only one parse
+// operation is ongoing at any time. For the use cases we care about right now,
+// there's no concurrency anyway, but it's still hacky.
+//
+// If Go ever adds something like threadlocal, we can use that instead
+// (https://github.com/golang/go/issues/18802).
+var (
+	// This lock must be held while calling yaml.Decoder.Decode.
+	decodeStateMu sync.Mutex
+	decodeState   yamlDecodeState
+)
+
+type yamlDecodeState struct {
+	// apiVersion will be set to the value found in the top-level YAML
+	// field "apiVersion", which corresponds to the Go field Spec.APIVersion.
+	// It is set in Spec.Unmarshal(). An example value is "cli.abcxyz.dev/v1alpha1".
+	apiVersion string
+}
 
 // DecodeSpec unmarshals the YAML Spec from r. This function exists so we can
 // validate the Spec model before providing it to the caller; we don't want the
@@ -54,8 +78,22 @@ import (
 // If the Spec parses successfully but then fails validation, the spec will be
 // returned along with the validation error.
 func DecodeSpec(r io.Reader) (*Spec, error) {
-	dec := newDecoder(r)
+	// Pre-read the file contents so there's no risk of blocking while holding
+	// the mutex.
+	buf, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("error reading spec.yaml: %w", err)
+	}
+
+	decodeStateMu.Lock()
+	defer func() {
+		decodeState = yamlDecodeState{} // zero out the context, for no reason other than tidiness.
+		decodeStateMu.Unlock()
+	}()
+
+	dec := newDecoder(bytes.NewReader(buf))
 	var spec Spec
+
 	if err := dec.Decode(&spec); err != nil {
 		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
 	}
@@ -87,6 +125,8 @@ func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 	if err := unmarshalPlain(n, s, &s.Pos); err != nil {
 		return err
 	}
+
+	decodeState.apiVersion = s.APIVersion.Val
 	return nil
 }
 
@@ -169,6 +209,11 @@ func unmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Input) UnmarshalYAML(n *yaml.Node) error {
+	// Coming soon in #130: we'll migrate from path strings to path objects.
+	// We'll choose which one to parse depending on the API version declared in
+	// the spec.yaml.s
+	_ = decodeState.apiVersion
+
 	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
 		return err
 	}
