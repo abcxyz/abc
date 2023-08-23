@@ -567,11 +567,11 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun boo
 	info, err := rfs.Stat(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
+			return pos.Errorf("Stat(): %w", err)
 		}
 		create = true
 	} else if !info.Mode().IsDir() {
-		return model.ErrWithPos(pos, "cannot overwrite a file with a directory of the same name, %q", path) //nolint:wrapcheck
+		return pos.Errorf("cannot overwrite a file with a directory of the same name, %q", path)
 	}
 
 	if dryRun || !create {
@@ -579,7 +579,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun boo
 	}
 
 	if err := rfs.MkdirAll(path, ownerRWXPerms); err != nil {
-		return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
+		return pos.Errorf("MkdirAll(): %w", err)
 	}
 
 	return nil

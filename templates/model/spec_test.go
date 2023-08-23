@@ -83,15 +83,15 @@ steps:
   action: 'print'
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
-			wantValidateErr: `invalid config near line 3 column 3: field "desc" is required`,
+			wantValidateErr: `at spec.yaml line 3 column 3: field "desc" is required`,
 		},
 		{
 			name: "check_required_fields",
 			in:   "inputs:",
-			wantValidateErr: `invalid config near line 1 column 1: field "apiVersion" value must be one of [cli.abcxyz.dev/v1alpha1]
-invalid config near line 1 column 1: field "kind" value must be one of [Template]
-invalid config near line 1 column 1: field "desc" is required
-invalid config near line 1 column 1: field "steps" is required`,
+			wantValidateErr: `at spec.yaml line 1 column 1: field "apiVersion" value must be one of [cli.abcxyz.dev/v1alpha1]
+at spec.yaml line 1 column 1: field "kind" value must be one of [Template]
+at spec.yaml line 1 column 1: field "desc" is required
+at spec.yaml line 1 column 1: field "steps" is required`,
 		},
 
 		{
@@ -110,7 +110,7 @@ steps:
   action: 'print'
   params:
     message: 'Hello'`,
-			wantUnmarshalErr: `invalid config near line 8 column 3: unknown field name "not_a_real_field"`,
+			wantUnmarshalErr: `at spec.yaml line 8 column 3: unknown field name "not_a_real_field"`,
 		},
 	}
 
@@ -178,14 +178,14 @@ desc: "The name of a person to greet"`,
 		{
 			name:            "missing_required_fields_should_fail",
 			in:              `desc: 'a thing'`,
-			wantValidateErr: `invalid config near line 1 column 1: field "name" is required`,
+			wantValidateErr: `at spec.yaml line 1 column 1: field "name" is required`,
 		},
 		{
 			name: "unexpected_field_should_fail",
 			in: `name: 'a'
 desc: 'b'
 nonexistent_field: 'oops'`,
-			wantUnmarshalErr: `invalid config near line 3 column 1: unknown field name "nonexistent_field"`,
+			wantUnmarshalErr: `at spec.yaml line 3 column 1: unknown field name "nonexistent_field"`,
 		},
 		{
 			name: "reserved_input_name",
@@ -261,7 +261,7 @@ params:
 action: 'append'
 params:
   paths: ['a.txt']`,
-			wantValidateErr: `invalid config near line 4 column 3: field "with" is required`,
+			wantValidateErr: `at spec.yaml line 4 column 3: field "with" is required`,
 		},
 		{
 			name: "append_missing_paths_field_should_fail",
@@ -269,7 +269,7 @@ params:
 action: 'append'
 params:
   with: 'def'`,
-			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
+			wantValidateErr: `at spec.yaml line 4 column 3: field "paths" is required`,
 		},
 		{
 			name: "append_non_bool_skip_ensure_newline_field_should_fail",
@@ -310,14 +310,14 @@ action: 'print'
 params:
   message: 'hello'
   extra_field: 'oops'`,
-			wantUnmarshalErr: `invalid config near line 5 column 3: unknown field name "extra_field"`,
+			wantUnmarshalErr: `at spec.yaml line 5 column 3: unknown field name "extra_field"`,
 		},
 		{
 			name: "print_missing_message",
 			in: `desc: 'Print a message'
 action: 'print'
 params: `,
-			wantValidateErr: `invalid config near line 1 column 1: field "message" is required`,
+			wantValidateErr: `at spec.yaml line 1 column 1: field "message" is required`,
 		},
 		{
 			name: "include_success",
@@ -513,14 +513,14 @@ params:
 action: 'include'
 params:
   paths:`,
-			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
+			wantValidateErr: `at spec.yaml line 4 column 3: field "paths" is required`,
 		},
 		{
 			name: "missing_include_paths_should_fail",
 			in: `desc: 'mydesc'
 action: 'include'
 params:`,
-			wantValidateErr: `invalid config near line 1 column 1: field "paths" is required`,
+			wantValidateErr: `at spec.yaml line 1 column 1: field "paths" is required`,
 		},
 		{
 			name: "unknown_params_should_fail",
@@ -528,7 +528,7 @@ params:`,
 action: 'include'
 params:
   nonexistent: 'foo'`,
-			wantUnmarshalErr: `invalid config near line 4 column 3: unknown field name "nonexistent"`,
+			wantUnmarshalErr: `at spec.yaml line 4 column 3: unknown field name "nonexistent"`,
 		},
 		{
 			name: "regex_replace_success",
@@ -575,7 +575,7 @@ params:
   - regex: '(?p<x>y)'
     subgroup_to_replace: 1
     with: 'some_template'`,
-			wantValidateErr: `invalid config near line 7 column 26: subgroup name must be a letter followed by zero or more alphanumerics`,
+			wantValidateErr: `at spec.yaml line 7 column 26: subgroup name must be a letter followed by zero or more alphanumerics`,
 		},
 		{
 			name: "regex_missing_fields_should_fail",
@@ -585,8 +585,8 @@ params:
   paths: ['a.txt']
   replacements:
   - subgroup_to_replace: xyz`,
-			wantValidateErr: `invalid config near line 6 column 5: field "regex" is required
-invalid config near line 6 column 5: field "with" is required`,
+			wantValidateErr: `at spec.yaml line 6 column 5: field "regex" is required
+at spec.yaml line 6 column 5: field "with" is required`,
 		},
 
 		{
@@ -599,7 +599,7 @@ params:
   - regex: 'my_regex'
     subgroup_to_replace: -1
     with: 'some_template'`,
-			wantValidateErr: `invalid config near line 7 column 26: subgroup name must be a letter followed by zero or more alphanumerics`,
+			wantValidateErr: `at spec.yaml line 7 column 26: subgroup name must be a letter followed by zero or more alphanumerics`,
 		},
 		{
 			name: "regex_missing_fields_should_fail",
@@ -609,8 +609,8 @@ params:
   paths: ['a.txt']
   replacements:
   - subgroup_to_replace: xyz`,
-			wantValidateErr: `invalid config near line 6 column 5: field "regex" is required
-invalid config near line 6 column 5: field "with" is required`,
+			wantValidateErr: `at spec.yaml line 6 column 5: field "regex" is required
+at spec.yaml line 6 column 5: field "with" is required`,
 		},
 		{
 			name: "regex_name_lookup_success",
@@ -684,7 +684,7 @@ params:
 action: 'string_replace'
 params:
   paths: ['a.txt']`,
-			wantValidateErr: `invalid config near line 4 column 3: field "replacements" is required`,
+			wantValidateErr: `at spec.yaml line 4 column 3: field "replacements" is required`,
 		},
 		{
 			name: "string_replace_missing_paths_field_should_fail",
@@ -694,7 +694,7 @@ params:
   replacements:
   - to_replace: 'abc'
     with: 'def'`,
-			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
+			wantValidateErr: `at spec.yaml line 4 column 3: field "paths" is required`,
 		},
 		{
 			name: "go_template_success",
@@ -719,7 +719,7 @@ params:
 action: 'go_template'
 params:
   paths: []`,
-			wantValidateErr: `invalid config near line 4 column 3: field "paths" is required`,
+			wantValidateErr: `at spec.yaml line 4 column 3: field "paths" is required`,
 		},
 		{
 			name: "for_each_range_over_list",

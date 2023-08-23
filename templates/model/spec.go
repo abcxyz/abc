@@ -155,7 +155,7 @@ func (i *Input) UnmarshalYAML(n *yaml.Node) error {
 func (i *Input) Validate() error {
 	var reservedNameErr error
 	if strings.HasPrefix(i.Name.Val, "_") {
-		reservedNameErr = i.Name.Pos.AnnotateErr(fmt.Errorf("input names beginning with _ are reserved"))
+		reservedNameErr = i.Name.Pos.Errorf("input names beginning with _ are reserved")
 	}
 
 	return errors.Join(
@@ -237,9 +237,9 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 		unmarshalInto = s.StringReplace
 		s.StringReplace.Pos = s.Pos
 	case "":
-		return s.Pos.AnnotateErr(fmt.Errorf(`missing "action" field in this step`))
+		return s.Pos.Errorf(`missing "action" field in this step`)
 	default:
-		return s.Pos.AnnotateErr(fmt.Errorf("unknown action type %q", s.Action.Val))
+		return s.Pos.Errorf("unknown action type %q", s.Action.Val)
 	}
 
 	params := struct {
@@ -340,17 +340,17 @@ func (i *Include) Validate() error {
 	var exclusivityErr error
 	if len(i.As) != 0 {
 		if i.StripPrefix.Val != "" || i.AddPrefix.Val != "" {
-			exclusivityErr = i.As[0].Pos.AnnotateErr(fmt.Errorf(`"as" may not be used with "strip_prefix" or "add_prefix"`))
+			exclusivityErr = i.As[0].Pos.Errorf(`"as" may not be used with "strip_prefix" or "add_prefix"`)
 		} else if len(i.Paths) != len(i.As) {
-			exclusivityErr = i.As[0].Pos.AnnotateErr(fmt.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
-				len(i.As), len(i.Paths)))
+			exclusivityErr = i.As[0].Pos.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
+				len(i.As), len(i.Paths))
 		}
 	}
 
 	var fromErr error
 	validFrom := []string{"destination"}
 	if i.From.Val != "" && !slices.Contains(validFrom, i.From.Val) {
-		fromErr = i.From.Pos.AnnotateErr(fmt.Errorf(`"from" must be one of %v`, validFrom))
+		fromErr = i.From.Pos.Errorf(`"from" must be one of %v`, validFrom)
 	}
 
 	return errors.Join(

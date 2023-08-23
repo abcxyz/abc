@@ -677,7 +677,7 @@ func TestParseAndExecute(t *testing.T) {
 				"something_else": "🥲",
 			},
 			wantUnknownKeyErr: true,
-			wantErr:           `failed executing template spec file at line 1: template.Execute() failed: the template referenced a nonexistent input variable name "my_input"; available variable names are [something_else]`,
+			wantErr:           `at spec.yaml line 1 column 0: template.Execute() failed: the template referenced a nonexistent input variable name "my_input"; available variable names are [something_else]`,
 		},
 		{
 			name: "unclosed_braces",

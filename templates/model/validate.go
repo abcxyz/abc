@@ -33,7 +33,7 @@ func notZeroModel[T comparable](pos *ConfigPos, x valWithPos[T], fieldName strin
 func notZero[T comparable](pos *ConfigPos, t T, fieldName string) error {
 	var zero T
 	if t == zero {
-		return pos.AnnotateErr(fmt.Errorf("field %q is required", fieldName))
+		return pos.Errorf("field %q is required", fieldName)
 	}
 	return nil
 }
@@ -41,7 +41,7 @@ func notZero[T comparable](pos *ConfigPos, t T, fieldName string) error {
 // Returns error if the given slice is empty.
 func nonEmptySlice[T any](pos *ConfigPos, s []T, fieldName string) error {
 	if len(s) == 0 {
-		return pos.AnnotateErr(fmt.Errorf("field %q is required", fieldName))
+		return pos.Errorf("field %q is required", fieldName)
 	}
 	return nil
 }
@@ -52,7 +52,7 @@ var validRegexGroupName = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9]*`)
 
 func isValidRegexGroupName(s String, fieldName string) error {
 	if !validRegexGroupName.MatchString(s.Val) {
-		return s.Pos.AnnotateErr(fmt.Errorf("subgroup name must be a letter followed by zero or more alphanumerics"))
+		return s.Pos.Errorf("subgroup name must be a letter followed by zero or more alphanumerics")
 	}
 	return nil
 }
@@ -62,7 +62,7 @@ func oneOf[T comparable](pos *ConfigPos, x valWithPos[T], allowed []T, fieldName
 	if slices.Contains(allowed, x.Val) {
 		return nil
 	}
-	return pos.AnnotateErr(fmt.Errorf("field %q value must be one of %v", fieldName, allowed))
+	return pos.Errorf("field %q value must be one of %v", fieldName, allowed)
 }
 
 // Fail if any unexpected fields are seen. The input must be a mapping/object; anything else will
@@ -101,7 +101,7 @@ func extraFields(n *yaml.Node, knownFields []string) error {
 		}
 	}
 
-	return pos.AnnotateErr(fmt.Errorf("unknown field name %q; valid choices are %v", unknownField, knownFields))
+	return pos.Errorf("unknown field name %q; valid choices are %v", unknownField, knownFields)
 }
 
 type validator interface {
