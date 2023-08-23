@@ -108,8 +108,9 @@ func celEval(ctx context.Context, scope *scope, pos *model.ConfigPos, prog cel.P
 
 	// The CEL engine needs variable values as a map[string]any, but we have a
 	// map[string]string, so convert.
-	scopeMapAny := make(map[string]any, len(scope.All()))
-	for varName, varVal := range scope.All() {
+	scopeAll := scope.All()
+	scopeMapAny := make(map[string]any, len(scopeAll))
+	for varName, varVal := range scopeAll {
 		scopeMapAny[varName] = varVal
 	}
 
