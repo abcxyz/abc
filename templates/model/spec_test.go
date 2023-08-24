@@ -136,7 +136,7 @@ steps:
 				return
 			}
 
-			opt := cmpopts.IgnoreTypes(&ConfigPos{}) // don't force test authors to assert the line and column numbers
+			opt := cmpopts.IgnoreTypes(&ConfigPos{}, ConfigPos{}) // don't force test authors to assert the line and column numbers
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
@@ -217,7 +217,7 @@ name: '_name_with_leading_underscore'`,
 				return
 			}
 
-			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreTypes(&ConfigPos{})); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreTypes(&ConfigPos{}, ConfigPos{})); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
 		})
@@ -943,7 +943,7 @@ params:
 				return
 			}
 
-			opt := cmpopts.IgnoreTypes(&ConfigPos{}) // don't force test authors to assert the line and column numbers
+			opt := cmpopts.IgnoreTypes(&ConfigPos{}, ConfigPos{}) // don't force test authors to assert the line and column numbers
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
