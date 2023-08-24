@@ -185,7 +185,7 @@ https://github.com/hashicorp/go-getter library, including:
 In essence, a template is a directory or directory-like object containing a
 "spec file", named `spec.yaml`
 ([example](https://github.com/abcxyz/abc/blob/main/examples/templates/render/hello_jupiter/spec.yaml)),
-and other files such as source code and config files.
+and other files such as source code and config files. The recommended convention is to have all files intended to be included placed in a subfolder named "contents". This way, non-template related files (GitHub workflows, metadata, template READMEs, etc.) can exist next to the spec.yaml.
 
 ### Model of operation
 
@@ -202,7 +202,7 @@ Template rendering has a few phases:
     ```yaml
     - action: 'include'
       params:
-        paths: ['main.go']
+        paths: ['contents/main.go']
     ```
   - The `append`, `string_replace`, `regex_replace`, `regex_name_lookup`, and
     `go_template` actions transform the files that are in the scratch directory
@@ -227,7 +227,7 @@ The spec file, named `spec.yaml` describes the template, including:
   user-provided input named `service_name`).
 
 The following is an example spec file. It has a single templated file,
-`main.go`, and during template rendering all instances of the word `world` are
+`contents/main.go`, and during template rendering all instances of the word `world` are
 replaced by a user-provided string. Thus "hello, world" is transformed into
 "hello, $whatever" in `main.go`.
 
@@ -245,7 +245,8 @@ steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['main.go']
+      paths: ['contents']
+      as: ['.']
   - desc: 'Replace "world" with user-provided input'
     action: 'string_replace'
     params:
@@ -342,7 +343,7 @@ Examples:
   ```yaml
   - action: 'include'
     params:
-      paths: ['main.go', '{{.user_requested_config}}/config.txt']
+      paths: ['contents/main.go', 'contents/{{.user_requested_config}}/config.txt']
   ```
 
 - Using `as` to relocate files:
@@ -350,7 +351,7 @@ Examples:
   ```yaml
   - action: 'include'
     params:
-      paths: ['{{.dbname}}/db.go']
+      paths: ['contents/{{.dbname}}/db.go']
       as: ['db.go']
   ```
 
@@ -369,7 +370,7 @@ Examples:
   ```yaml
   - action: 'include'
     params:
-      paths: ['configs']
+      paths: ['contents/configs']
       skip: ['unwanted_subdir', 'unwanted_file.txt']
   ```
 
@@ -427,7 +428,7 @@ Example:
 ```yaml
 - action: 'append'
   params:
-    paths: ['foo.html', 'web/']
+    paths: ['foo.html', 'web']
     with: '</html>\n'
     skip_ensure_newline: false
 ```
