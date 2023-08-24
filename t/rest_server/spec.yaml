@@ -62,3 +62,8 @@ steps:
           with: 'REGION={{.region}}'
         - to_replace: 'PROJECT_ID=[project_id]'
           with: 'PROJECT_ID={{.project_id}}'
+  - desc: 'Print user instructions'
+    action: 'print'
+    params:
+      message:
+        'Successfully rendered template. Please see rendered README.md for info on how to run the server.'

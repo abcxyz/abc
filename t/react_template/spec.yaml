@@ -18,25 +18,34 @@ desc: 'An example template using React library'
 inputs:
   - name: 'automation_service_account'
     desc: 'Automation Service Account (ex: [account_name]@[project_id].iam.gserviceaccount.com)'
+    default: ''
   - name: 'wif_provider'
     desc: 'Workload Identity Federation Provider (ex: projects/[project_id]/locations/global/workloadIdentityPools/[WIF_pool_name]/providers/[provider_name])'
+    default: ''
   - name: 'ar_repository'
     desc: 'Artifact Registry Repository (ex: ci-images)'
+    default: ''
   - name: 'ar_location'
     desc: 'Artifact Registry Location (ex: us-docker.pkg.dev)'
+    default: ''
   - name: 'cr_service'
     desc: 'Cloud Run Service (ex: hello-jupiter-api)'
+    default: ''
   - name: 'region'
     desc: 'Cloud Run Region (ex: us-west1)'
+    default: ''
   - name: 'project_id'
     desc: 'GCP Project ID'
+    default: ''
   - name: 'backend_url'
     desc: 'Cloud Run backend API URL'
+    default: ''
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['.']
+      paths: ['contents']
+      as: ['.']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
@@ -67,4 +76,4 @@ steps:
     action: 'print'
     params:
       message:
-        'Please check README to get more info.'
+        'Successfully rendered template. Please see rendered README.md for more info.'
