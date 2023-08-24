@@ -1,4 +1,4 @@
-# Example Template: REST server
+# Template: REST server
 
 Template for a simple HTTP/JSON REST server implemented in Go, using go-chi for HTTP routing.
 

@@ -21,9 +21,10 @@ steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['.']
+      paths: ['contents']
+      as: ['.']
   - desc: 'Print user instructions'
     action: 'print'
     params:
       message:
-        'Please go to the main.go and replace the the data model (hint text: "Your data model goes here.") and the data processing logic (hint text: "Your data parsing logic goes here.")'
+        'Successfully rendered template. Please go to the rendered main.go and replace the the data model (hint text: "Your data model goes here.") and the data processing logic (hint text: "Your data parsing logic goes here.")'

@@ -1,6 +1,6 @@
 **This is not an official Google product.**
 
-# Example Template: React Framework
+# Template: React Framework
 
 Template for a simple React App, bootstrapped with [Create React App](https://github.com/facebook/create-react-app). 
 
