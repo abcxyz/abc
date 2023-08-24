@@ -185,7 +185,9 @@ https://github.com/hashicorp/go-getter library, including:
 In essence, a template is a directory or directory-like object containing a
 "spec file", named `spec.yaml`
 ([example](https://github.com/abcxyz/abc/blob/main/examples/templates/render/hello_jupiter/spec.yaml)),
-and other files such as source code and config files. The recommended convention is to have all files intended to be included placed in a subfolder named "contents". This way, non-template related files (GitHub workflows, metadata, template READMEs, etc.) can exist next to the spec.yaml.
+and other files such as source code and config files. 
+
+The recommended convention is to have all files intended to be included placed in a subfolder named "contents". This way, non-template related files (GitHub workflows, metadata, template READMEs, etc.) can exist next to the spec.yaml.
 
 ### Model of operation
 
