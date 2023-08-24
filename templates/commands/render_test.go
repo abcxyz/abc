@@ -747,6 +747,72 @@ Enter value: `,
 			},
 		},
 		{
+			name: "single_input_prompt_with_single_validation_rule",
+			inputs: []*model.Input{
+				{
+					Name: model.String{Val: "animal"},
+					Desc: model.String{Val: "your favorite animal"},
+					Rules: []*model.InputRule{
+						{
+							Rule:    model.String{Val: "size(animal) > 1"},
+							Message: model.String{Val: "length must be greater than 1"},
+						},
+					},
+				},
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   animal
+Description:  your favorite animal
+Rule:         size(animal) > 1
+Rule msg:     length must be greater than 1
+
+Enter value: `,
+					thenRespond: "alligator\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "alligator",
+			},
+		},
+		{
+			name: "single_input_prompt_with_multiple_validation_rules",
+			inputs: []*model.Input{
+				{
+					Name: model.String{Val: "animal"},
+					Desc: model.String{Val: "your favorite animal"},
+					Rules: []*model.InputRule{
+						{
+							Rule:    model.String{Val: "size(animal) > 1"},
+							Message: model.String{Val: "length must be greater than 1"},
+						},
+						{
+							Rule:    model.String{Val: "size(animal) < 100"},
+							Message: model.String{Val: "length must be less than 100"},
+						},
+					},
+				},
+			},
+			dialog: []dialogStep{
+				{
+					waitForPrompt: `
+Input name:   animal
+Description:  your favorite animal
+Rule 0:       size(animal) > 1
+Rule 0 msg:   length must be greater than 1
+Rule 1:       size(animal) < 100
+Rule 1 msg:   length must be less than 100
+
+Enter value: `,
+					thenRespond: "alligator\n",
+				},
+			},
+			want: map[string]string{
+				"animal": "alligator",
+			},
+		},
+		{
 			name: "multiple_input_prompts",
 			inputs: []*model.Input{
 				{
@@ -1011,6 +1077,276 @@ func TestPromptForInputs_CanceledContext(t *testing.T) {
 	}
 
 	stdoutWriter.Close() // terminate the background goroutine blocking on stdoutReader.Read()
+}
+
+func TestValidateInputs(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		inputModels []*model.Input
+		inputVals   map[string]string
+		want        string
+	}{
+		{
+			name: "no-validation-rule",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+		},
+		{
+			name: "single-passing-validation-rule",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule:    model.String{Val: `size(my_input) < 5`},
+							Message: model.String{Val: "Length must be less than 5"},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+		},
+		{
+			name: "single-failing-validation-rule",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule:    model.String{Val: `size(my_input) < 3`},
+							Message: model.String{Val: "Length must be less than 3"},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+			want: `input validation failed:
+
+Input name:   my_input
+Input value:  foo
+Rule:         size(my_input) < 3
+Rule msg:     Length must be less than 3`,
+		},
+		{
+			name: "multiple-passing-validation-rules",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule:    model.String{Val: `size(my_input) < 5`},
+							Message: model.String{Val: "Length must be less than 5"},
+						},
+						{
+							Rule:    model.String{Val: `my_input.startsWith("fo")`},
+							Message: model.String{Val: `Must start with "fo"`},
+						},
+						{
+							Rule:    model.String{Val: `my_input.contains("oo")`},
+							Message: model.String{Val: `Must contain "oo"`},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+		},
+		{
+			name: "multiple-passing-validation-rules-one-failing",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule:    model.String{Val: `size(my_input) < 3`},
+							Message: model.String{Val: "Length must be less than 3"},
+						},
+						{
+							Rule:    model.String{Val: `my_input.startsWith("fo")`},
+							Message: model.String{Val: `Must start with "fo"`},
+						},
+						{
+							Rule:    model.String{Val: `my_input.contains("oo")`},
+							Message: model.String{Val: `Must contain "oo"`},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+			want: `input validation failed:
+
+Input name:   my_input
+Input value:  foo
+Rule:         size(my_input) < 3
+Rule msg:     Length must be less than 3`,
+		},
+		{
+			name: "multiple-failing-validation-rules",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule:    model.String{Val: `size(my_input) < 3`},
+							Message: model.String{Val: "Length must be less than 3"},
+						},
+						{
+							Rule:    model.String{Val: `my_input.startsWith("ham")`},
+							Message: model.String{Val: `Must start with "ham"`},
+						},
+						{
+							Rule:    model.String{Val: `my_input.contains("shoe")`},
+							Message: model.String{Val: `Must contain "shoe"`},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+			want: `input validation failed:
+
+Input name:   my_input
+Input value:  foo
+Rule:         size(my_input) < 3
+Rule msg:     Length must be less than 3
+
+Input name:   my_input
+Input value:  foo
+Rule:         my_input.startsWith("ham")
+Rule msg:     Must start with "ham"
+
+Input name:   my_input
+Input value:  foo
+Rule:         my_input.contains("shoe")
+Rule msg:     Must contain "shoe"`,
+		},
+		{
+			name: "cel-syntax-error",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule: model.String{Val: `(`},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+			want: `input validation failed:
+
+Input name:   my_input
+Input value:  foo
+Rule:         (
+CEL error:    failed compiling CEL expression: ERROR: <input>:1:2: Syntax error:`, // remainder of error omitted
+		},
+		{
+			name: "cel-type-conversion-error",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule: model.String{Val: `bool(42)`},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+			want: `input validation failed:
+
+Input name:   my_input
+Input value:  foo
+Rule:         bool(42)
+CEL error:    failed compiling CEL expression: ERROR: <input>:1:5: found no matching overload for 'bool'`, // remainder of error omitted
+		},
+		{
+			name: "cel-output-type-conversion-error",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule: model.String{Val: `42`},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input": "foo",
+			},
+			want: `input validation failed:
+
+Input name:   my_input
+Input value:  foo
+Rule:         42
+CEL error:    CEL expression result couldn't be converted to bool. The CEL engine error was: unsupported type conversion from 'int' to bool`, // remainder of error omitted
+		},
+		{
+			name: "multi-input-validation",
+			inputModels: []*model.Input{
+				{
+					Name: model.String{Val: "my_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule: model.String{Val: `my_input + my_other_input == "sharknado"`},
+						},
+					},
+				},
+				{
+					Name: model.String{Val: "my_other_input"},
+					Rules: []*model.InputRule{
+						{
+							Rule: model.String{Val: `"tor" + my_other_input + my_input == "tornadoshark"`},
+						},
+					},
+				},
+			},
+			inputVals: map[string]string{
+				"my_input":       "shark",
+				"my_other_input": "nado",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := &RenderCommand{
+				flags: RenderFlags{
+					Inputs: tc.inputVals,
+				},
+			}
+			ctx := context.Background()
+			err := r.validateInputs(ctx, tc.inputModels)
+			if diff := testutil.DiffErrString(err, tc.want); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
 }
 
 // readWithTimeout does a single read from the given reader. It calls Fatal if

@@ -102,16 +102,6 @@ func (s *Spec) Validate() error {
 	)
 }
 
-// Input represents one of the parsed "input" fields from the spec.yaml file.
-type Input struct {
-	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
-
-	Name    String  `yaml:"name"`
-	Desc    String  `yaml:"desc"`
-	Default *String `yaml:"default,omitempty"`
-}
-
 // unmarshalPlain unmarshals the yaml node n into the struct pointer outPtr, as
 // if it did not have an UnmarshalYAML method. This lets you still use the
 // default unmarshaling logic to populate the fields of your struct, while
@@ -167,6 +157,17 @@ func unmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields
 	return nil
 }
 
+// Input represents one of the parsed "input" fields from the spec.yaml file.
+type Input struct {
+	// Pos is the YAML file location where this object started.
+	Pos ConfigPos `yaml:"-"`
+
+	Name    String       `yaml:"name"`
+	Desc    String       `yaml:"desc"`
+	Default *String      `yaml:"default,omitempty"`
+	Rules   []*InputRule `yaml:"rules"`
+}
+
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Input) UnmarshalYAML(n *yaml.Node) error {
 	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
@@ -186,7 +187,29 @@ func (i *Input) Validate() error {
 		notZeroModel(&i.Pos, i.Name, "name"),
 		notZeroModel(&i.Pos, i.Desc, "desc"),
 		reservedNameErr,
+		validateEach(i.Rules),
 	)
+}
+
+// InputRule represents a validation rule attached to an input.
+type InputRule struct {
+	Pos ConfigPos `yaml:"-"`
+
+	Rule    String `yaml:"rule"`
+	Message String `yaml:"message"` // optional
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (i *InputRule) UnmarshalYAML(n *yaml.Node) error {
+	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Validate implements Validator.
+func (i *InputRule) Validate() error {
+	return notZeroModel(&i.Pos, i.Rule, "rule")
 }
 
 // Step represents one of the work steps involved in rendering a template.

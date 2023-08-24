@@ -29,6 +29,17 @@ inputs:
     desc: 'Default-empty-string is treated differently than no-default'
     default: ''
 
+  - name: 'my_length_limited_input'
+    desc: "An input that's length-checked"
+    default: 'foo'
+    rules:
+      - rule: 'size(my_length_limited_input)) < 10'
+        message: 'length must be small enough to fit in the database table'
+
+      - rule: 'size(my_length_limited_input+my_input_with_default) < 20'
+        message: |
+          the combined length of my_length_limited_input and my_input_with_default must be less than 20
+
 steps:
   - desc: 'Print input values'
     action: 'print'
@@ -38,3 +49,4 @@ steps:
           my_input_with_default={{.my_input_with_default}}
           my_input_without_default={{.my_input_without_default}}
           my_input_with_default_empty_string={{.my_input_with_default_empty_string}}
+          my_length_limited_input={{.my_length_limited_input}}
