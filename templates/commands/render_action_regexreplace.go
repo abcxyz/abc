@@ -53,7 +53,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 				continue
 			}
 			if name == "" {
-				return model.ErrWithPos(rp.Regex.Pos, "all capturing groups in regexes must be named, like (?P<myname>re) . The %d'th capturing group in regex %s is an unnamed group, like (re) . Please use either a named capturing group or an non-capturing group like (?:re)", subexpIdx, rp.Regex.Val) //nolint:wrapcheck
+				return rp.Regex.Pos.Errorf("all capturing groups in regexes must be named, like (?P<myname>re) . The %d'th capturing group in regex %s is an unnamed group, like (re) . Please use either a named capturing group or an non-capturing group like (?:re)", subexpIdx, rp.Regex.Val)
 			}
 		}
 	}
@@ -118,7 +118,7 @@ func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEnt
 		if rr.SubgroupToReplace.Val != "" {
 			subgroupNum = re.SubexpIndex(rr.SubgroupToReplace.Val)
 			if subgroupNum < 0 {
-				return nil, model.ErrWithPos(rr.SubgroupToReplace.Pos, "subgroup name %q is not a named subgroup in the regex %s", rr.SubgroupToReplace.Val, re.String()) //nolint:wrapcheck
+				return nil, rr.SubgroupToReplace.Pos.Errorf("subgroup name %q is not a named subgroup in the regex %s", rr.SubgroupToReplace.Val, re.String())
 			}
 		}
 		replaceAtStartIdx := oneMatch[subgroupNum*2] // bounds have already been checked in the caller
@@ -151,7 +151,7 @@ func rejectNumberedSubgroupExpand(with model.String) error {
 			continue
 		}
 
-		return model.ErrWithPos(with.Pos, "regex expansions must reference the subgroup by name, like ${mygroup}, rather than by number, like ${1}; we saw %s", oneMatch[0]) //nolint:wrapcheck
+		return with.Pos.Errorf("regex expansions must reference the subgroup by name, like ${mygroup}, rather than by number, like ${1}; we saw %s", oneMatch[0])
 	}
 	return nil
 }

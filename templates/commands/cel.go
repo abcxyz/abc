@@ -73,17 +73,17 @@ func celCompile(ctx context.Context, scope *scope, expr model.String) (cel.Progr
 
 	env, err := cel.NewEnv(celOpts...)
 	if err != nil {
-		return nil, expr.Pos.AnnotateErr(fmt.Errorf("internal error: failed configuring CEL environment: %w", err)) //nolint:wrapcheck
+		return nil, expr.Pos.Errorf("internal error: failed configuring CEL environment: %w", err)
 	}
 
 	ast, issues := env.Compile(expr.Val)
 	if err := issues.Err(); err != nil {
-		return nil, expr.Pos.AnnotateErr(fmt.Errorf("failed compiling CEL expression: %w", err)) //nolint:wrapcheck
+		return nil, expr.Pos.Errorf("failed compiling CEL expression: %w", err)
 	}
 
 	prog, err := env.Program(ast)
 	if err != nil {
-		return nil, expr.Pos.AnnotateErr(fmt.Errorf("failed constructing CEL program: %w", err)) //nolint:wrapcheck
+		return nil, expr.Pos.Errorf("failed constructing CEL program: %w", err)
 	}
 
 	latency := time.Since(startedAt)
@@ -116,7 +116,7 @@ func celEval(ctx context.Context, scope *scope, pos *model.ConfigPos, prog cel.P
 
 	celOut, _, err := prog.Eval(scopeMapAny)
 	if err != nil {
-		return pos.AnnotateErr(fmt.Errorf("failed executing CEL expression: %w", err)) //nolint:wrapcheck
+		return pos.Errorf("failed executing CEL expression: %w", err)
 	}
 
 	outPtrRefVal := reflect.ValueOf(outPtr)
@@ -128,7 +128,7 @@ func celEval(ctx context.Context, scope *scope, pos *model.ConfigPos, prog cel.P
 
 	celAny, err := celOut.ConvertToNative(outRefVal.Type())
 	if err != nil {
-		return pos.AnnotateErr(fmt.Errorf("CEL expression result couldn't be converted to %s. The CEL engine error was: %w", outRefVal.Type(), err)) //nolint:wrapcheck
+		return pos.Errorf("CEL expression result couldn't be converted to %s. The CEL engine error was: %w", outRefVal.Type(), err)
 	}
 
 	outRefVal.Set(reflect.ValueOf(celAny))
