@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -37,7 +38,7 @@ var port = flag.String("port", defaultPort, "Specifies server port to listen on.
 func handleHello(h *renderer.Renderer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := logging.FromContext(r.Context())
-		logger.InfoContext(ctx, "handling request")
+		logger.InfoContext(r.Context(), "handling request")
 		h.RenderJSON(w, http.StatusOK, map[string]string{"message": "hello world"})
 	})
 }
@@ -94,8 +95,8 @@ func main() {
 
 	flag.Parse()
 	if err := realMain(logging.WithLogger(ctx, logger)); err != nil {
-		done() // deferred function calls won't execute due to logger.Fatal() never returning
-		logger.Fatal(err)
+		done()
+		os.Exit(1)
 	}
 	logger.InfoContext(ctx, "completed")
 }
