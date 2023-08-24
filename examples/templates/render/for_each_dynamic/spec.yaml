@@ -23,7 +23,7 @@ inputs:
     default: 'dev,production'
 
 steps:
-  - desc: 'Iterate over each (hard-coded) environment'
+  - desc: 'Iterate over each environment, as a list output by CEL'
     action: 'for_each'
     params:
       iterator:
