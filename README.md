@@ -633,13 +633,13 @@ Variant 1 example: hardcoded list of YAML values:
   action: 'for_each'
   params:
     iterator:
-      key: 'env'
+      key: 'environment'
       values: ['production', 'dev']
     steps:
       - desc: 'Do some action for each environment'
         action: 'print'
         params:
-          message: 'Now processing environment named {{.env}}'
+          message: 'Now processing environment named {{.environment}}'
 ```
 
 Variant 2 example: a CEL expression that produces the list to iterate over:
@@ -649,13 +649,13 @@ Variant 2 example: a CEL expression that produces the list to iterate over:
   action: 'for_each'
   params:
     iterator:
-      key: 'env'
-      values: 'comma_separated_environments.split(",")'
+      key: 'environment'
+      values_from: 'comma_separated_environments.split(",")'
     steps:
       - desc: 'Do some action for each environment'
         action: 'print'
         params:
-          message: 'Now processing environment namedm {{.env}}'
+          message: 'Now processing environment named {{.environment}}'
 ```
 
 Params:
@@ -700,6 +700,6 @@ need for templates.
 
 ## Custom functions reference
 
-- `string.split(split_char)`: we added a "split" metbod on strings. This has the
+- `string.split(split_char)`: we added a "split" method on strings. This has the
   same semantics as Go's
   [strings.Split function](https://pkg.go.dev/strings#Split).
