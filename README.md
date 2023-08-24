@@ -270,9 +270,9 @@ Each input in the `inputs` list has these fields:
   (like `{{.myinput}}`) and CEL expressions.
 - `description`: documentation for the users of your template to help them
   understand what value to enter for this input.
-- `default` (optional): the value that will be used if the user doesn't supply
-  this input. If an input doesn't have a default, then a value for that input
-  must be given by the CLI user.
+- `default` (optional): the string value that will be used if the user doesn't
+  supply this input. If an input doesn't have a default, then a value for that
+  input must be given by the CLI user.
 
 An example input without a default:
 
