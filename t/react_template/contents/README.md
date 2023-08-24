@@ -17,6 +17,10 @@ prerequisites: `node.js` and `npm`. If not, follow the download steps [here](htt
 
 In the project directory, you can run:
 
+### `npm install`
+
+Downloads necessary packages to run the application.
+
 ### `npm start`
 
 Runs the app in the development mode. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
@@ -60,4 +64,4 @@ Choose Electron as the target testing browser. Chrome won't work.
 
 ### `npm run cy:test`
 
-Run cypress tests locally. Keep the server running when testing. Make sure to run the test before submit any CL.
+Run cypress tests locally. Keep the server running when testing. Make sure to run the test before submitting any pull request.
