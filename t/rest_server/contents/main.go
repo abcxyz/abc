@@ -96,6 +96,7 @@ func main() {
 	flag.Parse()
 	if err := realMain(logging.WithLogger(ctx, logger)); err != nil {
 		done()
+		logger.Log(ctx, logging.LevelError, err.Error())
 		os.Exit(1)
 	}
 	logger.InfoContext(ctx, "completed")
