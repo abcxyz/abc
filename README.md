@@ -335,6 +335,12 @@ Params:
 
   These may use template expressions (e.g. `{{.my_input}}`).
 
+- `from`: rarely used. The only currently valid value is `'destination'`. This
+  copies files into the scratch from the _destination_ directory instead of the
+  _template_ directory. The `paths` must point to files that exist in the
+  destination directory (which defaults to the current working directory. See
+  the example below.
+
 Examples:
 
 - A simple include, where each file keeps it location:
@@ -371,6 +377,20 @@ Examples:
     params:
       paths: ['configs']
       skip: ['unwanted_subdir', 'unwanted_file.txt']
+  ```
+
+- Appending to a file that already exists in the destination directory using
+  `from: destination`:
+
+  ```yaml
+  - action: 'include'
+    params:
+      from: 'destination'
+      paths: ['existing_file_in_dest_dir.txt']
+  - action: 'append'
+    params:
+      paths: ['existing_file_in_dest_dir.txt']
+      with: "I'm a new line at the end of the file"
   ```
 
 ### Action: `print`
