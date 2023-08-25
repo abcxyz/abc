@@ -61,6 +61,25 @@ var (
 	}
 )
 
+// celCompileAndEval parses, compiles, and executes the given CEL expr with the
+// given variables in scope.
+//
+// The output of CEL execution is written into the location pointed to by
+// outPtr. It must be a pointer. If the output of the CEL expression can't be
+// converted to the given type, then an error will be returned. For example, if
+// the CEL expression is "hello" and outPtr points to an int, an error will
+// returned because CEL cannot treat "hello" as an integer.
+func celCompileAndEval(ctx context.Context, scope *scope, expr model.String, outPtr any) error {
+	prog, err := celCompile(ctx, scope, expr)
+	if err != nil {
+		return err
+	}
+	if err := celEval(ctx, scope, expr.Pos, prog, outPtr); err != nil {
+		return err
+	}
+	return nil
+}
+
 // celCompile parses and compiles the given expr into executable Program.
 func celCompile(ctx context.Context, scope *scope, expr model.String) (cel.Program, error) {
 	startedAt := time.Now()

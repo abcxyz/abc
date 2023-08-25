@@ -193,6 +193,64 @@ nonexistent_field: 'oops'`,
 name: '_name_with_leading_underscore'`,
 			wantValidateErr: "are reserved",
 		},
+		{
+			name: "validation-rule",
+			in: `desc: 'foo'
+name: 'a'
+rules:
+  - rule: 'size(a) > 5'
+    message: 'my message'`,
+			want: &Input{
+				Name: String{Val: "a"},
+				Desc: String{Val: "foo"},
+				Rules: []*InputRule{
+					{
+						Rule:    String{Val: "size(a) > 5"},
+						Message: String{Val: "my message"},
+					},
+				},
+			},
+		},
+		{
+			name: "validation-rule-without-message",
+			in: `desc: 'foo'
+name: 'a'
+rules:
+  - rule: 'size(a) > 5'`,
+			want: &Input{
+				Name: String{Val: "a"},
+				Desc: String{Val: "foo"},
+				Rules: []*InputRule{
+					{
+						Rule: String{Val: "size(a) > 5"},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple-validation-rules",
+			in: `desc: 'foo'
+name: 'a'
+rules:
+  - rule: 'size(a) > 5'
+    message: 'my message'
+  - rule: 'size(a) < 100'
+    message: 'my other message'`,
+			want: &Input{
+				Name: String{Val: "a"},
+				Desc: String{Val: "foo"},
+				Rules: []*InputRule{
+					{
+						Rule:    String{Val: "size(a) > 5"},
+						Message: String{Val: "my message"},
+					},
+					{
+						Rule:    String{Val: "size(a) < 100"},
+						Message: String{Val: "my other message"},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {

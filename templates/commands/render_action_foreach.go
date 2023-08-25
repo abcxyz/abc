@@ -34,13 +34,7 @@ func actionForEach(ctx context.Context, fe *model.ForEach, sp *stepParams) error
 			return err
 		}
 	} else {
-		prog, err := celCompile(ctx, sp.scope, *fe.Iterator.ValuesFrom)
-		if err != nil {
-			return err
-		}
-
-		err = celEval(ctx, sp.scope, fe.Iterator.ValuesFrom.Pos, prog, &values)
-		if err != nil {
+		if err := celCompileAndEval(ctx, sp.scope, *fe.Iterator.ValuesFrom, &values); err != nil {
 			return err
 		}
 	}

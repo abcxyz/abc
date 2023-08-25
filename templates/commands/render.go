@@ -373,6 +373,41 @@ func (c *RenderCommand) resolveInputs(ctx context.Context, spec *model.Spec) err
 		}
 	}
 
+	if err := c.validateInputs(ctx, spec.Inputs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *RenderCommand) validateInputs(ctx context.Context, inputs []*model.Input) error {
+	scope := newScope(c.flags.Inputs)
+
+	sb := &strings.Builder{}
+	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
+
+	for _, input := range inputs {
+		for _, rule := range input.Rules {
+			var ok bool
+			err := celCompileAndEval(ctx, scope, rule.Rule, &ok)
+			if ok && err == nil {
+				continue
+			}
+
+			fmt.Fprintf(tw, "\nInput name:\t%s", input.Name.Val)
+			fmt.Fprintf(tw, "\nInput value:\t%s", c.flags.Inputs[input.Name.Val])
+			writeRule(tw, rule, false, 0)
+			if err != nil {
+				fmt.Fprintf(tw, "\nCEL error:\t%s", err.Error())
+			}
+			fmt.Fprintf(tw, "\n") // Add vertical relief between validation messages
+		}
+	}
+
+	tw.Flush()
+	if sb.Len() > 0 {
+		return fmt.Errorf("input validation failed:\n%s", sb.String())
+	}
 	return nil
 }
 
@@ -391,6 +426,10 @@ func (c *RenderCommand) promptForInputs(ctx context.Context, spec *model.Spec) e
 		tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
 		fmt.Fprintf(tw, "\nInput name:\t%s", i.Name.Val)
 		fmt.Fprintf(tw, "\nDescription:\t%s", i.Desc.Val)
+		for idx, rule := range i.Rules {
+			printRuleIndex := len(i.Rules) > 1
+			writeRule(tw, rule, printRuleIndex, idx)
+		}
 
 		if i.Default != nil {
 			defaultStr := i.Default.Val
@@ -422,6 +461,24 @@ func (c *RenderCommand) promptForInputs(ctx context.Context, spec *model.Spec) e
 		c.flags.Inputs[i.Name.Val] = inputVal
 	}
 	return nil
+}
+
+// writeRule writes a human-readable description of the given rule to the given
+// tabwriter in a 2-column format.
+//
+// Sometimes we run this in a context where we want to include the index of the
+// rule in the list of rules; in that case, pass includeIndex=true and the index
+// value. If includeIndex is false, then index is ignored.
+func writeRule(tw *tabwriter.Writer, rule *model.InputRule, includeIndex bool, index int) {
+	indexStr := ""
+	if includeIndex {
+		indexStr = fmt.Sprintf(" %d", index)
+	}
+
+	fmt.Fprintf(tw, "\nRule%s:\t%s", indexStr, rule.Rule.Val)
+	if rule.Message.Val != "" {
+		fmt.Fprintf(tw, "\nRule%s msg:\t%s", indexStr, rule.Message.Val)
+	}
 }
 
 // collapseDefaultInputs defaults any missing input flags if default is set.

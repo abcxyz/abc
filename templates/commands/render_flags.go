@@ -51,6 +51,9 @@ type RenderFlags struct {
 	// Inputs provide values that are substituted into the template. The keys in
 	// this map must match the input names in the Source template's spec.yaml
 	// file.
+	//
+	// This is mutable, even after flag parsing. It may be updated when default
+	// values are added and as the user is prompted for inputs.
 	Inputs map[string]string // these are just the --input values from flags; doesn't inclue values from config file or env vars
 
 	// KeepTempDirs prevents the cleanup of temporary directories after rendering is complete.
