@@ -634,3 +634,92 @@ with the corresponding inputs:
   params:
     paths: ['hello.html']
 ```
+
+### Action: `for_each`
+
+The `for_each` action lets you execute a sequence of steps repeatedly for each
+element of a list. For example, you might want your template to create several
+copies of a given file, one per application environment (e.g. production,
+staging).
+
+There are two variants of `for_each`. One variant accepts a hardcoded YAML list
+of values to iterate over in the `values` field. The other variant accepts a CEL
+expression in the `values_from` field that outputs a list of strings.
+
+Variant 1 example: hardcoded list of YAML values:
+
+```yaml
+- desc: 'Iterate over each (hard-coded) environment'
+  action: 'for_each'
+  params:
+    iterator:
+      key: 'environment'
+      values: ['production', 'dev']
+    steps:
+      - desc: 'Do some action for each environment'
+        action: 'print'
+        params:
+          message: 'Now processing environment named {{.environment}}'
+```
+
+Variant 2 example: a CEL expression that produces the list to iterate over:
+
+```yaml
+- desc: 'Iterate over each environment, produced by CEL as a list'
+  action: 'for_each'
+  params:
+    iterator:
+      key: 'environment'
+      values_from: 'comma_separated_environments.split(",")'
+    steps:
+      - desc: 'Do some action for each environment'
+        action: 'print'
+        params:
+          message: 'Now processing environment named {{.environment}}'
+```
+
+Params:
+
+- `iterator`: an object containing the key `key`, and exactly one of `values` or
+  `values_from`.
+  - `key`: the name of the index variable that assumes the value of each element
+    of the list.
+  - `values`: a list of strings to iterate over.
+  - `values_from`: a CEL expression that outputs a list of strings.
+- `steps`: a list of steps/actions to execute in the scope of the for_each loop.
+  It's analogous to the `steps` field at the top level of the spec file.
+
+# Using CEL
+
+We use the CEL language to allow template authors to embed scripts in the spec
+file in certain places (currently just the `from_values` field inside
+`for_each`).
+
+[CEL, the Common Expression Language)](https://github.com/google/cel-spec), is a
+non-Turing complete language that's designed to be easily embedded in programs.
+"Expression" means "a computation that produces a value", like `1+1` or
+`["shark"+"nado", "croco"+"gator"]`.
+
+The CEL expressions you write in your spec file will have access to the template
+inputs, as in this example:
+
+For example:
+
+```yaml
+- desc: 'Iterate over each environment, produced by CEL as a list'
+  action: 'for_each'
+  params:
+    iterator:
+      key: 'env'
+      values: 'input.comma_separated_environments.split(",")'
+```
+
+The above example also shows the `split` function, which is not part of the core
+CEL language. It's a "custom function" that we added to CEL to support a common
+need for templates.
+
+## Custom functions reference
+
+- `string.split(split_char)`: we added a "split" method on strings. This has the
+  same semantics as Go's
+  [strings.Split function](https://pkg.go.dev/strings#Split).
