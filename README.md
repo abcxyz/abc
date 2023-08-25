@@ -255,6 +255,45 @@ steps:
           with: '{{.whomever}}'
 ```
 
+#### Template inputs
+
+Typically the CLI user will supply certain values as `--input=inputname=value`
+which will be used by the spec file (such as `whomever` in the preceding
+example).
+
+A template may not need any inputs, in which case the `inputs` top-level field
+can be omitted.
+
+Each input in the `inputs` list has these fields:
+
+- `name`: an identifier for this input that will be used in template expressions
+  (like `{{.myinput}}`) and CEL expressions.
+- `description`: documentation for the users of your template to help them
+  understand what value to enter for this input.
+- `default` (optional): the string value that will be used if the user doesn't
+  supply this input. If an input doesn't have a default, then a value for that
+  input must be given by the CLI user.
+
+An example input without a default:
+
+```yaml
+inputs:
+  - name: 'service_account'
+    desc: |
+      The GCP service account to impersonate when doing the thing with the 
+      other things.
+```
+
+An example input _with_ a default:
+
+```yaml
+inputs:
+  - name: 'output_filename'
+    description: |
+      The name of the file to create that will contain the output of the thing.
+    default: 'out.txt'
+```
+
 #### Templating
 
 Most fields in the spec file can use template expressions that reference the
