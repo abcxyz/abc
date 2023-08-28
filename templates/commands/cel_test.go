@@ -16,6 +16,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -176,26 +177,221 @@ func TestCELFuncs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
-
-			prog, err := celCompile(ctx, newScope(nil), model.String{Val: tc.expr})
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			celOut, _, err := prog.Eval(cel.NoVars())
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Fatal(diff)
-			}
-
-			celOutTyped, err := celOut.ConvertToNative(reflect.TypeOf(tc.want))
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := cmp.Diff(celOutTyped, tc.want); diff != "" {
-				t.Errorf("output was not as expected (-got,+want): %s", diff)
-			}
+			compileEvalForTest(t, tc.expr, tc.want, tc.wantErr)
 		})
+	}
+}
+
+func TestGCPMatchesServiceAccount(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		param   string
+		want    bool
+		wantErr string
+	}{
+		{
+			name:  "simple-success",
+			param: `"platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  true,
+		},
+		{
+			name:  "must-not-begin-with-digit",
+			param: `"9platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  false,
+		},
+		{
+			name:  "must-not-begin-with-dash",
+			param: `"-platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  false,
+		},
+		{
+			name:  "longest-valid",
+			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  true,
+		},
+		{
+			name:  "too-long",
+			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  false,
+		},
+		{
+			name:  "too-short",
+			param: `"abcde@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  false,
+		},
+		{
+			name:  "shortest-valid",
+			param: `"abcdef@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  true,
+		},
+		{
+			name:  "default-compute-service-account",
+			param: `"824005440568-compute@developer.gserviceaccount.com"`,
+			want:  true,
+		},
+		{
+			name:  "wrong-domain",
+			param: `"abcdef@abcxyz-my-project.iam.fake.biz"`,
+			want:  false,
+		},
+		{
+			name:    "type-error-number-as-service-account",
+			param:   `42`,
+			wantErr: `found no matching overload for 'gcp_matches_service_account' applied to '(int)'`,
+		},
+		{
+			name:  "random-string",
+			param: `"alligator"`,
+			want:  false,
+		},
+		{
+			name:  "random-email-address",
+			param: `"example@example.com"`,
+			want:  false,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			expr := fmt.Sprintf("gcp_matches_service_account(%v)", tc.param)
+			compileEvalForTest(t, expr, tc.want, tc.wantErr)
+		})
+	}
+}
+
+func TestGCPMatchesServiceAccountID(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		param   string
+		want    bool
+		wantErr string
+	}{
+		{
+			name:  "shortest-valid",
+			param: `"abcdef"`,
+			want:  true,
+		},
+		{
+			name:  "too-short",
+			param: `"abcde"`,
+			want:  false,
+		},
+		{
+			name:  "longest-valid",
+			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`,
+			want:  true,
+		},
+		{
+			name:  "too-long",
+			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`,
+			want:  false,
+		},
+		{
+			name:  "must-not-begin-with-digit",
+			param: `"9platform-ops"`,
+			want:  false,
+		},
+		{
+			name:  "must-not-begin-with-dash",
+			param: `"-platform-ops"`,
+			want:  false,
+		},
+		{
+			name:    "type-error-number",
+			param:   `42`,
+			wantErr: `found no matching overload for 'gcp_matches_service_account_id' applied to '(int)'`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			expr := fmt.Sprintf("gcp_matches_service_account_id(%v)", tc.param)
+			compileEvalForTest(t, expr, tc.want, tc.wantErr)
+		})
+	}
+}
+
+func TestGCPMatchesProjectID(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		param   string
+		want    bool
+		wantErr string
+	}{
+		{
+			name:  "simple-success",
+			param: `"my-project-id"`,
+			want:  true,
+		},
+		{
+			name:  "with-domain",
+			param: `"example.com:my-project-123"`,
+			want:  true,
+		},
+		{
+			name:  "must-not-end-with-dash",
+			param: `"my-project-id-"`,
+			want:  false,
+		},
+		{
+			name:    "type-error-number",
+			param:   `42`,
+			wantErr: `found no matching overload for 'gcp_matches_project_id' applied to '(int)'`,
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			expr := fmt.Sprintf("gcp_matches_project_id(%v)", tc.param)
+			compileEvalForTest(t, expr, tc.want, tc.wantErr)
+		})
+	}
+}
+
+func compileEvalForTest(t *testing.T, expr string, want any, wantErr string) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	prog, err := celCompile(ctx, newScope(nil), model.String{Val: expr})
+	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
+		t.Fatal(diff)
+	}
+	if err != nil {
+		return
+	}
+
+	celOut, _, err := prog.Eval(cel.NoVars())
+	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
+		t.Fatal(diff)
+	}
+	if err != nil {
+		return
+	}
+
+	celOutTyped, err := celOut.ConvertToNative(reflect.TypeOf(want))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(celOutTyped, want); diff != "" {
+		t.Errorf("output was not as expected (-got,+want): %s", diff)
 	}
 }
