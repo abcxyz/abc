@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,38 +29,129 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 )
 
-var (
-	celRegistry = types.NewEmptyRegistry()
+var celRegistry = types.NewEmptyRegistry()
 
-	celFuncs = []cel.EnvOption{
-		// Adds a split method on strings. Example: "foo,bar".split(",")
-		//
-		// Design decision: use a method instead of a plain function, because
-		// that is the convention that the community seems to prefer for string
-		// splitting. This is based on some quick googling of other peoples'
-		// custom split functions.
-		cel.Function(
-			"split",
-			cel.MemberOverload(
-				"string_split",
-				[]*cel.Type{cel.StringType, cel.StringType},
-				types.NewListType(types.StringType),
-				cel.BinaryBinding(func(lhs, rhs ref.Val) ref.Val {
-					toSplit, ok := lhs.Value().(string)
-					if !ok {
-						return types.NewErr("internal error: lhs was %T but should have been a string", lhs.Value())
-					}
-					splitOn, ok := rhs.Value().(string)
-					if !ok {
-						return types.NewErr("internal error: rhs was %T but should have been a string", rhs.Value())
-					}
-					tokens := strings.Split(toSplit, splitOn)
-					return types.NewStringList(celRegistry, tokens)
-				}),
-			),
-		),
-	}
+// Regex definitions for GCP entities.
+// See https://github.com/hashicorp/terraform-provider-google/blob/a9cfeea162e19012fb662f8f0d89339daebf61a2/google/verify/validation.go#L20
+var (
+	gcpProjectIDRegexPart = `(?:(?:[-a-z0-9]{1,63}\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))`
+	gcpProjectIDRegex     = regexp.MustCompile(`^` + gcpProjectIDRegexPart + `$`)
+
+	// A service account "ID" is the part before the "@".
+	gcpSvcAcctID      = `[a-z](?:[-a-z0-9]{4,28}[a-z0-9])`
+	gcpSvcAcctIDRegex = regexp.MustCompile(`^` + gcpSvcAcctID + `$`)
+
+	// A regex for a service account created by a user using the API (not an agent).
+	gcpCreatedSvcAcctRegex = regexp.MustCompile(`^` + gcpSvcAcctID + `@[-a-z0-9\.]{1,63}\.iam\.gserviceaccount\.com$`)
+	// A regex for a service account automatically created and maintained by GCP.
+	gcpAgentSvcAcctRegex = regexp.MustCompile(`^` + gcpProjectIDRegexPart + `@[a-z]+.gserviceaccount.com$`)
 )
+
+// Definitions for all the custom functions that we add to CEL.
+var celFuncs = []cel.EnvOption{
+	// A split method on strings. Example: "foo,bar".split(",")
+	//
+	// Design decision: use a method instead of a plain function, because
+	// that is the convention that the community seems to prefer for string
+	// splitting. This is based on some quick googling of other peoples'
+	// custom split functions.
+	cel.Function(
+		"split",
+		cel.MemberOverload(
+			"string_split",
+			[]*cel.Type{cel.StringType, cel.StringType},
+			types.NewListType(types.StringType),
+			cel.BinaryBinding(func(lhs, rhs ref.Val) ref.Val {
+				toSplit, ok := lhs.Value().(string)
+				if !ok {
+					return types.NewErr("internal error: lhs was %T but should have been a string", lhs.Value())
+				}
+				splitOn, ok := rhs.Value().(string)
+				if !ok {
+					return types.NewErr("internal error: rhs was %T but should have been a string", rhs.Value())
+				}
+				tokens := strings.Split(toSplit, splitOn)
+				return types.NewStringList(celRegistry, tokens)
+			}),
+		),
+	),
+
+	// gcp_matches_service_account returns whether the input matches a full GCP
+	// service account name. It can be either an API-created service account or
+	// a platform-created service agent.
+	//
+	// You might want to use this for a template that requires a reference to an
+	// already-created service account.
+	//
+	// Example:
+	//   gcp_matches_service_account("platform-ops@abcxyz-my-project.iam.gserviceaccount.com")==true
+	cel.Function(
+		"gcp_matches_service_account",
+		cel.Overload(
+			"gcp_matches_service_account",
+			[]*types.Type{types.StringType},
+			cel.BoolType,
+			cel.UnaryBinding(func(input ref.Val) ref.Val {
+				asStr, ok := input.Value().(string)
+				if !ok {
+					return types.NewErr("internal error: argument was %T but should have been a string", input.Value())
+				}
+				// Design decision: use a sequence of two regex matches
+				// rather writing one single nightmare regex that combines
+				// both cases.
+				return types.Bool(gcpCreatedSvcAcctRegex.MatchString(asStr) || gcpAgentSvcAcctRegex.MatchString(asStr))
+			}),
+		),
+	),
+
+	// gcp_matches_service_account_id returns whether the input matches the part
+	// of a GCP service account name before the "@" sign.
+	//
+	// You might want to use this for a template that creates a service account.
+	//
+	// Example:
+	//   gcp_matches_service_account_id("platform-ops")==true
+	cel.Function(
+		"gcp_matches_service_account_id",
+		cel.Overload(
+			"gcp_matches_service_account_id",
+			[]*types.Type{types.StringType},
+			cel.BoolType,
+			cel.UnaryBinding(func(input ref.Val) ref.Val {
+				asStr, ok := input.Value().(string)
+				if !ok {
+					return types.NewErr("internal error: argument was %T but should have been a string", input.Value())
+				}
+				return types.Bool(gcpSvcAcctIDRegex.MatchString(asStr))
+			}),
+		),
+	),
+
+	// gcp_matches_project_id returns whether the input matches the format of a
+	// GCP project ID.
+	//
+	// You might want to use this for a template that creates a project or references
+	// an existing project.
+	//
+	// Examples:
+	//   gcp_matches_project_id("my-project")==true
+	//   gcp_matches_project_id("example.com:my-project")==true
+	cel.Function(
+		"gcp_matches_project_id",
+		cel.Overload(
+			"gcp_matches_project_id",
+			[]*types.Type{types.StringType},
+			cel.BoolType,
+			cel.UnaryBinding(func(input ref.Val) ref.Val {
+				asStr, ok := input.Value().(string)
+				if !ok {
+					return types.NewErr("internal error: argument was %T but should have been a string", input.Value())
+				}
+				return types.Bool(gcpProjectIDRegex.MatchString(asStr))
+			}),
+		),
+	),
+}
 
 // celCompileAndEval parses, compiles, and executes the given CEL expr with the
 // given variables in scope.
