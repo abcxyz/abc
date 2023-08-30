@@ -14,6 +14,16 @@
 
 package model
 
+// Notes for maintainers explaining the confusing stuff in this file:
+//
+// Q. Why is validation done as a separate pass instead of in UnmarshalYAML()?
+// A. Because there's a very specific edge case that we need to avoid.
+//    UnmarshalYAML() is only called for YAML objects that have at least one
+//    field that's specified in the input YAML. This can happen if an object
+//    relies on default values or has no parameters. But we still want to
+//    validate every object. So we need to run validation separately from
+//    unmarshaling.
+
 import (
 	"errors"
 	"fmt"
