@@ -164,6 +164,60 @@ func TestActionForEach(t *testing.T) {
 			},
 			wantErr: `nonexistent input variable name "nonexistent"`,
 		},
+		{
+			name: "cel-values-from",
+			inputs: map[string]string{
+				"environments": "production,dev",
+			},
+			in: &model.ForEach{
+				Iterator: &model.ForEachIterator{
+					Key:        model.String{Val: "env"},
+					ValuesFrom: &model.String{Val: `environments.split(",")`},
+				},
+				Steps: []*model.Step{
+					{
+						Print: &model.Print{
+							Message: model.String{Val: "{{.env}}"},
+						},
+					},
+				},
+			},
+			wantStdout: "production\ndev\n",
+		},
+		{
+			name: "cel-values-empty-no-actions",
+			in: &model.ForEach{
+				Iterator: &model.ForEachIterator{
+					Key:        model.String{Val: "env"},
+					ValuesFrom: &model.String{Val: `[]`},
+				},
+				Steps: []*model.Step{
+					{
+						Print: &model.Print{
+							Message: model.String{Val: "{{.env}}"},
+						},
+					},
+				},
+			},
+			wantStdout: "",
+		},
+		{
+			name: "cel-values-literal",
+			in: &model.ForEach{
+				Iterator: &model.ForEachIterator{
+					Key:        model.String{Val: "env"},
+					ValuesFrom: &model.String{Val: `["production", "dev"]`},
+				},
+				Steps: []*model.Step{
+					{
+						Print: &model.Print{
+							Message: model.String{Val: "{{.env}}"},
+						},
+					},
+				},
+			},
+			wantStdout: "production\ndev\n",
+		},
 	}
 
 	for _, tc := range cases {

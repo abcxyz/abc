@@ -1,0 +1,44 @@
+# Copyright 2023 The Authors (see AUTHORS file)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'An example of for_each running an action repeatedly'
+
+inputs:
+  - desc: 'A comma-separated list of environments'
+    name: 'environments'
+    default: 'dev,production'
+
+steps:
+  - desc: 'Iterate over each environment, as a list output by CEL'
+    action: 'for_each'
+    params:
+      iterator:
+        key: 'env'
+        values_from: 'environments.split(",")' # A CEL expression
+      steps:
+        - desc: 'include config.cfg for one environment'
+          action: 'include'
+          params:
+            paths: ['env.cfg']
+            as: ['{{.env}}.cfg']
+        - desc: 'replace placeholder with real environment name'
+          action: 'string_replace'
+          params:
+            paths: ['{{.env}}.cfg']
+            replacements:
+              - to_replace: 'placeholder'
+                with: '{{.env}}'

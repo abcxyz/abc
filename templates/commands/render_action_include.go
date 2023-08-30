@@ -63,7 +63,7 @@ func includePath(ctx context.Context, inc *model.IncludePath, sp *stepParams) er
 			return err
 		}
 
-		walkRelPath, err = safeRelPath(inc.Pos, walkRelPath)
+		walkRelPath, err = safeRelPath(&inc.Pos, walkRelPath)
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func includePath(ctx context.Context, inc *model.IncludePath, sp *stepParams) er
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return model.ErrWithPos(p.Pos, "include path doesn't exist: %q", walkRelPath) //nolint:wrapcheck
+				return p.Pos.Errorf("include path doesn't exist: %q", walkRelPath)
 			}
 			return fmt.Errorf("Stat(): %w", err)
 		}
@@ -140,7 +140,7 @@ func includePath(ctx context.Context, inc *model.IncludePath, sp *stepParams) er
 			},
 		}
 		if err := copyRecursive(ctx, p.Pos, params); err != nil {
-			return model.ErrWithPos(p.Pos, "copying failed: %w", err) //nolint:wrapcheck
+			return p.Pos.Errorf("copying failed: %w", err)
 		}
 	}
 	return nil
@@ -163,7 +163,7 @@ func dest(pathPos *model.ConfigPos, relPath, as, stripPrefix, addPrefix string) 
 		before := relPath
 		relPath = strings.TrimPrefix(relPath, stripPrefix)
 		if relPath == before {
-			return "", model.ErrWithPos(pathPos, "the strip_prefix %q wasn't a prefix of the actual path %q", //nolint:wrapcheck
+			return "", pathPos.Errorf("the strip_prefix %q wasn't a prefix of the actual path %q",
 				stripPrefix, relPath)
 		}
 	}

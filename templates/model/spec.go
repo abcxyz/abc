@@ -28,16 +28,7 @@ package model
 //    A. In the case of the Step struct, we want to do polymorphic decoding
 //       based on the value of the "action" field.
 //
-// Q2. What's up with the weird "shadow" unmarshalling pattern (ctrl-f "shadow")
-// A. We often want to "unmarshal all the fields of my struct, but also run
-//    our own logic before and after unmarshaling." To do this, we have to
-//    create a separate type that *doesn't* implement yaml.Unmarshaler, and
-//    unmarshal into that first. If we didn't do this, we'd get infinite
-//    recursion where UnmarshalYAML invokes Decode which invokes UnmarshalYAML
-//    which invokes Decode ...infinitely. See e.g.
-//    https://github.com/go-yaml/yaml/issues/107#issuecomment-524681153.
-//
-// Q3. Why is validation done as a separate pass instead of in UnmarshalYAML()?
+// Q2. Why is validation done as a separate pass instead of in UnmarshalYAML()?
 // A. Because there's a very specific edge case that we need to avoid.
 //    UnmarshalYAML() is only called for YAML objects that have at least one
 //    field that's specified in the input YAML. This can happen if an object
@@ -49,6 +40,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -80,7 +72,7 @@ func newDecoder(r io.Reader) *yaml.Decoder {
 // Spec represents a parsed spec.yaml file describing a template.
 type Spec struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	APIVersion String `yaml:"apiVersion"`
 	Kind       String `yaml:"kind"`
@@ -92,62 +84,95 @@ type Spec struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"apiVersion", "kind", "desc", "inputs", "steps"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, s, &s.Pos); err != nil {
 		return err
 	}
-
-	type shadowType Spec
-	shadow := &shadowType{} // see "Q2" in file comment above
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-
-	*s = Spec(*shadow)
-	s.Pos = yamlPos(n)
 	return nil
 }
 
 // Validate implements Validator.
 func (s *Spec) Validate() error {
 	return errors.Join(
-		oneOf(s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
-		oneOf(s.Pos, s.Kind, []string{"Template"}, "kind"),
-		notZeroModel(s.Pos, s.Desc, "desc"),
-		nonEmptySlice(s.Pos, s.Steps, "steps"),
+		oneOf(&s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		oneOf(&s.Pos, s.Kind, []string{"Template"}, "kind"),
+		notZeroModel(&s.Pos, s.Desc, "desc"),
+		nonEmptySlice(&s.Pos, s.Steps, "steps"),
 		validateEach(s.Inputs),
 		validateEach(s.Steps),
 	)
 }
 
+// unmarshalPlain unmarshals the yaml node n into the struct pointer outPtr, as
+// if it did not have an UnmarshalYAML method. This lets you still use the
+// default unmarshaling logic to populate the fields of your struct, while
+// adding custom logic before and after.
+//
+// outPtr must be a pointer to a struct which will be modified by this function.
+//
+// pos will be modified by this function to contain the position of this yaml
+// node within the input file.
+//
+// The `yaml:"..."` tags of the outPtr struct are used to determine the set of
+// valid fields. Unexpected fields in the yaml are treated as an error. To allow
+// extra yaml fields that don't correspond to a field of outPtr, provide their
+// names in extraYAMLFields. This allows some fields to be handled specially.
+func unmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields ...string) error {
+	fields := reflect.VisibleFields(reflect.TypeOf(outPtr).Elem())
+
+	// Calculate the set of allowed/known field names in the YAML.
+	yamlFieldNames := make([]string, 0, len(fields)+len(extraYAMLFields))
+	for _, field := range fields {
+		commaJoined := field.Tag.Get("yaml")
+		key, _, _ := strings.Cut(commaJoined, ",")
+		if key == "" || key == "-" {
+			continue
+		}
+		yamlFieldNames = append(yamlFieldNames, key)
+	}
+
+	yamlFieldNames = append(yamlFieldNames, extraYAMLFields...)
+	if err := extraFields(n, yamlFieldNames); err != nil {
+		// Reject unexpected fields.
+		return err
+	}
+
+	// Warning: here be dragons.
+	//
+	// To avoid calling the UnmarshalYAML field of outPtr, which would cause
+	// infinite recursion, we'll unmarshal into a new struct. This new struct is
+	// not the same type as outPtr, it is a dynamically-created type with the
+	// same set of fields, but with no methods, and therefore no UnmarshalYAML
+	// method.
+	typeWithoutMethods := reflect.StructOf(fields)
+	shadow := reflect.New(typeWithoutMethods)
+
+	if err := n.Decode(shadow.Interface()); err != nil {
+		return err
+	}
+	// Copy the field values from the dynamically-created-type-without-methods
+	// to the actual output struct.
+	reflect.ValueOf(outPtr).Elem().Set(shadow.Elem())
+
+	*outPos = *yamlPos(n)
+	return nil
+}
+
 // Input represents one of the parsed "input" fields from the spec.yaml file.
 type Input struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
-	Name    String  `yaml:"name"`
-	Desc    String  `yaml:"desc"`
-	Default *String `yaml:"default,omitempty"`
+	Name    String       `yaml:"name"`
+	Desc    String       `yaml:"desc"`
+	Default *String      `yaml:"default,omitempty"`
+	Rules   []*InputRule `yaml:"rules"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Input) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"name", "desc", "default"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
 		return err
 	}
-
-	// Unmarshal with default values
-	type shadowType Input
-	shadow := &shadowType{} // unmarshal into a type that doesn't have UnmarshalYAML
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-
-	*i = Input(*shadow)
-	i.Pos = yamlPos(n)
-
 	return nil
 }
 
@@ -155,20 +180,42 @@ func (i *Input) UnmarshalYAML(n *yaml.Node) error {
 func (i *Input) Validate() error {
 	var reservedNameErr error
 	if strings.HasPrefix(i.Name.Val, "_") {
-		reservedNameErr = i.Name.Pos.AnnotateErr(fmt.Errorf("input names beginning with _ are reserved"))
+		reservedNameErr = i.Name.Pos.Errorf("input names beginning with _ are reserved")
 	}
 
 	return errors.Join(
-		notZeroModel(i.Pos, i.Name, "name"),
-		notZeroModel(i.Pos, i.Desc, "desc"),
+		notZeroModel(&i.Pos, i.Name, "name"),
+		notZeroModel(&i.Pos, i.Desc, "desc"),
 		reservedNameErr,
+		validateEach(i.Rules),
 	)
+}
+
+// InputRule represents a validation rule attached to an input.
+type InputRule struct {
+	Pos ConfigPos `yaml:"-"`
+
+	Rule    String `yaml:"rule"`
+	Message String `yaml:"message"` // optional
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (i *InputRule) UnmarshalYAML(n *yaml.Node) error {
+	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Validate implements Validator.
+func (i *InputRule) Validate() error {
+	return notZeroModel(&i.Pos, i.Rule, "rule")
 }
 
 // Step represents one of the work steps involved in rendering a template.
 type Step struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Desc   String `yaml:"desc"`
 	Action String `yaml:"action"`
@@ -186,19 +233,9 @@ type Step struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Step) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"desc", "action", "params"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
-		return err
+	if err := unmarshalPlain(n, s, &s.Pos, "params"); err != nil {
+		return nil
 	}
-
-	type shadowType Step
-	shadow := &shadowType{} // see "Q2" in file comment above
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-
-	*s = Step(*shadow)
-	s.Pos = yamlPos(n)
 
 	// The rest of this function just unmarshals the "params" field into the correct struct type depending
 	// on the value of "action".
@@ -237,9 +274,9 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 		unmarshalInto = s.StringReplace
 		s.StringReplace.Pos = s.Pos
 	case "":
-		return s.Pos.AnnotateErr(fmt.Errorf(`missing "action" field in this step`))
+		return s.Pos.Errorf(`missing "action" field in this step`)
 	default:
-		return s.Pos.AnnotateErr(fmt.Errorf("unknown action type %q", s.Action.Val))
+		return s.Pos.Errorf("unknown action type %q", s.Action.Val)
 	}
 
 	params := struct {
@@ -258,7 +295,7 @@ func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 func (s *Step) Validate() error {
 	// The "action" field is implicitly validated by UnmarshalYAML, so not included here.
 	return errors.Join(
-		notZeroModel(s.Pos, s.Desc, "desc"),
+		notZeroModel(&s.Pos, s.Desc, "desc"),
 		validateUnlessNil(s.Append),
 		validateUnlessNil(s.ForEach),
 		validateUnlessNil(s.GoTemplate),
@@ -273,60 +310,39 @@ func (s *Step) Validate() error {
 // Print is an action that prints a message to standard output.
 type Print struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Message String `yaml:"message"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (p *Print) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"message"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, p, &p.Pos); err != nil {
 		return err
 	}
-
-	type shadowType Print
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-
-	*p = Print(*shadow)
-	p.Pos = yamlPos(n)
 	return nil
 }
 
 // Validate implements Validator.
 func (p *Print) Validate() error {
 	return errors.Join(
-		notZeroModel(p.Pos, p.Message, "message"),
+		notZeroModel(&p.Pos, p.Message, "message"),
 	)
 }
 
 // Include is an action that places files into the output directory.
 type Include struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Paths []*IncludePath `yaml:"paths"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
 		return err
 	}
-	type shadowType Include
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*i = Include(*shadow)
-	i.Pos = yamlPos(n)
-
 	return nil
 }
 
@@ -334,13 +350,13 @@ func (i *Include) UnmarshalYAML(n *yaml.Node) error {
 func (i *Include) Validate() error {
 	return errors.Join(
 		validateEach(i.Paths),
-		nonEmptySlice(i.Pos, i.Paths, "paths"),
+		nonEmptySlice(&i.Pos, i.Paths, "paths"),
 	)
 }
 
 // IncludePath represents an object for controlling the behavior of included files.
 type IncludePath struct {
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	AddPrefix   String   `yaml:"add_prefix"`
 	As          []String `yaml:"as"`
@@ -353,19 +369,9 @@ type IncludePath struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"add_prefix", "as", "from", "on_conflict", "paths", "skip", "strip_prefix"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
 		return err
 	}
-	type shadowType IncludePath
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*i = IncludePath(*shadow)
-	i.Pos = yamlPos(n)
-
 	return nil
 }
 
@@ -374,21 +380,21 @@ func (i *IncludePath) Validate() error {
 	var exclusivityErr error
 	if len(i.As) != 0 {
 		if i.StripPrefix.Val != "" || i.AddPrefix.Val != "" {
-			exclusivityErr = i.As[0].Pos.AnnotateErr(fmt.Errorf(`"as" may not be used with "strip_prefix" or "add_prefix"`))
+			exclusivityErr = i.As[0].Pos.Errorf(`"as" may not be used with "strip_prefix" or "add_prefix"`)
 		} else if len(i.Paths) != len(i.As) {
-			exclusivityErr = i.As[0].Pos.AnnotateErr(fmt.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
-				len(i.As), len(i.Paths)))
+			exclusivityErr = i.As[0].Pos.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
+				len(i.As), len(i.Paths))
 		}
 	}
 
 	var fromErr error
 	validFrom := []string{"destination"}
 	if i.From.Val != "" && !slices.Contains(validFrom, i.From.Val) {
-		fromErr = i.From.Pos.AnnotateErr(fmt.Errorf(`"from" must be one of %v`, validFrom))
+		fromErr = i.From.Pos.Errorf(`"from" must be one of %v`, validFrom)
 	}
 
 	return errors.Join(
-		nonEmptySlice(i.Pos, i.Paths, "paths"),
+		nonEmptySlice(&i.Pos, i.Paths, "paths"),
 		exclusivityErr,
 		fromErr,
 	)
@@ -398,7 +404,7 @@ func (i *IncludePath) Validate() error {
 // template expression.
 type RegexReplace struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Paths        []String             `yaml:"paths"`
 	Replacements []*RegexReplaceEntry `yaml:"replacements"`
@@ -406,37 +412,27 @@ type RegexReplace struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (r *RegexReplace) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths", "replacements"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
 		return err
 	}
-	type shadowType RegexReplace
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*r = RegexReplace(*shadow)
-	r.Pos = yamlPos(n)
-
 	return nil
 }
 
 // Validate implements Validator.
 func (r *RegexReplace) Validate() error {
 	return errors.Join(
-		nonEmptySlice(r.Pos, r.Paths, "paths"),
-		nonEmptySlice(r.Pos, r.Replacements, "replacements"),
+		nonEmptySlice(&r.Pos, r.Paths, "paths"),
+		nonEmptySlice(&r.Pos, r.Replacements, "replacements"),
 		validateEach(r.Replacements),
 	)
 }
 
 // RegexReplaceEntry is one of potentially many regex replacements to be applied.
 type RegexReplaceEntry struct {
-	Pos               *ConfigPos `yaml:"-"`
-	Regex             String     `yaml:"regex"`
-	SubgroupToReplace String     `yaml:"subgroup_to_replace"`
-	With              String     `yaml:"with"`
+	Pos               ConfigPos `yaml:"-"`
+	Regex             String    `yaml:"regex"`
+	SubgroupToReplace String    `yaml:"subgroup_to_replace"`
+	With              String    `yaml:"with"`
 }
 
 // Validate implements Validator.
@@ -452,26 +448,16 @@ func (r *RegexReplaceEntry) Validate() error {
 	}
 
 	return errors.Join(
-		notZeroModel(r.Pos, r.Regex, "regex"),
-		notZeroModel(r.Pos, r.With, "with"),
+		notZeroModel(&r.Pos, r.Regex, "regex"),
+		notZeroModel(&r.Pos, r.With, "with"),
 		subgroupErr,
 	)
 }
 
 func (r *RegexReplaceEntry) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"regex", "subgroup_to_replace", "with"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
 		return err
 	}
-	type shadowType RegexReplaceEntry
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*r = RegexReplaceEntry(*shadow)
-	r.Pos = yamlPos(n)
-
 	return nil
 }
 
@@ -479,7 +465,7 @@ func (r *RegexReplaceEntry) UnmarshalYAML(n *yaml.Node) error {
 // the template variable of the same name.
 type RegexNameLookup struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Paths        []String                `yaml:"paths"`
 	Replacements []*RegexNameLookupEntry `yaml:"replacements"`
@@ -487,66 +473,45 @@ type RegexNameLookup struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (r *RegexNameLookup) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths", "replacements"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
 		return err
 	}
-	type shadowType RegexNameLookup
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*r = RegexNameLookup(*shadow)
-	r.Pos = yamlPos(n)
-
 	return nil
 }
 
 // Validate implements Validator.
 func (r *RegexNameLookup) Validate() error {
 	return errors.Join(
-		nonEmptySlice(r.Pos, r.Paths, "paths"),
-		nonEmptySlice(r.Pos, r.Replacements, "replacements"),
+		nonEmptySlice(&r.Pos, r.Paths, "paths"),
+		nonEmptySlice(&r.Pos, r.Replacements, "replacements"),
 		validateEach(r.Replacements),
 	)
 }
 
 // RegexNameLookupEntry is one of potentially many regex replacements to be applied.
 type RegexNameLookupEntry struct {
-	Pos   *ConfigPos `yaml:"-"`
-	Regex String     `yaml:"regex"`
+	Pos   ConfigPos `yaml:"-"`
+	Regex String    `yaml:"regex"`
 }
 
 // Validate implements Validator.
 func (r *RegexNameLookupEntry) Validate() error {
 	return errors.Join(
-
-		notZeroModel(r.Pos, r.Regex, "regex"),
+		notZeroModel(&r.Pos, r.Regex, "regex"),
 	)
 }
 
 func (r *RegexNameLookupEntry) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"regex"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
 		return err
 	}
-	type shadowType RegexNameLookupEntry
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*r = RegexNameLookupEntry(*shadow)
-	r.Pos = yamlPos(n)
-
 	return nil
 }
 
 // StringReplace is an action that replaces a string with a template expression.
 type StringReplace struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Paths        []String             `yaml:"paths"`
 	Replacements []*StringReplacement `yaml:"replacements"`
@@ -554,19 +519,9 @@ type StringReplace struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *StringReplace) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths", "replacements", "params"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, s, &s.Pos); err != nil {
 		return err
 	}
-	type shadowType StringReplace
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*s = StringReplace(*shadow)
-	s.Pos = yamlPos(n)
-
 	return nil
 }
 
@@ -578,14 +533,14 @@ func (s *StringReplace) Validate() error {
 	//  - Validating that the subgroup number is actually a valid subgroup in
 	//    the regex
 	return errors.Join(
-		nonEmptySlice(s.Pos, s.Paths, "paths"),
-		nonEmptySlice(s.Pos, s.Replacements, "replacements"),
+		nonEmptySlice(&s.Pos, s.Paths, "paths"),
+		nonEmptySlice(&s.Pos, s.Replacements, "replacements"),
 		validateEach(s.Replacements),
 	)
 }
 
 type StringReplacement struct {
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	ToReplace String `yaml:"to_replace"`
 	With      String `yaml:"with"`
@@ -593,32 +548,22 @@ type StringReplacement struct {
 
 func (s *StringReplacement) Validate() error {
 	return errors.Join(
-		notZeroModel(s.Pos, s.ToReplace, "to_replace"),
-		notZeroModel(s.Pos, s.With, "with"),
+		notZeroModel(&s.Pos, s.ToReplace, "to_replace"),
+		notZeroModel(&s.Pos, s.With, "with"),
 	)
 }
 
 func (s *StringReplacement) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"to_replace", "with"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, s, &s.Pos); err != nil {
 		return err
 	}
-	type shadowType StringReplacement
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*s = StringReplacement(*shadow)
-	s.Pos = yamlPos(n)
-
 	return nil
 }
 
 // Append is an action that appends some output to the end of the file.
 type Append struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Paths             []String `yaml:"paths"`
 	With              String   `yaml:"with"`
@@ -626,28 +571,18 @@ type Append struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (s *Append) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths", "with", "skip_ensure_newline"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+func (a *Append) UnmarshalYAML(n *yaml.Node) error {
+	if err := unmarshalPlain(n, a, &a.Pos); err != nil {
 		return err
 	}
-	type shadowType Append
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*s = Append(*shadow)
-	s.Pos = yamlPos(n)
-
 	return nil
 }
 
 // Validate implements Validator.
-func (s *Append) Validate() error {
+func (a *Append) Validate() error {
 	return errors.Join(
-		nonEmptySlice(s.Pos, s.Paths, "paths"),
-		notZeroModel(s.Pos, s.With, "with"),
+		nonEmptySlice(&a.Pos, a.Paths, "paths"),
+		notZeroModel(&a.Pos, a.With, "with"),
 	)
 }
 
@@ -655,38 +590,28 @@ func (s *Append) Validate() error {
 // replacing each one with its template output.
 type GoTemplate struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Paths []String `yaml:"paths"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (g *GoTemplate) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"paths"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, g, &g.Pos); err != nil {
 		return err
 	}
-	type shadowType GoTemplate
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*g = GoTemplate(*shadow)
-	g.Pos = yamlPos(n)
-
 	return nil
 }
 
 // Validate implements Validator.
 func (g *GoTemplate) Validate() error {
 	// Checking that the input paths are valid will happen later.
-	return errors.Join(nonEmptySlice(g.Pos, g.Paths, "paths"))
+	return errors.Join(nonEmptySlice(&g.Pos, g.Paths, "paths"))
 }
 
 type ForEach struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	Iterator *ForEachIterator `yaml:"iterator"`
 	Steps    []*Step          `yaml:"steps"`
@@ -694,26 +619,16 @@ type ForEach struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (f *ForEach) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"iterator", "steps"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, f, &f.Pos); err != nil {
 		return err
 	}
-	type shadowType ForEach
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*f = ForEach(*shadow)
-	f.Pos = yamlPos(n)
-
 	return nil
 }
 
 func (f *ForEach) Validate() error {
 	return errors.Join(
-		notZero(f.Pos, f.Iterator, "iterator"),
-		nonEmptySlice(f.Pos, f.Steps, "steps"),
+		notZero(&f.Pos, f.Iterator, "iterator"),
+		nonEmptySlice(&f.Pos, f.Steps, "steps"),
 		validateUnlessNil(f.Iterator),
 		validateEach(f.Steps),
 	)
@@ -721,7 +636,7 @@ func (f *ForEach) Validate() error {
 
 type ForEachIterator struct {
 	// Pos is the YAML file location where this object started.
-	Pos *ConfigPos `yaml:"-"`
+	Pos ConfigPos `yaml:"-"`
 
 	// The name by which the range value is accessed.
 	Key String `yaml:"key"`
@@ -736,19 +651,9 @@ type ForEachIterator struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (f *ForEachIterator) UnmarshalYAML(n *yaml.Node) error {
-	knownYAMLFields := []string{"key", "values", "values_from"}
-	if err := extraFields(n, knownYAMLFields); err != nil {
+	if err := unmarshalPlain(n, f, &f.Pos); err != nil {
 		return err
 	}
-	type shadowType ForEachIterator
-	shadow := &shadowType{} // see "Q2" in file comment above
-
-	if err := n.Decode(shadow); err != nil {
-		return err
-	}
-	*f = ForEachIterator(*shadow)
-	f.Pos = yamlPos(n)
-
 	return nil
 }
 
@@ -759,7 +664,7 @@ func (f *ForEachIterator) Validate() error {
 	}
 
 	return errors.Join(
-		notZeroModel(f.Pos, f.Key, "key"),
+		notZeroModel(&f.Pos, f.Key, "key"),
 		exclusivityErr,
 	)
 }

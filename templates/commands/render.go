@@ -251,7 +251,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 	}
 	tempDirs = append(tempDirs, scratchDir)
 	logger := logging.FromContext(ctx)
-	logger.Infow("created temporary scratch directory", "path", scratchDir)
+	logger.InfoContext(ctx, "created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
 		flags:       &c.flags,
@@ -298,7 +298,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 			}
 			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
-			logger.Infow("created backup directory", "path", backupDir)
+			logger.InfoContext(ctx, "created backup directory", "path", backupDir)
 			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
 
@@ -314,9 +314,9 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
 		}
 		if dryRun {
-			logger.Debug("template render (dry run) succeeded")
+			logger.DebugContext(ctx, "template render (dry run) succeeded")
 		} else {
-			logger.Debug("template render succeeded")
+			logger.DebugContext(ctx, "template render succeeded")
 		}
 	}
 
@@ -373,6 +373,41 @@ func (c *RenderCommand) resolveInputs(ctx context.Context, spec *model.Spec) err
 		}
 	}
 
+	if err := c.validateInputs(ctx, spec.Inputs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *RenderCommand) validateInputs(ctx context.Context, inputs []*model.Input) error {
+	scope := newScope(c.flags.Inputs)
+
+	sb := &strings.Builder{}
+	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
+
+	for _, input := range inputs {
+		for _, rule := range input.Rules {
+			var ok bool
+			err := celCompileAndEval(ctx, scope, rule.Rule, &ok)
+			if ok && err == nil {
+				continue
+			}
+
+			fmt.Fprintf(tw, "\nInput name:\t%s", input.Name.Val)
+			fmt.Fprintf(tw, "\nInput value:\t%s", c.flags.Inputs[input.Name.Val])
+			writeRule(tw, rule, false, 0)
+			if err != nil {
+				fmt.Fprintf(tw, "\nCEL error:\t%s", err.Error())
+			}
+			fmt.Fprintf(tw, "\n") // Add vertical relief between validation messages
+		}
+	}
+
+	tw.Flush()
+	if sb.Len() > 0 {
+		return fmt.Errorf("input validation failed:\n%s", sb.String())
+	}
 	return nil
 }
 
@@ -391,6 +426,10 @@ func (c *RenderCommand) promptForInputs(ctx context.Context, spec *model.Spec) e
 		tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
 		fmt.Fprintf(tw, "\nInput name:\t%s", i.Name.Val)
 		fmt.Fprintf(tw, "\nDescription:\t%s", i.Desc.Val)
+		for idx, rule := range i.Rules {
+			printRuleIndex := len(i.Rules) > 1
+			writeRule(tw, rule, printRuleIndex, idx)
+		}
 
 		if i.Default != nil {
 			defaultStr := i.Default.Val
@@ -424,6 +463,24 @@ func (c *RenderCommand) promptForInputs(ctx context.Context, spec *model.Spec) e
 	return nil
 }
 
+// writeRule writes a human-readable description of the given rule to the given
+// tabwriter in a 2-column format.
+//
+// Sometimes we run this in a context where we want to include the index of the
+// rule in the list of rules; in that case, pass includeIndex=true and the index
+// value. If includeIndex is false, then index is ignored.
+func writeRule(tw *tabwriter.Writer, rule *model.InputRule, includeIndex bool, index int) {
+	indexStr := ""
+	if includeIndex {
+		indexStr = fmt.Sprintf(" %d", index)
+	}
+
+	fmt.Fprintf(tw, "\nRule%s:\t%s", indexStr, rule.Rule.Val)
+	if rule.Message.Val != "" {
+		fmt.Fprintf(tw, "\nRule%s msg:\t%s", indexStr, rule.Message.Val)
+	}
+}
+
 // collapseDefaultInputs defaults any missing input flags if default is set.
 func (c *RenderCommand) collapseDefaultInputs(spec *model.Spec) {
 	if c.flags.Inputs == nil {
@@ -452,19 +509,19 @@ func (c *RenderCommand) checkInputsMissing(spec *model.Spec) []string {
 }
 
 func executeSteps(ctx context.Context, steps []*model.Step, sp *stepParams) error {
-	logger := logging.FromContext(ctx).Named("executeSpec")
+	logger := logging.FromContext(ctx).With("logger", "executeSpec")
 
 	for i, step := range steps {
 		if err := executeOneStep(ctx, step, sp); err != nil {
 			return err
 		}
-		logger.Debugw("completed template action", "action", step.Action.Val)
+		logger.DebugContext(ctx, "completed template action", "action", step.Action.Val)
 		if sp.flags.DebugScratchContents {
 			contents, err := scratchContents(ctx, i, step, sp)
 			if err != nil {
 				return err
 			}
-			logger.Info(contents)
+			logger.InfoContext(ctx, contents)
 		}
 	}
 	return nil
@@ -567,11 +624,11 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun boo
 	info, err := rfs.Stat(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
+			return pos.Errorf("Stat(): %w", err)
 		}
 		create = true
 	} else if !info.Mode().IsDir() {
-		return model.ErrWithPos(pos, "cannot overwrite a file with a directory of the same name, %q", path) //nolint:wrapcheck
+		return pos.Errorf("cannot overwrite a file with a directory of the same name, %q", path)
 	}
 
 	if dryRun || !create {
@@ -579,7 +636,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun boo
 	}
 
 	if err := rfs.MkdirAll(path, ownerRWXPerms); err != nil {
-		return model.ErrWithPos(pos, "MkdirAll(): %w", err) //nolint:wrapcheck
+		return pos.Errorf("MkdirAll(): %w", err)
 	}
 
 	return nil
@@ -622,9 +679,9 @@ func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string
 		return templateDir, fmt.Errorf("go-getter.Get(): %w", err)
 	}
 	logger := logging.FromContext(ctx)
-	logger.Infow("created temporary template directory",
+	logger.InfoContext(ctx, "created temporary template directory",
 		"path", templateDir)
-	logger.Infow("copied source template temporary directory",
+	logger.InfoContext(ctx, "copied source template temporary directory",
 		"source", c.flags.Source,
 		"destination", templateDir)
 	return templateDir, nil
@@ -634,11 +691,11 @@ func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string
 func (c *RenderCommand) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
-		logger.Infow("keeping temporary directories due to --keep-temp-dirs",
+		logger.InfoContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
 			"paths", tempDirs)
 		return nil
 	}
-	logger.Info("removing all temporary directories (skip this with --keep-temp-dirs)")
+	logger.InfoContext(ctx, "removing all temporary directories (skip this with --keep-temp-dirs)")
 
 	var merr error
 	for _, p := range tempDirs {

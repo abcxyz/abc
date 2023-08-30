@@ -47,7 +47,7 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 // If the visitor returns modified file contents for a given file, that file
 // will be overwritten with the new contents.
 func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPaths []model.String, v walkAndModifyVisitor) error {
-	logger := logging.FromContext(ctx).Named("walkAndModify")
+	logger := logging.FromContext(ctx).With("logger", "walkAndModify")
 	seen := map[string]struct{}{}
 
 	for _, relPathPos := range relPaths {
@@ -60,15 +60,15 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 		walkFrom := filepath.Join(scratchDir, relPath)
 		if _, err := rfs.Stat(walkFrom); err != nil {
 			if os.IsNotExist(err) {
-				return model.ErrWithPos(pos, `path %q doesn't exist in the scratch directory, did you forget to "include" it first?"`, relPath) //nolint:wrapcheck
+				return pos.Errorf(`path %q doesn't exist in the scratch directory, did you forget to "include" it first?"`, relPath)
 			}
-			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
+			return pos.Errorf("Stat(): %w", err)
 		}
 
 		err = filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.
-				return model.ErrWithPos(pos, "%w", err) //nolint:wrapcheck
+				return pos.Errorf("%w", err)
 			}
 			if d.IsDir() {
 				return nil
@@ -76,17 +76,17 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 
 			if _, ok := seen[path]; ok {
 				// File already processed.
-				logger.Debugw("skipping file as already seen", "path", path)
+				logger.DebugContext(ctx, "skipping file as already seen", "path", path)
 				return nil
 			}
 			oldBuf, err := rfs.ReadFile(path)
 			if err != nil {
-				return model.ErrWithPos(pos, "Readfile(): %w", err) //nolint:wrapcheck
+				return pos.Errorf("Readfile(): %w", err)
 			}
 
 			relToScratchDir, err := filepath.Rel(scratchDir, path)
 			if err != nil {
-				return model.ErrWithPos(pos, "Rel(): %w", err) //nolint:wrapcheck
+				return pos.Errorf("Rel(): %w", err)
 			}
 
 			// We must clone oldBuf to guarantee that the callee won't change the
@@ -107,9 +107,9 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 			// The permissions in the following WriteFile call will be ignored
 			// because the file already exists.
 			if err := rfs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
-				return model.ErrWithPos(pos, "Writefile(): %w", err) //nolint:wrapcheck
+				return pos.Errorf("Writefile(): %w", err)
 			}
-			logger.Debugw("wrote modification", "path", path)
+			logger.DebugContext(ctx, "wrote modification", "path", path)
 
 			return nil
 		})
@@ -132,7 +132,7 @@ func templateAndCompileRegexes(regexes []model.String, scope *scope) ([]*regexp.
 
 		compiled[i], err = regexp.Compile(templated)
 		if err != nil {
-			merr = errors.Join(merr, model.ErrWithPos(re.Pos, "failed compiling regex: %w", err))
+			merr = errors.Join(merr, re.Pos.Errorf("failed compiling regex: %w", err))
 			continue
 		}
 	}
@@ -177,7 +177,7 @@ var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"
 func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *scope) (string, error) {
 	parsedTmpl, err := parseGoTmpl(tmpl)
 	if err != nil {
-		return "", model.ErrWithPos(pos, `error compiling as go-template: %w`, err) //nolint:wrapcheck
+		return "", pos.Errorf(`error compiling as go-template: %w`, err)
 	}
 
 	// As of go1.20, if the template references a nonexistent variable, then the
@@ -202,7 +202,7 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *scope) (str
 				wrapped:       err,
 			}
 		}
-		return "", model.ErrWithPos(pos, "template.Execute() failed: %w", err) //nolint:wrapcheck
+		return "", pos.Errorf("template.Execute() failed: %w", err)
 	}
 	return sb.String(), nil
 }
@@ -237,7 +237,7 @@ func (n *unknownTemplateKeyError) Unwrap() error {
 }
 
 func (n *unknownTemplateKeyError) Is(other error) bool {
-	_, ok := other.(*unknownTemplateKeyError) //nolint:errorlint
+	_, ok := other.(*unknownTemplateKeyError)
 	return ok
 }
 
@@ -294,7 +294,7 @@ type copyHint struct {
 }
 
 func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (outErr error) {
-	logger := logging.FromContext(ctx).Named("copyRecursive")
+	logger := logging.FromContext(ctx).With("logger", "copyRecursive")
 
 	backupDir := "" // will be set once the backup dir is actually created
 
@@ -306,7 +306,7 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		// DisableSymlinks=true to go-getter.
 		relToSrc, err := filepath.Rel(p.srcRoot, path)
 		if err != nil {
-			return model.ErrWithPos(pos, "filepath.Rel(%s,%s): %w", p.srcRoot, path, err) //nolint:wrapcheck
+			return pos.Errorf("filepath.Rel(%s,%s): %w", p.srcRoot, path, err)
 		}
 		dst := filepath.Join(p.dstRoot, relToSrc)
 
@@ -319,7 +319,7 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		}
 
 		if ch.skip {
-			logger.Debugw("walkdir visitor skipped file or directory", "path", relToSrc)
+			logger.DebugContext(ctx, "walkdir visitor skipped file or directory", "path", relToSrc)
 			if de.IsDir() {
 				return fs.SkipDir
 			}
@@ -345,10 +345,10 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 		dstInfo, err := p.rfs.Stat(dst)
 		if err == nil {
 			if dstInfo.IsDir() {
-				return model.ErrWithPos(pos, "cannot overwrite a directory with a file of the same name, %q", relToSrc) //nolint:wrapcheck
+				return pos.Errorf("cannot overwrite a directory with a file of the same name, %q", relToSrc)
 			}
 			if !ch.overwrite {
-				return model.ErrWithPos(pos, "destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc) //nolint:wrapcheck
+				return pos.Errorf("destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc)
 			}
 			if ch.backupIfExists && !p.dryRun {
 				if backupDir == "" {
@@ -361,7 +361,7 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 				}
 			}
 		} else if !os.IsNotExist(err) {
-			return model.ErrWithPos(pos, "Stat(): %w", err) //nolint:wrapcheck
+			return pos.Errorf("Stat(): %w", err)
 		}
 		srcInfo, err := p.rfs.Stat(path)
 		if err != nil {
@@ -376,11 +376,11 @@ func copyRecursive(ctx context.Context, pos *model.ConfigPos, p *copyParams) (ou
 }
 
 func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
-	logger := logging.FromContext(ctx).Named("copyFile")
+	logger := logging.FromContext(ctx).With("logger", "copyFile")
 
 	readFile, err := rfs.Open(src)
 	if err != nil {
-		return model.ErrWithPos(pos, "Open(): %w", err) //nolint:wrapcheck
+		return pos.Errorf("Open(): %w", err)
 	}
 	defer func() { outErr = errors.Join(outErr, readFile.Close()) }()
 
@@ -390,14 +390,14 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst 
 
 	writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 	if err != nil {
-		return model.ErrWithPos(pos, "OpenFile(): %w", err) //nolint:wrapcheck
+		return pos.Errorf("OpenFile(): %w", err)
 	}
 	defer func() { outErr = errors.Join(outErr, writeFile.Close()) }()
 
 	if _, err := io.Copy(writeFile, readFile); err != nil {
 		return fmt.Errorf("Copy(): %w", err)
 	}
-	logger.Debugw("copied file", "source", src, "destination", dst)
+	logger.DebugContext(ctx, "copied file", "source", src, "destination", dst)
 	return nil
 }
 
@@ -405,7 +405,7 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs renderFS, src, dst 
 // converts it to a relative path by removing any leading "/".
 func safeRelPath(pos *model.ConfigPos, p string) (string, error) {
 	if strings.Contains(p, "..") {
-		return "", model.ErrWithPos(pos, `path %q must not contain ".."`, p) //nolint:wrapcheck
+		return "", pos.Errorf(`path %q must not contain ".."`, p)
 	}
 	return strings.TrimLeft(p, string(filepath.Separator)), nil
 }
@@ -430,7 +430,7 @@ func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath strin
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.Infow("completed backup", "source", fileToBackup, "destination", backupFile)
+	logger.InfoContext(ctx, "completed backup", "source", fileToBackup, "destination", backupFile)
 
 	return nil
 }

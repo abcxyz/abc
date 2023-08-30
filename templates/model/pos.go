@@ -41,32 +41,19 @@ func yamlPos(n *yaml.Node) *ConfigPos {
 	}
 }
 
-// AnnotateErr prepends the config file location of a parsed value to an error. If the input err is
-// nil, then nil is returned.
-func (c *ConfigPos) AnnotateErr(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	pos := "(position unknown)" // This can happen when field values are defaults, rather that coming from the config file
-	if *c != (ConfigPos{}) {
-		pos = fmt.Sprintf("line %d column %d", c.Line, c.Column)
-	}
-
-	return fmt.Errorf("invalid config near %s: %w", pos, err)
-}
-
-// ErrWithPos includes information about the given config line with a given
-// error. One good way to use this is with %w, like:
+// Errorf returns a error prepended with spec.yaml position information, if
+// available.
 //
-//	ErrWithPos(pos, "Foo(): %w", err)
+// Examples:
 //
-// Calling this function with a zero or nil ConfigPos is valid. The resulting
-// error will just omit information about config location.
-func ErrWithPos(pos *ConfigPos, fmtStr string, args ...any) error {
+//	Wrapping an error: c.Errorf("foo(): %w", err)
+//
+//	Creating an error: c.Errorf("something went wrong doing action %s", action)
+func (c *ConfigPos) Errorf(fmtStr string, args ...any) error {
 	err := fmt.Errorf(fmtStr, args...)
-	if pos == nil || *pos == (ConfigPos{}) {
-		return err // No location info is available.
+	if c == nil || *c == (ConfigPos{}) {
+		return err
 	}
-	return fmt.Errorf("failed executing template spec file at line %d: %w", pos.Line, err)
+
+	return fmt.Errorf("at spec.yaml line %d column %d: %w", c.Line, c.Column, err)
 }
