@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:wrapcheck // We don't want to excessively wrap errors, like "yaml error: yaml error: ..."
 package model
 
 import (
