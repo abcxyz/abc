@@ -365,6 +365,54 @@ func TestGCPMatchesProjectID(t *testing.T) {
 	}
 }
 
+func TestGCPMatchesProjectNumber(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		param   string
+		want    bool
+		wantErr string
+	}{
+		{
+			name:  "simple-success",
+			param: `"123123123123123"`,
+			want:  true,
+		},
+		{
+			name:  "no-letters-allowed",
+			param: `"a123123123123123"`,
+			want:  false,
+		},
+		{
+			name:  "empty-string",
+			param: `""`,
+			want:  false,
+		},
+		{
+			name:  "too-small",
+			param: `"1"`,
+			want:  false,
+		},
+		{
+			name:    "type-error",
+			param:   `false`,
+			wantErr: `found no matching overload for 'gcp_matches_project_number' applied to '(bool)'`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			expr := fmt.Sprintf("gcp_matches_project_number(%v)", tc.param)
+			compileEvalForTest(t, expr, tc.want, tc.wantErr)
+		})
+	}
+}
+
 func compileEvalForTest(t *testing.T, expr string, want any, wantErr string) {
 	t.Helper()
 
