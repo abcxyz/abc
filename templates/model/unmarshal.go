@@ -77,7 +77,7 @@ func unmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields
 	shadow := reflect.New(typeWithoutMethods)
 
 	if err := n.Decode(shadow.Interface()); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	// Copy the field values from the dynamically-created-type-without-methods
 	// to the actual output struct.
