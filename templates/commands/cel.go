@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +31,9 @@ import (
 )
 
 var celRegistry = types.NewEmptyRegistry()
+
+// Any number less than this is assumed NOT to be a valid GCP project ID.
+const minProjectNum = 1000
 
 // Regex definitions for GCP entities.
 // See https://github.com/hashicorp/terraform-provider-google/blob/a9cfeea162e19012fb662f8f0d89339daebf61a2/google/verify/validation.go#L20
@@ -148,6 +152,55 @@ var celFuncs = []cel.EnvOption{
 					return types.NewErr("internal error: argument was %T but should have been a string", input.Value())
 				}
 				return types.Bool(gcpProjectIDRegex.MatchString(asStr))
+			}),
+		),
+	),
+
+	// gcp_matches_project_number returns whether the input matches the format
+	// of a GCP project number (only digits, and not a tiny number).
+	//
+	// Examples:
+	//   gcp_matches_project_number("123456789")==true
+	//   gcp_matches_project_number("123abc")==false
+	cel.Function(
+		"gcp_matches_project_number",
+
+		// There are multiple implementations; this one accepts string.
+		cel.Overload("gcp_matches_project_number_string",
+			[]*types.Type{types.StringType},
+			cel.BoolType,
+			cel.UnaryBinding(func(input ref.Val) ref.Val {
+				strAny, err := input.ConvertToNative(reflect.TypeOf(""))
+				if err != nil {
+					return types.NewErr("internal error: argument was not convertible to string: %w", err)
+				}
+				str, ok := strAny.(string)
+				if !ok {
+					return types.NewErr("internal error: argument was %T but should have been a string", strAny)
+				}
+
+				u64, err := strconv.ParseUint(str, 10, 64)
+				if err != nil {
+					return types.Bool(false) // A string that's not parseable as a uint is not a valid project number
+				}
+				return types.Bool(u64 >= minProjectNum)
+			}),
+		),
+
+		// There are multiple implementations; this one accepts int.
+		cel.Overload("gcp_matches_project_number_int",
+			[]*types.Type{types.IntType},
+			cel.BoolType,
+			cel.UnaryBinding(func(input ref.Val) ref.Val {
+				u64Any, err := input.ConvertToNative(reflect.TypeOf(uint64(0)))
+				if err != nil {
+					return types.Bool(false)
+				}
+				u64, ok := u64Any.(uint64)
+				if !ok {
+					return types.NewErr(`internal error: "any" was %T but should have been uint64`, u64Any)
+				}
+				return types.Bool(u64 >= minProjectNum)
 			}),
 		),
 	),
