@@ -23,23 +23,25 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestInputsUnmarshal(t *testing.T) {
+func TestTestUnmarshal(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
 		name    string
 		in      string
-		want    *Inputs
+		want    *Test
 		wantErr string
 	}{
 		{
-			name: "simple_inputs_should_succeed",
-			in: `inputs:
+			name: "simple_test_should_succeed",
+			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+inputs:
 - name: 'person_name'
   value: 'iron_man'
 - name: 'dog_name'
   value: 'iron_dog'`,
-			want: &Inputs{
+			want: &Test{
+				APIVersion: String{Val: "cli.abcxyz.dev/v1alpha1"},
 				Inputs: []*InputValue{
 					{
 						Name:  String{Val: "person_name"},
@@ -54,17 +56,26 @@ func TestInputsUnmarshal(t *testing.T) {
 		},
 		{
 			name: "missing_field_should_fail",
-			in: `inputs:
+			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+inputs:
 - name: 'person_name'`,
-			wantErr: `at line 2 column 3: field "value" is required`,
+			wantErr: `at line 3 column 3: field "value" is required`,
 		},
 		{
 			name: "unknown_field_should_fail",
-			in: `inputs:
+			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+inputs:
 - name: 'person_name'
   value: 'iron_man'
   pet: 'iron_dog'`,
-			wantErr: `error parsing YAML inputs file: at line 4 column 3: unknown field name "pet"; valid choices are [name value]`,
+			wantErr: `error parsing test YAML file: at line 5 column 3: unknown field name "pet"; valid choices are [name value]`,
+		},
+		{
+			name: "missing_api_version_should_fail",
+			in: `inputs:
+- name: 'person_name'
+  value: 'iron_man'`,
+			wantErr: `at line 1 column 1: field "apiVersion" value must be one of [cli.abcxyz.dev/v1alpha1]`,
 		},
 	}
 
@@ -72,8 +83,7 @@ func TestInputsUnmarshal(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := DecodeInputs(strings.NewReader(tc.in))
-
+			got, err := DecodeTest(strings.NewReader(tc.in))
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
