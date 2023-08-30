@@ -340,9 +340,65 @@ type Include struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
-		return err
+	var pathsNode *yaml.Node
+	for _, child := range n.Content {
+		child.
 	}
+	
+	
+	m := map[string]any{}
+	if err := n.Decode(m); err != nil {
+		return err //nolint:wrapcheck
+	}
+	/*
+				// OLD
+				paths: ['a/b/c', 'x/y.txt'] // string input (old way)
+		        from: destination
+
+				unmarshals into:
+				map:
+					paths: ['a/b/c', 'x/y.txt']
+					from: 'destination'
+
+				// NEW
+				paths:
+					- paths: ['a/b/c', 'x/y.txt'], // path object (new way)
+					  from: destination
+
+				unmarshals into:
+				map:
+					paths: [ map:
+								paths: ['a/b/c', 'x/y.txt']
+								from: 'destination'
+							]
+
+				paths?
+				type: slice of string or slice of map[string]any
+				kind: slice
+				elem: string or map[string]any
+	*/
+	pathsAny := m["paths"]
+	pathsAnyType := reflect.TypeOf(pathsAny)
+	if pathsAnyType.Kind() != reflect.Slice {
+		panic("paths expected to be a slice")
+	}
+	pathsAnyElemType := pathsAnyType.Elem()
+	switch pathsAnyElemType.Kind() {
+	case reflect.String:
+		// the old non-path-object style
+		ip := IncludePath{}
+		// doesn't work, we need to get a sub-field of n, not just n
+		if err := unmarshalPlain(n, &ip, &ip.Pos); err != nil {
+			panic("oops")
+		}
+		i.Paths = []*IncludePath{&ip}
+	case reflect.Map:
+		// the new path-object style
+		if err := unmarshalPlain(n, &i.Paths); err != nil {
+			panic("oops 2")
+		}
+	}
+
 	return nil
 }
 
@@ -369,6 +425,16 @@ type IncludePath struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind == yaml.ScalarNode { // if includePath is a string
+		var path String
+		err := n.Decode(&path.Val)
+		if err != nil {
+			return err
+		}
+		path.Pos = yamlPos(n)
+		i.Paths = []String{path}
+		return nil
+	}
 	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
 		return err
 	}

@@ -382,8 +382,7 @@ params: `,
 			in: `desc: 'mydesc'
 action: 'include'
 params:
-  paths:
-    - paths: ['a/b/c', 'x/y.txt']`,
+  paths: ['a/b/c', 'x/y.txt']`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
@@ -394,6 +393,10 @@ params:
 								{
 									Val: "a/b/c",
 								},
+							},
+						},
+						{
+							Paths: []String{
 								{
 									Val: "x/y.txt",
 								},
