@@ -432,7 +432,7 @@ func TestRejectNumberedSubgroupExpand(t *testing.T) {
 		{
 			name:    "reject_numbered",
 			in:      "abc $5 def",
-			wantErr: "at spec.yaml line 1 column 1: regex expansions must reference the subgroup by name, like ${mygroup}, rather than by number, like ${1}; we saw $5",
+			wantErr: "at line 1 column 1: regex expansions must reference the subgroup by name, like ${mygroup}, rather than by number, like ${1}; we saw $5",
 		},
 		{
 			// Note: "$$" expands to "$", this is not a subgroup reference
