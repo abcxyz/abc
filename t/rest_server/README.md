@@ -30,6 +30,6 @@ How to render this template:
     github.com/abcxyz/abc.git//t/rest_server/workflows
     ```
 
-    Optionally, omit the added `--dest` flags to render server files in one place.
+    Optionally, omit the added `--dest` flags to render server files to the current directory.
 
 1. Follow the steps in the rendered README.md to run the server.
