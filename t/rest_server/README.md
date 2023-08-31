@@ -9,8 +9,8 @@ How to render this template:
 1. cd into an empty destination directory.
 
     ```shell
-    $ mkdir ~/abcxyz-services
-    $ cd ~/abcxyz-services
+    $ mkdir ~/rest_server
+    $ cd ~/rest_server
     ```
 
 1. See READMEs in each subfolder for more details. Render via:
