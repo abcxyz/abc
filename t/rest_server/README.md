@@ -1,43 +1,35 @@
-# Example: REST server
+# Template: REST server
 
-Simple HTTP/JSON REST server implemented in Go, using go-chi for HTTP routing.
+Template for a simple HTTP/JSON REST server implemented in Go, using go-chi for HTTP routing.
 
-To run this, cd to the root of this git repo, then run these steps:
+How to render this template:
 
-1. cd into an empty directory
+1. [Install the abc binary](https://github.com/abcxyz/abc#installation).
 
-    ```shell
-    $ mkdir ~/template_tmp
-    $ cd ~/template_tmp
-    ```
-
-1. Install the `abc` binary
+1. cd into an empty destination directory.
 
     ```shell
-    $ go install github.com/abcxyz/abc/cmd/abc@latest
-    $ abc --help
+    $ mkdir ~/abcxyz-services
+    $ cd ~/abcxyz-services
     ```
 
-    This only works if you have go installed (https://go.dev/doc/install) and have the Go binary directory in your $PATH (try PATH=$PATH:~/go/bin).
-
-1. Execute the template defined in the `t` directory.
-This will output a file named `main.go` in your working directory containing
-the transformed program.
+1. See READMEs in each subfolder for more details. Render via:
 
     ```shell
-    $ abc templates render github.com/abcxyz/abc.git//t/rest_server
+    $ abc templates render github.com/abcxyz/abc.git//t/rest_server/code
+
+    $ abc templates render github.com/abcxyz/abc.git//t/rest_server/deployments
+
+    $ abc templates render --input="automation_service_account=[automation_service_account]" \
+    --input="wif_provider=[wif_provider]" \
+    --input="ar_repository=[ar_repository]" \
+    --input="ar_location=[ar_location]" \
+    --input="cr_service=[cr_service]" \
+    --input="region=[region]" \
+    --input="project_id=[project_id]" \
+    github.com/abcxyz/abc.git//t/rest_server/workflows
     ```
 
-1. Run the transformed program:
+    This will output a file named `main.go` in your working directory containing the transformed program.
 
-    ```shell
-    $ go run .
-    [yyyy/mm/dd hh:mm:ss] starting server on 8080
-    ```
-
-1. In a separate shell, run:
-
-    ```shell
-    $ curl localhost:8080
-    {"message":"hello world"}
-    ```
+1. Follow the steps in the rendered README.md to run the server.

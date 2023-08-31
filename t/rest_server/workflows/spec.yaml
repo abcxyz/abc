@@ -14,7 +14,7 @@
 
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
-desc: 'A template for a simple HTTP/JSON REST server.'
+desc: 'REST server workflows template'
 inputs:
   - name: 'automation_service_account'
     desc: 'Automation Service Account (ex: [account_name]@[project_id].iam.gserviceaccount.com)'
@@ -34,11 +34,12 @@ steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['.']
+      paths: ['contents']
+      as: ['.github']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
-      paths: ['.github/config']
+      paths: ['.']
       replacements:
         - to_replace: 'AUTOMATION_SERVICE_ACCOUNT=[automation_service_account]'
           with: 'AUTOMATION_SERVICE_ACCOUNT={{.automation_service_account}}'

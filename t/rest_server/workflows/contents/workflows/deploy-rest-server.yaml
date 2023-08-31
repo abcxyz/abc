@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: 'deploy'
+name: 'deploy rest server'
 on:
   workflow_dispatch:
     inputs:
@@ -41,6 +41,9 @@ jobs:
       id-token: 'write'
     name: 'Release Image'
     runs-on: 'ubuntu-latest'
+    defaults:
+      run:
+        working-directory: ./code/rest_server
     steps:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
@@ -75,6 +78,7 @@ jobs:
       - name: 'Push Docker Image'
         run: |
           docker push ${{ env.IMAGE }}
+          docker build . -t my-web-app -f subfolder/Dockerfile
   deploy-service:
     needs:
       - 'image-release'
