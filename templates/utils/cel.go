@@ -217,7 +217,7 @@ var celFuncs = []cel.EnvOption{
 func CelCompileAndEval(ctx context.Context, scope *Scope, expr model.String, outPtr any) error {
 	prog, err := celCompile(ctx, scope, expr)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	if err := celEval(ctx, scope, expr.Pos, prog, outPtr); err != nil {
 		return err
