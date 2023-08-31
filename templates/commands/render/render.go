@@ -58,7 +58,7 @@ const (
 	specName = "spec.yaml"
 )
 
-type RenderCommand struct {
+type Command struct {
 	cli.BaseCommand
 	flags RenderFlags
 
@@ -67,11 +67,11 @@ type RenderCommand struct {
 }
 
 // Desc implements cli.Command.
-func (c *RenderCommand) Desc() string {
+func (c *Command) Desc() string {
 	return "instantiate a template to setup a new app or add config files"
 }
 
-func (c *RenderCommand) Help() string {
+func (c *Command) Help() string {
 	return `
 Usage: {{ COMMAND }} [options] <source>
 
@@ -92,13 +92,13 @@ are accepted:
     remote tarball.`
 }
 
-func (c *RenderCommand) Flags() *cli.FlagSet {
+func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
 }
 
-func (c *RenderCommand) Run(ctx context.Context, args []string) error {
+func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
@@ -219,7 +219,7 @@ type runParams struct {
 }
 
 // realRun is for testability; it's Run() with fakeable interfaces.
-func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr error) {
+func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	var tempDirs []string
 	defer func() {
 		err := c.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
@@ -333,7 +333,7 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.
-func (c *RenderCommand) checkUnknownInputs(spec *model.Spec) []string {
+func (c *Command) checkUnknownInputs(spec *model.Spec) []string {
 	specInputs := make(map[string]any, len(spec.Inputs))
 	for _, v := range spec.Inputs {
 		specInputs[v.Name.Val] = struct{}{}
@@ -353,7 +353,7 @@ func (c *RenderCommand) checkUnknownInputs(spec *model.Spec) []string {
 
 // resolveInputs combines flags, user prompts, and defaults to get the full set
 // of template inputs.
-func (c *RenderCommand) resolveInputs(ctx context.Context, spec *model.Spec) error {
+func (c *Command) resolveInputs(ctx context.Context, spec *model.Spec) error {
 	if unknownInputs := c.checkUnknownInputs(spec); len(unknownInputs) > 0 {
 		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
@@ -381,7 +381,7 @@ func (c *RenderCommand) resolveInputs(ctx context.Context, spec *model.Spec) err
 	return nil
 }
 
-func (c *RenderCommand) validateInputs(ctx context.Context, inputs []*model.Input) error {
+func (c *Command) validateInputs(ctx context.Context, inputs []*model.Input) error {
 	scope := common.NewScope(c.flags.Inputs)
 
 	sb := &strings.Builder{}
@@ -417,7 +417,7 @@ func (c *RenderCommand) validateInputs(ctx context.Context, inputs []*model.Inpu
 //
 // This must only be called when the user specified --prompt and the input is a
 // terminal (or in a test).
-func (c *RenderCommand) promptForInputs(ctx context.Context, spec *model.Spec) error {
+func (c *Command) promptForInputs(ctx context.Context, spec *model.Spec) error {
 	for _, i := range spec.Inputs {
 		if _, ok := c.flags.Inputs[i.Name.Val]; ok {
 			// Don't prompt if the cmdline had an --input for this key.
@@ -483,7 +483,7 @@ func writeRule(tw *tabwriter.Writer, rule *model.InputRule, includeIndex bool, i
 }
 
 // collapseDefaultInputs defaults any missing input flags if default is set.
-func (c *RenderCommand) collapseDefaultInputs(spec *model.Spec) {
+func (c *Command) collapseDefaultInputs(spec *model.Spec) {
 	if c.flags.Inputs == nil {
 		c.flags.Inputs = map[string]string{}
 	}
@@ -495,7 +495,7 @@ func (c *RenderCommand) collapseDefaultInputs(spec *model.Spec) {
 }
 
 // checkInputsMissing checks for missing input flags returns them as a slice.
-func (c *RenderCommand) checkInputsMissing(spec *model.Spec) []string {
+func (c *Command) checkInputsMissing(spec *model.Spec) []string {
 	missing := make([]string, 0, len(c.flags.Inputs))
 
 	for _, input := range spec.Inputs {
@@ -662,7 +662,7 @@ func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error
 // Downloads the template and returns the name of the temp directory where it
 // was saved. If error is returned, then the returned directory name may or may
 // not exist, and may or may not be empty.
-func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
+func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
 	templateDir, err := rp.tempDirNamer(templateDirNamePart)
 	if err != nil {
 		return "", err
@@ -689,7 +689,7 @@ func (c *RenderCommand) copyTemplate(ctx context.Context, rp *runParams) (string
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
-func (c *RenderCommand) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
+func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
 		logger.InfoContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
@@ -705,7 +705,7 @@ func (c *RenderCommand) maybeRemoveTempDirs(ctx context.Context, fs renderFS, te
 	return merr
 }
 
-func (c *RenderCommand) setLogEnvVars() {
+func (c *Command) setLogEnvVars() {
 	if os.Getenv("ABC_LOG_MODE") == "" {
 		os.Setenv("ABC_LOG_MODE", defaultLogMode)
 	}

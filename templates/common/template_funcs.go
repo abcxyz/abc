@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package utils contains the utility function for template commands.
+// Package common contains the common utility functions for template commands.
 
 package common
 

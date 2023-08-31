@@ -39,7 +39,7 @@ var rootCmd = func() *cli.RootCommand {
 					Description: "subcommands for rendering templates and related things",
 					Commands: map[string]cli.CommandFactory{
 						"render": func() cli.Command {
-							return &render.RenderCommand{}
+							return &render.Command{}
 						},
 						"test": func() cli.Command {
 							return &cli.RootCommand{
@@ -47,10 +47,10 @@ var rootCmd = func() *cli.RootCommand {
 								Description: "subcommands for validating template rendering with golden tests",
 								Commands: map[string]cli.CommandFactory{
 									"record": func() cli.Command {
-										return &test.TestRecordCommand{}
+										return &test.RecordCommand{}
 									},
 									"verify": func() cli.Command {
-										return &test.TestVerifyCommand{}
+										return &test.VerifyCommand{}
 									},
 								},
 							}
