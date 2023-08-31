@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"bytes"
@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -79,7 +80,7 @@ func TestActionPrint(t *testing.T) {
 			var outBuf bytes.Buffer
 			sp := &stepParams{
 				stdout: &outBuf,
-				scope:  newScope(tc.inputs),
+				scope:  utils.NewScope(tc.inputs),
 				flags:  &tc.flags,
 			}
 			pr := &model.Print{

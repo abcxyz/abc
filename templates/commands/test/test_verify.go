@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package commands implements the template-related subcommands.
-package commands
+// Package test implements the template test related subcommands.
+package test
 
-// This file implements the "templates test record" subcommand for
-// recording template tests.
+// This file implements the "templates test verify" subcommand for
+// verifying a template test.
 
 import (
 	"context"
@@ -25,22 +25,22 @@ import (
 	"github.com/abcxyz/pkg/cli"
 )
 
-type TestRecordCommand struct {
+type TestVerifyCommand struct {
 	cli.BaseCommand
 }
 
-func (c *TestRecordCommand) Desc() string {
-	return "record the template rendering result to golden tests"
+func (c *TestVerifyCommand) Desc() string {
+	return "verify the template rendering result against golden tests"
 }
 
-func (c *TestRecordCommand) Help() string {
+func (c *TestVerifyCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options] <test_name>
 
-The {{ COMMAND }} records the template golden tests.
+The {{ COMMAND }} verify the template golden test.
 
 The "<test_name>" is the name of the test. If no <test_name> is specified,
-all tests will be recoreded.
+all tests will be run against.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
@@ -48,6 +48,6 @@ For every test case, it is expected that
 template input params.`
 }
 
-func (c *TestRecordCommand) Run(ctx context.Context, args []string) error {
+func (c *TestVerifyCommand) Run(ctx context.Context, args []string) error {
 	return fmt.Errorf("Unimplemented")
 }

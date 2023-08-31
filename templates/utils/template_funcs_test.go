@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package utils
 
 import (
 	"testing"
@@ -60,17 +60,17 @@ func TestToSnakeCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := toSnakeCase(tc.input)
+			got := ToSnakeCase(tc.input)
 			if got, want := got, tc.want; got != want {
 				t.Errorf("expected %s to be %s", got, want)
 			}
 
-			got = toLowerSnakeCase(tc.input)
+			got = ToLowerSnakeCase(tc.input)
 			if got, want := got, tc.wantLower; got != want {
 				t.Errorf("expected lower %s to be %s", got, want)
 			}
 
-			got = toUpperSnakeCase(tc.input)
+			got = ToUpperSnakeCase(tc.input)
 			if got, want := got, tc.wantUpper; got != want {
 				t.Errorf("expected upper %s to be %s", got, want)
 			}
@@ -117,17 +117,17 @@ func TestToHyphenCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := toHyphenCase(tc.input)
+			got := ToHyphenCase(tc.input)
 			if got, want := got, tc.want; got != want {
 				t.Errorf("expected %s to be %s", got, want)
 			}
 
-			got = toLowerHyphenCase(tc.input)
+			got = ToLowerHyphenCase(tc.input)
 			if got, want := got, tc.wantLower; got != want {
 				t.Errorf("expected lower %s to be %s", got, want)
 			}
 
-			got = toUpperHyphenCase(tc.input)
+			got = ToUpperHyphenCase(tc.input)
 			if got, want := got, tc.wantUpper; got != want {
 				t.Errorf("expected upper %s to be %s", got, want)
 			}
@@ -178,7 +178,7 @@ func TestSortStrings(t *testing.T) {
 
 			original := slices.Clone(tc.input)
 
-			got := sortStrings(tc.input)
+			got := SortStrings(tc.input)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("incorrect strings (-got,+want): %s", diff)
 			}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package utils
 
 import (
 	"strconv"
@@ -76,7 +76,7 @@ func TestScope(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			scope := newScope(tc.inherit)
+			scope := NewScope(tc.inherit)
 			scope = scope.With(tc.with)
 
 			if diff := cmp.Diff(scope.All(), tc.want); diff != "" {
@@ -114,7 +114,7 @@ func TestScopeDeepNesting(t *testing.T) {
 		}
 	}
 
-	scope := newScope(inMaps[0])
+	scope := NewScope(inMaps[0])
 	for i := 1; i <= 9; i++ {
 		scope = scope.With(inMaps[i])
 	}

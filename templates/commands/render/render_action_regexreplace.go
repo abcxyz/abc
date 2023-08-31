@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"context"
 	"regexp"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/utils"
 )
 
 // The regex_replace action replaces a regex match (or a subgroup thereof) with
@@ -93,7 +94,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 	return nil
 }
 
-func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEntry, re *regexp.Regexp, scope *scope) ([]byte, error) {
+func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEntry, re *regexp.Regexp, scope *utils.Scope) ([]byte, error) {
 	// Why iterate in reverse? We have to replace starting at the end of the
 	// file working toward the beginning, so when we replace part of
 	// the buffer it doesn't invalidate the indices of the other

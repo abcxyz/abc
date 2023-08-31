@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -356,7 +357,7 @@ func TestActionInclude(t *testing.T) {
 				},
 				scratchDir:  scratchDir,
 				templateDir: templateDir,
-				scope:       newScope(tc.inputs),
+				scope:       utils.NewScope(tc.inputs),
 			}
 			err := actionInclude(ctx, tc.include, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

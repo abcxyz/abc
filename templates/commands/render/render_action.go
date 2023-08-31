@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"bytes"
@@ -29,6 +29,7 @@ import (
 	"text/template"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/logging"
 	"golang.org/x/exp/maps"
 )
@@ -120,7 +121,7 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 	return nil
 }
 
-func templateAndCompileRegexes(regexes []model.String, scope *scope) ([]*regexp.Regexp, error) {
+func templateAndCompileRegexes(regexes []model.String, scope *utils.Scope) ([]*regexp.Regexp, error) {
 	compiled := make([]*regexp.Regexp, len(regexes))
 	var merr error
 	for i, re := range regexes {
@@ -146,19 +147,19 @@ func templateFuncs() template.FuncMap {
 		"contains":          strings.Contains,
 		"replace":           strings.Replace,
 		"replaceAll":        strings.ReplaceAll,
-		"sortStrings":       sortStrings,
+		"sortStrings":       utils.SortStrings,
 		"split":             strings.Split,
 		"toLower":           strings.ToLower,
 		"toUpper":           strings.ToUpper,
 		"trimPrefix":        strings.TrimPrefix,
 		"trimSuffix":        strings.TrimSuffix,
 		"trimSpace":         strings.TrimSpace,
-		"toSnakeCase":       toSnakeCase,
-		"toLowerSnakeCase":  toLowerSnakeCase,
-		"toUpperSnakeCase":  toUpperSnakeCase,
-		"toHyphenCase":      toHyphenCase,
-		"toLowerHyphenCase": toLowerHyphenCase,
-		"toUpperHyphenCase": toUpperHyphenCase,
+		"toSnakeCase":       utils.ToSnakeCase,
+		"toLowerSnakeCase":  utils.ToLowerSnakeCase,
+		"toUpperSnakeCase":  utils.ToUpperSnakeCase,
+		"toHyphenCase":      utils.ToHyphenCase,
+		"toLowerHyphenCase": utils.ToLowerHyphenCase,
+		"toUpperHyphenCase": utils.ToUpperHyphenCase,
 	}
 }
 
@@ -174,7 +175,7 @@ var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"
 // there's no reason to print out spec file location in an error message. If
 // template execution fails because of a missing input variable, the error will
 // be wrapped in a unknownTemplateKeyError.
-func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *scope) (string, error) {
+func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *utils.Scope) (string, error) {
 	parsedTmpl, err := parseGoTmpl(tmpl)
 	if err != nil {
 		return "", pos.Errorf(`error compiling as go-template: %w`, err)
@@ -207,7 +208,7 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *scope) (str
 	return sb.String(), nil
 }
 
-func parseAndExecuteGoTmplAll(ss []model.String, scope *scope) ([]string, error) {
+func parseAndExecuteGoTmplAll(ss []model.String, scope *utils.Scope) ([]string, error) {
 	out := make([]string, len(ss))
 	for i, in := range ss {
 		var err error

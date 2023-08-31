@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package utils
 
 import "golang.org/x/exp/maps"
 
@@ -24,24 +24,24 @@ import "golang.org/x/exp/maps"
 // of a list of values. The new variable introduced in this way "shadows" any
 // variable that may previously exist of the same name. When the for_each loop
 // is finished, then the outer scope's variable becomes available again.
-type scope struct {
+type Scope struct {
 	vars    map[string]string // never nil
-	inherit *scope            // is nil if this is the outermost scope.
+	inherit *Scope            // is nil if this is the outermost scope.
 }
 
-func newScope(m map[string]string) *scope {
+func NewScope(m map[string]string) *Scope {
 	if m == nil {
 		// This isn't strictly necessary, because a lookup in a nil map just
 		// returns false, but it saves complexity in the other methods.
 		m = map[string]string{}
 	}
-	return &scope{
+	return &Scope{
 		vars: m,
 	}
 }
 
 // Lookup returns the current value of a given variable name, or false.
-func (s *scope) Lookup(name string) (string, bool) {
+func (s *Scope) Lookup(name string) (string, bool) {
 	val, ok := s.vars[name]
 	if ok {
 		return val, true
@@ -57,8 +57,8 @@ func (s *scope) Lookup(name string) (string, bool) {
 
 // With returns a new scope containing a new set of variable values. It forwards
 // lookups to the previously existing scope if the lookup key is not found in m.
-func (s *scope) With(m map[string]string) *scope {
-	return &scope{
+func (s *Scope) With(m map[string]string) *Scope {
+	return &Scope{
 		vars:    maps.Clone(m), // defensively clone to avoid bugs if the caller modifies their copy
 		inherit: s,
 	}
@@ -71,7 +71,7 @@ func (s *scope) With(m map[string]string) *scope {
 // safely.
 //
 // The return value is never nil.
-func (s *scope) All() map[string]string {
+func (s *Scope) All() map[string]string {
 	if s.inherit == nil {
 		return maps.Clone(s.vars)
 	}

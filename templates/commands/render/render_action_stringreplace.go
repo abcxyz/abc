@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"context"
@@ -21,21 +21,23 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 )
 
-func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
-	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.scope)
-	if err != nil {
-		return err
-	}
-
-	if !ap.SkipEnsureNewline.Val {
-		if !strings.HasSuffix(with, "\n") {
-			with = with + "\n"
+func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepParams) error {
+	var replacerArgs []string //nolint:prealloc // strings.NewReplacer has a weird input slice, it's less confusing to append rather than preallocate.
+	for _, r := range sr.Replacements {
+		toReplace, err := parseAndExecuteGoTmpl(r.ToReplace.Pos, r.ToReplace.Val, sp.scope)
+		if err != nil {
+			return err
 		}
+		replaceWith, err := parseAndExecuteGoTmpl(r.With.Pos, r.With.Val, sp.scope)
+		if err != nil {
+			return err
+		}
+		replacerArgs = append(replacerArgs, toReplace, replaceWith)
 	}
+	replacer := strings.NewReplacer(replacerArgs...)
 
-	paths := make([]model.String, 0, len(ap.Paths))
-
-	for _, p := range ap.Paths {
+	paths := make([]model.String, 0, len(sr.Paths))
+	for _, p := range sr.Paths {
 		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
 		if err != nil {
 			return err
@@ -44,7 +46,7 @@ func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
 	}
 
 	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(buf []byte) ([]byte, error) {
-		return append(buf, []byte(with)...), nil
+		return []byte(replacer.Replace(string(buf))), nil
 	}); err != nil {
 		return err
 	}
