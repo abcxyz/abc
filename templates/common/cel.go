@@ -204,6 +204,64 @@ var celFuncs = []cel.EnvOption{
 			}),
 		),
 	),
+
+	// matches_capitalized_bool returns whether the input is a stringified boolean
+	// starting with a capitalized letter, as used in Python.
+	//
+	// This function doesn't accept boolean inputs because the whole point is
+	// that we're checking the string form of a boolean for its capiltalization.
+	//
+	// Examples:
+	//   matches_capitalized_bool("True")==true
+	//   matches_capitalized_bool("False")==true
+	//   matches_capitalized_bool("true")==false
+	//   matches_capitalized_bool("false")==false
+	//   matches_uncapitalized_bool("something_else")==false
+	cel.Function(
+		"matches_capitalized_bool",
+		cel.Overload(
+			"matches_capitalized_bool",
+			[]*types.Type{types.StringType},
+			cel.BoolType,
+			cel.UnaryBinding(func(input ref.Val) ref.Val {
+				asStr, ok := input.Value().(string)
+				if !ok {
+					return types.NewErr("internal error: argument was %T but should have been a string", input.Value())
+				}
+				out := asStr == "True" || asStr == "False"
+				return types.Bool(out)
+			}),
+		),
+	),
+
+	// matches_uncapitalized_bool returns whether the input is a stringified boolean
+	// starting with a capitalized letter, as used in Go, Terraform, and others.
+	//
+	// This function doesn't accept boolean inputs because the whole point is
+	// that we're checking the string form of a boolean for its capiltalization.
+	//
+	// Examples:
+	//   matches_uncapitalized_bool("true")==true
+	//   matches_uncapitalized_bool("false")==true
+	//   matches_uncapitalized_bool("True")==false
+	//   matches_uncapitalized_bool("False")==false
+	//   matches_uncapitalized_bool("something_else")==false
+	cel.Function(
+		"matches_uncapitalized_bool",
+		cel.Overload(
+			"matches_uncapitalized_bool",
+			[]*types.Type{types.StringType},
+			cel.BoolType,
+			cel.UnaryBinding(func(input ref.Val) ref.Val {
+				asStr, ok := input.Value().(string)
+				if !ok {
+					return types.NewErr("internal error: argument was %T but should have been a string", input.Value())
+				}
+				out := asStr == "true" || asStr == "false"
+				return types.Bool(out)
+			}),
+		),
+	),
 }
 
 // celCompileAndEval parses, compiles, and executes the given CEL expr with the

@@ -413,6 +413,122 @@ func TestGCPMatchesProjectNumber(t *testing.T) {
 	}
 }
 
+func TestMatchesCapitalizedBool(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		param   string
+		want    bool
+		wantErr string
+	}{
+		{
+			name:  "capitalized-true",
+			param: `"True"`,
+			want:  true,
+		},
+		{
+			name:  "capitalized-false",
+			param: `"False"`,
+			want:  true,
+		},
+		{
+			name:  "uncapitalized-true",
+			param: `"true"`,
+			want:  false,
+		},
+		{
+			name:  "uncapitalized-false",
+			param: `"false"`,
+			want:  false,
+		},
+		{
+			name:  "random-string",
+			param: `"abcabc"`,
+			want:  false,
+		},
+		{
+			name:  "empty-string",
+			param: `""`,
+			want:  false,
+		},
+		{
+			name:    "type-error",
+			param:   `42`,
+			wantErr: "found no matching overload for 'matches_capitalized_bool' applied to '(int)'",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			expr := fmt.Sprintf("matches_capitalized_bool(%v)", tc.param)
+			compileEvalForTest(t, expr, tc.want, tc.wantErr)
+		})
+	}
+}
+
+func TestMatchesUncapitalizedBool(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		param   string
+		want    bool
+		wantErr string
+	}{
+		{
+			name:  "capitalized-true",
+			param: `"True"`,
+			want:  false,
+		},
+		{
+			name:  "capitalized-false",
+			param: `"False"`,
+			want:  false,
+		},
+		{
+			name:  "uncapitalized-true",
+			param: `"true"`,
+			want:  true,
+		},
+		{
+			name:  "uncapitalized-false",
+			param: `"false"`,
+			want:  true,
+		},
+		{
+			name:  "random-string",
+			param: `"abcabc"`,
+			want:  false,
+		},
+		{
+			name:  "empty-string",
+			param: `""`,
+			want:  false,
+		},
+		{
+			name:    "type-error",
+			param:   `42`,
+			wantErr: "found no matching overload for 'matches_uncapitalized_bool' applied to '(int)'",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			expr := fmt.Sprintf("matches_uncapitalized_bool(%v)", tc.param)
+			compileEvalForTest(t, expr, tc.want, tc.wantErr)
+		})
+	}
+}
+
 func compileEvalForTest(t *testing.T, expr string, want any, wantErr string) {
 	t.Helper()
 
