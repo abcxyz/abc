@@ -22,7 +22,8 @@ import (
 	"syscall"
 
 	"github.com/abcxyz/abc/internal/version"
-	"github.com/abcxyz/abc/templates/commands"
+	"github.com/abcxyz/abc/templates/commands/render"
+	"github.com/abcxyz/abc/templates/commands/test"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -38,7 +39,7 @@ var rootCmd = func() *cli.RootCommand {
 					Description: "subcommands for rendering templates and related things",
 					Commands: map[string]cli.CommandFactory{
 						"render": func() cli.Command {
-							return &commands.RenderCommand{}
+							return &render.Command{}
 						},
 						"test": func() cli.Command {
 							return &cli.RootCommand{
@@ -46,10 +47,10 @@ var rootCmd = func() *cli.RootCommand {
 								Description: "subcommands for validating template rendering with golden tests",
 								Commands: map[string]cli.CommandFactory{
 									"record": func() cli.Command {
-										return &commands.TestRecordCommand{}
+										return &test.RecordCommand{}
 									},
 									"verify": func() cli.Command {
-										return &commands.TestVerifyCommand{}
+										return &test.VerifyCommand{}
 									},
 								},
 							}

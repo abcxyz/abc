@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"bytes"
 	"context"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -79,7 +80,7 @@ func TestActionPrint(t *testing.T) {
 			var outBuf bytes.Buffer
 			sp := &stepParams{
 				stdout: &outBuf,
-				scope:  newScope(tc.inputs),
+				scope:  common.NewScope(tc.inputs),
 				flags:  &tc.flags,
 			}
 			pr := &model.Print{

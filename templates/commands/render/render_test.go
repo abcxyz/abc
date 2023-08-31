@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"context"
@@ -119,7 +119,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var cmd RenderCommand
+			var cmd Command
 			cmd.SetLookupEnv(cli.MapLookuper(nil))
 
 			err := cmd.Flags().Parse(tc.args)
@@ -562,7 +562,7 @@ steps:
 				stdout:       stdoutBuf,
 				tempDirNamer: tempDirNamer,
 			}
-			r := &RenderCommand{
+			r := &Command{
 				flags: RenderFlags{
 					Dest:           dest,
 					ForceOverwrite: tc.flagForceOverwrite,
@@ -981,7 +981,7 @@ Enter value, or leave empty to accept default: `,
 				flagInputVals = maps.Clone(tc.flagInputVals)
 			}
 
-			cmd := &RenderCommand{
+			cmd := &Command{
 				flags: RenderFlags{
 					Inputs: flagInputVals,
 				},
@@ -1027,7 +1027,7 @@ Enter value, or leave empty to accept default: `,
 func TestPromptForInputs_CanceledContext(t *testing.T) {
 	t.Parallel()
 
-	cmd := &RenderCommand{
+	cmd := &Command{
 		flags: RenderFlags{
 			Inputs: map[string]string{},
 		},
@@ -1335,7 +1335,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			r := &RenderCommand{
+			r := &Command{
 				flags: RenderFlags{
 					Inputs: tc.inputVals,
 				},
