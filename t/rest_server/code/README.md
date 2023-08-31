@@ -4,4 +4,4 @@ This directory contains the code portion of the REST server template and is a co
 
 Render via:
 
-    $ abc templates render github.com/abcxyz/abc.git//t/rest_server/code
+    $ abc templates render --dest code/rest_server github.com/abcxyz/abc.git//t/rest_server/code

@@ -20,4 +20,4 @@ steps:
     action: 'include'
     params:
       paths: ['contents']
-      as: ['deployments/rest_server']
+      as: ['.']
