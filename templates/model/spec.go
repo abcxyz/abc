@@ -340,66 +340,47 @@ type Include struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	var pathsNode *yaml.Node
-	for _, child := range n.Content {
-		child.
+	// There are two cases for an "include":
+	//  1. "paths" is a list of strings (old-style)
+	//  2. "paths" is a list of objects (new-style)
+	//
+	// We do this by unmarshaling into a map, then checking the "kind" of the
+	// YAML objects in the map values. If "paths" is a list of scalars, then we
+	// assume we're dealing with case 1. Otherwise we assume we're dealing with
+	// case 2.
+	//
+	// The shape of the Include struct looks the same either way, so downstream
+	// code inside this program doesn't have to know that there are two cases.
+
+	nodesMap := map[string]yaml.Node{}
+	if err := n.Decode(nodesMap); err != nil {
+		return yamlPos(n).Errorf("%w", err)
 	}
-	
-	
-	m := map[string]any{}
-	if err := n.Decode(m); err != nil {
-		return err //nolint:wrapcheck
+
+	pathsNode, ok := nodesMap["paths"]
+	if !ok {
+		return yamlPos(n).Errorf(`field "paths" is required`)
 	}
-	/*
-				// OLD
-				paths: ['a/b/c', 'x/y.txt'] // string input (old way)
-		        from: destination
-
-				unmarshals into:
-				map:
-					paths: ['a/b/c', 'x/y.txt']
-					from: 'destination'
-
-				// NEW
-				paths:
-					- paths: ['a/b/c', 'x/y.txt'], // path object (new way)
-					  from: destination
-
-				unmarshals into:
-				map:
-					paths: [ map:
-								paths: ['a/b/c', 'x/y.txt']
-								from: 'destination'
-							]
-
-				paths?
-				type: slice of string or slice of map[string]any
-				kind: slice
-				elem: string or map[string]any
-	*/
-	pathsAny := m["paths"]
-	pathsAnyType := reflect.TypeOf(pathsAny)
-	if pathsAnyType.Kind() != reflect.Slice {
-		panic("paths expected to be a slice")
+	if pathsNode.Kind != yaml.SequenceNode {
+		return yamlPos(&pathsNode).Errorf("paths must be a YAML list")
 	}
-	pathsAnyElemType := pathsAnyType.Elem()
-	switch pathsAnyElemType.Kind() {
-	case reflect.String:
-		// the old non-path-object style
-		ip := IncludePath{}
-		// doesn't work, we need to get a sub-field of n, not just n
-		if err := unmarshalPlain(n, &ip, &ip.Pos); err != nil {
-			panic("oops")
+	var listElemKind, zeroKind yaml.Kind
+	for _, elemNode := range pathsNode.Content {
+		if listElemKind != zeroKind && elemNode.Kind != listElemKind {
+			return yamlPos(&pathsNode).Errorf("Lists of paths must be homogeneous, either all strings or all objects")
 		}
-		i.Paths = []*IncludePath{&ip}
-	case reflect.Map:
-		// the new path-object style
-		if err := unmarshalPlain(n, &i.Paths); err != nil {
-			panic("oops 2")
-		}
+		listElemKind = elemNode.Kind
 	}
 
-	return nil
+	if listElemKind == yaml.ScalarNode { // Detect old-style case 1 input
+		ip := &IncludePath{}
+		i.Paths = []*IncludePath{ip}
+		// Subtle point: in case 1 ("old-style"), we unmarshal the incoming YAML object as an "IncludePath" struct.
+		return unmarshalPlain(n, ip, &ip.Pos)
+	}
+
+	// Otherwise we're in case 2, we just unmarshal the incoming YAML object as an "Include: struct.
+	return unmarshalPlain(n, i, &i.Pos)
 }
 
 // Validate implements Validator.
@@ -425,16 +406,6 @@ type IncludePath struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind == yaml.ScalarNode { // if includePath is a string
-		var path String
-		err := n.Decode(&path.Val)
-		if err != nil {
-			return err
-		}
-		path.Pos = yamlPos(n)
-		i.Paths = []String{path}
-		return nil
-	}
 	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
 		return err
 	}
