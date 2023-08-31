@@ -14,10 +14,10 @@
 
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
-desc: 'A template for a simple HTTP/JSON REST server'
+desc: 'A template for a simple HTTP/JSON REST server.'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['contents']
-      as: ['.']
+      as: ['code/rest_server']
