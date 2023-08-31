@@ -12,36 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/abcxyz/abc/templates/model"
 )
 
-func actionForEach(ctx context.Context, fe *model.ForEach, sp *stepParams) error {
-	key, err := parseAndExecuteGoTmpl(fe.Iterator.Key.Pos, fe.Iterator.Key.Val, sp.scope)
-	if err != nil {
-		return err
-	}
-
-	var values []string
-	if len(fe.Iterator.Values) > 0 {
-		var err error
-		values, err = parseAndExecuteGoTmplAll(fe.Iterator.Values, sp.scope)
+func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) error {
+	for _, p := range p.Paths {
+		// Paths may contain template expressions, so render them first.
+		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
 		if err != nil {
 			return err
 		}
-	} else {
-		if err := celCompileAndEval(ctx, sp.scope, *fe.Iterator.ValuesFrom, &values); err != nil {
+
+		walkRelPath, err = safeRelPath(p.Pos, walkRelPath)
+		if err != nil {
 			return err
 		}
-	}
 
-	for _, keyVal := range values {
-		subStepParams := sp.WithScope(map[string]string{key: keyVal})
-		if err := executeSteps(ctx, fe.Steps, subStepParams); err != nil {
+		relPathPos := model.String{Pos: p.Pos, Val: walkRelPath}
+
+		if err := walkAndModify(ctx, sp.fs, sp.scratchDir, []model.String{relPathPos}, func(b []byte) ([]byte, error) {
+			executed, err := parseAndExecuteGoTmpl(nil, string(b), sp.scope)
+			if err != nil {
+				return nil, fmt.Errorf("failed executing file as Go template: %w", err)
+			}
+			return []byte(executed), nil
+		}); err != nil {
 			return err
 		}
 	}

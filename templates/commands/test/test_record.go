@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package commands implements the template-related subcommands.
-package commands
+// Package test implements the template test related subcommands.
+package test
 
 // This file implements the "templates test record" subcommand for
 // recording template tests.
@@ -25,15 +25,15 @@ import (
 	"github.com/abcxyz/pkg/cli"
 )
 
-type TestRecordCommand struct {
+type RecordCommand struct {
 	cli.BaseCommand
 }
 
-func (c *TestRecordCommand) Desc() string {
+func (c *RecordCommand) Desc() string {
 	return "record the template rendering result to golden tests"
 }
 
-func (c *TestRecordCommand) Help() string {
+func (c *RecordCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options] <test_name>
 
@@ -48,6 +48,6 @@ For every test case, it is expected that
 template input params.`
 }
 
-func (c *TestRecordCommand) Run(ctx context.Context, args []string) error {
+func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	return fmt.Errorf("Unimplemented")
 }

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"bytes"
 	"context"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -230,7 +231,7 @@ func TestActionForEach(t *testing.T) {
 
 			buf := &bytes.Buffer{}
 			sp := &stepParams{
-				scope:  newScope(tc.inputs),
+				scope:  common.NewScope(tc.inputs),
 				stdout: buf,
 				flags:  &RenderFlags{},
 			}

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package render
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -186,7 +187,7 @@ func TestActionAppend(t *testing.T) {
 					readFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,
-				scope:      newScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs),
 			}
 			err := actionAppend(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

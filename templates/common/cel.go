@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package common
 
 import (
 	"context"
@@ -214,7 +214,7 @@ var celFuncs = []cel.EnvOption{
 // converted to the given type, then an error will be returned. For example, if
 // the CEL expression is "hello" and outPtr points to an int, an error will
 // returned because CEL cannot treat "hello" as an integer.
-func celCompileAndEval(ctx context.Context, scope *scope, expr model.String, outPtr any) error {
+func CelCompileAndEval(ctx context.Context, scope *Scope, expr model.String, outPtr any) error {
 	prog, err := celCompile(ctx, scope, expr)
 	if err != nil {
 		return err
@@ -226,7 +226,7 @@ func celCompileAndEval(ctx context.Context, scope *scope, expr model.String, out
 }
 
 // celCompile parses and compiles the given expr into executable Program.
-func celCompile(ctx context.Context, scope *scope, expr model.String) (cel.Program, error) {
+func celCompile(ctx context.Context, scope *Scope, expr model.String) (cel.Program, error) {
 	startedAt := time.Now()
 
 	celOpts := []cel.EnvOption{}
@@ -267,7 +267,7 @@ func celCompile(ctx context.Context, scope *scope, expr model.String) (cel.Progr
 // converted to the given type, then an error will be returned. For example, if
 // the CEL expression is "hello" and outPtr points to an int, an error will
 // returned because CEL cannot treat "hello" as an integer.
-func celEval(ctx context.Context, scope *scope, pos *model.ConfigPos, prog cel.Program, outPtr any) error {
+func celEval(ctx context.Context, scope *Scope, pos *model.ConfigPos, prog cel.Program, outPtr any) error {
 	startedAt := time.Now()
 
 	// The CEL engine needs variable values as a map[string]any, but we have a

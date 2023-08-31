@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commands
+package common
 
 import (
 	"context"
@@ -111,7 +111,7 @@ func TestCompileAndEvalCEL(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
-			scope := newScope(tc.vars)
+			scope := NewScope(tc.vars)
 
 			prog, err := celCompile(ctx, scope, tc.in)
 			if diff := testutil.DiffErrString(err, tc.wantCompileErr); diff != "" {
@@ -418,7 +418,7 @@ func compileEvalForTest(t *testing.T, expr string, want any, wantErr string) {
 
 	ctx := context.Background()
 
-	prog, err := celCompile(ctx, newScope(nil), model.String{Val: expr})
+	prog, err := celCompile(ctx, NewScope(nil), model.String{Val: expr})
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 		t.Fatal(diff)
 	}
