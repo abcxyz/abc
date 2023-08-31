@@ -378,12 +378,40 @@ params: `,
 			wantValidateErr: `at spec.yaml line 1 column 1: field "message" is required`,
 		},
 		{
-			name: "include_old_style", // not path objects, paths are just strings
+			name: "include_success_paths_are_string", // not path objects, paths are just strings
 			in: `desc: 'mydesc'
 action: 'include'
 params:
   paths: ['a/b/c', 'x/y.txt']
   from: 'destination'`,
+			want: &Step{
+				Desc:   String{Val: "mydesc"},
+				Action: String{Val: "include"},
+				Include: &Include{
+					Paths: []*IncludePath{
+						{
+							From: String{Val: "destination"},
+							Paths: []String{
+								{
+									Val: "a/b/c",
+								},
+								{
+									Val: "x/y.txt",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "include_success_paths_are_objects",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  paths: 
+  - paths: ['a/b/c', 'x/y.txt']
+    from: 'destination'`,
 			want: &Step{
 				Desc:   String{Val: "mydesc"},
 				Action: String{Val: "include"},
@@ -534,6 +562,17 @@ params:
     - 'a.txt'
     - paths: ['b.txt']`,
 			wantUnmarshalErr: "Lists of paths must be homogeneous, either all strings or all objects",
+		},
+		{
+			name: "other_include_fields_forbidden_with_path_objects",
+			in: `desc: 'mydesc'
+action: 'include'
+params:
+  from: 'destination'
+  paths:
+    - paths: 
+      - 'a.txt'`,
+			wantUnmarshalErr: `unknown field name "from"`,
 		},
 		{
 			name: "include_from_invalid",
