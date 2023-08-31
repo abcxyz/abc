@@ -14,7 +14,7 @@
 
 // Package utils contains the utility function for template commands.
 
-package utils
+package common
 
 import (
 	"regexp"

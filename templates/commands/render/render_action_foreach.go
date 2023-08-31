@@ -17,8 +17,8 @@ package render
 import (
 	"context"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 )
 
 func actionForEach(ctx context.Context, fe *model.ForEach, sp *stepParams) error {
@@ -35,8 +35,8 @@ func actionForEach(ctx context.Context, fe *model.ForEach, sp *stepParams) error
 			return err
 		}
 	} else {
-		if err := utils.CelCompileAndEval(ctx, sp.scope, *fe.Iterator.ValuesFrom, &values); err != nil {
-			return err
+		if err := common.CelCompileAndEval(ctx, sp.scope, *fe.Iterator.ValuesFrom, &values); err != nil {
+			return err //nolint:wrapcheck
 		}
 	}
 

@@ -32,8 +32,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
@@ -257,7 +257,7 @@ func (c *RenderCommand) realRun(ctx context.Context, rp *runParams) (outErr erro
 	sp := &stepParams{
 		flags:       &c.flags,
 		fs:          rp.fs,
-		scope:       utils.NewScope(c.flags.Inputs),
+		scope:       common.NewScope(c.flags.Inputs),
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
@@ -382,7 +382,7 @@ func (c *RenderCommand) resolveInputs(ctx context.Context, spec *model.Spec) err
 }
 
 func (c *RenderCommand) validateInputs(ctx context.Context, inputs []*model.Input) error {
-	scope := utils.NewScope(c.flags.Inputs)
+	scope := common.NewScope(c.flags.Inputs)
 
 	sb := &strings.Builder{}
 	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
@@ -390,7 +390,7 @@ func (c *RenderCommand) validateInputs(ctx context.Context, inputs []*model.Inpu
 	for _, input := range inputs {
 		for _, rule := range input.Rules {
 			var ok bool
-			err := utils.CelCompileAndEval(ctx, scope, rule.Rule, &ok)
+			err := common.CelCompileAndEval(ctx, scope, rule.Rule, &ok)
 			if ok && err == nil {
 				continue
 			}
@@ -563,7 +563,7 @@ type stepParams struct {
 	// Scope contains all variable names that are in scope. This includes
 	// user-provided inputs, as well as any programmatically created variables
 	// like for_each keys.
-	scope *utils.Scope
+	scope *common.Scope
 
 	scratchDir  string
 	stdout      io.Writer

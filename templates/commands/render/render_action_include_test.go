@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -357,7 +357,7 @@ func TestActionInclude(t *testing.T) {
 				},
 				scratchDir:  scratchDir,
 				templateDir: templateDir,
-				scope:       utils.NewScope(tc.inputs),
+				scope:       common.NewScope(tc.inputs),
 			}
 			err := actionInclude(ctx, tc.include, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

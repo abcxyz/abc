@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/benbjohnson/clock"
@@ -696,7 +696,7 @@ func TestParseAndExecute(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseAndExecuteGoTmpl(tc.pos, tc.tmpl, utils.NewScope(tc.inputs))
+			got, err := parseAndExecuteGoTmpl(tc.pos, tc.tmpl, common.NewScope(tc.inputs))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
@@ -838,7 +838,7 @@ func TestTemplateFuncs(t *testing.T) {
 				Line: 1,
 			}
 
-			got, err := parseAndExecuteGoTmpl(pos, tc.tmpl, utils.NewScope(map[string]string{}))
+			got, err := parseAndExecuteGoTmpl(pos, tc.tmpl, common.NewScope(map[string]string{}))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

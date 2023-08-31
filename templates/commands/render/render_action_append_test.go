@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -187,7 +187,7 @@ func TestActionAppend(t *testing.T) {
 					readFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,
-				scope:      utils.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs),
 			}
 			err := actionAppend(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

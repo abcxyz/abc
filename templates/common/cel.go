@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package common
 
 import (
 	"context"
@@ -220,7 +220,7 @@ func CelCompileAndEval(ctx context.Context, scope *Scope, expr model.String, out
 		return err
 	}
 	if err := celEval(ctx, scope, expr.Pos, prog, outPtr); err != nil {
-		return err //nolint:wrapcheck
+		return err
 	}
 	return nil
 }

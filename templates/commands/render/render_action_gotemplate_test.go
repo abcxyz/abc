@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -172,7 +172,7 @@ func TestActionGoTemplate(t *testing.T) {
 			ctx := context.Background()
 			sp := &stepParams{
 				fs:         &realFS{},
-				scope:      utils.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
 			}
 			err := actionGoTemplate(ctx, tc.gt, sp)

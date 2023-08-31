@@ -18,8 +18,8 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 	"golang.org/x/exp/maps"
 )
 
@@ -70,7 +70,7 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 	return nil
 }
 
-func replaceWithNameLookup(allMatches [][]int, b []byte, rn *model.RegexNameLookupEntry, re *regexp.Regexp, scope *utils.Scope) ([]byte, error) {
+func replaceWithNameLookup(allMatches [][]int, b []byte, rn *model.RegexNameLookupEntry, re *regexp.Regexp, scope *common.Scope) ([]byte, error) {
 	for i := 1; i < len(re.SubexpNames()); i++ { // skip group 0, which is always unnamed because it's "the whole regex match"
 		if re.SubexpNames()[i] == "" {
 			return nil, rn.Regex.Pos.Errorf(`all capturing groups in a regex_name_lookup must be named, like (?P<myinputvar>myregex), not like (myregex)`)

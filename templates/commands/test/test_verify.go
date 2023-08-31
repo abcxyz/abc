@@ -25,15 +25,15 @@ import (
 	"github.com/abcxyz/pkg/cli"
 )
 
-type TestVerifyCommand struct {
+type VerifyCommand struct {
 	cli.BaseCommand
 }
 
-func (c *TestVerifyCommand) Desc() string {
+func (c *VerifyCommand) Desc() string {
 	return "verify the template rendering result against golden tests"
 }
 
-func (c *TestVerifyCommand) Help() string {
+func (c *VerifyCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options] <test_name>
 
@@ -48,6 +48,6 @@ For every test case, it is expected that
 template input params.`
 }
 
-func (c *TestVerifyCommand) Run(ctx context.Context, args []string) error {
+func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	return fmt.Errorf("Unimplemented")
 }

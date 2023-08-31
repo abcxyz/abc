@@ -19,8 +19,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/utils"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -231,7 +231,7 @@ func TestActionForEach(t *testing.T) {
 
 			buf := &bytes.Buffer{}
 			sp := &stepParams{
-				scope:  utils.NewScope(tc.inputs),
+				scope:  common.NewScope(tc.inputs),
 				stdout: buf,
 				flags:  &RenderFlags{},
 			}
