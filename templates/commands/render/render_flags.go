@@ -66,6 +66,10 @@ type RenderFlags struct {
 	// DebugScratchContents causes the contents of the scratch directory to be
 	// logged at level INFO after each step of the spec.yaml.
 	DebugScratchContents bool
+
+	// SkipInputValidation skips the execution of the input validation rules as
+	// configured in the template's spec.yaml file.
+	SkipInputValidation bool
 }
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
@@ -109,6 +113,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Default: false,
 		Usage:   "Preserve the temp directories instead of deleting them normally.",
 	})
+
 	f.BoolVar(&cli.BoolVar{
 		Name:   "prompt",
 		Target: &r.Prompt,
@@ -129,12 +134,19 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Usage: "Prompt the user for template inputs that weren't provided as flags.",
 	})
 
+	f.BoolVar(&cli.BoolVar{
+		Name:    "skip-input-validation",
+		Target:  &r.SkipInputValidation,
+		Default: false,
+		Usage:   "Skip running the validation expressions for inputs that were configured in spec.yaml.",
+	})
+
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(&cli.BoolVar{
 		Name:    "debug-scratch-contents",
 		Target:  &r.DebugScratchContents,
 		Default: false,
-		Usage:   "Print the contents of the scratch directory after each step; for debugging spec.yaml files",
+		Usage:   "Print the contents of the scratch directory after each step; for debugging spec.yaml files.",
 	})
 
 	g := set.NewSection("GIT OPTIONS")

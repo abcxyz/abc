@@ -374,6 +374,10 @@ func (c *Command) resolveInputs(ctx context.Context, spec *model.Spec) error {
 		}
 	}
 
+	if c.flags.SkipInputValidation {
+		return nil
+	}
+
 	if err := c.validateInputs(ctx, spec.Inputs); err != nil {
 		return err
 	}
