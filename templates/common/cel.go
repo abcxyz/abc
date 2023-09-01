@@ -113,8 +113,9 @@ var celFuncs = []cel.EnvOption{
 	//
 	// You might want to use this for a template that creates a service account.
 	//
-	// Example:
-	//   gcp_matches_service_account_id("platform-ops")==true
+	// Examples:
+	// 	 gcp_matches_service_account_id("platform-ops") == true
+	// 	 gcp_matches_service_account_id("platform-ops@abcxyz-my-project.iam.gserviceaccount.com") == false
 	cel.Function(
 		"gcp_matches_service_account_id",
 		cel.Overload(
@@ -138,8 +139,8 @@ var celFuncs = []cel.EnvOption{
 	// an existing project.
 	//
 	// Examples:
-	//   gcp_matches_project_id("my-project")==true
-	//   gcp_matches_project_id("example.com:my-project")==true
+	//   gcp_matches_project_id("my-project") == true
+	//   gcp_matches_project_id("example.com:my-project") == true
 	cel.Function(
 		"gcp_matches_project_id",
 		cel.Overload(
@@ -160,8 +161,8 @@ var celFuncs = []cel.EnvOption{
 	// of a GCP project number (only digits, and not a tiny number).
 	//
 	// Examples:
-	//   gcp_matches_project_number("123456789")==true
-	//   gcp_matches_project_number("123abc")==false
+	//   gcp_matches_project_number("123456789") == true
+	//   gcp_matches_project_number("123abc") == false
 	cel.Function(
 		"gcp_matches_project_number",
 
@@ -212,11 +213,11 @@ var celFuncs = []cel.EnvOption{
 	// that we're checking the string form of a boolean for its capiltalization.
 	//
 	// Examples:
-	//   matches_capitalized_bool("True")==true
-	//   matches_capitalized_bool("False")==true
-	//   matches_capitalized_bool("true")==false
-	//   matches_capitalized_bool("false")==false
-	//   matches_uncapitalized_bool("something_else")==false
+	//   matches_capitalized_bool("True") == true
+	//   matches_capitalized_bool("False") == true
+	//   matches_capitalized_bool("true") == false
+	//   matches_capitalized_bool("false") == false
+	//   matches_uncapitalized_bool("something_else") == false
 	cel.Function(
 		"matches_capitalized_bool",
 		cel.Overload(
@@ -241,11 +242,11 @@ var celFuncs = []cel.EnvOption{
 	// that we're checking the string form of a boolean for its capiltalization.
 	//
 	// Examples:
-	//   matches_uncapitalized_bool("true")==true
-	//   matches_uncapitalized_bool("false")==true
-	//   matches_uncapitalized_bool("True")==false
-	//   matches_uncapitalized_bool("False")==false
-	//   matches_uncapitalized_bool("something_else")==false
+	//   matches_uncapitalized_bool("true") == true
+	//   matches_uncapitalized_bool("false") == true
+	//   matches_uncapitalized_bool("True") == false
+	//   matches_uncapitalized_bool("False") == false
+	//   matches_uncapitalized_bool("something_else") == false
 	cel.Function(
 		"matches_uncapitalized_bool",
 		cel.Overload(

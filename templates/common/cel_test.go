@@ -309,6 +309,11 @@ func TestGCPMatchesServiceAccountID(t *testing.T) {
 			param:   `42`,
 			wantErr: `found no matching overload for 'gcp_matches_service_account_id' applied to '(int)'`,
 		},
+		{
+			name:  "full-service-account-rejected",
+			param: `"platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
+			want:  false,
+		},
 	}
 
 	for _, tc := range cases {
@@ -345,6 +350,11 @@ func TestGCPMatchesProjectID(t *testing.T) {
 		{
 			name:  "must-not-end-with-dash",
 			param: `"my-project-id-"`,
+			want:  false,
+		},
+		{
+			name:  "reject-whitespace",
+			param: `"my project id"`,
 			want:  false,
 		},
 		{
