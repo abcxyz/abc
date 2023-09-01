@@ -55,5 +55,5 @@ func (c *ConfigPos) Errorf(fmtStr string, args ...any) error {
 		return err
 	}
 
-	return fmt.Errorf("at spec.yaml line %d column %d: %w", c.Line, c.Column, err)
+	return fmt.Errorf("at line %d column %d: %w", c.Line, c.Column, err)
 }
