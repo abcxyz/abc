@@ -273,15 +273,30 @@ Each input in the `inputs` list has these fields:
 - `default` (optional): the string value that will be used if the user doesn't
   supply this input. If an input doesn't have a default, then a value for that
   input must be given by the CLI user.
+- `rules`: a list of validation rule objects. Each rule object has these fields:
+
+  - `rule`: a CEL expression that returns true if the input is valid.
+
+    This CEL expression has access to all each input value as a CEL variable of
+    the same name (see examples below). The type in CEL of each input variable
+    is always `string`. You can convert a string of digits to a number using
+    `int(my_input)` if you need to do numeric comparisons; see the
+    "min_size_bytes" example below.
+
+    This CEL expression can call extra CEL functions that we added to address
+    common validation needs [link](#using-cel), such as
+    `gcp_matches_project_id(string)` and `gcp_matches_service_account(string)`.
+
+  - `message` (optional): a message to show to the CLI user if validation fails.
+    The template author can use this to tell the user what input format is
+    valid.
 
 An example input without a default:
 
 ```yaml
 inputs:
-  - name: 'service_account'
-    desc: |
-      The GCP service account to impersonate when doing the thing with the 
-      other things.
+  - name: 'output_filename'
+    desc: 'The name of the file to create'
 ```
 
 An example input _with_ a default:
@@ -289,9 +304,29 @@ An example input _with_ a default:
 ```yaml
 inputs:
   - name: 'output_filename'
-    description: |
-      The name of the file to create that will contain the output of the thing.
+    description: 'The name of the file to create'
     default: 'out.txt'
+```
+
+An example input with a validation rule:
+
+```yaml
+inputs:
+  - name: 'project_id_to_use'
+    rules:
+      - rule: 'gcp_matches_project_id(project_id_to_use)'
+        message: 'Must be a GCP project ID'
+```
+
+An example of validating multiple inputs together:
+
+```yaml
+inputs:
+  - name: 'min_size_bytes'
+  - name: 'max_size_bytes'
+    rules:
+      - rule: 'int(min_size_bytes) <= int(max_size_bytes)'
+        message: "the max can't be less than the min"
 ```
 
 #### Templating
@@ -731,8 +766,12 @@ Params:
 # Using CEL
 
 We use the CEL language to allow template authors to embed scripts in the spec
-file in certain places (currently just the `from_values` field inside
-`for_each`).
+file in certain places. The two places you can use CEL are:
+
+- the `from_values` field inside `for_each` that produces a list of values to
+  iterate over
+- the `rule` field inside an `input` that validates the input and returns a
+  boolean
 
 [CEL, the Common Expression Language)](https://github.com/google/cel-spec), is a
 non-Turing complete language that's designed to be easily embedded in programs.
@@ -755,10 +794,78 @@ For example:
 
 The above example also shows the `split` function, which is not part of the core
 CEL language. It's a "custom function" that we added to CEL to support a common
-need for templates.
+need for templates (see [below](#custom-functions-reference)).
 
 ## Custom functions reference
+
+These are the functions that we added that are not normally part of CEL.
+
+- `gcp_matches_project_id(string)` returns whether the input matches the format
+  of a GCP project ID.
+
+  You might want to use this for a template that creates a project or references
+  an existing project.
+
+  Examples:
+
+      gcp_matches_project_id("my-project") == true
+      gcp_matches_project_id("example.com:my-project") == true
+
+- `gcp_matches_service_account(string)` returns whether the input matches a full
+  GCP service account name. It can be either an API-created service account or a
+  platform-created service agent.
+
+  You might want to use this for a template that requires a reference to an
+  already-created service account.
+
+  Example:
+
+      gcp_matches_service_account("platform-ops@abcxyz-my-project.iam.gserviceaccount.com") == true
+      gcp_matches_service_account("platform-ops") == false
+
+- `gcp_matches_service_account_id(string)` returns whether the input matches the
+  part of a GCP service account name before the "@" sign.
+
+  You might want to use this for a template that creates a service account.
+
+  Example:
+
+      gcp_matches_service_account_id("platform-ops") == true
+      gcp_matches_service_account_id("platform-ops@abcxyz-my-project.iam.gserviceaccount.com") == false
+
+- `matches_capitalized_bool(string)`: returns whether the input is a stringified
+  boolean starting with a capitalized letter, as used in Python.
+
+  This function doesn't accept boolean inputs because the whole point is that
+  we're checking the string form of a boolean for its capiltalization.
+
+  Examples:
+
+      matches_capitalized_bool("True") == true
+      matches_capitalized_bool("False") == true
+      matches_capitalized_bool("true") == false
+      matches_capitalized_bool("false") == false
+      matches_uncapitalized_bool("something_else") == false
+
+- `matches_uncapitalized_bool(string)`: returns whether the input is a
+  stringified boolean starting with a capitalized letter, as used in Go,
+  Terraform, and others.
+
+  This function doesn't accept boolean inputs because the whole point is that
+  we're checking the string form of a boolean for its capiltalization.
+
+  Example expressions:
+
+      matches_uncapitalized_bool("true") == true
+      matches_uncapitalized_bool("false") == true
+      matches_uncapitalized_bool("True") == false
+      matches_uncapitalized_bool("False") == false
+      matches_uncapitalized_bool("something_else") == false
 
 - `string.split(split_char)`: we added a "split" method on strings. This has the
   same semantics as Go's
   [strings.Split function](https://pkg.go.dev/strings#Split).
+
+  Example:
+
+      "abc,def".split(",") == ["abc", "def"]
