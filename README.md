@@ -69,6 +69,9 @@ Examples of template locations:
   locations of the directories.
 - `--prompt`: the user will be prompted for inputs that are needed by the
   template but are not supplied by `--inputs`.
+- `--skip-input-validation`: don't run any of the validation rules for template
+  inputs. This could be useful if a template has overly strict validation logic
+  and you know for sure that the value you want to use is OK.
 
 #### Logging
 
@@ -273,6 +276,9 @@ Each input in the `inputs` list has these fields:
 - `default` (optional): the string value that will be used if the user doesn't
   supply this input. If an input doesn't have a default, then a value for that
   input must be given by the CLI user.
+
+The input validation `rules` may be skipped with the `--skip-input-validation`
+flag, documented above.
 
 An example input without a default:
 
