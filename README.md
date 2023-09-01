@@ -308,6 +308,16 @@ inputs:
     default: 'out.txt'
 ```
 
+An example of parsing an input as an integer:
+
+```yaml
+inputs:
+  - name: 'disk_size_bytes'
+    rules:
+      - rule: 'int(disk_size_bytes)' # Will fail if disk_size_bytes (which is a string) can't be parsed as int
+        message: 'Must be an integer'
+```
+
 An example input with a validation rule:
 
 ```yaml
