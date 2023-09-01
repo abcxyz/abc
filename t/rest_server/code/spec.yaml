@@ -15,9 +15,13 @@
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'A template for a simple HTTP/JSON REST server'
+inputs:
+  - name: 'subfolder'
+    desc: 'Subdirectory relative to --dest where application code should be rendered to'
+    default: 'code/rest_server'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['contents']
-      as: ['.']
+      as: ['{{.subfolder}}']

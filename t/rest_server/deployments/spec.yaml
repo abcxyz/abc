@@ -15,9 +15,13 @@
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'REST server deployments template'
+inputs:
+  - name: 'subfolder'
+    desc: 'Subdirectory relative to --dest where deployment related files should be rendered to'
+    default: 'deployments/rest_server'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['contents']
-      as: ['.']
+      as: ['{{.subfolder}}']

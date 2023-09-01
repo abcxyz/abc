@@ -50,7 +50,7 @@ jobs:
       - name: 'Load variables from .env file'
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
         with:
-          env_file: '.github/config/${{inputs.deployment_environment}}.env'
+          env_file: '.github/config/${{inputs.deployment_environment}}-rest-server.env'
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
@@ -93,7 +93,7 @@ jobs:
       - name: 'Load variables from .env file'
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
         with:
-          env_file: '.github/config/${{inputs.deployment_environment}}.env'
+          env_file: '.github/config/${{inputs.deployment_environment}}-rest-server.env'
       - name: 'Google Auth'
         id: 'auth'
         uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
