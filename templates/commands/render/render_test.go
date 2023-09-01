@@ -79,16 +79,20 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"--log-level", "info",
 				"--force-overwrite",
 				"--keep-temp-dirs",
+				"--skip-input-validation",
+				"--debug-scratch-contents",
 				"helloworld@v1",
 			},
 			want: RenderFlags{
-				Source:         "helloworld@v1",
-				Dest:           "my_dir",
-				GitProtocol:    "https",
-				Inputs:         map[string]string{"x": "y"},
-				LogLevel:       "info",
-				ForceOverwrite: true,
-				KeepTempDirs:   true,
+				Source:               "helloworld@v1",
+				Dest:                 "my_dir",
+				GitProtocol:          "https",
+				Inputs:               map[string]string{"x": "y"},
+				LogLevel:             "info",
+				ForceOverwrite:       true,
+				KeepTempDirs:         true,
+				SkipInputValidation:  true,
+				DebugScratchContents: true,
 			},
 		},
 		{
@@ -216,21 +220,22 @@ steps:
 `
 
 	cases := []struct {
-		name                 string
-		templateContents     map[string]string
-		existingDestContents map[string]string
-		flagInputs           map[string]string
-		flagKeepTempDirs     bool
-		flagForceOverwrite   bool
-		getterErr            error
-		removeAllErr         error
-		wantScratchContents  map[string]string
-		wantTemplateContents map[string]string
-		wantDestContents     map[string]string
-		wantBackupContents   map[string]string
-		wantFlagInputs       map[string]string
-		wantStdout           string
-		wantErr              string
+		name                    string
+		templateContents        map[string]string
+		existingDestContents    map[string]string
+		flagInputs              map[string]string
+		flagKeepTempDirs        bool
+		flagForceOverwrite      bool
+		flagSkipInputValidation bool
+		getterErr               error
+		removeAllErr            error
+		wantScratchContents     map[string]string
+		wantTemplateContents    map[string]string
+		wantDestContents        map[string]string
+		wantBackupContents      map[string]string
+		wantFlagInputs          map[string]string
+		wantStdout              string
+		wantErr                 string
 	}{
 		{
 			name: "simple_success",
@@ -520,6 +525,29 @@ steps:
 			},
 			wantStdout: "Working on environment production\nWorking on environment dev\n",
 		},
+		{
+			name: "skip_input_validation",
+			templateContents: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'My template'
+inputs:
+  - name: 'my_input'
+    desc: 'Just a string to print'
+    rules:
+      - rule: 'my_input > 42' # Would fail, except we disable validation
+
+steps:
+  - action: 'print'
+    desc: 'print the input value'
+    params:
+      message: 'my_input is {{.my_input}}'
+`,
+			},
+			flagInputs:              map[string]string{"my_input": "crocodile"},
+			flagSkipInputValidation: true,
+			wantStdout:              "my_input is crocodile\n",
+		},
 	}
 
 	for _, tc := range cases {
@@ -564,11 +592,12 @@ steps:
 			}
 			r := &Command{
 				flags: RenderFlags{
-					Dest:           dest,
-					ForceOverwrite: tc.flagForceOverwrite,
-					Inputs:         tc.flagInputs,
-					KeepTempDirs:   tc.flagKeepTempDirs,
-					Source:         "github.com/myorg/myrepo",
+					Dest:                dest,
+					ForceOverwrite:      tc.flagForceOverwrite,
+					Inputs:              tc.flagInputs,
+					KeepTempDirs:        tc.flagKeepTempDirs,
+					SkipInputValidation: tc.flagSkipInputValidation,
+					Source:              "github.com/myorg/myrepo",
 				},
 			}
 
