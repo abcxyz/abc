@@ -35,10 +35,7 @@ type InputValue struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *InputValue) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, i, &i.Pos)
 }
 
 func (i *InputValue) Validate() error {
@@ -60,10 +57,7 @@ type Test struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Test) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, i, &i.Pos)
 }
 
 // DecodeTest unmarshals the YAML Spec from r.

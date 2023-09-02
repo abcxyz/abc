@@ -64,10 +64,7 @@ type Spec struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, s, &s.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, s, &s.Pos)
 }
 
 // Validate implements Validator.
@@ -95,10 +92,7 @@ type Input struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Input) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, i, &i.Pos)
 }
 
 // Validate implements Validator.
@@ -126,10 +120,7 @@ type InputRule struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *InputRule) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, i, &i.Pos)
 }
 
 // Validate implements Validator.
@@ -242,10 +233,7 @@ type Print struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (p *Print) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, p, &p.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, p, &p.Pos)
 }
 
 // Validate implements Validator.
@@ -270,10 +258,7 @@ type Include struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, i, &i.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, i, &i.Pos)
 }
 
 // Validate implements Validator.
@@ -313,10 +298,7 @@ type RegexReplace struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (r *RegexReplace) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, r, &r.Pos)
 }
 
 // Validate implements Validator.
@@ -355,11 +337,9 @@ func (r *RegexReplaceEntry) Validate() error {
 	)
 }
 
+// UnmarshalYAML implements yaml.Unmarshaler.
 func (r *RegexReplaceEntry) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, r, &r.Pos)
 }
 
 // RegexNameLookup is an action that replaces named regex capturing groups with
@@ -374,10 +354,7 @@ type RegexNameLookup struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (r *RegexNameLookup) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, r, &r.Pos)
 }
 
 // Validate implements Validator.
@@ -402,11 +379,9 @@ func (r *RegexNameLookupEntry) Validate() error {
 	)
 }
 
+// UnmarshalYAML implements yaml.Unmarshaler.
 func (r *RegexNameLookupEntry) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, r, &r.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, r, &r.Pos)
 }
 
 // StringReplace is an action that replaces a string with a template expression.
@@ -420,10 +395,7 @@ type StringReplace struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *StringReplace) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, s, &s.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, s, &s.Pos)
 }
 
 // Validate implements Validator.
@@ -454,11 +426,9 @@ func (s *StringReplacement) Validate() error {
 	)
 }
 
+// UnmarshalYAML implements yaml.Unmarshaler.
 func (s *StringReplacement) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, s, &s.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, s, &s.Pos)
 }
 
 // Append is an action that appends some output to the end of the file.
@@ -473,10 +443,7 @@ type Append struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (a *Append) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, a, &a.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, a, &a.Pos)
 }
 
 // Validate implements Validator.
@@ -498,10 +465,7 @@ type GoTemplate struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (g *GoTemplate) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, g, &g.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, g, &g.Pos)
 }
 
 // Validate implements Validator.
@@ -520,10 +484,7 @@ type ForEach struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (f *ForEach) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, f, &f.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, f, &f.Pos)
 }
 
 func (f *ForEach) Validate() error {
@@ -552,10 +513,7 @@ type ForEachIterator struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (f *ForEachIterator) UnmarshalYAML(n *yaml.Node) error {
-	if err := unmarshalPlain(n, f, &f.Pos); err != nil {
-		return err
-	}
-	return nil
+	return unmarshalPlain(n, f, &f.Pos)
 }
 
 func (f *ForEachIterator) Validate() error {
