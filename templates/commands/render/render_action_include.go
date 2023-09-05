@@ -29,8 +29,7 @@ import (
 
 func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) error {
 	for _, path := range inc.Paths {
-		err := includePath(ctx, path, sp)
-		if err != nil {
+		if err := includePath(ctx, path, sp); err != nil {
 			return err
 		}
 	}
