@@ -41,8 +41,6 @@ jobs:
       id-token: 'write'
     name: 'Release Image'
     runs-on: 'ubuntu-latest'
-    defaults:
-      run:
         working-directory: '[code_subfolder]'
     steps:
       - name: 'Checkout Repo'
@@ -74,11 +72,11 @@ jobs:
       - name: 'Build Docker Image'
         run: |
           docker build --tag ${{ env.IMAGE }} \
-            --build-arg APP=restserver .
+            --build-arg APP=restserver . \
+            -f {{deployments_subfolder/Dockerfile}}
       - name: 'Push Docker Image'
         run: |
           docker push ${{ env.IMAGE }}
-          docker build . -t my-web-app -f [deploymentsubfolder/Dockerfile
   deploy-service:
     needs:
       - 'image-release'

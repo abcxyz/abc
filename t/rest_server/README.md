@@ -21,9 +21,14 @@ How to render this template:
     --input="region=[region]" \
     --input="project_id=[project_id]" \
     --input="code_subfolder=[code_subfolder]" \
+    --input="deployments_subfolder=[deployments_subfolder]" \
     github.com/abcxyz/abc.git//t/rest_server/workflows
     ```
 
-    Optionally, add the `--input="subfolder=[subfolder]"` flag to specify render location. See subdirectory READMEs for more details.
+    Optionally, add the `--input="subfolder=[subfolder]"` flag for code and deployments to specify render locations. 
+    
+    The `code_subfolder` and `deployments_subfolder` inputs for rendering workflows are unnecessary if `subfolder` was not specified.
+    
+    See subdirectory READMEs for more details.
 
 1. Follow the steps in the rendered README.md to run the server.

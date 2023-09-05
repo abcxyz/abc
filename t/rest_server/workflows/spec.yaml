@@ -33,12 +33,25 @@ inputs:
   - name: 'code_subfolder'
     desc: 'Subdirectory relative to --dest where application code was rendered to'
     default: 'code/rest_server'
+  - name: 'deployments_subfolder'
+    desc: 'Subdirectory relative to --dest where deployments folder was rendered to'
+    default: 'deployments/rest_server'
 steps:
-  - desc: 'Include some files and directories'
+  - desc: 'Include config'
     action: 'include'
     params:
-      paths: ['contents']
+      paths: ['contents/config']
       as: ['.github']
+  - desc: 'Include CI workflow'
+    action: 'include'
+    params:
+      paths: ['contents/ci-rest-server.yaml']
+      as: ['.github/workflows/ci-rest-server.yaml']
+  - desc: 'Include deployment workflow'
+    action: 'include'
+    params:
+      paths: ['contents/deploy-rest-server.yaml']
+      as: ['.github/workflows/deploy-rest-server.yaml']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
@@ -46,6 +59,8 @@ steps:
       replacements:
         - to_replace: '[code_subfolder]'
           with: '{{.code_subfolder}}'
+        - to_replace: '[deployments_subfolder]'
+          with: '{{.deployments_subfolder}}'
         - to_replace: 'AUTOMATION_SERVICE_ACCOUNT=[automation_service_account]'
           with: 'AUTOMATION_SERVICE_ACCOUNT={{.automation_service_account}}'
         - to_replace: 'WIF_PROVIDER=[wif_provider]'

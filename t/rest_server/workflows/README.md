@@ -10,4 +10,5 @@ This directory contains the GitHub Action workflows for the REST server template
     --input="region=[region]" \
     --input="project_id=[project_id]" \
     --input="code_subfolder=[code_subfolder]" \
+    --input="deployments_subfolder=[deployments_subfolder]" \
     github.com/abcxyz/abc.git//t/rest_server/workflows
