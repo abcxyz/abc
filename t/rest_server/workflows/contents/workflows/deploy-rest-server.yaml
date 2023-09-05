@@ -43,7 +43,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     defaults:
       run:
-        working-directory: './code/rest_server'
+        working-directory: '[code_subfolder]'
     steps:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
@@ -78,7 +78,7 @@ jobs:
       - name: 'Push Docker Image'
         run: |
           docker push ${{ env.IMAGE }}
-          docker build . -t my-web-app -f subfolder/Dockerfile
+          docker build . -t my-web-app -f [deploymentsubfolder/Dockerfile
   deploy-service:
     needs:
       - 'image-release'

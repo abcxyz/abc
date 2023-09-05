@@ -30,6 +30,9 @@ inputs:
     desc: 'Cloud Run Region (ex: us-west1)'
   - name: 'project_id'
     desc: 'GCP Project ID'
+  - name: 'code_subfolder'
+    desc: 'Subdirectory relative to --dest where application code was rendered to'
+    default: 'code/rest_server'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
@@ -41,6 +44,8 @@ steps:
     params:
       paths: ['.']
       replacements:
+        - to_replace: '[code_subfolder]'
+          with: '{{.code_subfolder}}'
         - to_replace: 'AUTOMATION_SERVICE_ACCOUNT=[automation_service_account]'
           with: 'AUTOMATION_SERVICE_ACCOUNT={{.automation_service_account}}'
         - to_replace: 'WIF_PROVIDER=[wif_provider]'
