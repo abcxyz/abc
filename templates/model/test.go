@@ -56,8 +56,15 @@ type Test struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (i *Test) UnmarshalYAML(n *yaml.Node) error {
-	return unmarshalPlain(n, i, &i.Pos)
+func (t *Test) UnmarshalYAML(n *yaml.Node) error {
+	return unmarshalPlain(n, t, &t.Pos)
+}
+
+func (t *Test) Validate() error {
+	return errors.Join(
+		oneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		validateEach(t.Inputs),
+	)
 }
 
 // DecodeTest unmarshals the YAML Spec from r.
@@ -70,8 +77,8 @@ func DecodeTest(r io.Reader) (*Test, error) {
 		return nil, fmt.Errorf("error parsing test YAML file: %w", err)
 	}
 
-	return &test, errors.Join(
-		oneOf(&test.Pos, test.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
-		validateEach(test.Inputs),
-	)
+	if err := test.Validate(); err != nil {
+		return nil, err
+	}
+	return &test, nil
 }
