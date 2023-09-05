@@ -33,6 +33,10 @@ type ConfigPos struct {
 	Column int
 }
 
+func (c ConfigPos) IsZero() bool {
+	return c == ConfigPos{}
+}
+
 // YAMLPos constructs a position struct based on a YAML parse cursor.
 func YAMLPos(n *yaml.Node) *ConfigPos {
 	return &ConfigPos{
@@ -51,7 +55,7 @@ func YAMLPos(n *yaml.Node) *ConfigPos {
 //	Creating an error: c.Errorf("something went wrong doing action %s", action)
 func (c *ConfigPos) Errorf(fmtStr string, args ...any) error {
 	err := fmt.Errorf(fmtStr, args...)
-	if c == nil || *c == (ConfigPos{}) {
+	if c == nil || c.IsZero() {
 		return err
 	}
 

@@ -19,7 +19,6 @@ package spec
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
@@ -35,19 +34,11 @@ import (
 // If the Spec parses successfully but then fails validation, the spec will be
 // returned along with the validation error.
 func Decode(r io.Reader) (*Spec, error) {
-	dec := newDecoder(r)
-	var spec Spec
-	if err := dec.Decode(&spec); err != nil {
-		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
+	out := &Spec{}
+	if err := model.DecodeAndValidate(r, "spec", out); err != nil {
+		return nil, err
 	}
-	return &spec, spec.Validate()
-}
-
-// newDecoder returns a yaml Decoder with the desired options.
-func newDecoder(r io.Reader) *yaml.Decoder {
-	dec := yaml.NewDecoder(r)
-	dec.KnownFields(true) // Fail if any unexpected fields are seen. Often doesn't work: https://github.com/go-yaml/yaml/issues/460
-	return dec
+	return out, nil
 }
 
 // Spec represents a parsed spec.yaml file describing a template.
