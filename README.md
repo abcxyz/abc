@@ -235,7 +235,7 @@ replaced by a user-provided string. Thus "hello, world" is transformed into
 "hello, $whatever" in `main.go`.
 
 ```yaml
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
 desc:
@@ -257,6 +257,10 @@ steps:
         - to_replace: 'world'
           with: '{{.whomever}}'
 ```
+
+The `api_version` field currently has only one valid value,
+`cli.abcxyz.dev/v1alpha1`. The field name `api_version` may also be named
+`apiVersion` in old templates, but the newer form `api_version` is preferred.
 
 #### Template inputs
 

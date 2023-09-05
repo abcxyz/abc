@@ -50,7 +50,7 @@ type Test struct {
 	// Pos is the YAML file location where this object started.
 	Pos ConfigPos `yaml:"-"`
 
-	APIVersion String `yaml:"apiVersion"`
+	APIVersion String `yaml:"api_version"`
 
 	Inputs []*InputValue `yaml:"inputs"`
 }
@@ -71,7 +71,7 @@ func DecodeTest(r io.Reader) (*Test, error) {
 	}
 
 	return &test, errors.Join(
-		oneOf(&test.Pos, test.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		oneOf(&test.Pos, test.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
 		validateEach(test.Inputs),
 	)
 }

@@ -54,7 +54,7 @@ type Spec struct {
 	// Pos is the YAML file location where this object started.
 	Pos ConfigPos `yaml:"-"`
 
-	APIVersion String `yaml:"apiVersion"`
+	APIVersion String // this field is unmarshalled specially, see Spec.UnmarshalYAML
 	Kind       String `yaml:"kind"`
 
 	Desc   String   `yaml:"desc"`
@@ -64,13 +64,41 @@ type Spec struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
-	return unmarshalPlain(n, s, &s.Pos)
+	// The api_version field was mistakenly named apiVersion in the past, so accept both.
+	if err := unmarshalPlain(n, s, &s.Pos, "api_version", "apiVersion"); err != nil {
+		return err
+	}
+
+	shim := &struct {
+		OldStyle String `yaml:"apiVersion"`
+		NewStyle String `yaml:"api_version"`
+	}{}
+
+	if err := n.Decode(shim); err != nil {
+		return err
+	}
+
+	m := map[string]any{}
+	n.Decode(m)
+	_ = m
+
+	if shim.NewStyle.Val != "" && shim.OldStyle.Val != "" {
+		return shim.OldStyle.Pos.Errorf("must not set both apiVersion and api_version, please use api_version only")
+	}
+	if shim.NewStyle.Val != "" {
+		s.APIVersion = shim.NewStyle
+		return nil
+	}
+	if shim.OldStyle.Val != "" {
+		s.APIVersion = shim.OldStyle
+	}
+	return nil
 }
 
 // Validate implements Validator.
 func (s *Spec) Validate() error {
 	return errors.Join(
-		oneOf(&s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		oneOf(&s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
 		oneOf(&s.Pos, s.Kind, []string{"Template"}, "kind"),
 		notZeroModel(&s.Pos, s.Desc, "desc"),
 		nonEmptySlice(&s.Pos, s.Steps, "steps"),
