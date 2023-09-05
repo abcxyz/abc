@@ -19,9 +19,10 @@ import (
 	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 )
 
-func actionStringReplace(ctx context.Context, sr *model.StringReplace, sp *stepParams) error {
+func actionStringReplace(ctx context.Context, sr *spec.StringReplace, sp *stepParams) error {
 	var replacerArgs []string //nolint:prealloc // strings.NewReplacer has a weird input slice, it's less confusing to append rather than preallocate.
 	for _, r := range sr.Replacements {
 		toReplace, err := parseAndExecuteGoTmpl(r.ToReplace.Pos, r.ToReplace.Val, sp.scope)

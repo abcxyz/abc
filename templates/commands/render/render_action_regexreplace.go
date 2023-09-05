@@ -20,6 +20,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 )
 
 // The regex_replace action replaces a regex match (or a subgroup thereof) with
@@ -32,7 +33,7 @@ import (
 //
 // This would transform a file containing "Hello, cool world!" to "Hello, fresh
 // world!".
-func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepParams) error {
+func actionRegexReplace(ctx context.Context, rr *spec.RegexReplace, sp *stepParams) error {
 	uncompiled := make([]model.String, len(rr.Replacements))
 	for i, rp := range rr.Replacements {
 		uncompiled[i] = rp.Regex
@@ -94,7 +95,7 @@ func actionRegexReplace(ctx context.Context, rr *model.RegexReplace, sp *stepPar
 	return nil
 }
 
-func replaceWithTemplate(allMatches [][]int, b []byte, rr *model.RegexReplaceEntry, re *regexp.Regexp, scope *common.Scope) ([]byte, error) {
+func replaceWithTemplate(allMatches [][]int, b []byte, rr *spec.RegexReplaceEntry, re *regexp.Regexp, scope *common.Scope) ([]byte, error) {
 	// Why iterate in reverse? We have to replace starting at the end of the
 	// file working toward the beginning, so when we replace part of
 	// the buffer it doesn't invalidate the indices of the other

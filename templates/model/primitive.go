@@ -40,6 +40,6 @@ func (v *valWithPos[T]) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Decode(&v.Val); err != nil {
 		return err //nolint:wrapcheck
 	}
-	v.Pos = yamlPos(n)
+	v.Pos = YAMLPos(n)
 	return nil
 }
