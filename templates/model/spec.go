@@ -69,28 +69,23 @@ func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	shim := &struct {
+	avShim := struct {
 		OldStyle String `yaml:"apiVersion"`
 		NewStyle String `yaml:"api_version"`
 	}{}
-
-	if err := n.Decode(shim); err != nil {
+	if err := n.Decode(&avShim); err != nil {
 		return err
 	}
 
-	m := map[string]any{}
-	n.Decode(m)
-	_ = m
-
-	if shim.NewStyle.Val != "" && shim.OldStyle.Val != "" {
-		return shim.OldStyle.Pos.Errorf("must not set both apiVersion and api_version, please use api_version only")
+	if avShim.NewStyle.Val != "" && avShim.OldStyle.Val != "" {
+		return avShim.OldStyle.Pos.Errorf("must not set both apiVersion and api_version, please use api_version only")
 	}
-	if shim.NewStyle.Val != "" {
-		s.APIVersion = shim.NewStyle
+	if avShim.NewStyle.Val != "" {
+		s.APIVersion = avShim.NewStyle
 		return nil
 	}
-	if shim.OldStyle.Val != "" {
-		s.APIVersion = shim.OldStyle
+	if avShim.OldStyle.Val != "" {
+		s.APIVersion = avShim.OldStyle
 	}
 	return nil
 }
