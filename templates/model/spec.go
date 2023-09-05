@@ -248,21 +248,82 @@ type Include struct {
 	// Pos is the YAML file location where this object started.
 	Pos ConfigPos `yaml:"-"`
 
-	Paths       []String `yaml:"paths"`
-	From        String   `yaml:"from"`
-	As          []String `yaml:"as"`
-	StripPrefix String   `yaml:"strip_prefix"`
-	AddPrefix   String   `yaml:"add_prefix"`
-	Skip        []String `yaml:"skip"`
+	Paths []*IncludePath `yaml:"paths"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Include) UnmarshalYAML(n *yaml.Node) error {
+	// There are two cases for an "include":
+	//  1. "paths" is a list of strings (old-style)
+	//  2. "paths" is a list of objects (new-style)
+	//
+	// We do this by unmarshaling into a map, then checking the "kind" of the
+	// YAML objects in the map values. If "paths" is a list of scalars, then we
+	// assume we're dealing with case 1. Otherwise we assume we're dealing with
+	// case 2.
+	//
+	// The shape of the Include struct looks the same either way, so downstream
+	// code inside this program doesn't have to know that there are two cases.
+
+	nodesMap := map[string]yaml.Node{}
+	if err := n.Decode(nodesMap); err != nil {
+		return yamlPos(n).Errorf("%w", err)
+	}
+
+	pathsNode, ok := nodesMap["paths"]
+	if !ok {
+		return yamlPos(n).Errorf(`field "paths" is required`)
+	}
+	if pathsNode.Kind != yaml.SequenceNode {
+		return yamlPos(&pathsNode).Errorf("paths must be a YAML list")
+	}
+	var listElemKind, zeroKind yaml.Kind
+	for _, elemNode := range pathsNode.Content {
+		if listElemKind != zeroKind && elemNode.Kind != listElemKind {
+			return yamlPos(&pathsNode).Errorf("Lists of paths must be homogeneous, either all strings or all objects")
+		}
+		listElemKind = elemNode.Kind
+	}
+
+	if listElemKind == yaml.ScalarNode { // Detect old-style case 1 input
+		ip := &IncludePath{}
+		i.Paths = []*IncludePath{ip}
+		// Subtle point: in case 1 ("old-style"), we unmarshal the incoming YAML object as an "IncludePath" struct.
+		return unmarshalPlain(n, ip, &ip.Pos)
+	}
+
+	// Otherwise we're in case 2, we just unmarshal the incoming YAML object as an "Include: struct.
 	return unmarshalPlain(n, i, &i.Pos)
 }
 
 // Validate implements Validator.
 func (i *Include) Validate() error {
+	return errors.Join(
+		validateEach(i.Paths),
+		nonEmptySlice(&i.Pos, i.Paths, "paths"),
+	)
+}
+
+// IncludePath represents an object for controlling the behavior of included files.
+type IncludePath struct {
+	Pos ConfigPos `yaml:"-"`
+
+	AddPrefix   String   `yaml:"add_prefix"`
+	As          []String `yaml:"as"`
+	From        String   `yaml:"from"`
+	OnConflict  String   `yaml:"on_conflict"`
+	Paths       []String `yaml:"paths"`
+	Skip        []String `yaml:"skip"`
+	StripPrefix String   `yaml:"strip_prefix"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
+	return unmarshalPlain(n, i, &i.Pos)
+}
+
+// Validate implements Validator.
+func (i *IncludePath) Validate() error {
 	var exclusivityErr error
 	if len(i.As) != 0 {
 		if i.StripPrefix.Val != "" || i.AddPrefix.Val != "" {

@@ -28,6 +28,15 @@ import (
 )
 
 func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) error {
+	for _, path := range inc.Paths {
+		if err := includePath(ctx, path, sp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func includePath(ctx context.Context, inc *model.IncludePath, sp *stepParams) error {
 	stripPrefixStr, err := parseAndExecuteGoTmpl(inc.StripPrefix.Pos, inc.StripPrefix.Val, sp.scope)
 	if err != nil {
 		return err
