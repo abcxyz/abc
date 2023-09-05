@@ -117,7 +117,7 @@ func extraFields(n *yaml.Node, knownFields []string) error {
 }
 
 // Validator is any model struct that has a validate method. It's useful for
-// "higher order" validation functions like "validate each entry in a list."
+// "higher order" validation functions like "validate each entry in a list".
 type Validator interface {
 	Validate() error
 }
