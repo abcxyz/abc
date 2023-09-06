@@ -55,9 +55,17 @@ type Test struct {
 	Inputs     []*InputValue `yaml:"inputs"`
 }
 
+// Validate implements model.Validator.
+func (t *Test) Validate() error {
+	return errors.Join(
+		model.OneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
+		model.ValidateEach(t.Inputs),
+	)
+}
+
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (i *Test) UnmarshalYAML(n *yaml.Node) error {
-	return model.UnmarshalPlain(n, i, &i.Pos) //nolint:wrapcheck
+func (t *Test) UnmarshalYAML(n *yaml.Node) error {
+	return model.UnmarshalPlain(n, t, &t.Pos) //nolint:wrapcheck
 }
 
 // DecodeTest unmarshals the YAML Spec from r.
@@ -70,8 +78,8 @@ func DecodeTest(r io.Reader) (*Test, error) {
 		return nil, fmt.Errorf("error parsing test YAML file: %w", err)
 	}
 
-	return &test, errors.Join(
-		model.OneOf(&test.Pos, test.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
-		model.ValidateEach(test.Inputs),
-	)
+	if err := test.Validate(); err != nil {
+		return nil, err
+	}
+	return &test, nil
 }
