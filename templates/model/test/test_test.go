@@ -35,7 +35,7 @@ func TestTestUnmarshal(t *testing.T) {
 	}{
 		{
 			name: "simple_test_should_succeed",
-			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
 inputs:
 - name: 'person_name'
   value: 'iron_man'
@@ -57,14 +57,14 @@ inputs:
 		},
 		{
 			name: "missing_field_should_fail",
-			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
 inputs:
 - name: 'person_name'`,
 			wantErr: `at line 3 column 3: field "value" is required`,
 		},
 		{
 			name: "unknown_field_should_fail",
-			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
 inputs:
 - name: 'person_name'
   value: 'iron_man'
@@ -76,7 +76,7 @@ inputs:
 			in: `inputs:
 - name: 'person_name'
   value: 'iron_man'`,
-			wantErr: `at line 1 column 1: field "apiVersion" value must be one of [cli.abcxyz.dev/v1alpha1]`,
+			wantErr: `at line 1 column 1: field "api_version" value must be one of [cli.abcxyz.dev/v1alpha1]`,
 		},
 	}
 

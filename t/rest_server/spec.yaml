@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'A template for a simple HTTP/JSON REST server.'
 inputs:
   - name: 'automation_service_account'
-    desc: 'Automation Service Account (ex: [account_name]@[project_id].iam.gserviceaccount.com)'
+    desc:
+      'Automation Service Account (ex:
+      [account_name]@[project_id].iam.gserviceaccount.com)'
   - name: 'wif_provider'
-    desc: 'Workload Identity Federation Provider (ex: projects/[project_id]/locations/global/workloadIdentityPools/[WIF_pool_name]/providers/[provider_name])'
+    desc:
+      'Workload Identity Federation Provider (ex:
+      projects/[project_id]/locations/global/workloadIdentityPools/[WIF_pool_name]/providers/[provider_name])'
   - name: 'ar_repository'
     desc: 'Artifact Registry Repository (ex: ci-images)'
   - name: 'ar_location'

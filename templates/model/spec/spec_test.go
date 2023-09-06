@@ -36,6 +36,45 @@ func TestSpecUnmarshal(t *testing.T) {
 	}{
 		{
 			name: "simple_template_should_succeed",
+			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'A simple template that just prints and exits'
+inputs:
+- name: 'person_name'
+  desc: 'An optional name of a person to greet'
+  default: 'default value'
+
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'Hello, {{.or .person_name "World"}}'`,
+			want: &Spec{
+				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
+				Kind:       model.String{Val: "Template"},
+
+				Desc: model.String{Val: "A simple template that just prints and exits"},
+				Inputs: []*Input{
+					{
+						Name:    model.String{Val: "person_name"},
+						Desc:    model.String{Val: "An optional name of a person to greet"},
+						Default: &model.String{Val: "default value"},
+					},
+				},
+				Steps: []*Step{
+					{
+						Desc:   model.String{Val: "Print a message"},
+						Action: model.String{Val: "print"},
+						Print: &Print{
+							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "apiVersion_camel_case",
 			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
@@ -74,6 +113,25 @@ steps:
 			},
 		},
 		{
+			name: "api_version_both_forms",
+			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'A simple template that just prints and exits'
+inputs:
+- name: 'person_name'
+  desc: 'An optional name of a person to greet'
+  default: 'default value'
+
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'Hello, {{.or .person_name "World"}}'`,
+			wantUnmarshalErr: "must not set both apiVersion and api_version, please use api_version only",
+		},
+		{
 			name: "validation_of_children_should_occur_and_fail",
 			in: `desc: 'A simple template that just prints and exits'
 inputs:
@@ -89,7 +147,7 @@ steps:
 		{
 			name: "check_required_fields",
 			in:   "inputs:",
-			wantValidateErr: `at line 1 column 1: field "apiVersion" value must be one of [cli.abcxyz.dev/v1alpha1]
+			wantValidateErr: `at line 1 column 1: field "api_version" value must be one of [cli.abcxyz.dev/v1alpha1]
 at line 1 column 1: field "kind" value must be one of [Template]
 at line 1 column 1: field "desc" is required
 at line 1 column 1: field "steps" is required`,
@@ -97,7 +155,7 @@ at line 1 column 1: field "steps" is required`,
 
 		{
 			name: "unknown_field_should_fail",
-			in: `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
 desc: 'A simple template that just prints and exits'

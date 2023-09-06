@@ -51,15 +51,14 @@ type Test struct {
 	// Pos is the YAML file location where this object started.
 	Pos model.ConfigPos `yaml:"-"`
 
-	APIVersion model.String `yaml:"apiVersion"`
-
-	Inputs []*InputValue `yaml:"inputs"`
+	APIVersion model.String  `yaml:"api_version"`
+	Inputs     []*InputValue `yaml:"inputs"`
 }
 
 // Validate implements model.Validator.
 func (t *Test) Validate() error {
 	return errors.Join(
-		model.OneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		model.OneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
 		model.ValidateEach(t.Inputs),
 	)
 }

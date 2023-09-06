@@ -191,7 +191,7 @@ func TestRealRun(t *testing.T) {
 
 	// Many (but not all) of the subtests use this spec.yaml.
 	specContents := `
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'A template for the ages'
 inputs:
@@ -430,7 +430,7 @@ steps:
 			name: "plain_destination_include",
 			templateContents: map[string]string{
 				"spec.yaml": `
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'my template'
 steps:
@@ -469,7 +469,7 @@ steps:
 			templateContents: map[string]string{
 				"file_b.txt": "red is my favorite color",
 				"spec.yaml": `
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'my template'
 steps:
@@ -506,7 +506,7 @@ steps:
 		{
 			name: "for_each",
 			templateContents: map[string]string{
-				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'A template for the ages'
 steps:
@@ -528,7 +528,7 @@ steps:
 		{
 			name: "skip_input_validation",
 			templateContents: map[string]string{
-				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1alpha1'
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 desc: 'My template'
 inputs:
