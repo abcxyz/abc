@@ -56,6 +56,7 @@ type Test struct {
 	Inputs []*InputValue `yaml:"inputs"`
 }
 
+// Validate implements model.Validator.
 func (t *Test) Validate() error {
 	return errors.Join(
 		model.OneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
@@ -64,14 +65,14 @@ func (t *Test) Validate() error {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (i *Test) UnmarshalYAML(n *yaml.Node) error {
-	return model.UnmarshalPlain(n, i, &i.Pos) //nolint:wrapcheck
+func (t *Test) UnmarshalYAML(n *yaml.Node) error {
+	return model.UnmarshalPlain(n, t, &t.Pos) //nolint:wrapcheck
 }
 
 // DecodeTest unmarshals the YAML Spec from r.
 func DecodeTest(r io.Reader) (*Test, error) {
 	dec := yaml.NewDecoder(r)
-	dec.KnownFields(git atrue)
+	dec.KnownFields(true)
 
 	var test Test
 	if err := dec.Decode(&test); err != nil {
