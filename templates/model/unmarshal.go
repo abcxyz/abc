@@ -32,7 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// unmarshalPlain unmarshals the yaml node n into the struct pointer outPtr, as
+// UnmarshalPlain unmarshals the yaml node n into the struct pointer outPtr, as
 // if it did not have an UnmarshalYAML method. This lets you still use the
 // default unmarshaling logic to populate the fields of your struct, while
 // adding custom logic before and after.
@@ -46,7 +46,7 @@ import (
 // valid fields. Unexpected fields in the yaml are treated as an error. To allow
 // extra yaml fields that don't correspond to a field of outPtr, provide their
 // names in extraYAMLFields. This allows some fields to be handled specially.
-func unmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields ...string) error {
+func UnmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields ...string) error {
 	fields := reflect.VisibleFields(reflect.TypeOf(outPtr).Elem())
 
 	// Calculate the set of allowed/known field names in the YAML.
@@ -83,6 +83,6 @@ func unmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields
 	// to the actual output struct.
 	reflect.ValueOf(outPtr).Elem().Set(shadow.Elem())
 
-	*outPos = *yamlPos(n)
+	*outPos = *YAMLPos(n)
 	return nil
 }

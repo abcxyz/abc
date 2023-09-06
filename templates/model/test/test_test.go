@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package test
 
 import (
 	"strings"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -41,15 +42,15 @@ inputs:
 - name: 'dog_name'
   value: 'iron_dog'`,
 			want: &Test{
-				APIVersion: String{Val: "cli.abcxyz.dev/v1alpha1"},
+				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
 				Inputs: []*InputValue{
 					{
-						Name:  String{Val: "person_name"},
-						Value: String{Val: "iron_man"},
+						Name:  model.String{Val: "person_name"},
+						Value: model.String{Val: "iron_man"},
 					},
 					{
-						Name:  String{Val: "dog_name"},
-						Value: String{Val: "iron_dog"},
+						Name:  model.String{Val: "dog_name"},
+						Value: model.String{Val: "iron_dog"},
 					},
 				},
 			},
@@ -91,7 +92,7 @@ inputs:
 				return
 			}
 
-			opt := cmpopts.IgnoreTypes(&ConfigPos{}, ConfigPos{})
+			opt := cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{})
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Fatalf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}

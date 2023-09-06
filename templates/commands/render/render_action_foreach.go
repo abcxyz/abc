@@ -18,10 +18,10 @@ import (
 	"context"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 )
 
-func actionForEach(ctx context.Context, fe *model.ForEach, sp *stepParams) error {
+func actionForEach(ctx context.Context, fe *spec.ForEach, sp *stepParams) error {
 	key, err := parseAndExecuteGoTmpl(fe.Iterator.Key.Pos, fe.Iterator.Key.Val, sp.scope)
 	if err != nil {
 		return err

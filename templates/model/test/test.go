@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package test
 
 import (
 	"errors"
 	"fmt"
 	"io"
 
+	"github.com/abcxyz/abc/templates/model"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,37 +28,36 @@ import (
 // InputValue represents one of the parsed "input" fields from the inputs.yaml file.
 type InputValue struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos model.ConfigPos `yaml:"-"`
 
-	Name  String `yaml:"name"`
-	Value String `yaml:"value"`
+	Name  model.String `yaml:"name"`
+	Value model.String `yaml:"value"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *InputValue) UnmarshalYAML(n *yaml.Node) error {
-	return unmarshalPlain(n, i, &i.Pos)
+	return model.UnmarshalPlain(n, i, &i.Pos) //nolint:wrapcheck
 }
 
 func (i *InputValue) Validate() error {
 	return errors.Join(
-		notZeroModel(&i.Pos, i.Name, "name"),
-		notZeroModel(&i.Pos, i.Value, "value"),
+		model.NotZeroModel(&i.Pos, i.Name, "name"),
+		model.NotZeroModel(&i.Pos, i.Value, "value"),
 	)
 }
 
 // Test represents a parsed test.yaml describing test configs.
 type Test struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos model.ConfigPos `yaml:"-"`
 
-	APIVersion String `yaml:"api_version"`
-
-	Inputs []*InputValue `yaml:"inputs"`
+	APIVersion model.String  `yaml:"api_version"`
+	Inputs     []*InputValue `yaml:"inputs"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *Test) UnmarshalYAML(n *yaml.Node) error {
-	return unmarshalPlain(n, i, &i.Pos)
+	return model.UnmarshalPlain(n, i, &i.Pos) //nolint:wrapcheck
 }
 
 // DecodeTest unmarshals the YAML Spec from r.
@@ -71,7 +71,7 @@ func DecodeTest(r io.Reader) (*Test, error) {
 	}
 
 	return &test, errors.Join(
-		oneOf(&test.Pos, test.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
-		validateEach(test.Inputs),
+		model.OneOf(&test.Pos, test.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
+		model.ValidateEach(test.Inputs),
 	)
 }

@@ -33,8 +33,8 @@ type ConfigPos struct {
 	Column int
 }
 
-// yamlPos constructs a position struct based on a YAML parse cursor.
-func yamlPos(n *yaml.Node) *ConfigPos {
+// YAMLPos constructs a position struct based on a YAML parse cursor.
+func YAMLPos(n *yaml.Node) *ConfigPos {
 	return &ConfigPos{
 		Line:   n.Line,
 		Column: n.Column,

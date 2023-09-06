@@ -22,6 +22,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -32,7 +33,7 @@ func TestActionInclude(t *testing.T) {
 
 	cases := []struct {
 		name                 string
-		include              *model.Include
+		include              *spec.Include
 		templateContents     map[string]modeAndContents
 		destDirContents      map[string]modeAndContents
 		inputs               map[string]string
@@ -43,8 +44,8 @@ func TestActionInclude(t *testing.T) {
 	}{
 		{
 			name: "simple_success",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"myfile.txt"}),
 					},
@@ -59,8 +60,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "absolute_path_treated_as_relative",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"/myfile.txt"}),
 					},
@@ -75,8 +76,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "reject_dot_dot",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"../file.txt"}),
 					},
@@ -86,8 +87,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "templated_filename_success",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"{{.my_dir}}/{{.my_file}}"}),
 					},
@@ -106,8 +107,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "including_multiple_times_should_succeed",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"myfile.txt", "myfile.txt"}),
 					},
@@ -122,8 +123,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "including_multiple_times_should_succeed",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"foo/myfile.txt", "foo/", "foo/myfile.txt"}),
 					},
@@ -138,8 +139,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "templated_filename_nonexistent_input_var_should_fail",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"{{.filename}}"}),
 					},
@@ -153,8 +154,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "nonexistent_source_should_fail",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"nonexistent"}),
 					},
@@ -169,8 +170,8 @@ func TestActionInclude(t *testing.T) {
 			// Note: we don't exhaustively test every possible FS error here. That's
 			// already done in the tests for the underlying copyRecursive function.
 			name: "filesystem_error_should_be_returned",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"myfile.txt"}),
 					},
@@ -184,8 +185,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "strip_prefix_from_file",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths:       modelStrings([]string{"a/deep/subdir/hello.txt"}),
 						StripPrefix: model.String{Val: "a/deep/subdir"},
@@ -201,8 +202,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "strip_prefix_from_dir",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths:       modelStrings([]string{"a/deep/subdir/hello.txt"}),
 						StripPrefix: model.String{Val: "a/deep"},
@@ -218,8 +219,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "strip_and_add_prefix_together_with_templates",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths:       modelStrings([]string{"a/deep/subdir/hello.txt"}),
 						StripPrefix: model.String{Val: "{{.ay}}/"},
@@ -240,8 +241,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "as_with_single_path",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"dir1/file1.txt"}),
 						As:    modelStrings([]string{"dir2/file2.txt"}),
@@ -257,8 +258,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "as_with_multiple_paths_and_templates",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"file{{.one}}.txt", "file{{.two}}.txt"}),
 						As:    modelStrings([]string{"file{{.three}}.txt", "file{{.four}}.txt"}),
@@ -282,8 +283,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "strip_prefix_doesnt_find_prefix",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths:       modelStrings([]string{"a/b/c"}),
 						StripPrefix: model.String{Val: "x/"},
@@ -297,8 +298,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "spec_yaml_should_be_skipped",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"."}),
 					},
@@ -314,8 +315,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "spec_yaml_in_subdir_should_not_be_skipped",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"."}),
 					},
@@ -332,8 +333,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "include_dot_from_destination",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"."}),
 						From:  model.String{Val: "destination"},
@@ -353,8 +354,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "include_subdir_from_destination",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"subdir"}),
 						From:  model.String{Val: "destination"},
@@ -375,8 +376,8 @@ func TestActionInclude(t *testing.T) {
 		},
 		{
 			name: "include_individual_files_from_destination",
-			include: &model.Include{
-				Paths: []*model.IncludePath{
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"file1.txt", "subdir/file2.txt"}),
 						From:  model.String{Val: "destination"},

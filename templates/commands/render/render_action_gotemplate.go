@@ -19,9 +19,10 @@ import (
 	"fmt"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 )
 
-func actionGoTemplate(ctx context.Context, p *model.GoTemplate, sp *stepParams) error {
+func actionGoTemplate(ctx context.Context, p *spec.GoTemplate, sp *stepParams) error {
 	for _, p := range p.Paths {
 		// Paths may contain template expressions, so render them first.
 		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)

@@ -19,9 +19,10 @@ import (
 	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 )
 
-func actionAppend(ctx context.Context, ap *model.Append, sp *stepParams) error {
+func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
 	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.scope)
 	if err != nil {
 		return err

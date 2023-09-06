@@ -21,6 +21,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -33,7 +34,7 @@ func TestActionStringReplace(t *testing.T) {
 	cases := []struct {
 		name         string
 		paths        []string
-		replacements []*model.StringReplacement
+		replacements []*spec.StringReplacement
 		inputs       map[string]string
 
 		initialContents map[string]string
@@ -45,7 +46,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "simple_success",
 			paths: []string{"my_file.txt"},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "bar"},
@@ -61,7 +62,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "same_file_only_processed_once",
 			paths: []string{"my_file.txt", ".", "my_file.txt"},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "foofoo"},
@@ -77,7 +78,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "multiple_files_should_work",
 			paths: []string{""},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "bar"},
@@ -95,7 +96,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "no_replacement_needed_should_noop",
 			paths: []string{""},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "bar"},
@@ -111,7 +112,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "empty_file_should_noop",
 			paths: []string{""},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "bar"},
@@ -127,7 +128,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "templated_replacement_should_succeed",
 			paths: []string{"my_{{.filename_adjective}}_file.txt"},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "sand{{.old_suffix}}"},
 					With:      model.String{Val: "hot{{.new_suffix}}"},
@@ -150,7 +151,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "templated_filename_missing_input_should_fail",
 			paths: []string{"{{.myinput}}"},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "bar"},
@@ -168,7 +169,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "templated_toreplace_missing_input_should_fail",
 			paths: []string{""},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "{{.myinput}}"},
 					With:      model.String{Val: "bar"},
@@ -186,7 +187,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "templated_with_missing_input_should_fail",
 			paths: []string{""},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "{{.myinput}}"},
@@ -204,7 +205,7 @@ func TestActionStringReplace(t *testing.T) {
 		{
 			name:  "fs_errors_should_be_returned",
 			paths: []string{"my_file.txt"},
-			replacements: []*model.StringReplacement{
+			replacements: []*spec.StringReplacement{
 				{
 					ToReplace: model.String{Val: "foo"},
 					With:      model.String{Val: "bar"},
@@ -235,7 +236,7 @@ func TestActionStringReplace(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			sr := &model.StringReplace{
+			sr := &spec.StringReplace{
 				Paths:        modelStrings(tc.paths),
 				Replacements: tc.replacements,
 			}

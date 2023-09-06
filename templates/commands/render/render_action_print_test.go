@@ -21,6 +21,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -83,7 +84,7 @@ func TestActionPrint(t *testing.T) {
 				scope:  common.NewScope(tc.inputs),
 				flags:  &tc.flags,
 			}
-			pr := &model.Print{
+			pr := &spec.Print{
 				Message: model.String{
 					Val: tc.in,
 					Pos: &model.ConfigPos{},
