@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
-desc:
-  'An example template for a simple MySQL to Spanner migration pipeline.'
+desc: 'An example template for a simple MySQL to Spanner migration pipeline.'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
@@ -26,4 +25,6 @@ steps:
     action: 'print'
     params:
       message:
-        'Please go to the main.go and replace the the data model (hint text: "Your data model goes here.") and the data processing logic (hint text: "Your data parsing logic goes here.")'
+        'Please go to the main.go and replace the the data model (hint text:
+        "Your data model goes here.") and the data processing logic (hint text:
+        "Your data parsing logic goes here.")'

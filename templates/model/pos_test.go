@@ -36,7 +36,7 @@ func TestPosErrorf(t *testing.T) {
 			pos:     &ConfigPos{10, 11},
 			fmtStr:  "Oh no! some number %d: %w",
 			args:    []any{345, fmt.Errorf("wrapped error")},
-			wantErr: "at spec.yaml line 10 column 11: Oh no! some number 345: wrapped error",
+			wantErr: "at line 10 column 11: Oh no! some number 345: wrapped error",
 		},
 		{
 			name:    "nil_position",
@@ -57,7 +57,7 @@ func TestPosErrorf(t *testing.T) {
 			pos:     &ConfigPos{10, 11},
 			fmtStr:  "abc def",
 			args:    nil,
-			wantErr: "at spec.yaml line 10 column 11: abc def",
+			wantErr: "at line 10 column 11: abc def",
 		},
 	}
 

@@ -33,8 +33,8 @@ type ConfigPos struct {
 	Column int
 }
 
-// yamlPos constructs a position struct based on a YAML parse cursor.
-func yamlPos(n *yaml.Node) *ConfigPos {
+// YAMLPos constructs a position struct based on a YAML parse cursor.
+func YAMLPos(n *yaml.Node) *ConfigPos {
 	return &ConfigPos{
 		Line:   n.Line,
 		Column: n.Column,
@@ -55,5 +55,5 @@ func (c *ConfigPos) Errorf(fmtStr string, args ...any) error {
 		return err
 	}
 
-	return fmt.Errorf("at spec.yaml line %d column %d: %w", c.Line, c.Column, err)
+	return fmt.Errorf("at line %d column %d: %w", c.Line, c.Column, err)
 }
