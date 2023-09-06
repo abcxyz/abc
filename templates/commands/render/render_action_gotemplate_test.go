@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -31,7 +31,7 @@ func TestActionGoTemplate(t *testing.T) {
 		name         string
 		inputs       map[string]string
 		initContents map[string]string
-		gt           *model.GoTemplate
+		gt           *spec.GoTemplate
 		want         map[string]string
 		wantErr      string
 	}{
@@ -43,7 +43,7 @@ func TestActionGoTemplate(t *testing.T) {
 			initContents: map[string]string{
 				"a.txt": "Hello, {{.person}}!",
 			},
-			gt: &model.GoTemplate{
+			gt: &spec.GoTemplate{
 				Paths: modelStrings([]string{"."}),
 			},
 			want: map[string]string{
@@ -56,7 +56,7 @@ func TestActionGoTemplate(t *testing.T) {
 			initContents: map[string]string{
 				"a.txt": "Hello, world!",
 			},
-			gt: &model.GoTemplate{
+			gt: &spec.GoTemplate{
 				Paths: modelStrings([]string{"."}),
 			},
 			want: map[string]string{
@@ -72,7 +72,7 @@ func TestActionGoTemplate(t *testing.T) {
 			initContents: map[string]string{
 				"a.txt": "{{.greeting}}, {{.person}}!",
 			},
-			gt: &model.GoTemplate{
+			gt: &spec.GoTemplate{
 				Paths: modelStrings([]string{"."}),
 			},
 			want: map[string]string{
@@ -88,7 +88,7 @@ func TestActionGoTemplate(t *testing.T) {
 			initContents: map[string]string{
 				"a_Alice.txt": "{{.greeting}}, {{.person}}!",
 			},
-			gt: &model.GoTemplate{
+			gt: &spec.GoTemplate{
 				Paths: modelStrings([]string{"a_{{.person}}.txt"}),
 			},
 			want: map[string]string{
@@ -103,7 +103,7 @@ func TestActionGoTemplate(t *testing.T) {
 			initContents: map[string]string{
 				"a.txt": "Hello, {{.person}}!",
 			},
-			gt: &model.GoTemplate{
+			gt: &spec.GoTemplate{
 				Paths: modelStrings([]string{"."}),
 			},
 			want: map[string]string{
@@ -117,7 +117,7 @@ func TestActionGoTemplate(t *testing.T) {
 			initContents: map[string]string{
 				"a.txt": "Hello, {{",
 			},
-			gt: &model.GoTemplate{
+			gt: &spec.GoTemplate{
 				Paths: modelStrings([]string{"."}),
 			},
 			want: map[string]string{
@@ -141,7 +141,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"prefix.txt":       `{{ trimPrefix .prefix "prefix" }}`,
 				"suffix.txt":       `{{ trimSuffix .suffix "suffix" }}`,
 			},
-			gt: &model.GoTemplate{
+			gt: &spec.GoTemplate{
 				Paths: modelStrings([]string{"."}),
 			},
 			want: map[string]string{

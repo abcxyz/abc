@@ -34,6 +34,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
@@ -333,7 +334,7 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.
-func (c *Command) checkUnknownInputs(spec *model.Spec) []string {
+func (c *Command) checkUnknownInputs(spec *spec.Spec) []string {
 	specInputs := make(map[string]any, len(spec.Inputs))
 	for _, v := range spec.Inputs {
 		specInputs[v.Name.Val] = struct{}{}
@@ -353,7 +354,7 @@ func (c *Command) checkUnknownInputs(spec *model.Spec) []string {
 
 // resolveInputs combines flags, user prompts, and defaults to get the full set
 // of template inputs.
-func (c *Command) resolveInputs(ctx context.Context, spec *model.Spec) error {
+func (c *Command) resolveInputs(ctx context.Context, spec *spec.Spec) error {
 	if unknownInputs := c.checkUnknownInputs(spec); len(unknownInputs) > 0 {
 		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
@@ -385,7 +386,7 @@ func (c *Command) resolveInputs(ctx context.Context, spec *model.Spec) error {
 	return nil
 }
 
-func (c *Command) validateInputs(ctx context.Context, inputs []*model.Input) error {
+func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) error {
 	scope := common.NewScope(c.flags.Inputs)
 
 	sb := &strings.Builder{}
@@ -421,7 +422,7 @@ func (c *Command) validateInputs(ctx context.Context, inputs []*model.Input) err
 //
 // This must only be called when the user specified --prompt and the input is a
 // terminal (or in a test).
-func (c *Command) promptForInputs(ctx context.Context, spec *model.Spec) error {
+func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec) error {
 	for _, i := range spec.Inputs {
 		if _, ok := c.flags.Inputs[i.Name.Val]; ok {
 			// Don't prompt if the cmdline had an --input for this key.
@@ -474,7 +475,7 @@ func (c *Command) promptForInputs(ctx context.Context, spec *model.Spec) error {
 // Sometimes we run this in a context where we want to include the index of the
 // rule in the list of rules; in that case, pass includeIndex=true and the index
 // value. If includeIndex is false, then index is ignored.
-func writeRule(tw *tabwriter.Writer, rule *model.InputRule, includeIndex bool, index int) {
+func writeRule(tw *tabwriter.Writer, rule *spec.InputRule, includeIndex bool, index int) {
 	indexStr := ""
 	if includeIndex {
 		indexStr = fmt.Sprintf(" %d", index)
@@ -487,7 +488,7 @@ func writeRule(tw *tabwriter.Writer, rule *model.InputRule, includeIndex bool, i
 }
 
 // collapseDefaultInputs defaults any missing input flags if default is set.
-func (c *Command) collapseDefaultInputs(spec *model.Spec) {
+func (c *Command) collapseDefaultInputs(spec *spec.Spec) {
 	if c.flags.Inputs == nil {
 		c.flags.Inputs = map[string]string{}
 	}
@@ -499,7 +500,7 @@ func (c *Command) collapseDefaultInputs(spec *model.Spec) {
 }
 
 // checkInputsMissing checks for missing input flags returns them as a slice.
-func (c *Command) checkInputsMissing(spec *model.Spec) []string {
+func (c *Command) checkInputsMissing(spec *spec.Spec) []string {
 	missing := make([]string, 0, len(c.flags.Inputs))
 
 	for _, input := range spec.Inputs {
@@ -513,7 +514,7 @@ func (c *Command) checkInputsMissing(spec *model.Spec) []string {
 	return missing
 }
 
-func executeSteps(ctx context.Context, steps []*model.Step, sp *stepParams) error {
+func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error {
 	logger := logging.FromContext(ctx).With("logger", "executeSpec")
 
 	for i, step := range steps {
@@ -532,7 +533,7 @@ func executeSteps(ctx context.Context, steps []*model.Step, sp *stepParams) erro
 	return nil
 }
 
-func scratchContents(ctx context.Context, stepIdx int, step *model.Step, sp *stepParams) (string, error) {
+func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *stepParams) (string, error) {
 	sb := &strings.Builder{}
 	fmt.Fprintf(sb, "Scratch dir contents after step %d (starting from 0), which is action type %q, defined at spec file line %d:\n",
 		stepIdx, step.Action.Val, step.Action.Pos.Line)
@@ -598,7 +599,7 @@ func (s *stepParams) WithScope(vars map[string]string) *stepParams {
 	return &out
 }
 
-func executeOneStep(ctx context.Context, step *model.Step, sp *stepParams) error {
+func executeOneStep(ctx context.Context, step *spec.Step, sp *stepParams) error {
 	switch {
 	case step.Append != nil:
 		return actionAppend(ctx, step.Append, sp)
@@ -647,7 +648,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun boo
 	return nil
 }
 
-func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error) {
+func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*spec.Spec, error) {
 	specPath := filepath.Join(templateDir, flagSpec)
 	f, err := fs.Open(specPath)
 	if err != nil {
@@ -655,7 +656,7 @@ func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*model.Spec, error
 	}
 	defer f.Close()
 
-	spec, err := model.DecodeSpec(f)
+	spec, err := spec.Decode(f)
 	if err != nil {
 		return nil, fmt.Errorf("error reading template spec file: %w", err)
 	}

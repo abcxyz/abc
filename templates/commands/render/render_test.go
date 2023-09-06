@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -746,7 +747,7 @@ func TestPromptForInputs(t *testing.T) {
 	}
 	cases := []struct {
 		name          string
-		inputs        []*model.Input
+		inputs        []*spec.Input
 		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
 		dialog        []dialogStep
 		want          map[string]string
@@ -754,7 +755,7 @@ func TestPromptForInputs(t *testing.T) {
 	}{
 		{
 			name: "single_input_prompt",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
@@ -776,11 +777,11 @@ Enter value: `,
 		},
 		{
 			name: "single_input_prompt_with_single_validation_rule",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule:    model.String{Val: "size(animal) > 1"},
 							Message: model.String{Val: "length must be greater than 1"},
@@ -806,11 +807,11 @@ Enter value: `,
 		},
 		{
 			name: "single_input_prompt_with_multiple_validation_rules",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule:    model.String{Val: "size(animal) > 1"},
 							Message: model.String{Val: "length must be greater than 1"},
@@ -842,7 +843,7 @@ Enter value: `,
 		},
 		{
 			name: "multiple_input_prompts",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
@@ -877,7 +878,7 @@ Enter value: `,
 		},
 		{
 			name: "single_input_should_not_be_prompted_if_provided_by_command_line_flags",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
@@ -893,7 +894,7 @@ Enter value: `,
 		},
 		{
 			name: "two_inputs_of_which_one_is_provided_and_one_prompted",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
@@ -923,11 +924,11 @@ Enter value: `,
 		},
 		{
 			name:   "template_has_no_inputs",
-			inputs: []*model.Input{},
+			inputs: []*spec.Input{},
 		},
 		{
 			name: "single_input_with_default_accepted",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name:    model.String{Val: "animal"},
 					Desc:    model.String{Val: "your favorite animal"},
@@ -951,7 +952,7 @@ Enter value, or leave empty to accept default: `,
 		},
 		{
 			name: "single_input_with_default_not_accepted",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name:    model.String{Val: "animal"},
 					Desc:    model.String{Val: "your favorite animal"},
@@ -975,7 +976,7 @@ Enter value, or leave empty to accept default: `,
 		},
 		{
 			name: "default_empty_string_should_be_printed_quoted",
-			inputs: []*model.Input{
+			inputs: []*spec.Input{
 				{
 					Name:    model.String{Val: "animal"},
 					Desc:    model.String{Val: "your favorite animal"},
@@ -1027,7 +1028,7 @@ Enter value, or leave empty to accept default: `,
 			errCh := make(chan error)
 			go func() {
 				defer close(errCh)
-				errCh <- cmd.promptForInputs(ctx, &model.Spec{
+				errCh <- cmd.promptForInputs(ctx, &spec.Spec{
 					Inputs: tc.inputs,
 				})
 			}()
@@ -1074,8 +1075,8 @@ func TestPromptForInputs_CanceledContext(t *testing.T) {
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
-		errCh <- cmd.promptForInputs(ctx, &model.Spec{
-			Inputs: []*model.Input{
+		errCh <- cmd.promptForInputs(ctx, &spec.Spec{
+			Inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
 				},
@@ -1112,13 +1113,13 @@ func TestValidateInputs(t *testing.T) {
 
 	cases := []struct {
 		name        string
-		inputModels []*model.Input
+		inputModels []*spec.Input
 		inputVals   map[string]string
 		want        string
 	}{
 		{
 			name: "no-validation-rule",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
 				},
@@ -1129,10 +1130,10 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "single-passing-validation-rule",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 5`},
 							Message: model.String{Val: "Length must be less than 5"},
@@ -1146,10 +1147,10 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "single-failing-validation-rule",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
 							Message: model.String{Val: "Length must be less than 3"},
@@ -1169,10 +1170,10 @@ Rule msg:     Length must be less than 3`,
 		},
 		{
 			name: "multiple-passing-validation-rules",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 5`},
 							Message: model.String{Val: "Length must be less than 5"},
@@ -1194,10 +1195,10 @@ Rule msg:     Length must be less than 3`,
 		},
 		{
 			name: "multiple-passing-validation-rules-one-failing",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
 							Message: model.String{Val: "Length must be less than 3"},
@@ -1225,10 +1226,10 @@ Rule msg:     Length must be less than 3`,
 		},
 		{
 			name: "multiple-failing-validation-rules",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
 							Message: model.String{Val: "Length must be less than 3"},
@@ -1266,10 +1267,10 @@ Rule msg:     Must contain "shoe"`,
 		},
 		{
 			name: "cel-syntax-error",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule: model.String{Val: `(`},
 						},
@@ -1288,10 +1289,10 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:2: Syntax error:
 		},
 		{
 			name: "cel-type-conversion-error",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule: model.String{Val: `bool(42)`},
 						},
@@ -1310,10 +1311,10 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:5: found no matc
 		},
 		{
 			name: "cel-output-type-conversion-error",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule: model.String{Val: `42`},
 						},
@@ -1332,10 +1333,10 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 		},
 		{
 			name: "multi-input-validation",
-			inputModels: []*model.Input{
+			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule: model.String{Val: `my_input + my_other_input == "sharknado"`},
 						},
@@ -1343,7 +1344,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 				},
 				{
 					Name: model.String{Val: "my_other_input"},
-					Rules: []*model.InputRule{
+					Rules: []*spec.InputRule{
 						{
 							Rule: model.String{Val: `"tor" + my_other_input + my_input == "tornadoshark"`},
 						},

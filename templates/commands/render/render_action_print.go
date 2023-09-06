@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 )
 
-func actionPrint(ctx context.Context, p *model.Print, sp *stepParams) error {
+func actionPrint(ctx context.Context, p *spec.Print, sp *stepParams) error {
 	scope := sp.scope.With(flagsForTemplate(sp.flags))
 
 	msg, err := parseAndExecuteGoTmpl(p.Message.Pos, p.Message.Val, scope)

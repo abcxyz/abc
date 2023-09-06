@@ -21,6 +21,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -30,7 +31,7 @@ func TestActionForEach(t *testing.T) {
 
 	cases := []struct {
 		name       string
-		in         *model.ForEach
+		in         *spec.ForEach
 		inputs     map[string]string
 		wantStdout string
 		wantErr    string
@@ -40,17 +41,17 @@ func TestActionForEach(t *testing.T) {
 			inputs: map[string]string{
 				"from": "Alice",
 			},
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key: model.String{Val: "greeting_target"},
 					Values: []model.String{
 						{Val: "Bob"},
 						{Val: "Charlie"},
 					},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
-						Print: &model.Print{
+						Print: &spec.Print{
 							Message: model.String{Val: "Hello {{.greeting_target}} from {{.from}}"},
 						},
 					},
@@ -65,17 +66,17 @@ func TestActionForEach(t *testing.T) {
 				"first_recipient":  "Bob",
 				"second_recipient": "Charlie",
 			},
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key: model.String{Val: "greeting_target"},
 					Values: []model.String{
 						{Val: "{{.first_recipient}}"},
 						{Val: "{{.second_recipient}}"},
 					},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
-						Print: &model.Print{
+						Print: &spec.Print{
 							Message: model.String{Val: "Hello {{.greeting_target}} from {{.from}}"},
 						},
 					},
@@ -91,28 +92,28 @@ func TestActionForEach(t *testing.T) {
 				"first_recipient":  "Bob",
 				"second_recipient": "Charlie",
 			},
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key: model.String{Val: "greeter"},
 					Values: []model.String{
 						{Val: "{{.first_greeter}}"},
 						{Val: "{{.second_greeter}}"},
 					},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
 						Action: model.String{Val: "for_each"},
-						ForEach: &model.ForEach{
-							Iterator: &model.ForEachIterator{
+						ForEach: &spec.ForEach{
+							Iterator: &spec.ForEachIterator{
 								Key: model.String{Val: "greeting_target"},
 								Values: []model.String{
 									{Val: "{{.first_recipient}}"},
 									{Val: "{{.second_recipient}}"},
 								},
 							},
-							Steps: []*model.Step{
+							Steps: []*spec.Step{
 								{
-									Print: &model.Print{
+									Print: &spec.Print{
 										Message: model.String{Val: "Hello {{.greeting_target}} from {{.greeter}}"},
 									},
 								},
@@ -128,16 +129,16 @@ func TestActionForEach(t *testing.T) {
 			inputs: map[string]string{
 				"color": "Blue",
 			},
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key: model.String{Val: "color"},
 					Values: []model.String{
 						{Val: "Red"},
 					},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
-						Print: &model.Print{
+						Print: &spec.Print{
 							Message: model.String{Val: "{{.color}}"},
 						},
 					},
@@ -148,16 +149,16 @@ func TestActionForEach(t *testing.T) {
 		{
 			name:   "errors_are_propagated",
 			inputs: map[string]string{},
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key: model.String{Val: "x"},
 					Values: []model.String{
 						{Val: "Alice"},
 					},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
-						Print: &model.Print{
+						Print: &spec.Print{
 							Message: model.String{Val: "{{.nonexistent}}"},
 						},
 					},
@@ -170,14 +171,14 @@ func TestActionForEach(t *testing.T) {
 			inputs: map[string]string{
 				"environments": "production,dev",
 			},
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key:        model.String{Val: "env"},
 					ValuesFrom: &model.String{Val: `environments.split(",")`},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
-						Print: &model.Print{
+						Print: &spec.Print{
 							Message: model.String{Val: "{{.env}}"},
 						},
 					},
@@ -187,14 +188,14 @@ func TestActionForEach(t *testing.T) {
 		},
 		{
 			name: "cel-values-empty-no-actions",
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key:        model.String{Val: "env"},
 					ValuesFrom: &model.String{Val: `[]`},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
-						Print: &model.Print{
+						Print: &spec.Print{
 							Message: model.String{Val: "{{.env}}"},
 						},
 					},
@@ -204,14 +205,14 @@ func TestActionForEach(t *testing.T) {
 		},
 		{
 			name: "cel-values-literal",
-			in: &model.ForEach{
-				Iterator: &model.ForEachIterator{
+			in: &spec.ForEach{
+				Iterator: &spec.ForEachIterator{
 					Key:        model.String{Val: "env"},
 					ValuesFrom: &model.String{Val: `["production", "dev"]`},
 				},
-				Steps: []*model.Step{
+				Steps: []*spec.Step{
 					{
-						Print: &model.Print{
+						Print: &spec.Print{
 							Message: model.String{Val: "{{.env}}"},
 						},
 					},
