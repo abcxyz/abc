@@ -24,10 +24,11 @@ import (
 	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"golang.org/x/exp/maps"
 )
 
-func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) error {
+func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error {
 	for _, path := range inc.Paths {
 		if err := includePath(ctx, path, sp); err != nil {
 			return err
@@ -36,7 +37,7 @@ func actionInclude(ctx context.Context, inc *model.Include, sp *stepParams) erro
 	return nil
 }
 
-func includePath(ctx context.Context, inc *model.IncludePath, sp *stepParams) error {
+func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
 	stripPrefixStr, err := parseAndExecuteGoTmpl(inc.StripPrefix.Pos, inc.StripPrefix.Val, sp.scope)
 	if err != nil {
 		return err

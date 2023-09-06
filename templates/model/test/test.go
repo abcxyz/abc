@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package test
 
 import (
 	"errors"
 	"fmt"
 	"io"
 
+	"github.com/abcxyz/abc/templates/model"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,50 +28,50 @@ import (
 // InputValue represents one of the parsed "input" fields from the inputs.yaml file.
 type InputValue struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos model.ConfigPos `yaml:"-"`
 
-	Name  String `yaml:"name"`
-	Value String `yaml:"value"`
+	Name  model.String `yaml:"name"`
+	Value model.String `yaml:"value"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (i *InputValue) UnmarshalYAML(n *yaml.Node) error {
-	return unmarshalPlain(n, i, &i.Pos)
+	return model.UnmarshalPlain(n, i, &i.Pos) //nolint:wrapcheck
 }
 
 func (i *InputValue) Validate() error {
 	return errors.Join(
-		notZeroModel(&i.Pos, i.Name, "name"),
-		notZeroModel(&i.Pos, i.Value, "value"),
+		model.NotZeroModel(&i.Pos, i.Name, "name"),
+		model.NotZeroModel(&i.Pos, i.Value, "value"),
 	)
 }
 
 // Test represents a parsed test.yaml describing test configs.
 type Test struct {
 	// Pos is the YAML file location where this object started.
-	Pos ConfigPos `yaml:"-"`
+	Pos model.ConfigPos `yaml:"-"`
 
-	APIVersion String `yaml:"apiVersion"`
+	APIVersion model.String `yaml:"apiVersion"`
 
 	Inputs []*InputValue `yaml:"inputs"`
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (t *Test) UnmarshalYAML(n *yaml.Node) error {
-	return unmarshalPlain(n, t, &t.Pos)
-}
-
 func (t *Test) Validate() error {
 	return errors.Join(
-		oneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
-		validateEach(t.Inputs),
+		model.OneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "apiVersion"),
+		model.ValidateEach(t.Inputs),
 	)
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (i *Test) UnmarshalYAML(n *yaml.Node) error {
+	return model.UnmarshalPlain(n, i, &i.Pos) //nolint:wrapcheck
 }
 
 // DecodeTest unmarshals the YAML Spec from r.
 func DecodeTest(r io.Reader) (*Test, error) {
 	dec := yaml.NewDecoder(r)
-	dec.KnownFields(true)
+	dec.KnownFields(git atrue)
 
 	var test Test
 	if err := dec.Decode(&test); err != nil {

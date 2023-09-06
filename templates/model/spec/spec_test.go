@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package spec
 
 import (
 	"strings"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -50,23 +51,23 @@ steps:
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
 			want: &Spec{
-				APIVersion: String{Val: "cli.abcxyz.dev/v1alpha1"},
-				Kind:       String{Val: "Template"},
+				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
+				Kind:       model.String{Val: "Template"},
 
-				Desc: String{Val: "A simple template that just prints and exits"},
+				Desc: model.String{Val: "A simple template that just prints and exits"},
 				Inputs: []*Input{
 					{
-						Name:    String{Val: "person_name"},
-						Desc:    String{Val: "An optional name of a person to greet"},
-						Default: &String{Val: "default value"},
+						Name:    model.String{Val: "person_name"},
+						Desc:    model.String{Val: "An optional name of a person to greet"},
+						Default: &model.String{Val: "default value"},
 					},
 				},
 				Steps: []*Step{
 					{
-						Desc:   String{Val: "Print a message"},
-						Action: String{Val: "print"},
+						Desc:   model.String{Val: "Print a message"},
+						Action: model.String{Val: "print"},
 						Print: &Print{
-							Message: String{Val: `Hello, {{.or .person_name "World"}}`},
+							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
 						},
 					},
 				},
@@ -136,7 +137,7 @@ steps:
 				return
 			}
 
-			opt := cmpopts.IgnoreTypes(&ConfigPos{}, ConfigPos{}) // don't force test authors to assert the line and column numbers
+			opt := cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}) // don't force test authors to assert the line and column numbers
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
@@ -160,9 +161,9 @@ func TestUnmarshalInput(t *testing.T) {
 desc: "The name of a person to greet"
 default: "default"`,
 			want: &Input{
-				Name:    String{Val: "person_name"},
-				Desc:    String{Val: "The name of a person to greet"},
-				Default: &String{Val: "default"},
+				Name:    model.String{Val: "person_name"},
+				Desc:    model.String{Val: "The name of a person to greet"},
+				Default: &model.String{Val: "default"},
 			},
 		},
 		{
@@ -170,8 +171,8 @@ default: "default"`,
 			in: `name: 'person_name'
 desc: "The name of a person to greet"`,
 			want: &Input{
-				Name:    String{Val: "person_name"},
-				Desc:    String{Val: "The name of a person to greet"},
+				Name:    model.String{Val: "person_name"},
+				Desc:    model.String{Val: "The name of a person to greet"},
 				Default: nil,
 			},
 		},
@@ -201,12 +202,12 @@ rules:
   - rule: 'size(a) > 5'
     message: 'my message'`,
 			want: &Input{
-				Name: String{Val: "a"},
-				Desc: String{Val: "foo"},
+				Name: model.String{Val: "a"},
+				Desc: model.String{Val: "foo"},
 				Rules: []*InputRule{
 					{
-						Rule:    String{Val: "size(a) > 5"},
-						Message: String{Val: "my message"},
+						Rule:    model.String{Val: "size(a) > 5"},
+						Message: model.String{Val: "my message"},
 					},
 				},
 			},
@@ -218,11 +219,11 @@ name: 'a'
 rules:
   - rule: 'size(a) > 5'`,
 			want: &Input{
-				Name: String{Val: "a"},
-				Desc: String{Val: "foo"},
+				Name: model.String{Val: "a"},
+				Desc: model.String{Val: "foo"},
 				Rules: []*InputRule{
 					{
-						Rule: String{Val: "size(a) > 5"},
+						Rule: model.String{Val: "size(a) > 5"},
 					},
 				},
 			},
@@ -237,16 +238,16 @@ rules:
   - rule: 'size(a) < 100'
     message: 'my other message'`,
 			want: &Input{
-				Name: String{Val: "a"},
-				Desc: String{Val: "foo"},
+				Name: model.String{Val: "a"},
+				Desc: model.String{Val: "foo"},
 				Rules: []*InputRule{
 					{
-						Rule:    String{Val: "size(a) > 5"},
-						Message: String{Val: "my message"},
+						Rule:    model.String{Val: "size(a) > 5"},
+						Message: model.String{Val: "my message"},
 					},
 					{
-						Rule:    String{Val: "size(a) < 100"},
-						Message: String{Val: "my other message"},
+						Rule:    model.String{Val: "size(a) < 100"},
+						Message: model.String{Val: "my other message"},
 					},
 				},
 			},
@@ -275,7 +276,7 @@ rules:
 				return
 			}
 
-			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreTypes(&ConfigPos{}, ConfigPos{})); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{})); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}
 		})
@@ -301,15 +302,15 @@ params:
   with: 'jkl'
   skip_ensure_newline: true`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "append"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "append"},
 				Append: &Append{
-					Paths: []String{
+					Paths: []model.String{
 						{Val: "a.txt"},
 						{Val: "b.txt"},
 					},
-					With:              String{Val: "jkl"},
-					SkipEnsureNewline: Bool{Val: true},
+					With:              model.String{Val: "jkl"},
+					SkipEnsureNewline: model.Bool{Val: true},
 				},
 			},
 		},
@@ -346,10 +347,10 @@ action: 'print'
 params:
   message: 'Hello'`,
 			want: &Step{
-				Desc:   String{Val: "Print a message"},
-				Action: String{Val: "print"},
+				Desc:   model.String{Val: "Print a message"},
+				Action: model.String{Val: "print"},
 				Print: &Print{
-					Message: String{Val: "Hello"},
+					Message: model.String{Val: "Hello"},
 				},
 			},
 		},
@@ -385,13 +386,13 @@ params:
   paths: ['a/b/c', 'x/y.txt']
   from: 'destination'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							From: String{Val: "destination"},
-							Paths: []String{
+							From: model.String{Val: "destination"},
+							Paths: []model.String{
 								{
 									Val: "a/b/c",
 								},
@@ -413,13 +414,13 @@ params:
   - paths: ['a/b/c', 'x/y.txt']
     from: 'destination'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							From: String{Val: "destination"},
-							Paths: []String{
+							From: model.String{Val: "destination"},
+							Paths: []model.String{
 								{
 									Val: "a/b/c",
 								},
@@ -442,12 +443,12 @@ params:
       strip_prefix: 'a/b'
       add_prefix: 'c/d'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []String{
+							Paths: []model.String{
 								{
 									Val: "a/b/c",
 								},
@@ -455,8 +456,8 @@ params:
 									Val: "x/y.txt",
 								},
 							},
-							StripPrefix: String{Val: "a/b"},
-							AddPrefix:   String{Val: "c/d"},
+							StripPrefix: model.String{Val: "a/b"},
+							AddPrefix:   model.String{Val: "c/d"},
 						},
 					},
 				},
@@ -471,12 +472,12 @@ params:
     - paths: ['a/b/c', 'd/e/f']
       as: ['x/y/z', 'q/r/s']`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []String{
+							Paths: []model.String{
 								{
 									Val: "a/b/c",
 								},
@@ -484,7 +485,7 @@ params:
 									Val: "d/e/f",
 								},
 							},
-							As: []String{
+							As: []model.String{
 								{
 									Val: "x/y/z",
 								},
@@ -506,17 +507,17 @@ params:
     - paths: ['.']
       skip: ['x/y']`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []String{
+							Paths: []model.String{
 								{
 									Val: ".",
 								},
 							},
-							Skip: []String{
+							Skip: []model.String{
 								{
 									Val: "x/y",
 								},
@@ -535,17 +536,17 @@ params:
     - paths: ['.']
       from: 'destination'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []String{
+							Paths: []model.String{
 								{
 									Val: ".",
 								},
 							},
-							From: String{
+							From: model.String{
 								Val: "destination",
 							},
 						},
@@ -583,17 +584,17 @@ params:
     - paths: ['.']
       from: 'invalid'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []String{
+							Paths: []model.String{
 								{
 									Val: ".",
 								},
 							},
-							From: String{
+							From: model.String{
 								Val: "invalid",
 							},
 						},
@@ -611,12 +612,12 @@ params:
     - paths: ['a/b/c', 'd/e/f']
       as: ['x/y/z', 'q/r/s', 't/u/v']`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "include"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "include"},
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []String{
+							Paths: []model.String{
 								{
 									Val: "a/b/c",
 								},
@@ -624,7 +625,7 @@ params:
 									Val: "d/e/f",
 								},
 							},
-							As: []String{
+							As: []model.String{
 								{
 									Val: "x/y/z",
 								},
@@ -687,22 +688,22 @@ params:
   - regex: 'my_other_regex'
     with: 'whatever'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "regex_replace"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "regex_replace"},
 				RegexReplace: &RegexReplace{
-					Paths: []String{
+					Paths: []model.String{
 						{Val: "a.txt"},
 						{Val: "b.txt"},
 					},
 					Replacements: []*RegexReplaceEntry{
 						{
-							Regex:             String{Val: "my_(?P<groupname>regex)"},
-							SubgroupToReplace: String{Val: "groupname"},
-							With:              String{Val: "some_template"},
+							Regex:             model.String{Val: "my_(?P<groupname>regex)"},
+							SubgroupToReplace: model.String{Val: "groupname"},
+							With:              model.String{Val: "some_template"},
 						},
 						{
-							Regex: String{Val: "my_other_regex"},
-							With:  String{Val: "whatever"},
+							Regex: model.String{Val: "my_other_regex"},
+							With:  model.String{Val: "whatever"},
 						},
 					},
 				},
@@ -766,16 +767,16 @@ params:
   - regex: '(?P<mygroup>myregex'
   - regex: '(?P<myothergroup>myotherregex'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "regex_name_lookup"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "regex_name_lookup"},
 				RegexNameLookup: &RegexNameLookup{
-					Paths: []String{
+					Paths: []model.String{
 						{Val: "a.txt"},
 						{Val: "b.txt"},
 					},
 					Replacements: []*RegexNameLookupEntry{
-						{Regex: String{Val: "(?P<mygroup>myregex"}},
-						{Regex: String{Val: "(?P<myothergroup>myotherregex"}},
+						{Regex: model.String{Val: "(?P<mygroup>myregex"}},
+						{Regex: model.String{Val: "(?P<myothergroup>myotherregex"}},
 					},
 				},
 			},
@@ -802,21 +803,21 @@ params:
   - to_replace: 'ghi'
     with: 'jkl'`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "string_replace"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "string_replace"},
 				StringReplace: &StringReplace{
-					Paths: []String{
+					Paths: []model.String{
 						{Val: "a.txt"},
 						{Val: "b.txt"},
 					},
 					Replacements: []*StringReplacement{
 						{
-							ToReplace: String{Val: "abc"},
-							With:      String{Val: "def"},
+							ToReplace: model.String{Val: "abc"},
+							With:      model.String{Val: "def"},
 						},
 						{
-							ToReplace: String{Val: "ghi"},
-							With:      String{Val: "jkl"},
+							ToReplace: model.String{Val: "ghi"},
+							With:      model.String{Val: "jkl"},
 						},
 					},
 				},
@@ -847,10 +848,10 @@ action: 'go_template'
 params:
   paths: ['my/path/1', 'my/path/2']`,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "go_template"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "go_template"},
 				GoTemplate: &GoTemplate{
-					Paths: []String{
+					Paths: []model.String{
 						{Val: "my/path/1"},
 						{Val: "my/path/2"},
 					},
@@ -884,29 +885,29 @@ params:
         message: 'yet another message'
 `,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "for_each"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "for_each"},
 				ForEach: &ForEach{
 					Iterator: &ForEachIterator{
-						Key: String{Val: "environment"},
-						Values: []String{
+						Key: model.String{Val: "environment"},
+						Values: []model.String{
 							{Val: "dev"},
 							{Val: "prod"},
 						},
 					},
 					Steps: []*Step{
 						{
-							Desc:   String{Val: "print some stuff"},
-							Action: String{Val: "print"},
+							Desc:   model.String{Val: "print some stuff"},
+							Action: model.String{Val: "print"},
 							Print: &Print{
-								Message: String{Val: `Hello, {{.name}}`},
+								Message: model.String{Val: `Hello, {{.name}}`},
 							},
 						},
 						{
-							Desc:   String{Val: "another action"},
-							Action: String{Val: "print"},
+							Desc:   model.String{Val: "another action"},
+							Action: model.String{Val: "print"},
 							Print: &Print{
-								Message: String{Val: "yet another message"},
+								Message: model.String{Val: "yet another message"},
 							},
 						},
 					},
@@ -932,26 +933,26 @@ params:
         message: 'yet another message'
 `,
 			want: &Step{
-				Desc:   String{Val: "mydesc"},
-				Action: String{Val: "for_each"},
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "for_each"},
 				ForEach: &ForEach{
 					Iterator: &ForEachIterator{
-						Key:        String{Val: "environment"},
-						ValuesFrom: &String{Val: "my_cel_expression"},
+						Key:        model.String{Val: "environment"},
+						ValuesFrom: &model.String{Val: "my_cel_expression"},
 					},
 					Steps: []*Step{
 						{
-							Desc:   String{Val: "print some stuff"},
-							Action: String{Val: "print"},
+							Desc:   model.String{Val: "print some stuff"},
+							Action: model.String{Val: "print"},
 							Print: &Print{
-								Message: String{Val: `Hello, {{.name}}`},
+								Message: model.String{Val: `Hello, {{.name}}`},
 							},
 						},
 						{
-							Desc:   String{Val: "another action"},
-							Action: String{Val: "print"},
+							Desc:   model.String{Val: "another action"},
+							Action: model.String{Val: "print"},
 							Print: &Print{
-								Message: String{Val: "yet another message"},
+								Message: model.String{Val: "yet another message"},
 							},
 						},
 					},
@@ -1087,7 +1088,7 @@ params:
 				return
 			}
 
-			opt := cmpopts.IgnoreTypes(&ConfigPos{}, ConfigPos{}) // don't force test authors to assert the line and column numbers
+			opt := cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}) // don't force test authors to assert the line and column numbers
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
 			}

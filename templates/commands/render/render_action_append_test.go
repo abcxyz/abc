@@ -21,6 +21,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -170,7 +171,7 @@ func TestActionAppend(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			sr := &model.Append{
+			sr := &spec.Append{
 				Paths: modelStrings(tc.paths),
 				With: model.String{
 					Pos: &model.ConfigPos{},

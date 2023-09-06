@@ -20,6 +20,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -31,7 +32,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 		name         string
 		inputs       map[string]string
 		initContents map[string]string
-		rr           *model.RegexNameLookup
+		rr           *spec.RegexNameLookup
 		want         map[string]string
 		wantErr      string
 	}{
@@ -43,9 +44,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 			inputs: map[string]string{
 				"my_input": "foo",
 			},
-			rr: &model.RegexNameLookup{
+			rr: &spec.RegexNameLookup{
 				Paths: modelStrings([]string{"."}),
-				Replacements: []*model.RegexNameLookupEntry{
+				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: model.String{Val: `\b(?P<my_input>b...) (?P<my_input>g....)`},
 					},
@@ -63,9 +64,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 			inputs: map[string]string{
 				"my_input": "foofoo",
 			},
-			rr: &model.RegexNameLookup{
+			rr: &spec.RegexNameLookup{
 				Paths: modelStrings([]string{"."}),
-				Replacements: []*model.RegexNameLookupEntry{
+				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: model.String{Val: `(?P<my_input>foo)`},
 					},
@@ -81,9 +82,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"a.txt": "alpha beta gamma",
 			},
 			inputs: map[string]string{},
-			rr: &model.RegexNameLookup{
+			rr: &spec.RegexNameLookup{
 				Paths: modelStrings([]string{"."}),
-				Replacements: []*model.RegexNameLookupEntry{
+				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: model.String{Val: "(?P<mysubgroup>beta)"},
 					},
@@ -102,9 +103,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 			inputs: map[string]string{
 				"my_input": "foo",
 			},
-			rr: &model.RegexNameLookup{
+			rr: &spec.RegexNameLookup{
 				Paths: modelStrings([]string{"."}),
-				Replacements: []*model.RegexNameLookupEntry{
+				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: model.String{Val: `\b(?P<my_input>b...) (g....)`},
 					},
@@ -125,9 +126,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"group_name":     "mygroup",
 				"mygroup":        "omega",
 			},
-			rr: &model.RegexNameLookup{
+			rr: &spec.RegexNameLookup{
 				Paths: modelStrings([]string{"."}),
-				Replacements: []*model.RegexNameLookupEntry{
+				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: model.String{Val: `(?P<{{.group_name}}>{{.regex_to_match}})`},
 					},
@@ -146,9 +147,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 			inputs: map[string]string{
 				"my_input": "foo",
 			},
-			rr: &model.RegexNameLookup{
+			rr: &spec.RegexNameLookup{
 				Paths: modelStrings([]string{"."}),
-				Replacements: []*model.RegexNameLookupEntry{
+				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: model.String{Val: `\b(?P<my_input>b...) (?P<my_input>g....)`},
 					},
@@ -164,9 +165,9 @@ func TestActionRegexNameLookup(t *testing.T) {
 			initContents: map[string]string{
 				"a.txt": "alpha beta gamma",
 			},
-			rr: &model.RegexNameLookup{
+			rr: &spec.RegexNameLookup{
 				Paths: modelStrings([]string{"{{.filename}}"}),
-				Replacements: []*model.RegexNameLookupEntry{
+				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: model.String{Val: "(?P<cake>beta)"},
 					},

@@ -20,6 +20,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec"
 	"golang.org/x/exp/maps"
 )
 
@@ -33,7 +34,7 @@ import (
 //	file contents: "Hello, __insert_here__"
 //
 // Then the output would be "Hello, Alice".
-func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *stepParams) error {
+func actionRegexNameLookup(ctx context.Context, rn *spec.RegexNameLookup, sp *stepParams) error {
 	uncompiled := make([]model.String, len(rn.Replacements))
 	for i, rp := range rn.Replacements {
 		uncompiled[i] = rp.Regex
@@ -70,7 +71,7 @@ func actionRegexNameLookup(ctx context.Context, rn *model.RegexNameLookup, sp *s
 	return nil
 }
 
-func replaceWithNameLookup(allMatches [][]int, b []byte, rn *model.RegexNameLookupEntry, re *regexp.Regexp, scope *common.Scope) ([]byte, error) {
+func replaceWithNameLookup(allMatches [][]int, b []byte, rn *spec.RegexNameLookupEntry, re *regexp.Regexp, scope *common.Scope) ([]byte, error) {
 	for i := 1; i < len(re.SubexpNames()); i++ { // skip group 0, which is always unnamed because it's "the whole regex match"
 		if re.SubexpNames()[i] == "" {
 			return nil, rn.Regex.Pos.Errorf(`all capturing groups in a regex_name_lookup must be named, like (?P<myinputvar>myregex), not like (myregex)`)
