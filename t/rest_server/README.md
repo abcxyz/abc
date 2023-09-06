@@ -6,7 +6,7 @@ How to render this template:
 
 1. [Install the abc binary](https://github.com/abcxyz/abc#installation).
 
-1. See READMEs in each subfolder for more details. Render via:
+1. Render via:
 
     ```shell
     $ abc templates render github.com/abcxyz/abc.git//t/rest_server/code
@@ -25,10 +25,6 @@ How to render this template:
     github.com/abcxyz/abc.git//t/rest_server/workflows
     ```
 
-    Optionally, add the `--input="subfolder=[subfolder]"` flag for code and deployments to specify render locations. 
-    
-    The `code_subfolder` and `deployments_subfolder` inputs for rendering workflows are unnecessary if `subfolder` was not specified.
-    
-    See subdirectory READMEs for more details.
-
 1. Follow the steps in the rendered README.md to run the server.
+
+1. Optionally, render the CI/CD workflows as well (see subfolder README for more details).

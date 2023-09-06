@@ -32,7 +32,7 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 # Define all env variables in the bootstrap files under
-# .github/config/{{ environment }}.env
+# .github/config/{{ environment }}-rest-server.env
 # More environments are expected to be added in the future.
 jobs:
   image-release:
@@ -41,7 +41,6 @@ jobs:
       id-token: 'write'
     name: 'Release Image'
     runs-on: 'ubuntu-latest'
-        working-directory: '[code_subfolder]'
     steps:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
@@ -72,8 +71,7 @@ jobs:
       - name: 'Build Docker Image'
         run: |
           docker build --tag ${{ env.IMAGE }} \
-            --build-arg APP=restserver . \
-            -f {{deployments_subfolder/Dockerfile}}
+            --build-arg APP=restserver .
       - name: 'Push Docker Image'
         run: |
           docker push ${{ env.IMAGE }}
