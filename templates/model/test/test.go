@@ -71,7 +71,7 @@ func (t *Test) UnmarshalYAML(n *yaml.Node) error {
 func DecodeTest(r io.Reader) (*Test, error) {
 	var test Test
 	if err := model.DecodeAndValidate(r, "test", &test); err != nil {
-		return nil, err //nolint:wrapcheck
+		return &test, err //nolint:wrapcheck
 	}
 	return &test, nil
 }

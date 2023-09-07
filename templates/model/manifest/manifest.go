@@ -22,16 +22,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Decode unmarshals the YAML Spec from r. This function exists so we can
-// validate the Spec model before providing it to the caller; we don't want the
+// Decode unmarshals the YAML Manifest from r. This function exists so we can
+// validate the Manifest model before providing it to the caller; we don't want the
 // caller to forget, and thereby introduce bugs.
 //
-// If the Spec parses successfully but then fails validation, the spec will be
+// If the Manifest parses successfully but then fails validation, the manifest will be
 // returned along with the validation error.
 func Decode(r io.Reader) (*Manifest, error) {
 	out := &Manifest{}
 	if err := model.DecodeAndValidate(r, "manifest", out); err != nil {
-		return nil, err //nolint:wrapcheck
+		return out, err //nolint:wrapcheck
 	}
 	return out, nil
 }

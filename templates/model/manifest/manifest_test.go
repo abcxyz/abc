@@ -36,7 +36,7 @@ func TestDecode(t *testing.T) {
 		wantValidateErr  string
 	}{
 		{
-			name: "simple-success",
+			name: "simple_success",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc.git//t/rest_server'
@@ -78,14 +78,14 @@ output_hashes:
 			},
 		},
 		{
-			name: "fields-missing",
+			name: "fields_missing",
 			in:   `api_version: "foo"`,
 			wantValidateErr: `at line 1 column 14: field "api_version" value must be one of [cli.abcxyz.dev/v1alpha1]
 at line 1 column 1: field "template_location" is required
 at line 1 column 1: field "template_dirhash" is required`,
 		},
 		{
-			name: "input-missing-name",
+			name: "input_missing_name",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc.git//t/rest_server'
@@ -98,7 +98,7 @@ output_hashes:
 			wantValidateErr: `at line 6 column 5: field "name" is required`,
 		},
 		{
-			name: "input-missing-value",
+			name: "input_missing_value",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc.git//t/rest_server'
@@ -111,7 +111,7 @@ output_hashes:
 			wantValidateErr: `at line 6 column 5: field "value" is required`,
 		},
 		{
-			name: "output-hash-missing-file",
+			name: "output_hash_missing_file",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc.git//t/rest_server'
@@ -124,7 +124,7 @@ output_hashes:
 			wantValidateErr: `at line 9 column 5: field "file" is required`,
 		},
 		{
-			name: "output-hash-missing-file",
+			name: "output_hash_missing_file",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc.git//t/rest_server'
@@ -137,7 +137,7 @@ output_hashes:
 			wantValidateErr: `at line 9 column 5: field "hash" is required`,
 		},
 		{
-			name: "no-hashes", // It's rare but legal for a template to have no output files
+			name: "no_hashes", // It's rare but legal for a template to have no output files
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc.git//t/rest_server'
@@ -159,7 +159,7 @@ inputs:
 			},
 		},
 		{
-			name: "no-inputs", // It's legal for a template to have no inputs
+			name: "no_inputs", // It's legal for a template to have no inputs
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc.git//t/rest_server'
@@ -180,7 +180,7 @@ output_hashes:
 			},
 		},
 		{
-			name:             "bad-yaml-syntax",
+			name:             "bad_yaml_syntax",
 			in:               `[[[[[[[`,
 			wantUnmarshalErr: "did not find expected node content",
 		},

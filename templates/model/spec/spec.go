@@ -36,7 +36,7 @@ import (
 func Decode(r io.Reader) (*Spec, error) {
 	out := &Spec{}
 	if err := model.DecodeAndValidate(r, "spec", out); err != nil {
-		return nil, err
+		return out, err
 	}
 	return out, nil
 }
