@@ -69,7 +69,7 @@ func (m *Manifest) Validate() error {
 	// Inputs and OutputHashes can legally be empty, since a template doesn't
 	// necessarily have these.
 	return errors.Join(
-		model.IsKnownSchemaVersion(&m.Pos, m.APIVersion, "api_version"),
+		model.IsKnownAPIVersion(&m.Pos, m.APIVersion, "api_version"),
 		model.NotZeroModel(&m.Pos, m.TemplateLocation, "template_location"),
 		model.NotZeroModel(&m.Pos, m.TemplateDirhash, "template_dirhash"),
 		model.ValidateEach(m.Inputs),

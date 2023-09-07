@@ -85,7 +85,7 @@ func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (s *Spec) Validate() error {
 	return errors.Join(
-		model.IsKnownSchemaVersion(&s.Pos, s.APIVersion, "api_version"),
+		model.IsKnownAPIVersion(&s.Pos, s.APIVersion, "api_version"),
 		model.OneOf(&s.Pos, s.Kind, []string{"Template"}, "kind"),
 		model.NotZeroModel(&s.Pos, s.Desc, "desc"),
 		model.NonEmptySlice(&s.Pos, s.Steps, "steps"),
