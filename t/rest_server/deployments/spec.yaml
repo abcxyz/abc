@@ -42,22 +42,11 @@ inputs:
       - rule: 'gcp_matches_project_id(project_id)'
         message: 'Must be a GCP project ID'
 steps:
-  - desc: 'Include workflow files'
+  - desc: 'Include workflow, deployment files'
     action: 'include'
     params:
-      paths: ['contents']
-      skip: ['Dockerfile']
-      as: ['.github/workflows']
-  - desc: 'Include Dockerfile'
-    action: 'include'
-    params:
-      paths: ['contents/Dockerfile']
-      as: ['Dockerfile']
-  - desc: 'Include config'
-    action: 'include'
-    params:
-      paths: ['config']
-      as: ['.github/config']
+      paths: ['workflows', 'config', 'contents']
+      as: ['.github/workflows', '.github/config', '.']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
