@@ -21,9 +21,9 @@ inputs:
       'Automation Service Account (ex:
       [account_name]@[project_id].iam.gserviceaccount.com)'
     rules:
-    - rule: 'gcp_matches_service_account(automation_service_account)'
-      message: 'Service account should match format:
-      [account_name]@[project_id].iam.gserviceaccount.com)'
+      - rule: 'gcp_matches_service_account(automation_service_account)'
+        message: 'Service account should match format:
+        [account_name]@[project_id].iam.gserviceaccount.com)'
   - name: 'wif_provider'
     desc:
       'Workload Identity Federation Provider (ex:
@@ -39,25 +39,25 @@ inputs:
   - name: 'project_id'
     desc: 'GCP Project ID'
     rules:
-    - rule: 'gcp_matches_project_id(project_id)'
-      message: 'Must be a GCP project ID'
+      - rule: 'gcp_matches_project_id(project_id)'
+        message: 'Must be a GCP project ID'
 steps:
   - desc: 'Include workflow files'
     action: 'include'
     params:
-        paths: ['contents']
-        skip: ['Dockerfile']
-        as: ['.github/workflows']
+      paths: ['contents']
+      skip: ['Dockerfile']
+      as: ['.github/workflows']
   - desc: 'Include Dockerfile'
     action: 'include'
     params:
-        paths: ['contents/Dockerfile']
-        as: ['Dockerfile']
+      paths: ['contents/Dockerfile']
+      as: ['Dockerfile']
   - desc: 'Include config'
     action: 'include'
     params:
-        paths: ['config']
-        as: ['.github/config']
+      paths: ['config']
+      as: ['.github/config']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
