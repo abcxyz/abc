@@ -20,6 +20,10 @@ inputs:
     desc:
       'Automation Service Account (ex:
       [account_name]@[project_id].iam.gserviceaccount.com)'
+    rules:
+    - rule: 'gcp_matches_service_account(automation_service_account)'
+      message: 'Service account should match format:
+      [account_name]@[project_id].iam.gserviceaccount.com)'
   - name: 'wif_provider'
     desc:
       'Workload Identity Federation Provider (ex:
@@ -34,27 +38,20 @@ inputs:
     desc: 'Cloud Run Region (ex: us-west1)'
   - name: 'project_id'
     desc: 'GCP Project ID'
+    rules:
+    - rule: 'gcp_matches_project_id(project_id)'
+      message: 'Must be a GCP project ID'
 steps:
-  - desc: 'Include config'
+  - desc: 'Include workflow files'
     action: 'include'
     params:
-      paths: ['contents/config']
-      as: ['.github/config']
-  - desc: 'Include Dockerfile'
-    action: 'include'
-    params:
-      paths: ['contents/Dockerfile']
-      as: ['Dockerfile']
-  - desc: 'Include CI workflow'
-    action: 'include'
-    params:
-      paths: ['contents/ci-rest-server.yaml']
-      as: ['.github/workflows/ci-rest-server.yaml']
-  - desc: 'Include deployment workflow'
-    action: 'include'
-    params:
-      paths: ['contents/deploy-rest-server.yaml']
-      as: ['.github/workflows/deploy-rest-server.yaml']
+        paths: 
+            - 'contents'
+            - 'contents/config'
+        skip: ['Dockerfile']
+        as: 
+            - '.github/workflows'
+            - '.github/config'
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
