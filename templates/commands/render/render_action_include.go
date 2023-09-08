@@ -16,10 +16,8 @@ package render
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -68,6 +66,23 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			return err
 		}
 
+		// By default, we copy from the template directory. We also support
+		// grabbing files from the destination directory, so we can modify files
+		// that already exist in the destination.
+		fromDir := sp.templateDir
+		if inc.From.Val == "destination" {
+			fromDir = sp.flags.Dest
+		}
+
+		absSrcPaths, err := filepath.Glob(filepath.Join(fromDir, walkRelPath))
+		if err != nil {
+			return p.Pos.Errorf("filepath glob error for %s: %w", p.Val, err)
+		}
+
+		if len(absSrcPaths) == 0 {
+			return p.Pos.Errorf("include path matched no files: %q", p.Val)
+		}
+
 		// During validation in spec.go, we've already enforced that either:
 		//  - len(inc.As) == 0
 		//  - len(inc.As) == len(inc.Paths)
@@ -79,68 +94,59 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			}
 		}
 
-		relDst, err := dest(p.Pos, walkRelPath, as, stripPrefixStr, addPrefixStr)
-		if err != nil {
-			return err
-		}
-
-		// By default, we copy from the template directory. We also support
-		// grabbing files from the destination directory, so we can modify files
-		// that already exist in the destination.
-		fromDir := sp.templateDir
-		if inc.From.Val == "destination" {
-			fromDir = sp.flags.Dest
-		}
-		absSrc := filepath.Join(fromDir, walkRelPath)
-		absDst := filepath.Join(sp.scratchDir, relDst)
-
-		skipNow := maps.Clone(skip)
-		if absSrc == sp.templateDir {
-			// If we're copying the template root directory, automatically skip
-			// the spec.yaml file, because it's very unlikely that the user actually
-			// wants the spec file in the template output.
-			skipNow["spec.yaml"] = struct{}{}
-		}
-
-		if _, err := sp.fs.Stat(absSrc); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return p.Pos.Errorf("include path doesn't exist: %q", walkRelPath)
+		for _, absSrcPath := range absSrcPaths {
+			relSrcPath, err := filepath.Rel(fromDir, absSrcPath)
+			if err != nil {
+				return p.Pos.Errorf("filepath.Rel() error: %w", err)
 			}
-			return fmt.Errorf("Stat(): %w", err)
-		}
 
-		params := &copyParams{
-			dryRun:  false,
-			dstRoot: absDst,
-			rfs:     sp.fs,
-			srcRoot: absSrc,
-			visitor: func(relToAbsSrc string, de fs.DirEntry) (copyHint, error) {
-				if _, ok := skipNow[relToAbsSrc]; ok {
+			relDst, err := dest(p.Pos, relSrcPath, as, stripPrefixStr, addPrefixStr)
+			if err != nil {
+				return err
+			}
+
+			absDst := filepath.Join(sp.scratchDir, relDst)
+			skipNow := maps.Clone(skip)
+			if absSrcPath == sp.templateDir {
+				// If we're copying the template root directory, automatically skip
+				// the spec.yaml file, because it's very unlikely that the user actually
+				// wants the spec file in the template output.
+				skipNow["spec.yaml"] = struct{}{}
+			}
+
+			params := &copyParams{
+				dryRun:  false,
+				dstRoot: absDst,
+				rfs:     sp.fs,
+				srcRoot: absSrcPath,
+				visitor: func(relToAbsSrc string, de fs.DirEntry) (copyHint, error) {
+					if _, ok := skipNow[relToAbsSrc]; ok {
+						return copyHint{
+							skip: true,
+						}, nil
+					}
+
+					abs := filepath.Join(absSrcPath, relToAbsSrc)
+					relToFromDir, err := filepath.Rel(fromDir, abs)
+					if err != nil {
+						return copyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
+					}
+					if !de.IsDir() && inc.From.Val == "destination" {
+						sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
+					}
+
 					return copyHint{
-						skip: true,
+						// Allow later includes to replace earlier includes in the
+						// scratch directory. This doesn't affect whether files in
+						// the final *destination* directory will be overwritten;
+						// that comes later.
+						overwrite: true,
 					}, nil
-				}
-
-				abs := filepath.Join(absSrc, relToAbsSrc)
-				relToFromDir, err := filepath.Rel(fromDir, abs)
-				if err != nil {
-					return copyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
-				}
-				if !de.IsDir() && inc.From.Val == "destination" {
-					sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
-				}
-
-				return copyHint{
-					// Allow later includes to replace earlier includes in the
-					// scratch directory. This doesn't affect whether files in
-					// the final *destination* directory will be overwritten;
-					// that comes later.
-					overwrite: true,
-				}, nil
-			},
-		}
-		if err := copyRecursive(ctx, p.Pos, params); err != nil {
-			return p.Pos.Errorf("copying failed: %w", err)
+				},
+			}
+			if err := copyRecursive(ctx, p.Pos, params); err != nil {
+				return p.Pos.Errorf("copying failed: %w", err)
+			}
 		}
 	}
 	return nil

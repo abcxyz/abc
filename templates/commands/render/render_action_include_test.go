@@ -164,7 +164,7 @@ func TestActionInclude(t *testing.T) {
 			templateContents: map[string]modeAndContents{
 				"myfile.txt": {0o600, "file contents"},
 			},
-			wantErr: `include path doesn't exist: "nonexistent"`,
+			wantErr: `include path matched no files: "nonexistent"`,
 		},
 		{
 			// Note: we don't exhaustively test every possible FS error here. That's
@@ -292,7 +292,7 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]modeAndContents{
-				"file1.txt": {0o600, "my file contents"},
+				"a/b/c/file1.txt": {0o600, "my file contents"},
 			},
 			wantErr: "wasn't a prefix of the actual path",
 		},
