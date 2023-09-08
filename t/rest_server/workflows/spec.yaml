@@ -45,13 +45,19 @@ steps:
   - desc: 'Include workflow files'
     action: 'include'
     params:
-        paths: 
-            - 'contents'
-            - 'contents/config'
+        paths: ['contents']
         skip: ['Dockerfile']
-        as: 
-            - '.github/workflows'
-            - '.github/config'
+        as: ['.github/workflows']
+  - desc: 'Include Dockerfile'
+    action: 'include'
+    params:
+        paths: ['contents/Dockerfile']
+        as: ['Dockerfile']
+  - desc: 'Include config'
+    action: 'include'
+    params:
+        paths: ['config']
+        as: ['.github/config']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
