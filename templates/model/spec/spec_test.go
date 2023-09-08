@@ -22,6 +22,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"gopkg.in/yaml.v3"
 )
 
 func TestSpecUnmarshal(t *testing.T) {
@@ -178,7 +179,8 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Spec{}
-			dec := newDecoder(strings.NewReader(tc.in))
+
+			dec := yaml.NewDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)
@@ -317,7 +319,7 @@ rules:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Input{}
-			dec := newDecoder(strings.NewReader(tc.in))
+			dec := yaml.NewDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)
@@ -1129,7 +1131,7 @@ params:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Step{}
-			dec := newDecoder(strings.NewReader(tc.in))
+			dec := yaml.NewDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)

@@ -16,7 +16,6 @@ package test
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/abcxyz/abc/templates/model"
@@ -58,7 +57,7 @@ type Test struct {
 // Validate implements model.Validator.
 func (t *Test) Validate() error {
 	return errors.Join(
-		model.OneOf(&t.Pos, t.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
+		model.IsKnownSchemaVersion(&t.Pos, t.APIVersion, "api_version"),
 		model.ValidateEach(t.Inputs),
 	)
 }
@@ -70,16 +69,9 @@ func (t *Test) UnmarshalYAML(n *yaml.Node) error {
 
 // DecodeTest unmarshals the YAML Spec from r.
 func DecodeTest(r io.Reader) (*Test, error) {
-	dec := yaml.NewDecoder(r)
-	dec.KnownFields(true)
-
 	var test Test
-	if err := dec.Decode(&test); err != nil {
-		return nil, fmt.Errorf("error parsing test YAML file: %w", err)
-	}
-
-	if err := test.Validate(); err != nil {
-		return nil, err
+	if err := model.DecodeAndValidate(r, "test", &test); err != nil {
+		return &test, err //nolint:wrapcheck
 	}
 	return &test, nil
 }

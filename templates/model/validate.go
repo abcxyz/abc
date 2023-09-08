@@ -70,11 +70,28 @@ func IsValidRegexGroupName(s String, fieldName string) error {
 }
 
 // OneOf returns error if x.Val is not one of the given allowed choices.
-func OneOf[T comparable](pos *ConfigPos, x valWithPos[T], allowed []T, fieldName string) error {
+func OneOf[T comparable](parentPos *ConfigPos, x valWithPos[T], allowed []T, fieldName string) error {
 	if slices.Contains(allowed, x.Val) {
 		return nil
 	}
+	pos := x.Pos
+	if pos == nil || pos.IsZero() {
+		pos = parentPos
+	}
+
 	return pos.Errorf("field %q value must be one of %v", fieldName, allowed)
+}
+
+var schemaVersions = []string{"cli.abcxyz.dev/v1alpha1"}
+
+// IsKnownSchemaVersion returns error if the given string is not one of the
+// accepted abc schema versions.
+//
+// parentPos is the position of the yaml object that contains the api_version
+// field. We need this because if the api_version field is missing from the
+// YAML, then we won't have any position information for it.
+func IsKnownSchemaVersion(parentPos *ConfigPos, apiVersion String, fieldName string) error {
+	return OneOf(parentPos, apiVersion, schemaVersions, fieldName)
 }
 
 // extrafields returns error if any unexpected fields are seen. The input must
