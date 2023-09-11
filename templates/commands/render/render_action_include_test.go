@@ -59,6 +59,67 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "file_name_wildcard_globbing",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"hello?.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"hello.txt":  {0o600, "hello file contents"},
+				"hello1.txt": {0o600, "hello 1 file contents"},
+				"hello2.txt": {0o600, "hello 2 file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"hello1.txt": {0o600, "hello 1 file contents"},
+				"hello2.txt": {0o600, "hello 2 file contents"},
+			},
+		},
+		{
+			name: "file_name_star_globbing",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"hello*.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"hello_its_me.txt":       {0o600, "hello its me file contents"},
+				"hellooo.txt":            {0o600, "hellooo file contents"},
+				"hello-test.txt":         {0o600, "hello-test file contents"},
+				"hey.txt":                {0o600, "hey file contents"},
+				"dont-include-hello.txt": {0o600, "dont include hello file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"hello_its_me.txt": {0o600, "hello its me file contents"},
+				"hellooo.txt":      {0o600, "hellooo file contents"},
+				"hello-test.txt":   {0o600, "hello-test file contents"},
+			},
+		},
+		{
+			name: "file_extension_globbing",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+				"hello.txt":  {0o600, "hello file contents"},
+				"hi.html":    {0o600, "hi file contents"},
+				"README.md":  {0o600, "readme file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"myfile.txt": {0o600, "my file contents"},
+				"hello.txt":  {0o600, "hello file contents"},
+			},
+		},
+		{
 			name: "absolute_path_treated_as_relative",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
@@ -122,7 +183,7 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name: "including_multiple_times_should_succeed",
+			name: "including_long_path_multiple_times_should_succeed",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
