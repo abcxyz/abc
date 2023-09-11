@@ -21,9 +21,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec"
 	"golang.org/x/exp/maps"
 )
@@ -38,15 +36,6 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
-	stripPrefixStr, err := parseAndExecuteGoTmpl(inc.StripPrefix.Pos, inc.StripPrefix.Val, sp.scope)
-	if err != nil {
-		return err
-	}
-	addPrefixStr, err := parseAndExecuteGoTmpl(inc.AddPrefix.Pos, inc.AddPrefix.Val, sp.scope)
-	if err != nil {
-		return err
-	}
-
 	skip := make(map[string]struct{}, len(inc.Skip))
 	for _, s := range inc.Skip {
 		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.scope)
@@ -63,15 +52,10 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			return err
 		}
 
-		walkRelPath, err = safeRelPath(&inc.Pos, walkRelPath)
-		if err != nil {
-			return err
-		}
-
 		// During validation in spec.go, we've already enforced that either:
 		//  - len(inc.As) == 0
 		//  - len(inc.As) == len(inc.Paths)
-		var as string
+		as := walkRelPath
 		if len(inc.As) > 0 {
 			as, err = parseAndExecuteGoTmpl(inc.As[i].Pos, inc.As[i].Val, sp.scope)
 			if err != nil {
@@ -79,7 +63,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			}
 		}
 
-		relDst, err := dest(p.Pos, walkRelPath, as, stripPrefixStr, addPrefixStr)
+		relDst, err := safeRelPath(p.Pos, as)
 		if err != nil {
 			return err
 		}
@@ -144,33 +128,4 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 	}
 	return nil
-}
-
-// The caller must have already executed the go-templates for all inputs.
-func dest(pathPos *model.ConfigPos, relPath, as, stripPrefix, addPrefix string) (string, error) {
-	// inc.As is mutually exclusive with inc.StripPrefix and inc.AddPrefix. This
-	// exclusivity is enforced earlier, during validation.
-	if as != "" {
-		var err error
-		as, err = safeRelPath(pathPos, as)
-		if err != nil {
-			return "", err
-		}
-		return as, nil
-	}
-
-	if stripPrefix != "" {
-		before := relPath
-		relPath = strings.TrimPrefix(relPath, stripPrefix)
-		if relPath == before {
-			return "", pathPos.Errorf("the strip_prefix %q wasn't a prefix of the actual path %q",
-				stripPrefix, relPath)
-		}
-	}
-
-	if addPrefix != "" {
-		relPath = addPrefix + relPath
-	}
-
-	return safeRelPath(pathPos, relPath)
 }
