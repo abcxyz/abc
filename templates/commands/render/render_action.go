@@ -171,6 +171,18 @@ func parseGoTmpl(tpl string) (*template.Template, error) {
 
 var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)
 
+// PR 1: remove strip/add prefix
+
+// PR 2: then filepath.FromSlash in wrapper monofunction
+// PR 3: try adding centralized globbing here
+
+// monofunction for preprocessing paths:
+/*
+	1. parse go templates
+	2. convert filepath slashes
+	3. convert paths to file globs
+*/
+
 // pos may be nil if the template is not coming from the spec file and therefore
 // there's no reason to print out spec file location in an error message. If
 // template execution fails because of a missing input variable, the error will

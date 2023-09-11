@@ -100,6 +100,27 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "folder_star_globbing",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*/foo.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"a/foo.txt":   {0o600, "a foo file contents"},
+				"b/foo.txt":   {0o600, "b foo file contents"},
+				"b/bar.txt":   {0o600, "b bar file contents"},
+				"c/d/foo.txt": {0o600, "c/d foo file contents"},
+				"foo.txt":     {0o600, "foo file contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"a/foo.txt": {0o600, "a foo file contents"},
+				"b/foo.txt": {0o600, "b foo file contents"},
+			},
+		},
+		{
 			name: "file_extension_globbing",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{

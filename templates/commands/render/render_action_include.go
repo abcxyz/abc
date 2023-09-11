@@ -95,6 +95,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 
 		for _, absSrcPath := range absSrcPaths {
+			absSrcPath = filepath.FromSlash(absSrcPath)
 			relSrcPath, err := filepath.Rel(fromDir, absSrcPath)
 			if err != nil {
 				return p.Pos.Errorf("filepath.Rel() error: %w", err)
