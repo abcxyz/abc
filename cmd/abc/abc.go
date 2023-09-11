@@ -22,7 +22,7 @@ import (
 	"syscall"
 
 	"github.com/abcxyz/abc/internal/version"
-	"github.com/abcxyz/abc/templates/commands/golden_test"
+	"github.com/abcxyz/abc/templates/commands/goldentest"
 	"github.com/abcxyz/abc/templates/commands/render"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -47,10 +47,10 @@ var rootCmd = func() *cli.RootCommand {
 								Description: "subcommands for validating template rendering with golden tests",
 								Commands: map[string]cli.CommandFactory{
 									"record": func() cli.Command {
-										return &golden_test.RecordCommand{}
+										return &goldentest.RecordCommand{}
 									},
 									"verify": func() cli.Command {
-										return &golden_test.VerifyCommand{}
+										return &goldentest.VerifyCommand{}
 									},
 								},
 							}
