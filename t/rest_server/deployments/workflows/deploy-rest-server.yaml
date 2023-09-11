@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: 'deploy'
+name: 'deploy rest server'
 on:
   workflow_dispatch:
     inputs:
@@ -32,7 +32,7 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 # Define all env variables in the bootstrap files under
-# .github/config/{{ environment }}.env
+# .github/config/{{ environment }}-rest-server.env
 # More environments are expected to be added in the future.
 jobs:
   image-release:
@@ -47,7 +47,7 @@ jobs:
       - name: 'Load variables from .env file'
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
         with:
-          env_file: '.github/config/${{inputs.deployment_environment}}.env'
+          env_file: '.github/config/${{inputs.deployment_environment}}-rest-server.env'
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1
@@ -89,7 +89,7 @@ jobs:
       - name: 'Load variables from .env file'
         uses: 'abcxyz/pkg/.github/actions/override-workflow-variables@ca5c712fad5863b8f8fd40b2a8e220f8b41bde01' # ratchet:abcxyz/pkg/.github/actions/override-workflow-variables@main
         with:
-          env_file: '.github/config/${{inputs.deployment_environment}}.env'
+          env_file: '.github/config/${{inputs.deployment_environment}}-rest-server.env'
       - name: 'Google Auth'
         id: 'auth'
         uses: 'google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf' # ratchet:google-github-actions/auth@v1

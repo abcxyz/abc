@@ -1,43 +1,16 @@
-# Example: REST server
+# Template: REST server
 
-Simple HTTP/JSON REST server implemented in Go, using go-chi for HTTP routing.
+Template for a simple HTTP/JSON REST server implemented in Go, using go-chi for HTTP routing.
 
-To run this, cd to the root of this git repo, then run these steps:
+How to render this template:
 
-1. cd into an empty directory
+1. [Install the abc binary](https://github.com/abcxyz/abc#installation).
 
-    ```shell
-    $ mkdir ~/template_tmp
-    $ cd ~/template_tmp
-    ```
-
-1. Install the `abc` binary
-
-    ```shell
-    $ go install github.com/abcxyz/abc/cmd/abc@latest
-    $ abc --help
-    ```
-
-    This only works if you have go installed (https://go.dev/doc/install) and have the Go binary directory in your $PATH (try PATH=$PATH:~/go/bin).
-
-1. Execute the template defined in the `t` directory.
-This will output a file named `main.go` in your working directory containing
-the transformed program.
+1. Render via:
 
     ```shell
     $ abc templates render github.com/abcxyz/abc.git//t/rest_server
-    ```
 
-1. Run the transformed program:
+1. Follow the steps in the rendered README.md to run the server.
 
-    ```shell
-    $ go run .
-    [yyyy/mm/dd hh:mm:ss] starting server on 8080
-    ```
-
-1. In a separate shell, run:
-
-    ```shell
-    $ curl localhost:8080
-    {"message":"hello world"}
-    ```
+1. Optionally, render the CI/CD workflows as well (see subfolder README for more details).
