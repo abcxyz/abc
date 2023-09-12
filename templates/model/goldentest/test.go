@@ -57,7 +57,7 @@ type Test struct {
 // Validate implements model.Validator.
 func (t *Test) Validate() error {
 	return errors.Join(
-		model.IsKnownSchemaVersion(&t.Pos, t.APIVersion, "api_version"),
+		model.IsKnownAPIVersion(&t.Pos, t.APIVersion, "api_version"),
 		model.ValidateEach(t.Inputs),
 	)
 }

@@ -33,7 +33,7 @@ func TestSpecUnmarshal(t *testing.T) {
 		in               string
 		want             *Spec
 		wantUnmarshalErr string
-		wantValidateErr  string
+		wantValidateErr  []string
 	}{
 		{
 			name: "simple_template_should_succeed",
@@ -143,15 +143,18 @@ steps:
   action: 'print'
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
-			wantValidateErr: `at line 3 column 3: field "desc" is required`,
+			wantValidateErr: []string{`at line 3 column 3: field "desc" is required`},
 		},
 		{
 			name: "check_required_fields",
 			in:   "inputs:",
-			wantValidateErr: `at line 1 column 1: field "api_version" value must be one of [cli.abcxyz.dev/v1alpha1]
-at line 1 column 1: field "kind" value must be one of [Template]
-at line 1 column 1: field "desc" is required
-at line 1 column 1: field "steps" is required`,
+			wantValidateErr: []string{
+				`at line 1 column 1: field "api_version" value was "" but must be one of`,
+				`you might need to upgrade your abc CLI. See https://github.com/abcxyz/abc/#installation`,
+				`at line 1 column 1: field "kind" value was "" but must be one of [Template]`,
+				`at line 1 column 1: field "desc" is required`,
+				`at line 1 column 1: field "steps" is required`,
+			},
 		},
 
 		{
@@ -190,8 +193,10 @@ steps:
 			}
 
 			err = got.Validate()
-			if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
-				t.Fatal(diff)
+			for _, wantValidateErr := range tc.wantValidateErr {
+				if diff := testutil.DiffErrString(err, wantValidateErr); diff != "" {
+					t.Fatal(diff)
+				}
 			}
 			if err != nil {
 				return

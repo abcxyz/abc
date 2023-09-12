@@ -76,7 +76,7 @@ inputs:
 			in: `inputs:
 - name: 'person_name'
   value: 'iron_man'`,
-			wantErr: `at line 1 column 1: field "api_version" value must be one of [cli.abcxyz.dev/v1alpha1]`,
+			wantErr: `at line 1 column 1: field "api_version" value was "" but must be one of`,
 		},
 	}
 
