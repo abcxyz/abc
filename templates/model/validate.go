@@ -79,19 +79,22 @@ func OneOf[T comparable](parentPos *ConfigPos, x valWithPos[T], allowed []T, fie
 		pos = parentPos
 	}
 
-	return pos.Errorf("field %q value must be one of %v", fieldName, allowed)
+	return pos.Errorf(`field %q value was "%v" but must be one of %v`, fieldName, x.Val, allowed)
 }
 
-var schemaVersions = []string{"cli.abcxyz.dev/v1alpha1"}
+var apiVersions = []string{"cli.abcxyz.dev/v1alpha1"}
 
-// IsKnownSchemaVersion returns error if the given string is not one of the
+// IsKnownAPIVersion returns error if the given string is not one of the
 // accepted abc schema versions.
 //
 // parentPos is the position of the yaml object that contains the api_version
 // field. We need this because if the api_version field is missing from the
 // YAML, then we won't have any position information for it.
-func IsKnownSchemaVersion(parentPos *ConfigPos, apiVersion String, fieldName string) error {
-	return OneOf(parentPos, apiVersion, schemaVersions, fieldName)
+func IsKnownAPIVersion(parentPos *ConfigPos, apiVersion String, fieldName string) error {
+	if err := OneOf(parentPos, apiVersion, apiVersions, fieldName); err != nil {
+		return fmt.Errorf("%w; you might need to upgrade your abc CLI. See https://github.com/abcxyz/abc/#installation", err)
+	}
+	return nil
 }
 
 // extrafields returns error if any unexpected fields are seen. The input must
