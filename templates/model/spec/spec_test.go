@@ -494,36 +494,6 @@ params:
 			},
 		},
 		{
-			name: "include_with_prefixes",
-			in: `desc: 'mydesc'
-action: 'include'
-params:
-  paths:
-    - paths: ['a/b/c', 'x/y.txt']
-      strip_prefix: 'a/b'
-      add_prefix: 'c/d'`,
-			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
-				Include: &Include{
-					Paths: []*IncludePath{
-						{
-							Paths: []model.String{
-								{
-									Val: "a/b/c",
-								},
-								{
-									Val: "x/y.txt",
-								},
-							},
-							StripPrefix: model.String{Val: "a/b"},
-							AddPrefix:   model.String{Val: "c/d"},
-						},
-					},
-				},
-			},
-		},
-		{
 			name: "include_with_as",
 			in: `desc: 'mydesc'
 action: 'include'

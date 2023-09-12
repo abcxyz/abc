@@ -323,13 +323,11 @@ func (i *Include) Validate() error {
 type IncludePath struct {
 	Pos model.ConfigPos `yaml:"-"`
 
-	AddPrefix   model.String   `yaml:"add_prefix"`
-	As          []model.String `yaml:"as"`
-	From        model.String   `yaml:"from"`
-	OnConflict  model.String   `yaml:"on_conflict"`
-	Paths       []model.String `yaml:"paths"`
-	Skip        []model.String `yaml:"skip"`
-	StripPrefix model.String   `yaml:"strip_prefix"`
+	As         []model.String `yaml:"as"`
+	From       model.String   `yaml:"from"`
+	OnConflict model.String   `yaml:"on_conflict"`
+	Paths      []model.String `yaml:"paths"`
+	Skip       []model.String `yaml:"skip"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -340,13 +338,9 @@ func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (i *IncludePath) Validate() error {
 	var exclusivityErr error
-	if len(i.As) != 0 {
-		if i.StripPrefix.Val != "" || i.AddPrefix.Val != "" {
-			exclusivityErr = i.As[0].Pos.Errorf(`"as" may not be used with "strip_prefix" or "add_prefix"`)
-		} else if len(i.Paths) != len(i.As) {
-			exclusivityErr = i.As[0].Pos.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
-				len(i.As), len(i.Paths))
-		}
+	if len(i.As) != 0 && len(i.Paths) != len(i.As) {
+		exclusivityErr = i.As[0].Pos.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
+			len(i.As), len(i.Paths))
 	}
 
 	var fromErr error
