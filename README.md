@@ -105,8 +105,8 @@ There are two ways to install:
         - M1/M2/later: `darwin_arm64`
         - Intel: `darwin_amd64`
 
-      Example `curl` command, please substitute the version number you're
-      downloading:
+      You can use the `curl -sSL` command to download. Please substitute the
+      version number you're downloading:
 
           $ curl -sSL https://github.com/abcxyz/abc/releases/download/v1.2.3/abc_1.2.3_linux_amd64.tar.gz | tar -xzv abc
 
