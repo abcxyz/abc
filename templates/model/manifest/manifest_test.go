@@ -33,7 +33,7 @@ func TestDecode(t *testing.T) {
 		in               string
 		want             *Manifest
 		wantUnmarshalErr string
-		wantValidateErr  string
+		wantValidateErr  []string
 	}{
 		{
 			name: "simple_success",
@@ -80,9 +80,11 @@ output_hashes:
 		{
 			name: "fields_missing",
 			in:   `api_version: "foo"`,
-			wantValidateErr: `at line 1 column 14: field "api_version" value must be one of [cli.abcxyz.dev/v1alpha1]
-at line 1 column 1: field "template_location" is required
-at line 1 column 1: field "template_dirhash" is required`,
+			wantValidateErr: []string{
+				`at line 1 column 14: field "api_version" value was "foo" but must be one of`,
+				`at line 1 column 1: field "template_location" is required`,
+				`at line 1 column 1: field "template_dirhash" is required`,
+			},
 		},
 		{
 			name: "input_missing_name",
@@ -95,7 +97,7 @@ inputs:
 output_hashes:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
-			wantValidateErr: `at line 6 column 5: field "name" is required`,
+			wantValidateErr: []string{`at line 6 column 5: field "name" is required`},
 		},
 		{
 			name: "input_missing_value",
@@ -108,7 +110,7 @@ inputs:
 output_hashes:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
-			wantValidateErr: `at line 6 column 5: field "value" is required`,
+			wantValidateErr: []string{`at line 6 column 5: field "value" is required`},
 		},
 		{
 			name: "output_hash_missing_file",
@@ -121,7 +123,7 @@ inputs:
     value: 'my_value_1'
 output_hashes:
   - hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
-			wantValidateErr: `at line 9 column 5: field "file" is required`,
+			wantValidateErr: []string{`at line 9 column 5: field "file" is required`},
 		},
 		{
 			name: "output_hash_missing_file",
@@ -134,7 +136,7 @@ inputs:
     value: 'my_value_1'
 output_hashes:
   - file: 'a/b/c.txt'`,
-			wantValidateErr: `at line 9 column 5: field "hash" is required`,
+			wantValidateErr: []string{`at line 9 column 5: field "hash" is required`},
 		},
 		{
 			name: "no_hashes", // It's rare but legal for a template to have no output files
@@ -204,8 +206,10 @@ output_hashes:
 			}
 
 			err = got.Validate()
-			if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
-				t.Fatal(diff)
+			for _, wantValidateErr := range tc.wantValidateErr {
+				if diff := testutil.DiffErrString(err, wantValidateErr); diff != "" {
+					t.Fatal(diff)
+				}
 			}
 			if err != nil {
 				return

@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package test implements the template test related subcommands.
-package test
+// Package goldentest implements golden test related subcommands.
+package goldentest
 
-// This file implements the "templates test verify" subcommand for
-// verifying a template test.
+// This file implements the "templates golden-test verify" subcommand.
 
 import (
 	"context"
