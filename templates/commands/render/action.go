@@ -148,18 +148,17 @@ func processPaths(paths []model.String, sp *stepParams) ([]model.String, error) 
 	copy(pathsCopy, paths)
 
 	var err error
-	for i := range pathsCopy {
-		path := pathsCopy[i].Val
-		path, err = parseAndExecuteGoTmpl(pathsCopy[i].Pos, path, sp.scope)
+	for i, p := range pathsCopy {
+		p.Val, err = parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
 		if err != nil {
 			return nil, err
 		}
-		path, err = safeRelPath(pathsCopy[i].Pos, path)
+		p.Val, err = safeRelPath(p.Pos, p.Val)
 		if err != nil {
 			return nil, err
 		}
-		path = filepath.FromSlash(path)
-		pathsCopy[i].Val = path
+		p.Val = filepath.FromSlash(p.Val)
+		pathsCopy[i].Val = p.Val
 	}
 
 	return pathsCopy, nil
