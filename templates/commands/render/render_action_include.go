@@ -36,21 +36,21 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
+	skipPaths, err := processPaths(inc.Skip, sp)
+	if err != nil {
+		return err
+	}
 	skip := make(map[string]struct{}, len(inc.Skip))
-	for _, s := range inc.Skip {
-		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.scope)
-		if err != nil {
-			return err
-		}
-		skip[skipRelPath] = struct{}{}
+	for _, s := range skipPaths {
+		skip[s.Val] = struct{}{}
 	}
 
-	for i, p := range inc.Paths {
-		// Paths may contain template expressions, so render them first.
-		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
-		if err != nil {
-			return err
-		}
+	incPaths, err := processPaths(inc.Paths, sp)
+	if err != nil {
+		return err
+	}
+	for i, p := range incPaths {
+		walkRelPath := p.Val
 
 		// During validation in spec.go, we've already enforced that either:
 		//  - len(inc.As) == 0
