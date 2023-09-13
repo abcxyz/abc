@@ -182,6 +182,40 @@ func TestCELFuncs(t *testing.T) {
 	}
 }
 
+// TestCELMacros tests that the optional "standard macros" for CEL are enabled.
+// https://github.com/google/cel-spec/blob/master/doc/langdef.md#macros
+func TestCELMacros(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		expr string
+		want any
+	}{
+		// We don't exhaustively test every macro, just pick a couple to verify.
+		{
+			name: "map",
+			expr: `[1, 2, 3].map(n, n * n)`,
+			want: []int{1, 4, 9},
+		},
+		{
+			name: "filter",
+			expr: `[1, 2, 3].filter(i, i % 2 > 0)`,
+			want: []int{1, 3},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			compileEvalForTest(t, tc.expr, tc.want, "")
+		})
+	}
+}
+
 func TestGCPMatchesServiceAccount(t *testing.T) {
 	t.Parallel()
 
