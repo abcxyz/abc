@@ -44,13 +44,9 @@ func actionRegexNameLookup(ctx context.Context, rn *spec.RegexNameLookup, sp *st
 		return err
 	}
 
-	paths := make([]model.String, 0, len(rn.Paths))
-	for _, p := range rn.Paths {
-		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
-		if err != nil {
-			return err
-		}
-		paths = append(paths, model.String{Pos: p.Pos, Val: path})
+	paths, err := processPaths(rn.Paths, sp)
+	if err != nil {
+		return err
 	}
 
 	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(b []byte) ([]byte, error) {

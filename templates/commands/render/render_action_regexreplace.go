@@ -68,13 +68,9 @@ func actionRegexReplace(ctx context.Context, rr *spec.RegexReplace, sp *stepPara
 		}
 	}
 
-	paths := make([]model.String, 0, len(rr.Paths))
-	for _, p := range rr.Paths {
-		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
-		if err != nil {
-			return err
-		}
-		paths = append(paths, model.String{Pos: p.Pos, Val: path})
+	paths, err := processPaths(rr.Paths, sp)
+	if err != nil {
+		return err
 	}
 
 	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(b []byte) ([]byte, error) {
