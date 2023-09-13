@@ -49,23 +49,19 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	if err != nil {
 		return err
 	}
-	for i, p := range incPaths {
-		walkRelPath := p.Val
 
+	asPaths, err := processPaths(inc.As, sp)
+	if err != nil {
+		return err
+	}
+
+	for i, p := range incPaths {
 		// During validation in spec.go, we've already enforced that either:
 		//  - len(inc.As) == 0
 		//  - len(inc.As) == len(inc.Paths)
-		as := walkRelPath
+		as := p.Val
 		if len(inc.As) > 0 {
-			as, err = parseAndExecuteGoTmpl(inc.As[i].Pos, inc.As[i].Val, sp.scope)
-			if err != nil {
-				return err
-			}
-		}
-
-		relDst, err := safeRelPath(p.Pos, as)
-		if err != nil {
-			return err
+			as = asPaths[i].Val
 		}
 
 		// By default, we copy from the template directory. We also support
@@ -75,8 +71,8 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		if inc.From.Val == "destination" {
 			fromDir = sp.flags.Dest
 		}
-		absSrc := filepath.Join(fromDir, walkRelPath)
-		absDst := filepath.Join(sp.scratchDir, relDst)
+		absSrc := filepath.Join(fromDir, p.Val)
+		absDst := filepath.Join(sp.scratchDir, as)
 
 		skipNow := maps.Clone(skip)
 		if absSrc == sp.templateDir {
@@ -88,7 +84,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return p.Pos.Errorf("include path doesn't exist: %q", walkRelPath)
+				return p.Pos.Errorf("include path doesn't exist: %q", p.Val)
 			}
 			return fmt.Errorf("Stat(): %w", err)
 		}
