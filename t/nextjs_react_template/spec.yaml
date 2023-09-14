@@ -17,7 +17,7 @@ kind: 'Template'
 desc: 'A React template built by NextJS.'
 
 inputs:
-  - name: 'secret'
+  - name: 'session_secret'
     desc: 'A long secret value used to encrypt the session cookie'
   - name: 'base_url'
     desc: 'The base URL of the application'
@@ -41,7 +41,7 @@ steps:
       as: ['.env.local']
       replacements:
         - to_replace: 'REPLACE_AUTH0_SECRET'
-          with: '{{.secret}}'
+          with: '{{.session_secret}}'
         - to_replace: 'REPLACE_AUTH0_BASE_URL'
           with: '{{.base_url}}'
         - to_replace: 'REPLACE_AUTH0_ISSUER_BASE_URL'
