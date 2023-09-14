@@ -153,11 +153,11 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 		if err != nil {
 			return nil, err
 		}
-		p.Val = filepath.FromSlash(p.Val)
 		p.Val, err = safeRelPath(p.Pos, p.Val)
 		if err != nil {
 			return nil, err
 		}
+		p.Val = filepath.FromSlash(p.Val)
 		pathsCopy[i].Val = p.Val
 	}
 
