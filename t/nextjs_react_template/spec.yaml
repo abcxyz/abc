@@ -18,7 +18,7 @@ desc: 'A React template built by NextJS.'
 
 inputs:
   - name: 'session_secret'
-    desc: 'A long secret value used to encrypt the session cookie'
+    desc: 'A long secret value used to encrypt the session cookie `openssl rand -hex 32`'
   - name: 'base_url'
     desc: 'The base URL of the application'
     default: 'http://localhost:3000'
