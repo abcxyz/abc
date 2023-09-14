@@ -19,4 +19,5 @@ steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['.']
+      paths: ['contents']
+      as: ['.']
