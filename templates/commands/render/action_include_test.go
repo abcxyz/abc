@@ -261,6 +261,47 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "skip_file",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"."}),
+						Skip:  modelStrings([]string{"file2.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"file1.txt":           {0o600, "file 1 contents"},
+				"file2.txt":           {0o600, "file 2 contents"},
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+				"spec.yaml":           {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file1.txt":           {0o600, "file 1 contents"},
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+			},
+		},
+		{
+			name: "skip_file_in_subfolder",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"subfolder"}),
+						Skip:  modelStrings([]string{"file2.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"file1.txt":           {0o600, "file 1 contents"},
+				"subfolder/file2.txt": {0o600, "file 2 contents"},
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+				"spec.yaml":           {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+			},
+		},
+		{
 			name: "include_dot_from_destination",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
