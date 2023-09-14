@@ -15,9 +15,7 @@
 
 apiVersion: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
-
-desc:
-  'A React template built by NextJS.'
+desc: 'A React template built by NextJS.'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
