@@ -22,7 +22,7 @@ import (
 )
 
 func actionGoTemplate(ctx context.Context, p *spec.GoTemplate, sp *stepParams) error {
-	paths, err := processPaths(p.Paths, sp)
+	paths, err := processPaths(p.Paths, sp.scope)
 	if err != nil {
 		return err
 	}

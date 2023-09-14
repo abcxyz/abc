@@ -143,21 +143,21 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 
 // processPaths processes a list of input String paths for go templating, relative paths,
 // OS-specific slashes, and (soon) file globbing.
-func processPaths(paths []model.String, sp *stepParams) ([]model.String, error) {
+func processPaths(paths []model.String, scope *common.Scope) ([]model.String, error) {
 	pathsCopy := make([]model.String, len(paths))
 	copy(pathsCopy, paths)
 
 	var err error
 	for i, p := range pathsCopy {
-		p.Val, err = parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
-		if err != nil {
-			return nil, err
-		}
-		p.Val, err = safeRelPath(p.Pos, p.Val)
+		p.Val, err = parseAndExecuteGoTmpl(p.Pos, p.Val, scope)
 		if err != nil {
 			return nil, err
 		}
 		p.Val = filepath.FromSlash(p.Val)
+		p.Val, err = safeRelPath(p.Pos, p.Val)
+		if err != nil {
+			return nil, err
+		}
 		pathsCopy[i].Val = p.Val
 	}
 

@@ -33,7 +33,7 @@ func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
 		}
 	}
 
-	paths, err := processPaths(ap.Paths, sp)
+	paths, err := processPaths(ap.Paths, sp.scope)
 	if err != nil {
 		return err
 	}

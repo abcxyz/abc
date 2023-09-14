@@ -36,7 +36,7 @@ func actionStringReplace(ctx context.Context, sr *spec.StringReplace, sp *stepPa
 	}
 	replacer := strings.NewReplacer(replacerArgs...)
 
-	paths, err := processPaths(sr.Paths, sp)
+	paths, err := processPaths(sr.Paths, sp.scope)
 	if err != nil {
 		return err
 	}

@@ -68,7 +68,7 @@ func actionRegexReplace(ctx context.Context, rr *spec.RegexReplace, sp *stepPara
 		}
 	}
 
-	paths, err := processPaths(rr.Paths, sp)
+	paths, err := processPaths(rr.Paths, sp.scope)
 	if err != nil {
 		return err
 	}

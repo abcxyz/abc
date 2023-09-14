@@ -44,7 +44,7 @@ func actionRegexNameLookup(ctx context.Context, rn *spec.RegexNameLookup, sp *st
 		return err
 	}
 
-	paths, err := processPaths(rn.Paths, sp)
+	paths, err := processPaths(rn.Paths, sp.scope)
 	if err != nil {
 		return err
 	}

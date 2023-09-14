@@ -36,7 +36,7 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
-	skipPaths, err := processPaths(inc.Skip, sp)
+	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
 		return err
 	}
@@ -45,12 +45,12 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		skip[s.Val] = struct{}{}
 	}
 
-	incPaths, err := processPaths(inc.Paths, sp)
+	incPaths, err := processPaths(inc.Paths, sp.scope)
 	if err != nil {
 		return err
 	}
 
-	asPaths, err := processPaths(inc.As, sp)
+	asPaths, err := processPaths(inc.As, sp.scope)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		//  - len(inc.As) == 0
 		//  - len(inc.As) == len(inc.Paths)
 		as := p.Val
-		if len(inc.As) > 0 {
+		if len(asPaths) > 0 {
 			as = asPaths[i].Val
 		}
 
