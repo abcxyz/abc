@@ -79,7 +79,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"../file.txt"}),
+						Paths: modelStrings([]string{fmt.Sprintf("..%cfile.txt", filepath.Separator)}),
 					},
 				},
 			},
