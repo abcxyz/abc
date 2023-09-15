@@ -79,11 +79,11 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{fmt.Sprintf("..%cfile.txt", filepath.Separator)}),
+						Paths: modelStrings([]string{"../file.txt"}),
 					},
 				},
 			},
-			wantErr: fmt.Sprintf("path \"..%cfile.txt\" must not contain \"..\"", filepath.Separator),
+			wantErr: fmt.Sprintf("path \"%s\" must not contain \"..\"", filepath.FromSlash("../file.txt")),
 		},
 		{
 			name: "templated_filename_success",
