@@ -24,9 +24,9 @@ inputs:
   - name: 'issuer_base_url'
     desc: 'The base URL of the Auth0 tenant domain'
   - name: 'client_id'
-    desc: 'The base URL of the Auth0 tenant domain'
-  - name: 'client_secret'
     desc: 'The application Auth0 Client ID'
+  - name: 'client_secret'
+    desc: 'The application Auth0 Client Secret'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
