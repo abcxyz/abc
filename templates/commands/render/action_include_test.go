@@ -83,7 +83,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			wantErr: `path "../file.txt" must not contain ".."`,
+			wantErr: fmt.Sprintf("path \"..%cfile.txt\" must not contain \"..\"", filepath.Separator),
 		},
 		{
 			name: "templated_filename_success",
