@@ -17,5 +17,5 @@ export default function NavBar() {
         <Auth />
       </Toolbar>
     </AppBar>
-  )
+  );
 }

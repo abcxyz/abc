@@ -18,11 +18,11 @@ export default function Auth() {
   };
 
   if (isLoading) {
-    return <Box>{AUTH_LOADING_TEXT}</Box>
+    return <Box>{AUTH_LOADING_TEXT}</Box>;
   }
 
   if (error) {
-    return <Box>{error.message}</Box>
+    return <Box>{error.message}</Box>;
   }
 
   if (user) {
