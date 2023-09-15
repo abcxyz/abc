@@ -4,12 +4,12 @@ import { APP_TITLE } from "./constants";
 
 export default function NavBar() {
   return (
-    <AppBar position="static" sx={{ bgcolor: "#202124" }}>
+    <AppBar position="static">
       <Toolbar>
         <Typography
           variant="h5"
           component="div"
-          fontWeight={700}
+          fontWeight="bold"
           sx={{ flexGrow: 1 }}
         >
           {APP_TITLE}

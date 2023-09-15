@@ -17,8 +17,13 @@ export default function Auth() {
     setAnchorEl(null);
   };
 
-  if (isLoading) return <Box>{AUTH_LOADING_TEXT}</Box>;
-  if (error) return <Box>{error.message}</Box>;
+  if (isLoading) {
+    return <Box>{AUTH_LOADING_TEXT}</Box>
+  }
+
+  if (error) {
+    return <Box>{error.message}</Box>
+  }
 
   if (user) {
     return (
