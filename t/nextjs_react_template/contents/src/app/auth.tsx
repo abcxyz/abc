@@ -12,7 +12,7 @@ export default function Auth() {
   if (user) {
     return (
       <div>
-        Welcome {user.name}!
+        Welcome {user.email}!
         <Button color="inherit" href="/api/auth/logout">Logout</Button>
       </div>
     )
