@@ -15,6 +15,8 @@ This template was bootstrapped with [NextJS](https://nextjs.org/).
 1. Install the `abc` [instructions](https://github.com/abcxyz/abc#user-guide)
 
 1. Create a Regular Web Application in Auth0. These will generate values that are required to render this template.
+1. In the Auth0 application settings, add the following callback URL, `<your_app_base_url>/api/auth/callback`
+1. In the Auth0 application settings, add logout URL, `<your_app_base_url>`
 1. Generate a random secret `openssl rand -hex 32`.
 1. Execute the template defined in the `t` directory.
 This will output a file named `main.go` in your working directory containing
