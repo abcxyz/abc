@@ -83,7 +83,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			wantErr: fmt.Sprintf("path %q must not contain \"..\"", filepath.FromSlash("../file.txt")),
+			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../file.txt")),
 		},
 		{
 			name: "templated_filename_success",
