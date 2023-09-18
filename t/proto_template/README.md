@@ -1,6 +1,6 @@
 # Context
 
-You must have various tools installed in order to generate protos. The tool does not distinguish between language types and instead seeks to generate protos for a variety of supported languages. Currently only go is supported. Node will be supported in the near future.
+Every language has its own tools for generating protos. The tool will generate protos for a variety of supported languages. Currently only go is supported. Node will be supported in the near future.
 
 ## Tools
 

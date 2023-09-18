@@ -19,7 +19,7 @@ desc:
   'A template that sets up a protos directory along with a script to generate language specific protos.'
 inputs:
   - name: 'github_org_name'
-    desc: 'The name of te github org the repo will belong to'
+    desc: 'The name of the github org the repo will belong to'
   - name: 'github_repo_name'
     desc: 'The name of the github repo'
 steps:
@@ -27,10 +27,10 @@ steps:
     action: 'include'
     params:
       paths: ['protos', 'scripts']
-  - desc: 'Replace "github_org_name" with '
+  - desc: 'Replace "github_org_name" and "github_repo_name" with your organization and repo name.'
     action: 'string_replace'
     params:
-      paths: ['protos/v1/person_service/person.proto']
+      paths: ['protos/v1/person_service/person.proto', 'scripts/generate.sh']
       replacements:
         - to_replace: 'github_org_name'
           with: '{{.github_org_name}}'

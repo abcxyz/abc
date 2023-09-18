@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -eEuo pipefail
 
 # Runs language specific protoc commands
 # $1 parameter which represents the destination folder i.e. gen/go
@@ -24,10 +25,9 @@ function generate_protos_rec() {
   for file_or_dir in "$1"/*; do
     trimmed_path=${file_or_dir#$raw_protos_dir/}
     if [ -f "$file_or_dir" ]; then
-      # Copy the file_or_dir to the new directory
+      # run protoc
       execute_protoc $dest_root_dir $file_or_dir
     elif [ -d "$file_or_dir" ]; then
-      # Recursively copy the contents of the subdirectory
       generate_protos_rec "$file_or_dir"
     fi
   done
@@ -43,9 +43,8 @@ function pre_gen_go {
 
   # Check if the go.mod exists
   if [ ! -f "$1/go.mod" ]; then
-    # Create the file
     cd $1
-    if ! go mod init github.com/kiyani-org/proto-solution
+    if ! go mod init github.com/github_org_name/github_repo_name
     then
         echo "go mod init not recognized, add go to your PATH"
         exit 1
