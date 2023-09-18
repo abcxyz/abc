@@ -132,11 +132,11 @@ create a "hello world" Go web service.
      - Create a branch (`git checkout -b template_render`)
    - Option C: if you know what you're doing, you can create a local repo using
      `git init` and worry later about connecting it to an upstream repo.
-2. Find the template to install. There's currently no central database of
-   templates that exist. We assume that you already know the URL of a template
-   that you want to install by reading docs or through word-of-mouth. For this
-   example, suppose we're installing the "hello jupiter" example from the abc
-   repo.
+2. Find the template to install. We assume that you already know the URL of a
+   template that you want to install by reading docs or through word-of-mouth.
+   There is a best-effort list of known templates in
+   [template-index.md](template-index.md). For this example, suppose we're
+   installing the "hello jupiter" example from the abc repo.
 3. Run the `render` command:
 
    ```shell
