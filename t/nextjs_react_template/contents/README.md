@@ -5,6 +5,7 @@
 This template was bootstrapped with [NextJS](https://nextjs.org/).
 
 ## Set up instruction
+prerequisites: `node.js` and `npm`. If not, follow the download steps [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
 
 1. cd into an empty directory
 
@@ -40,8 +41,6 @@ the transformed program.
 - `client_secret` - [Required] The application Auth0 Client Secret
 
 ## Available Scripts
-prerequisites: `node.js` and `npm`. If not, follow the download steps [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
-
 In the project directory, you can run:
 
 ### `npm run dev`
