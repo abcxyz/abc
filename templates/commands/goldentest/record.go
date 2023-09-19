@@ -58,12 +58,12 @@ func (c *RecordCommand) Flags() *cli.FlagSet {
 
 func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
-		return fmt.Errorf("Failed to parse flags: %w", err)
+		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
 	if _, err := ParseTestCases(c.flags.Location, c.flags.TestName, &common.RealFS{}); err != nil {
-		return fmt.Errorf("Failed to parse golden test: %w", err)
+		return fmt.Errorf("failed to parse golden test: %w", err)
 	}
 
-	return fmt.Errorf("Unimplemented")
+	return fmt.Errorf("unimplemented")
 }
