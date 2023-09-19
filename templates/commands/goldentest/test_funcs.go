@@ -23,7 +23,7 @@ import (
 	"github.com/abcxyz/abc/templates/model/goldentest"
 )
 
-// TestCase describes a template golden test caise.
+// TestCase describes a template golden test case.
 type TestCase struct {
 	// Name of the test case.
 	TestName string
@@ -33,8 +33,8 @@ type TestCase struct {
 }
 
 const (
-	// The golden test directory is alwasy located in the template root dir and
-	// named testdata/golden
+	// The golden test directory is alwayse located in the template root dir and
+	// named testdata/golden.
 	goldenTestDir = "testdata/golden"
 
 	// The golden test config file is always located in the test case root dir and
@@ -52,7 +52,7 @@ type GoldenTestFS interface {
 // ParseTestCases returns a list of test cases to record or verify.
 func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, error) {
 	if _, err := fs.Stat(location); err != nil {
-		return nil, fmt.Errorf("Error reading template directory (%s): %w", location, err)
+		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)
 	}
 
 	testDir := filepath.Join(location, goldenTestDir)
@@ -73,13 +73,13 @@ func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, er
 
 	entries, err := fs.ReadDir(testDir)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading golden test directory (%s): %w", testDir, err)
+		return nil, fmt.Errorf("error reading golden test directory (%s): %w", testDir, err)
 	}
 
-	var testCases []*TestCase
+	testCases := []*TestCase{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
-			return nil, fmt.Errorf("Unexpeted file entry under golden test directory: %s", entry.Name())
+			return nil, fmt.Errorf("unexpeted file entry under golden test directory: %s", entry.Name())
 		}
 
 		testConfig := filepath.Join(testDir, entry.Name(), configName)
@@ -97,17 +97,17 @@ func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, er
 	return testCases, nil
 }
 
-// parseTestConfig reads a configuration yaml and returns the result
+// parseTestConfig reads a configuration yaml and returns the result.
 func parseTestConfig(path string, fs GoldenTestFS) (*goldentest.Test, error) {
 	f, err := fs.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("Error opening test config (%s): %w", path, err)
+		return nil, fmt.Errorf("error opening test config (%s): %w", path, err)
 	}
 	defer f.Close()
 
 	test, err := goldentest.DecodeTest(f)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading golden test config file: %w", err)
+		return nil, fmt.Errorf("error reading golden test config file: %w", err)
 	}
 	return test, nil
 }

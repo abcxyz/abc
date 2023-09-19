@@ -27,6 +27,7 @@ type Flags struct {
 
 	// Test name is the name of the test case to record or verify. If no test
 	// name is specified, all gold tests will be run against.
+	//
 	// Optional.
 	TestName string
 
@@ -34,7 +35,7 @@ type Flags struct {
 
 	// Location is the file system location of the template to be tested.
 	//
-	// Example: t/rest_server
+	// Example: t/rest_server.
 	Location string
 }
 
@@ -46,10 +47,10 @@ func (r *Flags) Register(set *cli.FlagSet) {
 		Aliases: []string{"l"},
 		Example: "/my/template/dir",
 		Target:  &r.Location,
-		Usage:   "Requred. The file system location of the template to be tested.",
+		Usage:   "Required. The file system location of the template to be tested.",
 	})
 
-	// Default test name to the first CLI argument, if given
+	// Default test name to the first CLI argument, if given.
 	set.AfterParse(func(existingErr error) error {
 		r.TestName = strings.TrimSpace(set.Arg(0))
 		return nil

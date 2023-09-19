@@ -85,7 +85,7 @@ func TestParseTestCases(t *testing.T) {
 			testName: "",
 			fs:       fstest.MapFS{},
 			want:     nil,
-			wantErr:  "Error reading template directory (t): open t: file does not exist",
+			wantErr:  "error reading template directory (t): open t: file does not exist",
 		},
 		{
 			name:     "golden_test_dir_not_exist",
@@ -94,7 +94,7 @@ func TestParseTestCases(t *testing.T) {
 				"t": {Mode: fs.ModeDir},
 			},
 			want:    nil,
-			wantErr: "Error reading golden test directory (t/testdata/golden): open t/testdata/golden: file does not exist",
+			wantErr: "error reading golden test directory (t/testdata/golden): open t/testdata/golden: file does not exist",
 		},
 		{
 			name:     "unexpected_file_in_golden_test_dir",
@@ -103,7 +103,7 @@ func TestParseTestCases(t *testing.T) {
 				"t/testdata/golden/hello.txt": {},
 			},
 			want:    nil,
-			wantErr: "Unexpeted file entry under golden test directory: hello.txt",
+			wantErr: "unexpeted file entry under golden test directory: hello.txt",
 		},
 		{
 			name:     "test_does_not_have_config",
@@ -112,7 +112,7 @@ func TestParseTestCases(t *testing.T) {
 				"t/testdata/golden/test_case_1": {Mode: fs.ModeDir},
 			},
 			want:    nil,
-			wantErr: "Error opening test config (t/testdata/golden/test_case_1/test.yaml): open t/testdata/golden/test_case_1/test.yaml: file does not",
+			wantErr: "error opening test config (t/testdata/golden/test_case_1/test.yaml): open t/testdata/golden/test_case_1/test.yaml: file does not",
 		},
 		{
 			name:     "test_bad_config",
@@ -123,7 +123,7 @@ func TestParseTestCases(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "Error reading golden test config file: error parsing test YAML file: got yaml node of kind 8, expected 4",
+			wantErr: "error reading golden test config file: error parsing test YAML file: got yaml node of kind 8, expected 4",
 		},
 		{
 			name:     "specified_test_name_not_found",
@@ -132,7 +132,7 @@ func TestParseTestCases(t *testing.T) {
 				"t/testdata/golden/test_case_1/test.yaml": {},
 			},
 			want:    nil,
-			wantErr: "Error opening test config (t/testdata/golden/test_case_2/test.yaml): open t/testdata/golden/test_case_2/test.yaml: file does not exist",
+			wantErr: "error opening test config (t/testdata/golden/test_case_2/test.yaml): open t/testdata/golden/test_case_2/test.yaml: file does not exist",
 		},
 	}
 
