@@ -28,6 +28,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/cli"
@@ -574,7 +575,7 @@ steps:
 				return filepath.Join(tempDir, namePart), nil
 			}
 			backupDir := filepath.Join(tempDir, "backups")
-			rfs := &realFS{}
+			rfs := &common.RealFS{}
 			fg := &fakeGetter{
 				err:    tc.getterErr,
 				output: tc.templateContents,

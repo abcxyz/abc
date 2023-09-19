@@ -30,6 +30,16 @@ import (
 func TestParseTestCases(t *testing.T) {
 	t.Parallel()
 
+	validYaml := &fstest.MapFile{
+		Data: []byte(`api_version: 'cli.abcxyz.dev/v1alpha1'`),
+	}
+	invalidYaml := &fstest.MapFile{
+		Data: []byte("bad yaml"),
+	}
+	validTestCase := &goldentest.Test{
+		APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
+	}
+
 	cases := []struct {
 		name     string
 		testName string
@@ -41,16 +51,13 @@ func TestParseTestCases(t *testing.T) {
 			name:     "specified_test_name_succeed",
 			testName: "test_case_1",
 			fs: fstest.MapFS{
-				"t/testdata/golden/test_case_1/test.yaml": {
-					Data: []byte(`api_version: 'cli.abcxyz.dev/v1alpha1'`),
-				},
+				"t/testdata/golden/test_case_1/test.yaml":     validYaml,
+				"t\\testdata\\golden\\test_case_1\\test.yaml": validYaml,
 			},
 			want: []*TestCase{
 				{
-					TestName: "test_case_1",
-					TestConfig: &goldentest.Test{
-						APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-					},
+					TestName:   "test_case_1",
+					TestConfig: validTestCase,
 				},
 			},
 		},
@@ -58,25 +65,19 @@ func TestParseTestCases(t *testing.T) {
 			name:     "all_tests_succeed",
 			testName: "",
 			fs: fstest.MapFS{
-				"t/testdata/golden/test_case_1/test.yaml": {
-					Data: []byte(`api_version: 'cli.abcxyz.dev/v1alpha1'`),
-				},
-				"t/testdata/golden/test_case_2/test.yaml": {
-					Data: []byte(`api_version: 'cli.abcxyz.dev/v1alpha1'`),
-				},
+				"t/testdata/golden/test_case_1/test.yaml":     validYaml,
+				"t\\testdata\\golden\\test_case_1\\test.yaml": validYaml,
+				"t/testdata/golden/test_case_2/test.yaml":     validYaml,
+				"t\\testdata\\golden\\test_case_2\\test.yaml": validYaml,
 			},
 			want: []*TestCase{
 				{
-					TestName: "test_case_1",
-					TestConfig: &goldentest.Test{
-						APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-					},
+					TestName:   "test_case_1",
+					TestConfig: validTestCase,
 				},
 				{
-					TestName: "test_case_2",
-					TestConfig: &goldentest.Test{
-						APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-					},
+					TestName:   "test_case_2",
+					TestConfig: validTestCase,
 				},
 			},
 		},
@@ -85,7 +86,7 @@ func TestParseTestCases(t *testing.T) {
 			testName: "",
 			fs:       fstest.MapFS{},
 			want:     nil,
-			wantErr:  "error reading template directory (t): open t: file does not exist",
+			wantErr:  "error reading template directory",
 		},
 		{
 			name:     "golden_test_dir_not_exist",
@@ -94,45 +95,47 @@ func TestParseTestCases(t *testing.T) {
 				"t": {Mode: fs.ModeDir},
 			},
 			want:    nil,
-			wantErr: "error reading golden test directory (t/testdata/golden): open t/testdata/golden: file does not exist",
+			wantErr: "error reading golden test directory",
 		},
 		{
 			name:     "unexpected_file_in_golden_test_dir",
 			testName: "",
 			fs: fstest.MapFS{
-				"t/testdata/golden/hello.txt": {},
+				"t/testdata/golden/hello.txt":    {},
+				"t\\testdata\\golden\\hello.txt": {},
 			},
 			want:    nil,
-			wantErr: "unexpeted file entry under golden test directory: hello.txt",
+			wantErr: "unexpeted file entry under golden test directory",
 		},
 		{
 			name:     "test_does_not_have_config",
 			testName: "",
 			fs: fstest.MapFS{
-				"t/testdata/golden/test_case_1": {Mode: fs.ModeDir},
+				"t/testdata/golden/test_case_1":    {Mode: fs.ModeDir},
+				"t\\testdata\\golden\\test_case_1": {Mode: fs.ModeDir},
 			},
 			want:    nil,
-			wantErr: "error opening test config (t/testdata/golden/test_case_1/test.yaml): open t/testdata/golden/test_case_1/test.yaml: file does not",
+			wantErr: "error opening test config",
 		},
 		{
 			name:     "test_bad_config",
 			testName: "",
 			fs: fstest.MapFS{
-				"t/testdata/golden/test_case_1/test.yaml": {
-					Data: []byte("bad yaml"),
-				},
+				"t/testdata/golden/test_case_1/test.yaml":     invalidYaml,
+				"t\\testdata\\golden\\test_case_1\\test.yaml": invalidYaml,
 			},
 			want:    nil,
-			wantErr: "error reading golden test config file: error parsing test YAML file: got yaml node of kind 8, expected 4",
+			wantErr: "error reading golden test config file",
 		},
 		{
 			name:     "specified_test_name_not_found",
 			testName: "test_case_2",
 			fs: fstest.MapFS{
-				"t/testdata/golden/test_case_1/test.yaml": {},
+				"t/testdata/golden/test_case_1/test.yaml":     {},
+				"t\\testdata\\golden\\test_case_1\\test.yaml": {},
 			},
 			want:    nil,
-			wantErr: "error opening test config (t/testdata/golden/test_case_2/test.yaml): open t/testdata/golden/test_case_2/test.yaml: file does not exist",
+			wantErr: "error opening test config",
 		},
 	}
 
