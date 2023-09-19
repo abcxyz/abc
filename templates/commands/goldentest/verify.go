@@ -15,31 +15,34 @@
 // Package goldentest implements golden test related subcommands.
 package goldentest
 
-// This file implements the "templates golden-test record" subcommand.
+// This file implements the "templates golden-test verify" subcommand.
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/cli"
 )
 
-type RecordCommand struct {
+type VerifyCommand struct {
+	flags Flags
+
 	cli.BaseCommand
 }
 
-func (c *RecordCommand) Desc() string {
-	return "record the template rendering result to golden tests"
+func (c *VerifyCommand) Desc() string {
+	return "verify the template rendering result against golden tests"
 }
 
-func (c *RecordCommand) Help() string {
+func (c *VerifyCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options] <test_name>
 
-The {{ COMMAND }} records the template golden tests.
+The {{ COMMAND }} verify the template golden test.
 
 The "<test_name>" is the name of the test. If no <test_name> is specified,
-all tests will be recoreded.
+all tests will be run against.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
@@ -47,6 +50,20 @@ For every test case, it is expected that
 template input params.`
 }
 
-func (c *RecordCommand) Run(ctx context.Context, args []string) error {
+func (c *VerifyCommand) Flags() *cli.FlagSet {
+	set := c.NewFlagSet()
+	c.flags.Register(set)
+	return set
+}
+
+func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
+	if err := c.Flags().Parse(args); err != nil {
+		return fmt.Errorf("Failed to parse flags: %w", err)
+	}
+
+	if _, err := ParseTestCases(c.flags.Location, c.flags.TestName, &common.RealFS{}); err != nil {
+		return fmt.Errorf("Failed to parse golden test: %w", err)
+	}
+
 	return fmt.Errorf("Unimplemented")
 }

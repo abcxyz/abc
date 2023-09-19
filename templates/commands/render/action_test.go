@@ -239,7 +239,7 @@ func TestWalkAndModify(t *testing.T) {
 			}
 
 			fs := &errorFS{
-				renderFS: &realFS{},
+				renderFS: &common.RealFS{},
 
 				readFileErr:  tc.readFileErr,
 				statErr:      tc.statErr,
@@ -606,7 +606,7 @@ func TestCopyRecursive(t *testing.T) {
 				t.Fatal(err)
 			}
 			fs := &errorFS{
-				renderFS: &realFS{},
+				renderFS: &common.RealFS{},
 
 				mkdirAllErr: tc.mkdirAllErr,
 				openErr:     tc.openErr,

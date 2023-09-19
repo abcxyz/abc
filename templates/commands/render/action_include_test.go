@@ -362,7 +362,7 @@ func TestActionInclude(t *testing.T) {
 					Dest: destDir,
 				},
 				fs: &errorFS{
-					renderFS: &realFS{},
+					renderFS: &common.RealFS{},
 					statErr:  tc.statErr,
 				},
 				scratchDir:  scratchDir,
