@@ -193,7 +193,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 			convertKeysToPlatformPaths(tc.want)
 
 			scratchDir := t.TempDir()
-			if err := writeAllDefaultMode(scratchDir, tc.initContents); err != nil {
+			if err := common.WriteAllDefaultMode(scratchDir, tc.initContents); err != nil {
 				t.Fatal(err)
 			}
 

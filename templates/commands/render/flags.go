@@ -20,7 +20,6 @@ import (
 
 	"github.com/abcxyz/pkg/cli"
 	"github.com/posener/complete/v2/predict"
-	"golang.org/x/exp/maps"
 )
 
 // RenderFlags describes what template to render and how.
@@ -168,17 +167,4 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 
 		return nil
 	})
-}
-
-func (r *RenderFlags) DeepCopy() *RenderFlags {
-	return &RenderFlags{
-		Dest:           r.Dest,
-		ForceOverwrite: r.ForceOverwrite,
-		GitProtocol:    r.GitProtocol,
-		Inputs:         maps.Clone(r.Inputs),
-		KeepTempDirs:   r.KeepTempDirs,
-		LogLevel:       r.LogLevel,
-		Prompt:         r.Prompt,
-		Source:         r.Source,
-	}
 }
