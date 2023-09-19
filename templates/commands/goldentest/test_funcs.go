@@ -50,7 +50,7 @@ type GoldenTestFS interface {
 }
 
 // ParseTestCases returns a list of test cases to record or verify.
-func ParseTestCases(location string, testName string, fs GoldenTestFS) ([]*TestCase, error) {
+func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, error) {
 	if _, err := fs.Stat(location); err != nil {
 		return nil, fmt.Errorf("Error reading template directory (%s): %w", location, err)
 	}
