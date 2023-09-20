@@ -849,3 +849,62 @@ func TestTemplateFuncs(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessPaths(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		paths     []model.String
+		scope     *common.Scope
+		wantPaths []model.String
+		wantErr   string
+	}{
+		{
+			name:      "verify_paths_unchanged",
+			paths:     modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
+			scope:     common.NewScope(map[string]string{}),
+			wantPaths: modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
+		},
+		{
+			name:  "go_template_in_path",
+			paths: modelStrings([]string{"{{.replace_name}}.txt"}),
+			scope: common.NewScope(map[string]string{
+				"replace_name": "file1",
+			}),
+			wantPaths: modelStrings([]string{"file1.txt"}),
+		},
+		{
+			name:    "fail_dot_dot_relative_path",
+			paths:   modelStrings([]string{"../foo.txt"}),
+			scope:   common.NewScope(map[string]string{}),
+			wantErr: `path "../foo.txt" must not contain ".."`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			pathsCopy := make([]model.String, 0, len(tc.paths))
+
+			for _, p := range tc.paths {
+				pathsCopy = append(pathsCopy, model.String{
+					Val: p.Val,
+					Pos: p.Pos,
+				})
+			}
+			gotPaths, err := processPaths(tc.paths, tc.scope)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+			if diff := cmp.Diff(tc.paths, pathsCopy); diff != "" {
+				t.Errorf("input paths for action should not have been changed (-got,+want): %s", diff)
+			}
+			if diff := cmp.Diff(gotPaths, tc.wantPaths); diff != "" {
+				t.Errorf("resulting paths should match expected paths from input (-got,+want): %s", diff)
+			}
+		})
+	}
+}

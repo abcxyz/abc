@@ -57,8 +57,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 
 	for i, p := range incPaths {
 		// During validation in spec.go, we've already enforced that either:
-		//  - len(inc.As) == 0
-		//  - len(inc.As) == len(inc.Paths)
+		// len(asPaths) is either == 0 or == len(incPaths).
 		as := p.Val
 		if len(asPaths) > 0 {
 			as = asPaths[i].Val

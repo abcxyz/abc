@@ -452,6 +452,7 @@ func TestActionInclude(t *testing.T) {
 				templateDir: templateDir,
 				scope:       common.NewScope(tc.inputs),
 			}
+
 			err := actionInclude(ctx, tc.include, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
