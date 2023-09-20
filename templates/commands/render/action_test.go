@@ -878,7 +878,7 @@ func TestProcessPaths(t *testing.T) {
 			name:    "fail_dot_dot_relative_path",
 			paths:   modelStrings([]string{"../foo.txt"}),
 			scope:   common.NewScope(map[string]string{}),
-			wantErr: `path "../foo.txt" must not contain ".."`,
+			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../foo.txt")),
 		},
 	}
 
