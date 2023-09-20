@@ -864,7 +864,7 @@ func TestProcessPaths(t *testing.T) {
 			name:      "verify_paths_unchanged",
 			paths:     modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
 			scope:     common.NewScope(map[string]string{}),
-			wantPaths: modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
+			wantPaths: modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", filepath.FromSlash("subfolder2/file3.txt")}),
 		},
 		{
 			name:  "go_template_in_path",
