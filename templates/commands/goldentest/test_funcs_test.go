@@ -68,6 +68,8 @@ func TestParseTestCases(t *testing.T) {
 			fs: fstest.MapFS{
 				"t":                                     {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden"): {Mode: fs.ModeDir},
+				filepath.FromSlash("t/testdata/golden/test_case_1"):           {Mode: fs.ModeDir},
+				filepath.FromSlash("t/testdata/golden/test_case_2"):           {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): validYaml,
 				filepath.FromSlash("t/testdata/golden/test_case_2/test.yaml"): validYaml,
 			},
@@ -126,6 +128,7 @@ func TestParseTestCases(t *testing.T) {
 			fs: fstest.MapFS{
 				"t":                                     {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden"): {Mode: fs.ModeDir},
+				filepath.FromSlash("t/testdata/golden/test_case_1"):           {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): invalidYaml,
 			},
 			want:    nil,
