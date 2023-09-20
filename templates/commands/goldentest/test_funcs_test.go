@@ -52,7 +52,6 @@ func TestParseTestCases(t *testing.T) {
 			name:     "specified_test_name_succeed",
 			testName: "test_case_1",
 			fs: fstest.MapFS{
-				"t": {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): validYaml,
 			},
 			want: []*TestCase{
@@ -66,10 +65,6 @@ func TestParseTestCases(t *testing.T) {
 			name:     "all_tests_succeed",
 			testName: "",
 			fs: fstest.MapFS{
-				"t":                                     {Mode: fs.ModeDir},
-				filepath.FromSlash("t/testdata/golden"): {Mode: fs.ModeDir},
-				filepath.FromSlash("t/testdata/golden/test_case_1"):           {Mode: fs.ModeDir},
-				filepath.FromSlash("t/testdata/golden/test_case_2"):           {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): validYaml,
 				filepath.FromSlash("t/testdata/golden/test_case_2/test.yaml"): validYaml,
 			},
@@ -104,8 +99,6 @@ func TestParseTestCases(t *testing.T) {
 			name:     "unexpected_file_in_golden_test_dir",
 			testName: "",
 			fs: fstest.MapFS{
-				"t":                                     {Mode: fs.ModeDir},
-				filepath.FromSlash("t/testdata/golden"): {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/hello.txt"): {},
 			},
 			want:    nil,
@@ -115,8 +108,6 @@ func TestParseTestCases(t *testing.T) {
 			name:     "test_does_not_have_config",
 			testName: "",
 			fs: fstest.MapFS{
-				"t":                                     {Mode: fs.ModeDir},
-				filepath.FromSlash("t/testdata/golden"): {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/test_case_1"): {Mode: fs.ModeDir},
 			},
 			want:    nil,
@@ -126,9 +117,6 @@ func TestParseTestCases(t *testing.T) {
 			name:     "test_bad_config",
 			testName: "",
 			fs: fstest.MapFS{
-				"t":                                     {Mode: fs.ModeDir},
-				filepath.FromSlash("t/testdata/golden"): {Mode: fs.ModeDir},
-				filepath.FromSlash("t/testdata/golden/test_case_1"):           {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): invalidYaml,
 			},
 			want:    nil,
@@ -138,7 +126,6 @@ func TestParseTestCases(t *testing.T) {
 			name:     "specified_test_name_not_found",
 			testName: "test_case_2",
 			fs: fstest.MapFS{
-				"t": {Mode: fs.ModeDir},
 				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): {},
 			},
 			want:    nil,
