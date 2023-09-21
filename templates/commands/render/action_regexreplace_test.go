@@ -400,13 +400,13 @@ gamma`,
 			convertKeysToPlatformPaths(tc.want)
 
 			scratchDir := t.TempDir()
-			if err := writeAllDefaultMode(scratchDir, tc.initContents); err != nil {
+			if err := common.WriteAllDefaultMode(scratchDir, tc.initContents); err != nil {
 				t.Fatal(err)
 			}
 
 			ctx := context.Background()
 			sp := &stepParams{
-				fs:         &common.RealFS{},
+				fs:         &realFS{},
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
 			}

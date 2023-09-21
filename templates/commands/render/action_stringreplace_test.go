@@ -232,7 +232,7 @@ func TestActionStringReplace(t *testing.T) {
 			convertKeysToPlatformPaths(tc.want)
 
 			scratchDir := t.TempDir()
-			if err := writeAllDefaultMode(scratchDir, tc.initialContents); err != nil {
+			if err := common.WriteAllDefaultMode(scratchDir, tc.initialContents); err != nil {
 				t.Fatal(err)
 			}
 
@@ -242,7 +242,7 @@ func TestActionStringReplace(t *testing.T) {
 			}
 			sp := &stepParams{
 				fs: &errorFS{
-					renderFS:    &common.RealFS{},
+					renderFS:    &realFS{},
 					readFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,

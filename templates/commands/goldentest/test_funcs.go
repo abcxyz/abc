@@ -17,7 +17,7 @@ package goldentest
 
 import (
 	"fmt"
-	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/model/goldentest"
@@ -42,16 +42,9 @@ const (
 	configName = "test.yaml"
 )
 
-// GoldenTestFS allows filesystem to be faked for testing.
-type GoldenTestFS interface {
-	Open(name string) (fs.File, error)
-	ReadDir(name string) ([]fs.DirEntry, error)
-	Stat(name string) (fs.FileInfo, error)
-}
-
 // ParseTestCases returns a list of test cases to record or verify.
-func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, error) {
-	if _, err := fs.Stat(location); err != nil {
+func ParseTestCases(location, testName string) ([]*TestCase, error) {
+	if _, err := os.Stat(location); err != nil {
 		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)
 	}
 
@@ -59,7 +52,7 @@ func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, er
 
 	if testName != "" {
 		testConfig := filepath.Join(testDir, testName, configName)
-		test, err := parseTestConfig(testConfig, fs)
+		test, err := parseTestConfig(testConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +64,7 @@ func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, er
 		}, nil
 	}
 
-	entries, err := fs.ReadDir(testDir)
+	entries, err := os.ReadDir(testDir)
 	if err != nil {
 		return nil, fmt.Errorf("error reading golden test directory (%s): %w", testDir, err)
 	}
@@ -83,7 +76,7 @@ func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, er
 		}
 
 		testConfig := filepath.Join(testDir, entry.Name(), configName)
-		test, err := parseTestConfig(testConfig, fs)
+		test, err := parseTestConfig(testConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +91,8 @@ func ParseTestCases(location, testName string, fs GoldenTestFS) ([]*TestCase, er
 }
 
 // parseTestConfig reads a configuration yaml and returns the result.
-func parseTestConfig(path string, fs GoldenTestFS) (*goldentest.Test, error) {
-	f, err := fs.Open(path)
+func parseTestConfig(path string) (*goldentest.Test, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("error opening test config (%s): %w", path, err)
 	}

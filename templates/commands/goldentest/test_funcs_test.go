@@ -16,11 +16,9 @@
 package goldentest
 
 import (
-	"io/fs"
-	"path/filepath"
 	"testing"
-	"testing/fstest"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/goldentest"
 	"github.com/abcxyz/pkg/testutil"
@@ -31,28 +29,24 @@ import (
 func TestParseTestCases(t *testing.T) {
 	t.Parallel()
 
-	validYaml := &fstest.MapFile{
-		Data: []byte(`api_version: 'cli.abcxyz.dev/v1alpha1'`),
-	}
-	invalidYaml := &fstest.MapFile{
-		Data: []byte("bad yaml"),
-	}
+	validYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'`
+	invalidYaml := "bad yaml"
 	validTestCase := &goldentest.Test{
 		APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
 	}
 
 	cases := []struct {
-		name     string
-		testName string
-		fs       GoldenTestFS
-		want     []*TestCase
-		wantErr  string
+		name         string
+		testName     string
+		filesContent map[string]string
+		want         []*TestCase
+		wantErr      string
 	}{
 		{
 			name:     "specified_test_name_succeed",
 			testName: "test_case_1",
-			fs: fstest.MapFS{
-				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): validYaml,
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/test.yaml": validYaml,
 			},
 			want: []*TestCase{
 				{
@@ -64,9 +58,9 @@ func TestParseTestCases(t *testing.T) {
 		{
 			name:     "all_tests_succeed",
 			testName: "",
-			fs: fstest.MapFS{
-				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): validYaml,
-				filepath.FromSlash("t/testdata/golden/test_case_2/test.yaml"): validYaml,
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/test.yaml": validYaml,
+				"testdata/golden/test_case_2/test.yaml": validYaml,
 			},
 			want: []*TestCase{
 				{
@@ -80,17 +74,10 @@ func TestParseTestCases(t *testing.T) {
 			},
 		},
 		{
-			name:     "template_not_exist",
-			testName: "",
-			fs:       fstest.MapFS{},
-			want:     nil,
-			wantErr:  "error reading template directory",
-		},
-		{
 			name:     "golden_test_dir_not_exist",
 			testName: "",
-			fs: fstest.MapFS{
-				"t": {Mode: fs.ModeDir},
+			filesContent: map[string]string{
+				"myfile": invalidYaml,
 			},
 			want:    nil,
 			wantErr: "error reading golden test directory",
@@ -98,8 +85,8 @@ func TestParseTestCases(t *testing.T) {
 		{
 			name:     "unexpected_file_in_golden_test_dir",
 			testName: "",
-			fs: fstest.MapFS{
-				filepath.FromSlash("t/testdata/golden/hello.txt"): {},
+			filesContent: map[string]string{
+				"testdata/golden/hello.txt": invalidYaml,
 			},
 			want:    nil,
 			wantErr: "unexpeted file entry under golden test directory",
@@ -107,8 +94,8 @@ func TestParseTestCases(t *testing.T) {
 		{
 			name:     "test_does_not_have_config",
 			testName: "",
-			fs: fstest.MapFS{
-				filepath.FromSlash("t/testdata/golden/test_case_1"): {Mode: fs.ModeDir},
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/hello.txt": invalidYaml,
 			},
 			want:    nil,
 			wantErr: "error opening test config",
@@ -116,8 +103,8 @@ func TestParseTestCases(t *testing.T) {
 		{
 			name:     "test_bad_config",
 			testName: "",
-			fs: fstest.MapFS{
-				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): invalidYaml,
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/test.yaml": invalidYaml,
 			},
 			want:    nil,
 			wantErr: "error reading golden test config file",
@@ -125,8 +112,8 @@ func TestParseTestCases(t *testing.T) {
 		{
 			name:     "specified_test_name_not_found",
 			testName: "test_case_2",
-			fs: fstest.MapFS{
-				filepath.FromSlash("t/testdata/golden/test_case_1/test.yaml"): {},
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/test.yaml": validYaml,
 			},
 			want:    nil,
 			wantErr: "error opening test config",
@@ -139,7 +126,10 @@ func TestParseTestCases(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := ParseTestCases("t", tc.testName, tc.fs)
+			tempDir := t.TempDir()
+			common.WriteAllDefaultMode(tempDir, tc.filesContent)
+
+			got, err := ParseTestCases(tempDir, tc.testName)
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)

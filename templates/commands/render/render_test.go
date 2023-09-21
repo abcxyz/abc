@@ -568,14 +568,14 @@ steps:
 
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
-			if err := writeAllDefaultMode(dest, tc.existingDestContents); err != nil {
+			if err := common.WriteAllDefaultMode(dest, tc.existingDestContents); err != nil {
 				t.Fatal(err)
 			}
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
 			backupDir := filepath.Join(tempDir, "backups")
-			rfs := &common.RealFS{}
+			rfs := &realFS{}
 			fg := &fakeGetter{
 				err:    tc.getterErr,
 				output: tc.templateContents,
@@ -1455,7 +1455,7 @@ func modelStrings(ss []string) []model.String {
 
 // Read all the files recursively under "dir", returning their contents as a
 // map[filename]->contents. Returns nil if dir doesn't exist.
-func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
+func loadDirContents(t *testing.T, dir string) map[string]common.ModeAndContents {
 	t.Helper()
 
 	if _, err := os.Stat(dir); err != nil {
@@ -1464,7 +1464,7 @@ func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
 		}
 		t.Fatal(err)
 	}
-	out := map[string]modeAndContents{}
+	out := map[string]common.ModeAndContents{}
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -1484,7 +1484,7 @@ func loadDirContents(t *testing.T, dir string) map[string]modeAndContents {
 		if err != nil {
 			t.Fatal(err)
 		}
-		out[rel] = modeAndContents{
+		out[rel] = common.ModeAndContents{
 			Mode:     fi.Mode(),
 			Contents: string(contents),
 		}
@@ -1583,48 +1583,10 @@ func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetR
 	if f.err != nil {
 		return nil, f.err
 	}
-	if err := writeAllDefaultMode(req.Dst, f.output); err != nil {
+	if err := common.WriteAllDefaultMode(req.Dst, f.output); err != nil {
 		return nil, err
 	}
 	return &getter.GetResult{Dst: req.Dst}, nil
-}
-
-type modeAndContents struct {
-	Mode     os.FileMode
-	Contents string
-}
-
-// writeAllDefaultMode wraps writeAll and sets file permissions to 0600.
-func writeAllDefaultMode(root string, files map[string]string) error {
-	withMode := map[string]modeAndContents{}
-	for name, contents := range files {
-		withMode[name] = modeAndContents{
-			Mode:     0o600,
-			Contents: contents,
-		}
-	}
-	return writeAll(root, withMode)
-}
-
-// writeAll saves the given file contents with the given permissions.
-func writeAll(root string, files map[string]modeAndContents) error {
-	for path, mc := range files {
-		fullPath := filepath.Join(root, path)
-		dir := filepath.Dir(fullPath)
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return fmt.Errorf("MkdirAll(%q): %w", dir, err)
-		}
-		if err := os.WriteFile(fullPath, []byte(mc.Contents), mc.Mode); err != nil {
-			return fmt.Errorf("WriteFile(%q): %w", fullPath, err)
-		}
-		// The user's may have prevented the file from being created with the
-		// desired permissions. Use chmod to really set the desired permissions.
-		if err := os.Chmod(fullPath, mc.Mode); err != nil {
-			return fmt.Errorf("Chmod(): %w", err)
-		}
-	}
-
-	return nil
 }
 
 // convertKeysToPlatformPaths is a helper that converts the keys in all of the
