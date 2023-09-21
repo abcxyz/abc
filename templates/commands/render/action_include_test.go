@@ -83,7 +83,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			wantErr: `path "../file.txt" must not contain ".."`,
+			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../file.txt")),
 		},
 		{
 			name: "templated_filename_success",
@@ -261,6 +261,89 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "skip_file",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"."}),
+						Skip:  modelStrings([]string{"file2.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"file1.txt":           {0o600, "file 1 contents"},
+				"file2.txt":           {0o600, "file 2 contents"},
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+				"spec.yaml":           {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file1.txt":           {0o600, "file 1 contents"},
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+			},
+		},
+		{
+			name: "skip_multiple_files",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"."}),
+						Skip:  modelStrings([]string{"file1.txt", "file2.txt", "file4.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"file1.txt": {0o600, "file 1 contents"},
+				"file2.txt": {0o600, "file 2 contents"},
+				"file3.txt": {0o600, "file 3 contents"},
+				"file4.txt": {0o600, "file 4 contents"},
+				"spec.yaml": {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"file3.txt": {0o600, "file 3 contents"},
+			},
+		},
+		{
+			name: "skip_file_in_subfolder",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"subfolder"}),
+						Skip:  modelStrings([]string{"file2.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"file1.txt":           {0o600, "file 1 contents"},
+				"subfolder/file2.txt": {0o600, "file 2 contents"},
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+				"spec.yaml":           {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"subfolder/file3.txt": {0o600, "file 3 contents"},
+			},
+		},
+		{
+			name: "skip_directory",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"folder1"}),
+						Skip:  modelStrings([]string{"folder2"}),
+					},
+				},
+			},
+			templateContents: map[string]modeAndContents{
+				"folder1/file1.txt":         {0o600, "file 1 contents"},
+				"folder1/folder2/file2.txt": {0o600, "file 2 contents"},
+				"folder1/folder3/file3.txt": {0o600, "file 2 contents"},
+				"spec.yaml":                 {0o600, "spec contents"},
+			},
+			wantScratchContents: map[string]modeAndContents{
+				"folder1/file1.txt":         {0o600, "file 1 contents"},
+				"folder1/folder3/file3.txt": {0o600, "file 2 contents"},
+			},
+		},
+		{
 			name: "include_dot_from_destination",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
@@ -369,6 +452,7 @@ func TestActionInclude(t *testing.T) {
 				templateDir: templateDir,
 				scope:       common.NewScope(tc.inputs),
 			}
+
 			err := actionInclude(ctx, tc.include, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)

@@ -1,0 +1,38 @@
+# Copyright 2023 The Authors (see AUTHORS file)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc:
+  'A template that sets up a protos directory along with a script to generate language specific protos.'
+inputs:
+  - name: 'github_org_name'
+    desc: 'The name of the github org the repo will belong to'
+  - name: 'github_repo_name'
+    desc: 'The name of the github repo'
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['protos', 'scripts']
+  - desc: 'Replace "github_org_name" and "github_repo_name" with your organization and repo name.'
+    action: 'string_replace'
+    params:
+      paths: ['protos/v1/person_service/person.proto', 'scripts/generate.sh']
+      replacements:
+        - to_replace: 'github_org_name'
+          with: '{{.github_org_name}}'
+        - to_replace: 'github_repo_name'
+          with: '{{.github_repo_name}}'

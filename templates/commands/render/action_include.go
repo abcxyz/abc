@@ -36,36 +36,31 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
+	skipPaths, err := processPaths(inc.Skip, sp.scope)
+	if err != nil {
+		return err
+	}
 	skip := make(map[string]struct{}, len(inc.Skip))
-	for _, s := range inc.Skip {
-		skipRelPath, err := parseAndExecuteGoTmpl(s.Pos, s.Val, sp.scope)
-		if err != nil {
-			return err
-		}
-		skip[skipRelPath] = struct{}{}
+	for _, s := range skipPaths {
+		skip[s.Val] = struct{}{}
 	}
 
-	for i, p := range inc.Paths {
-		// Paths may contain template expressions, so render them first.
-		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
-		if err != nil {
-			return err
-		}
+	incPaths, err := processPaths(inc.Paths, sp.scope)
+	if err != nil {
+		return err
+	}
 
+	asPaths, err := processPaths(inc.As, sp.scope)
+	if err != nil {
+		return err
+	}
+
+	for i, p := range incPaths {
 		// During validation in spec.go, we've already enforced that either:
-		//  - len(inc.As) == 0
-		//  - len(inc.As) == len(inc.Paths)
-		as := walkRelPath
-		if len(inc.As) > 0 {
-			as, err = parseAndExecuteGoTmpl(inc.As[i].Pos, inc.As[i].Val, sp.scope)
-			if err != nil {
-				return err
-			}
-		}
-
-		relDst, err := safeRelPath(p.Pos, as)
-		if err != nil {
-			return err
+		// len(asPaths) is either == 0 or == len(incPaths).
+		as := p.Val
+		if len(asPaths) > 0 {
+			as = asPaths[i].Val
 		}
 
 		// By default, we copy from the template directory. We also support
@@ -75,8 +70,8 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		if inc.From.Val == "destination" {
 			fromDir = sp.flags.Dest
 		}
-		absSrc := filepath.Join(fromDir, walkRelPath)
-		absDst := filepath.Join(sp.scratchDir, relDst)
+		absSrc := filepath.Join(fromDir, p.Val)
+		absDst := filepath.Join(sp.scratchDir, as)
 
 		skipNow := maps.Clone(skip)
 		if absSrc == sp.templateDir {
@@ -88,7 +83,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return p.Pos.Errorf("include path doesn't exist: %q", walkRelPath)
+				return p.Pos.Errorf("include path doesn't exist: %q", p.Val)
 			}
 			return fmt.Errorf("Stat(): %w", err)
 		}
