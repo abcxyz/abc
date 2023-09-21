@@ -18,34 +18,23 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec"
 )
 
 func actionGoTemplate(ctx context.Context, p *spec.GoTemplate, sp *stepParams) error {
-	for _, p := range p.Paths {
-		// Paths may contain template expressions, so render them first.
-		walkRelPath, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
+	paths, err := processPaths(p.Paths, sp.scope)
+	if err != nil {
+		return err
+	}
+
+	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(b []byte) ([]byte, error) {
+		executed, err := parseAndExecuteGoTmpl(nil, string(b), sp.scope)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("failed executing file as Go template: %w", err)
 		}
-
-		walkRelPath, err = safeRelPath(p.Pos, walkRelPath)
-		if err != nil {
-			return err
-		}
-
-		relPathPos := model.String{Pos: p.Pos, Val: walkRelPath}
-
-		if err := walkAndModify(ctx, sp.fs, sp.scratchDir, []model.String{relPathPos}, func(b []byte) ([]byte, error) {
-			executed, err := parseAndExecuteGoTmpl(nil, string(b), sp.scope)
-			if err != nil {
-				return nil, fmt.Errorf("failed executing file as Go template: %w", err)
-			}
-			return []byte(executed), nil
-		}); err != nil {
-			return err
-		}
+		return []byte(executed), nil
+	}); err != nil {
+		return err
 	}
 
 	return nil

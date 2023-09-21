@@ -18,7 +18,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec"
 )
 
@@ -37,13 +36,9 @@ func actionStringReplace(ctx context.Context, sr *spec.StringReplace, sp *stepPa
 	}
 	replacer := strings.NewReplacer(replacerArgs...)
 
-	paths := make([]model.String, 0, len(sr.Paths))
-	for _, p := range sr.Paths {
-		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
-		if err != nil {
-			return err
-		}
-		paths = append(paths, model.String{Pos: p.Pos, Val: path})
+	paths, err := processPaths(sr.Paths, sp.scope)
+	if err != nil {
+		return err
 	}
 
 	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(buf []byte) ([]byte, error) {

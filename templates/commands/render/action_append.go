@@ -18,7 +18,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec"
 )
 
@@ -34,14 +33,9 @@ func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
 		}
 	}
 
-	paths := make([]model.String, 0, len(ap.Paths))
-
-	for _, p := range ap.Paths {
-		path, err := parseAndExecuteGoTmpl(p.Pos, p.Val, sp.scope)
-		if err != nil {
-			return err
-		}
-		paths = append(paths, model.String{Pos: p.Pos, Val: path})
+	paths, err := processPaths(ap.Paths, sp.scope)
+	if err != nil {
+		return err
 	}
 
 	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(buf []byte) ([]byte, error) {
