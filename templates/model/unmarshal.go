@@ -26,6 +26,8 @@ package model
 //       based on the value of the "action" field.
 
 import (
+	"fmt"
+	"io"
 	"reflect"
 	"strings"
 
@@ -84,5 +86,19 @@ func UnmarshalPlain(n *yaml.Node, outPtr any, outPos *ConfigPos, extraYAMLFields
 	reflect.ValueOf(outPtr).Elem().Set(shadow.Elem())
 
 	*outPos = *YAMLPos(n)
+	return nil
+}
+
+// DecodeAndValidate unmarshals the YAML text in the given Reader into the given
+// pointer-to-struct, and calls Validate() on it. Returns any unmarshaling error
+// or validation error.
+func DecodeAndValidate(r io.Reader, filename string, outPtr Validator) error {
+	dec := yaml.NewDecoder(r)
+	if err := dec.Decode(outPtr); err != nil {
+		return fmt.Errorf("error parsing %s YAML file: %w", filename, err)
+	}
+	if err := outPtr.Validate(); err != nil {
+		return fmt.Errorf("validation failed in %s YAML file: %w", filename, err)
+	}
 	return nil
 }

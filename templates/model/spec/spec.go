@@ -19,7 +19,6 @@ package spec
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
@@ -35,19 +34,11 @@ import (
 // If the Spec parses successfully but then fails validation, the spec will be
 // returned along with the validation error.
 func Decode(r io.Reader) (*Spec, error) {
-	dec := newDecoder(r)
-	var spec Spec
-	if err := dec.Decode(&spec); err != nil {
-		return nil, fmt.Errorf("error parsing YAML spec file: %w", err)
+	out := &Spec{}
+	if err := model.DecodeAndValidate(r, "spec", out); err != nil {
+		return out, err
 	}
-	return &spec, spec.Validate()
-}
-
-// newDecoder returns a yaml Decoder with the desired options.
-func newDecoder(r io.Reader) *yaml.Decoder {
-	dec := yaml.NewDecoder(r)
-	dec.KnownFields(true) // Fail if any unexpected fields are seen. Often doesn't work: https://github.com/go-yaml/yaml/issues/460
-	return dec
+	return out, nil
 }
 
 // Spec represents a parsed spec.yaml file describing a template.
@@ -94,7 +85,7 @@ func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (s *Spec) Validate() error {
 	return errors.Join(
-		model.OneOf(&s.Pos, s.APIVersion, []string{"cli.abcxyz.dev/v1alpha1"}, "api_version"),
+		model.IsKnownAPIVersion(&s.Pos, s.APIVersion, "api_version"),
 		model.OneOf(&s.Pos, s.Kind, []string{"Template"}, "kind"),
 		model.NotZeroModel(&s.Pos, s.Desc, "desc"),
 		model.NonEmptySlice(&s.Pos, s.Steps, "steps"),
@@ -332,13 +323,11 @@ func (i *Include) Validate() error {
 type IncludePath struct {
 	Pos model.ConfigPos `yaml:"-"`
 
-	AddPrefix   model.String   `yaml:"add_prefix"`
-	As          []model.String `yaml:"as"`
-	From        model.String   `yaml:"from"`
-	OnConflict  model.String   `yaml:"on_conflict"`
-	Paths       []model.String `yaml:"paths"`
-	Skip        []model.String `yaml:"skip"`
-	StripPrefix model.String   `yaml:"strip_prefix"`
+	As         []model.String `yaml:"as"`
+	From       model.String   `yaml:"from"`
+	OnConflict model.String   `yaml:"on_conflict"`
+	Paths      []model.String `yaml:"paths"`
+	Skip       []model.String `yaml:"skip"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -349,13 +338,9 @@ func (i *IncludePath) UnmarshalYAML(n *yaml.Node) error {
 // Validate implements Validator.
 func (i *IncludePath) Validate() error {
 	var exclusivityErr error
-	if len(i.As) != 0 {
-		if i.StripPrefix.Val != "" || i.AddPrefix.Val != "" {
-			exclusivityErr = i.As[0].Pos.Errorf(`"as" may not be used with "strip_prefix" or "add_prefix"`)
-		} else if len(i.Paths) != len(i.As) {
-			exclusivityErr = i.As[0].Pos.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
-				len(i.As), len(i.Paths))
-		}
+	if len(i.As) != 0 && len(i.Paths) != len(i.As) {
+		exclusivityErr = i.As[0].Pos.Errorf(`when using "as", the size of "as" (%d) must be the same as the size of "paths" (%d)`,
+			len(i.As), len(i.Paths))
 	}
 
 	var fromErr error

@@ -22,8 +22,8 @@ import (
 	"syscall"
 
 	"github.com/abcxyz/abc/internal/version"
+	"github.com/abcxyz/abc/templates/commands/goldentest"
 	"github.com/abcxyz/abc/templates/commands/render"
-	"github.com/abcxyz/abc/templates/commands/test"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -41,16 +41,16 @@ var rootCmd = func() *cli.RootCommand {
 						"render": func() cli.Command {
 							return &render.Command{}
 						},
-						"test": func() cli.Command {
+						"golden-test": func() cli.Command {
 							return &cli.RootCommand{
-								Name:        "test",
+								Name:        "golden-test",
 								Description: "subcommands for validating template rendering with golden tests",
 								Commands: map[string]cli.CommandFactory{
 									"record": func() cli.Command {
-										return &test.RecordCommand{}
+										return &goldentest.RecordCommand{}
 									},
 									"verify": func() cli.Command {
-										return &test.VerifyCommand{}
+										return &goldentest.VerifyCommand{}
 									},
 								},
 							}

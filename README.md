@@ -105,8 +105,8 @@ There are two ways to install:
         - M1/M2/later: `darwin_arm64`
         - Intel: `darwin_amd64`
 
-      Example `curl` command, please substitute the version number you're
-      downloading:
+      You can use the `curl -sSL` command to download. Please substitute the
+      version number you're downloading:
 
           $ curl -sSL https://github.com/abcxyz/abc/releases/download/v1.2.3/abc_1.2.3_linux_amd64.tar.gz | tar -xzv abc
 
@@ -132,11 +132,11 @@ create a "hello world" Go web service.
      - Create a branch (`git checkout -b template_render`)
    - Option C: if you know what you're doing, you can create a local repo using
      `git init` and worry later about connecting it to an upstream repo.
-2. Find the template to install. There's currently no central database of
-   templates that exist. We assume that you already know the URL of a template
-   that you want to install by reading docs or through word-of-mouth. For this
-   example, suppose we're installing the "hello jupiter" example from the abc
-   repo.
+2. Find the template to install. We assume that you already know the URL of a
+   template that you want to install by reading docs or through word-of-mouth.
+   There is a best-effort list of known templates in
+   [template-index.md](template-index.md). For this example, suppose we're
+   installing the "hello jupiter" example from the abc repo.
 3. Run the `render` command:
 
    ```shell
@@ -386,33 +386,6 @@ Params:
   `as` is present, its length must be equal to the length of `paths`; that is,
   each path must be given an output location.
 
-  `as` may not be used with `strip_prefix` or `add_prefix`.
-
-  These may use template expressions (e.g. `{{.my_input}}`).
-
-- `strip_prefix`: computes the output path by stripping off the beginning of the
-  input path. Useful for relocating files to a different location in the output
-  than their input location in the template.
-
-  If `strip_prefix` is not actually a prefix of every element of `paths`, that's
-  an error.
-
-  `strip_prefix` may be used with `add_prefix`. `strip_prefix` is executed
-  before `add_prefix` if both are present.
-
-  `strip_prefix` can't be used with `as`.
-
-  These may use template expressions (e.g. `{{.my_input}}`).
-
-- `add_prefix`: computes the output path by prepending to the beginning of the
-  input path. Useful for relocating files to a different location in the output
-  than their input location in the template.
-
-  `add_prefix` may be used with `strip_prefix`. `strip_prefix` is executed
-  before `add_prefix` if both are present.
-
-  `add_prefix` can't be used with `as`.
-
   These may use template expressions (e.g. `{{.my_input}}`).
 
 - `skip`: omits some files or directories that might be present in the input
@@ -452,16 +425,6 @@ Examples:
     params:
       paths: ['{{.dbname}}/db.go']
       as: ['db.go']
-  ```
-
-- Using `strip_prefix` and `add_prefix` to relocate files:
-
-  ```yaml
-  - action: 'include'
-    params:
-      paths: ['my/config/files']
-      strip_prefix: 'my/config/files'
-      add_prefix: 'config_files'
   ```
 
 - Using `skip` to omit certain sub-paths:

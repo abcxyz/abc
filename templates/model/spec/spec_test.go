@@ -22,6 +22,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"gopkg.in/yaml.v3"
 )
 
 func TestSpecUnmarshal(t *testing.T) {
@@ -32,7 +33,7 @@ func TestSpecUnmarshal(t *testing.T) {
 		in               string
 		want             *Spec
 		wantUnmarshalErr string
-		wantValidateErr  string
+		wantValidateErr  []string
 	}{
 		{
 			name: "simple_template_should_succeed",
@@ -142,15 +143,18 @@ steps:
   action: 'print'
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
-			wantValidateErr: `at line 3 column 3: field "desc" is required`,
+			wantValidateErr: []string{`at line 3 column 3: field "desc" is required`},
 		},
 		{
 			name: "check_required_fields",
 			in:   "inputs:",
-			wantValidateErr: `at line 1 column 1: field "api_version" value must be one of [cli.abcxyz.dev/v1alpha1]
-at line 1 column 1: field "kind" value must be one of [Template]
-at line 1 column 1: field "desc" is required
-at line 1 column 1: field "steps" is required`,
+			wantValidateErr: []string{
+				`at line 1 column 1: field "api_version" value was "" but must be one of`,
+				`you might need to upgrade your abc CLI. See https://github.com/abcxyz/abc/#installation`,
+				`at line 1 column 1: field "kind" value was "" but must be one of [Template]`,
+				`at line 1 column 1: field "desc" is required`,
+				`at line 1 column 1: field "steps" is required`,
+			},
 		},
 
 		{
@@ -178,7 +182,8 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Spec{}
-			dec := newDecoder(strings.NewReader(tc.in))
+
+			dec := yaml.NewDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)
@@ -188,8 +193,10 @@ steps:
 			}
 
 			err = got.Validate()
-			if diff := testutil.DiffErrString(err, tc.wantValidateErr); diff != "" {
-				t.Fatal(diff)
+			for _, wantValidateErr := range tc.wantValidateErr {
+				if diff := testutil.DiffErrString(err, wantValidateErr); diff != "" {
+					t.Fatal(diff)
+				}
 			}
 			if err != nil {
 				return
@@ -317,7 +324,7 @@ rules:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Input{}
-			dec := newDecoder(strings.NewReader(tc.in))
+			dec := yaml.NewDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)
@@ -486,36 +493,6 @@ params:
 									Val: "x/y.txt",
 								},
 							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "include_with_prefixes",
-			in: `desc: 'mydesc'
-action: 'include'
-params:
-  paths:
-    - paths: ['a/b/c', 'x/y.txt']
-      strip_prefix: 'a/b'
-      add_prefix: 'c/d'`,
-			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
-				Include: &Include{
-					Paths: []*IncludePath{
-						{
-							Paths: []model.String{
-								{
-									Val: "a/b/c",
-								},
-								{
-									Val: "x/y.txt",
-								},
-							},
-							StripPrefix: model.String{Val: "a/b"},
-							AddPrefix:   model.String{Val: "c/d"},
 						},
 					},
 				},
@@ -1129,7 +1106,7 @@ params:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Step{}
-			dec := newDecoder(strings.NewReader(tc.in))
+			dec := yaml.NewDecoder(strings.NewReader(tc.in))
 			err := dec.Decode(got)
 			if diff := testutil.DiffErrString(err, tc.wantUnmarshalErr); diff != "" {
 				t.Fatal(diff)

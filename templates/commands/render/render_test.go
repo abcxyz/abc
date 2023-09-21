@@ -307,7 +307,7 @@ steps:
 			wantTemplateContents: map[string]string{
 				"spec.yaml": "this is an unparseable YAML file *&^#%$",
 			},
-			wantErr: "error parsing YAML spec file",
+			wantErr: "error parsing spec",
 		},
 		{
 			name: "existing_dest_file_with_overwrite_flag_should_succeed",
