@@ -56,6 +56,13 @@ inputs:
 			},
 		},
 		{
+			name: "no_inputs_should_succeed",
+			in:   `api_version: 'cli.abcxyz.dev/v1alpha1'`,
+			want: &Test{
+				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
+			},
+		},
+		{
 			name: "missing_field_should_fail",
 			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
 inputs:
