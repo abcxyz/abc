@@ -127,7 +127,10 @@ func TestParseTestCases(t *testing.T) {
 			t.Parallel()
 
 			tempDir := t.TempDir()
-			common.WriteAllDefaultMode(tempDir, tc.filesContent)
+
+			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {
+				t.Fatal(err)
+			}
 
 			got, err := ParseTestCases(tempDir, tc.testName)
 			if err != nil {
