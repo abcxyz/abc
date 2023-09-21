@@ -455,7 +455,7 @@ func backUp(ctx context.Context, rfs renderFS, backupDir, srcRoot, relPath strin
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.InfoContext(ctx, "completed backup", "source", fileToBackup, "destination", backupFile)
+	logger.DebugContext(ctx, "completed backup", "source", fileToBackup, "destination", backupFile)
 
 	return nil
 }

@@ -34,10 +34,10 @@ func TestActionInclude(t *testing.T) {
 	cases := []struct {
 		name                 string
 		include              *spec.Include
-		templateContents     map[string]modeAndContents
-		destDirContents      map[string]modeAndContents
+		templateContents     map[string]common.ModeAndContents
+		destDirContents      map[string]common.ModeAndContents
 		inputs               map[string]string
-		wantScratchContents  map[string]modeAndContents
+		wantScratchContents  map[string]common.ModeAndContents
 		wantIncludedFromDest []string
 		statErr              error
 		wantErr              string
@@ -51,11 +51,11 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
 		{
@@ -149,11 +149,11 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
 		{
@@ -176,15 +176,15 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"foo/bar.txt": {0o600, "file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"foo/bar.txt": {Mode: 0o600, Contents: "file contents"},
 			},
 			inputs: map[string]string{
 				"my_dir":  "foo",
 				"my_file": "bar.txt",
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"foo/bar.txt": {0o600, "file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"foo/bar.txt": {Mode: 0o600, Contents: "file contents"},
 			},
 		},
 		{
@@ -196,11 +196,11 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
 		{
@@ -212,11 +212,11 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"foo/myfile.txt": {0o600, "my file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"foo/myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"foo/myfile.txt": {0o600, "my file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"foo/myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
 		{
@@ -228,8 +228,8 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "file contents"},
 			},
 			inputs:  map[string]string{},
 			wantErr: `nonexistent input variable name "filename"`,
@@ -243,8 +243,8 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 			wantErr: `include path matched no files: "nonexistent"`,
 		},
@@ -259,8 +259,8 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 			statErr: fmt.Errorf("fake error"),
 			wantErr: "fake error",
@@ -275,11 +275,11 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"dir1/file1.txt": {0o600, "my file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"dir1/file1.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"dir2/file2.txt": {0o600, "my file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"dir2/file2.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
 		{
@@ -298,13 +298,13 @@ func TestActionInclude(t *testing.T) {
 				"three": "3",
 				"four":  "4",
 			},
-			templateContents: map[string]modeAndContents{
-				"file1.txt": {0o600, "my file contents"},
-				"file2.txt": {0o600, "my file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "my file contents"},
+				"file2.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"file3.txt": {0o600, "my file contents"},
-				"file4.txt": {0o600, "my file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file3.txt": {Mode: 0o600, Contents: "my file contents"},
+				"file4.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
 		{
@@ -316,12 +316,12 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"file1.txt": {0o600, "my file contents"},
-				"spec.yaml": {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "my file contents"},
+				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"file1.txt": {0o600, "my file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
 		{
@@ -333,13 +333,13 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"file1.txt":        {0o600, "my file contents"},
-				"subdir/spec.yaml": {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt":        {Mode: 0o600, Contents: "my file contents"},
+				"subdir/spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"file1.txt":        {0o600, "my file contents"},
-				"subdir/spec.yaml": {0o600, "spec contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt":        {Mode: 0o600, Contents: "my file contents"},
+				"subdir/spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
 		},
 		{
@@ -352,15 +352,15 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"file1.txt":           {0o600, "file 1 contents"},
-				"file2.txt":           {0o600, "file 2 contents"},
-				"subfolder/file3.txt": {0o600, "file 3 contents"},
-				"spec.yaml":           {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt":           {Mode: 0o600, Contents: "file 1 contents"},
+				"file2.txt":           {Mode: 0o600, Contents: "file 2 contents"},
+				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
+				"spec.yaml":           {Mode: 0o600, Contents: "spec contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"file1.txt":           {0o600, "file 1 contents"},
-				"subfolder/file3.txt": {0o600, "file 3 contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt":           {Mode: 0o600, Contents: "file 1 contents"},
+				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 		},
 		{
@@ -373,15 +373,15 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"file1.txt": {0o600, "file 1 contents"},
-				"file2.txt": {0o600, "file 2 contents"},
-				"file3.txt": {0o600, "file 3 contents"},
-				"file4.txt": {0o600, "file 4 contents"},
-				"spec.yaml": {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
+				"file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
+				"file4.txt": {Mode: 0o600, Contents: "file 4 contents"},
+				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"file3.txt": {0o600, "file 3 contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 		},
 		{
@@ -394,14 +394,14 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"file1.txt":           {0o600, "file 1 contents"},
-				"subfolder/file2.txt": {0o600, "file 2 contents"},
-				"subfolder/file3.txt": {0o600, "file 3 contents"},
-				"spec.yaml":           {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt":           {Mode: 0o600, Contents: "file 1 contents"},
+				"subfolder/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
+				"spec.yaml":           {Mode: 0o600, Contents: "spec contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"subfolder/file3.txt": {0o600, "file 3 contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 		},
 		{
@@ -414,15 +414,15 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"folder1/file1.txt":         {0o600, "file 1 contents"},
-				"folder1/folder2/file2.txt": {0o600, "file 2 contents"},
-				"folder1/folder3/file3.txt": {0o600, "file 2 contents"},
-				"spec.yaml":                 {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
+				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"folder1/file1.txt":         {0o600, "file 1 contents"},
-				"folder1/folder3/file3.txt": {0o600, "file 2 contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
+				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
 			},
 		},
 		{
@@ -435,14 +435,14 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"spec.yaml": {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
-			destDirContents: map[string]modeAndContents{
-				"file1.txt": {0o600, "file1 contents"},
+			destDirContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"file1.txt": {0o600, "file1 contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
 			wantIncludedFromDest: []string{"file1.txt"},
 		},
@@ -456,15 +456,15 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"spec.yaml": {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
-			destDirContents: map[string]modeAndContents{
-				"file1.txt":        {0o600, "file1 contents"},
-				"subdir/file2.txt": {0o600, "file2 contents"},
+			destDirContents: map[string]common.ModeAndContents{
+				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"subdir/file2.txt": {0o600, "file2 contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 			wantIncludedFromDest: []string{"subdir/file2.txt"},
 		},
@@ -478,16 +478,16 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"spec.yaml": {0o600, "spec contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
-			destDirContents: map[string]modeAndContents{
-				"file1.txt":        {0o600, "file1 contents"},
-				"subdir/file2.txt": {0o600, "file2 contents"},
+			destDirContents: map[string]common.ModeAndContents{
+				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"file1.txt":        {0o600, "file1 contents"},
-				"subdir/file2.txt": {0o600, "file2 contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 			wantIncludedFromDest: []string{"file1.txt", "subdir/file2.txt"},
 		},
@@ -513,12 +513,12 @@ func TestActionInclude(t *testing.T) {
 			scratchDir := filepath.Join(tempDir, scratchDirNamePart)
 			destDir := filepath.Join(tempDir, "dest")
 
-			if err := writeAll(templateDir, tc.templateContents); err != nil {
+			if err := common.WriteAll(templateDir, tc.templateContents); err != nil {
 				t.Fatal(err)
 			}
 
 			// For testing "include from destination"
-			if err := writeAll(destDir, tc.destDirContents); err != nil {
+			if err := common.WriteAll(destDir, tc.destDirContents); err != nil {
 				t.Fatal(err)
 			}
 

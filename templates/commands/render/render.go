@@ -253,7 +253,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 	tempDirs = append(tempDirs, scratchDir)
 	logger := logging.FromContext(ctx)
-	logger.InfoContext(ctx, "created temporary scratch directory", "path", scratchDir)
+	logger.DebugContext(ctx, "created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
 		flags:       &c.flags,
@@ -300,7 +300,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 			}
 			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
-			logger.InfoContext(ctx, "created backup directory", "path", backupDir)
+			logger.DebugContext(ctx, "created backup directory", "path", backupDir)
 			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
 
@@ -527,7 +527,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			if err != nil {
 				return err
 			}
-			logger.InfoContext(ctx, contents)
+			logger.DebugContext(ctx, contents)
 		}
 	}
 	return nil
@@ -685,9 +685,9 @@ func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, erro
 		return templateDir, fmt.Errorf("go-getter.Get(): %w", err)
 	}
 	logger := logging.FromContext(ctx)
-	logger.InfoContext(ctx, "created temporary template directory",
+	logger.DebugContext(ctx, "created temporary template directory",
 		"path", templateDir)
-	logger.InfoContext(ctx, "copied source template temporary directory",
+	logger.DebugContext(ctx, "copied source template temporary directory",
 		"source", c.flags.Source,
 		"destination", templateDir)
 	return templateDir, nil
@@ -697,11 +697,11 @@ func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, erro
 func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
-		logger.InfoContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
+		logger.DebugContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
 			"paths", tempDirs)
 		return nil
 	}
-	logger.InfoContext(ctx, "removing all temporary directories (skip this with --keep-temp-dirs)")
+	logger.DebugContext(ctx, "removing all temporary directories (skip this with --keep-temp-dirs)")
 
 	var merr error
 	for _, p := range tempDirs {
