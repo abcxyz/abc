@@ -83,7 +83,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return p.Pos.Errorf("include path doesn't exist: %q", p.Val)
+				return p.Pos.Errorf("include path matched no files: %q", p.Val)
 			}
 			return fmt.Errorf("Stat(): %w", err)
 		}

@@ -144,42 +144,23 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 // processPaths processes a list of input String paths for go templating, relative paths,
 // OS-specific slashes, and (soon) file globbing.
 func processPaths(paths []model.String, scope *common.Scope) ([]model.String, error) {
-	globbedPaths := map[string]*model.ConfigPos{}
+	out := make([]model.String, 0, len(paths))
+
 	for _, p := range paths {
-		fmt.Println("path:", p.Val)
 		goParsed, err := parseAndExecuteGoTmpl(p.Pos, p.Val, scope)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("goParsed:", goParsed)
 		slashParsed := filepath.FromSlash(goParsed)
-		fmt.Println("slashParsed:", slashParsed)
 		relParsed, err := safeRelPath(p.Pos, slashParsed)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("relParsed:", relParsed)
-
-		globParsed, err := filepath.Glob(relParsed)
-		if err != nil {
-			return nil, err
-		}
-		for _, gp := range globParsed {
-			fmt.Println("globbed:", gp)
-			globbedPaths[gp] = p.Pos
-		}
-	}
-
-	fmt.Println("out:")
-	out := make([]model.String, 0, len(paths))
-	for val, pos := range globbedPaths {
-		fmt.Println(val, ":", pos)
 		out = append(out, model.String{
-			Val: val,
-			Pos: pos,
+			Val: relParsed,
+			Pos: p.Pos,
 		})
 	}
-	fmt.Println("-----")
 
 	return out, nil
 }
