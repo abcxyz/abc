@@ -162,7 +162,7 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"myfile.txt": {Mode: 0o600, Contents: "file contents"},
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 			wantErr: `include path doesn't exist: "nonexistent"`,
 		},
