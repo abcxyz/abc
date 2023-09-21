@@ -144,23 +144,42 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 // processPaths processes a list of input String paths for go templating, relative paths,
 // OS-specific slashes, and (soon) file globbing.
 func processPaths(paths []model.String, scope *common.Scope) ([]model.String, error) {
-	out := make([]model.String, 0, len(paths))
-
+	globbedPaths := map[string]*model.ConfigPos{}
 	for _, p := range paths {
+		fmt.Println("path:", p.Val)
 		goParsed, err := parseAndExecuteGoTmpl(p.Pos, p.Val, scope)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println("goParsed:", goParsed)
 		slashParsed := filepath.FromSlash(goParsed)
+		fmt.Println("slashParsed:", slashParsed)
 		relParsed, err := safeRelPath(p.Pos, slashParsed)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println("relParsed:", relParsed)
+
+		globParsed, err := filepath.Glob(relParsed)
+		if err != nil {
+			return nil, err
+		}
+		for _, gp := range globParsed {
+			fmt.Println("globbed:", gp)
+			globbedPaths[gp] = p.Pos
+		}
+	}
+
+	fmt.Println("out:")
+	out := make([]model.String, 0, len(paths))
+	for val, pos := range globbedPaths {
+		fmt.Println(val, ":", pos)
 		out = append(out, model.String{
-			Val: relParsed,
-			Pos: p.Pos,
+			Val: val,
+			Pos: pos,
 		})
 	}
+	fmt.Println("-----")
 
 	return out, nil
 }
@@ -194,18 +213,6 @@ func parseGoTmpl(tpl string) (*template.Template, error) {
 }
 
 var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)
-
-// PR 1: remove strip/add prefix
-
-// PR 2: then filepath.FromSlash in wrapper monofunction
-// PR 3: try adding centralized globbing here
-
-// monofunction for preprocessing paths:
-/*
-	1. parse go templates
-	2. convert filepath slashes
-	3. convert paths to file globs
-*/
 
 // pos may be nil if the template is not coming from the spec file and therefore
 // there's no reason to print out spec file location in an error message. If
