@@ -60,7 +60,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	if _, err := ParseTestCases(c.flags.Location, c.flags.TestName); err != nil {
+	if _, err := parseTestCases(c.flags.Location, c.flags.TestName); err != nil {
 		return fmt.Errorf("failed to parse golden test: %w", err)
 	}
 

@@ -89,7 +89,7 @@ func TestParseTestCases(t *testing.T) {
 				"testdata/golden/hello.txt": invalidYaml,
 			},
 			want:    nil,
-			wantErr: "unexpeted file entry under golden test directory",
+			wantErr: "unexpected file entry under golden test directory",
 		},
 		{
 			name:     "test_does_not_have_config",
@@ -132,7 +132,7 @@ func TestParseTestCases(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			got, err := ParseTestCases(tempDir, tc.testName)
+			got, err := parseTestCases(tempDir, tc.testName)
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)

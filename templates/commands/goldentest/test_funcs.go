@@ -26,6 +26,7 @@ import (
 // TestCase describes a template golden test case.
 type TestCase struct {
 	// Name of the test case.
+	// Example: nextjs_with_auth0_idp
 	TestName string
 
 	// Config of the test case.
@@ -42,8 +43,8 @@ const (
 	configName = "test.yaml"
 )
 
-// ParseTestCases returns a list of test cases to record or verify.
-func ParseTestCases(location, testName string) ([]*TestCase, error) {
+// parseTestCases returns a list of test cases to record or verify.
+func parseTestCases(location, testName string) ([]*TestCase, error) {
 	if _, err := os.Stat(location); err != nil {
 		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)
 	}
@@ -72,7 +73,7 @@ func ParseTestCases(location, testName string) ([]*TestCase, error) {
 	testCases := []*TestCase{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
-			return nil, fmt.Errorf("unexpeted file entry under golden test directory: %s", entry.Name())
+			return nil, fmt.Errorf("unexpected file entry under golden test directory: %s", entry.Name())
 		}
 
 		testConfig := filepath.Join(testDir, entry.Name(), configName)
