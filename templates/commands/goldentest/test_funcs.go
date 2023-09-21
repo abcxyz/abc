@@ -26,7 +26,7 @@ import (
 // TestCase describes a template golden test case.
 type TestCase struct {
 	// Name of the test case.
-	// Example: nextjs_with_auth0_idp
+	// Example: nextjs_with_auth0_idp.
 	TestName string
 
 	// Config of the test case.
