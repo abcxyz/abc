@@ -67,14 +67,14 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"hello.txt":  {0o600, "hello file contents"},
-				"hello1.txt": {0o600, "hello 1 file contents"},
-				"hello2.txt": {0o600, "hello 2 file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"hello.txt":  {Mode: 0o600, Contents: "hello file contents"},
+				"hello1.txt": {Mode: 0o600, Contents: "hello 1 file contents"},
+				"hello2.txt": {Mode: 0o600, Contents: "hello 2 file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"hello1.txt": {0o600, "hello 1 file contents"},
-				"hello2.txt": {0o600, "hello 2 file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"hello1.txt": {Mode: 0o600, Contents: "hello 1 file contents"},
+				"hello2.txt": {Mode: 0o600, Contents: "hello 2 file contents"},
 			},
 		},
 		{
@@ -86,17 +86,17 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"hello_its_me.txt":       {0o600, "hello its me file contents"},
-				"hellooo.txt":            {0o600, "hellooo file contents"},
-				"hello-test.txt":         {0o600, "hello-test file contents"},
-				"hey.txt":                {0o600, "hey file contents"},
-				"dont-include-hello.txt": {0o600, "dont include hello file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"hello_its_me.txt":       {Mode: 0o600, Contents: "hello its me file contents"},
+				"hellooo.txt":            {Mode: 0o600, Contents: "hellooo file contents"},
+				"hello-test.txt":         {Mode: 0o600, Contents: "hello-test file contents"},
+				"hey.txt":                {Mode: 0o600, Contents: "hey file contents"},
+				"dont-include-hello.txt": {Mode: 0o600, Contents: "dont include hello file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"hello_its_me.txt": {0o600, "hello its me file contents"},
-				"hellooo.txt":      {0o600, "hellooo file contents"},
-				"hello-test.txt":   {0o600, "hello-test file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"hello_its_me.txt": {Mode: 0o600, Contents: "hello its me file contents"},
+				"hellooo.txt":      {Mode: 0o600, Contents: "hellooo file contents"},
+				"hello-test.txt":   {Mode: 0o600, Contents: "hello-test file contents"},
 			},
 		},
 		{
@@ -108,16 +108,16 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"a/foo.txt":   {0o600, "a foo file contents"},
-				"b/foo.txt":   {0o600, "b foo file contents"},
-				"b/bar.txt":   {0o600, "b bar file contents"},
-				"c/d/foo.txt": {0o600, "c/d foo file contents"},
-				"foo.txt":     {0o600, "foo file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"a/foo.txt":   {Mode: 0o600, Contents: "a foo file contents"},
+				"b/foo.txt":   {Mode: 0o600, Contents: "b foo file contents"},
+				"b/bar.txt":   {Mode: 0o600, Contents: "b bar file contents"},
+				"c/d/foo.txt": {Mode: 0o600, Contents: "c/d foo file contents"},
+				"foo.txt":     {Mode: 0o600, Contents: "foo file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"a/foo.txt": {0o600, "a foo file contents"},
-				"b/foo.txt": {0o600, "b foo file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"a/foo.txt": {Mode: 0o600, Contents: "a foo file contents"},
+				"b/foo.txt": {Mode: 0o600, Contents: "b foo file contents"},
 			},
 		},
 		{
@@ -129,15 +129,15 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			templateContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
-				"hello.txt":  {0o600, "hello file contents"},
-				"hi.html":    {0o600, "hi file contents"},
-				"README.md":  {0o600, "readme file contents"},
+			templateContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
+				"hello.txt":  {Mode: 0o600, Contents: "hello file contents"},
+				"hi.html":    {Mode: 0o600, Contents: "hi file contents"},
+				"README.md":  {Mode: 0o600, Contents: "readme file contents"},
 			},
-			wantScratchContents: map[string]modeAndContents{
-				"myfile.txt": {0o600, "my file contents"},
-				"hello.txt":  {0o600, "hello file contents"},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
+				"hello.txt":  {Mode: 0o600, Contents: "hello file contents"},
 			},
 		},
 		{
