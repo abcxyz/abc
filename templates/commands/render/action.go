@@ -141,8 +141,33 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 	return compiled, merr
 }
 
-// processPaths processes a list of input String paths for go templating, relative paths,
-// OS-specific slashes, and (soon) file globbing.
+// processGlobs processes a list of input String paths for simple file globbing,
+// after processPaths.
+func processGlobs(paths []model.String, fromDir string) ([]model.String, error) {
+	globbedPaths := map[string]*model.ConfigPos{}
+	for _, p := range paths {
+		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
+		if err != nil {
+			return nil, err
+		}
+		for _, gp := range globPaths {
+			globbedPaths[gp] = p.Pos
+		}
+	}
+
+	out := make([]model.String, 0, len(globbedPaths))
+	for val, pos := range globbedPaths {
+		out = append(out, model.String{
+			Val: val,
+			Pos: pos,
+		})
+	}
+
+	return out, nil
+}
+
+// processPaths processes a list of input String paths for go templating,
+// relative paths, and OS-specific slashes.
 func processPaths(paths []model.String, scope *common.Scope) ([]model.String, error) {
 	out := make([]model.String, 0, len(paths))
 
