@@ -36,33 +36,21 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
-	// By default, we copy from the template directory. We also support
-	// grabbing files from the destination directory, so we can modify files
-	// that already exist in the destination.
-	fromDir := sp.templateDir
-	if inc.From.Val == "destination" {
-		fromDir = sp.flags.Dest
-	}
-
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
 		return err
 	}
-	globbedSkipPaths, err := processGlobs(skipPaths, fromDir)
-	if err != nil {
-		return err
-	}
 	skip := make(map[string]struct{}, len(inc.Skip))
-	for _, s := range globbedSkipPaths {
+	for _, s := range skipPaths {
 		skip[s.Val] = struct{}{}
 	}
 
-	asPaths, err := processPaths(inc.As, sp.scope)
+	incPaths, err := processPaths(inc.Paths, sp.scope)
 	if err != nil {
 		return err
 	}
 
-	incPaths, err := processPaths(inc.Paths, sp.scope)
+	asPaths, err := processPaths(inc.As, sp.scope)
 	if err != nil {
 		return err
 	}
@@ -75,6 +63,13 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			as = asPaths[i].Val
 		}
 
+		// By default, we copy from the template directory. We also support
+		// grabbing files from the destination directory, so we can modify files
+		// that already exist in the destination.
+		fromDir := sp.templateDir
+		if inc.From.Val == "destination" {
+			fromDir = sp.flags.Dest
+		}
 		absSrc := filepath.Join(fromDir, p.Val)
 		absDst := filepath.Join(sp.scratchDir, as)
 
@@ -88,7 +83,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return p.Pos.Errorf("include path matched no files: %q", p.Val)
+				return p.Pos.Errorf("include path doesn't exist: %q", p.Val)
 			}
 			return fmt.Errorf("Stat(): %w", err)
 		}
