@@ -141,8 +141,8 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 	return compiled, merr
 }
 
-// processGlobs processes a list of input String paths for simple file globbing,
-// after processPaths.
+// processGlobs processes a list of input String paths for simple file globbing.
+// Used after processPaths where applicable.
 func processGlobs(paths []model.String, fromDir string) ([]model.String, error) {
 	globbedPaths := map[string]*model.ConfigPos{}
 	for _, p := range paths {
