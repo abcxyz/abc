@@ -59,88 +59,6 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name: "file_name_wildcard_globbing",
-			include: &spec.Include{
-				Paths: []*spec.IncludePath{
-					{
-						Paths: modelStrings([]string{"hello?.txt"}),
-					},
-				},
-			},
-			templateContents: map[string]common.ModeAndContents{
-				"hello.txt":  {Mode: 0o600, Contents: "hello file contents"},
-				"hello1.txt": {Mode: 0o600, Contents: "hello 1 file contents"},
-				"hello2.txt": {Mode: 0o600, Contents: "hello 2 file contents"},
-			},
-			wantScratchContents: map[string]common.ModeAndContents{
-				"hello1.txt": {Mode: 0o600, Contents: "hello 1 file contents"},
-				"hello2.txt": {Mode: 0o600, Contents: "hello 2 file contents"},
-			},
-		},
-		{
-			name: "file_name_star_globbing",
-			include: &spec.Include{
-				Paths: []*spec.IncludePath{
-					{
-						Paths: modelStrings([]string{"hello*.txt"}),
-					},
-				},
-			},
-			templateContents: map[string]common.ModeAndContents{
-				"hello_its_me.txt":       {Mode: 0o600, Contents: "hello its me file contents"},
-				"hellooo.txt":            {Mode: 0o600, Contents: "hellooo file contents"},
-				"hello-test.txt":         {Mode: 0o600, Contents: "hello-test file contents"},
-				"hey.txt":                {Mode: 0o600, Contents: "hey file contents"},
-				"dont-include-hello.txt": {Mode: 0o600, Contents: "dont include hello file contents"},
-			},
-			wantScratchContents: map[string]common.ModeAndContents{
-				"hello_its_me.txt": {Mode: 0o600, Contents: "hello its me file contents"},
-				"hellooo.txt":      {Mode: 0o600, Contents: "hellooo file contents"},
-				"hello-test.txt":   {Mode: 0o600, Contents: "hello-test file contents"},
-			},
-		},
-		{
-			name: "folder_star_globbing",
-			include: &spec.Include{
-				Paths: []*spec.IncludePath{
-					{
-						Paths: modelStrings([]string{"*/foo.txt"}),
-					},
-				},
-			},
-			templateContents: map[string]common.ModeAndContents{
-				"a/foo.txt":   {Mode: 0o600, Contents: "a foo file contents"},
-				"b/foo.txt":   {Mode: 0o600, Contents: "b foo file contents"},
-				"b/bar.txt":   {Mode: 0o600, Contents: "b bar file contents"},
-				"c/d/foo.txt": {Mode: 0o600, Contents: "c/d foo file contents"},
-				"foo.txt":     {Mode: 0o600, Contents: "foo file contents"},
-			},
-			wantScratchContents: map[string]common.ModeAndContents{
-				"a/foo.txt": {Mode: 0o600, Contents: "a foo file contents"},
-				"b/foo.txt": {Mode: 0o600, Contents: "b foo file contents"},
-			},
-		},
-		{
-			name: "file_extension_globbing",
-			include: &spec.Include{
-				Paths: []*spec.IncludePath{
-					{
-						Paths: modelStrings([]string{"*.txt"}),
-					},
-				},
-			},
-			templateContents: map[string]common.ModeAndContents{
-				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
-				"hello.txt":  {Mode: 0o600, Contents: "hello file contents"},
-				"hi.html":    {Mode: 0o600, Contents: "hi file contents"},
-				"README.md":  {Mode: 0o600, Contents: "readme file contents"},
-			},
-			wantScratchContents: map[string]common.ModeAndContents{
-				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
-				"hello.txt":  {Mode: 0o600, Contents: "hello file contents"},
-			},
-		},
-		{
 			name: "absolute_path_treated_as_relative",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
@@ -204,7 +122,7 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name: "including_long_path_multiple_times_should_succeed",
+			name: "including_multiple_times_should_succeed",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
@@ -246,7 +164,7 @@ func TestActionInclude(t *testing.T) {
 			templateContents: map[string]common.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantErr: `include path matched no files: "nonexistent"`,
+			wantErr: `include path doesn't exist: "nonexistent"`,
 		},
 		{
 			// Note: we don't exhaustively test every possible FS error here. That's
