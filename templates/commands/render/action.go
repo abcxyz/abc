@@ -55,10 +55,6 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	rfs := sp.fs
 	scratchDir := sp.scratchDir
 
-	// raw rel
-	// paths rel
-	// globbed (abs -> rel)
-	// walkFrom abs
 	paths, err := processPaths(rawPaths, sp.scope)
 	if err != nil {
 		return err
@@ -68,19 +64,13 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 		return err
 	}
 
-	for _, relPathPos := range globbedPaths {
-		pos := relPathPos.Pos
-		relPath := relPathPos.Val
-
-		walkFrom := filepath.Join(scratchDir, relPath)
-		if _, err := rfs.Stat(walkFrom); err != nil {
-			if os.IsNotExist(err) {
-				return pos.Errorf(`path %q doesn't exist in the scratch directory, did you forget to "include" it first?"`, relPath)
-			}
+	for _, absPath := range globbedPaths {
+		pos := absPath.Pos
+		if _, err := rfs.Stat(absPath.Val); err != nil {
 			return pos.Errorf("Stat(): %w", err)
 		}
 
-		err := filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.
 				return pos.Errorf("%w", err)
@@ -99,7 +89,6 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 				return pos.Errorf("Readfile(): %w", err)
 			}
 
-			// bug here @?
 			relToScratchDir, err := filepath.Rel(scratchDir, path)
 			if err != nil {
 				return pos.Errorf("Rel(): %w", err)
@@ -172,13 +161,8 @@ func processGlobs(paths []model.String, fromDir string) ([]model.String, error) 
 		}
 		for _, globPath := range globPaths {
 			if _, ok := seenPaths[globPath]; !ok {
-				relPath, err := filepath.Rel(fromDir, globPath)
-				if err != nil {
-					return nil, err
-				}
-
 				out = append(out, model.String{
-					Val: relPath,
+					Val: globPath,
 					Pos: p.Pos,
 				})
 				seenPaths[globPath] = struct{}{}
