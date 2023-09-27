@@ -66,10 +66,6 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 
 	for _, absPath := range globbedPaths {
 		pos := absPath.Pos
-		if _, err := rfs.Stat(absPath.Val); err != nil {
-			return pos.Errorf("Stat(): %w", err)
-		}
-
 		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.

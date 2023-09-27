@@ -56,7 +56,6 @@ func TestWalkAndModify(t *testing.T) {
 
 		// fakeable errors
 		readFileErr  error
-		statErr      error
 		writeFileErr error
 	}{
 		{
@@ -189,15 +188,6 @@ func TestWalkAndModify(t *testing.T) {
 			writeFileErr:    fmt.Errorf("WriteFile should not have been called"),
 		},
 		{
-			name:            "stat_error_should_be_returned",
-			visitor:         fooToBarVisitor,
-			relPaths:        []string{"."},
-			initialContents: map[string]string{"my_file.txt": "foo"},
-			want:            map[string]string{"my_file.txt": "foo"},
-			statErr:         fmt.Errorf("fake error for testing"),
-			wantErr:         "fake error for testing",
-		},
-		{
 			name:            "readfile_error_should_be_returned",
 			visitor:         fooToBarVisitor,
 			relPaths:        []string{"."},
@@ -235,7 +225,6 @@ func TestWalkAndModify(t *testing.T) {
 					renderFS: &realFS{},
 
 					readFileErr:  tc.readFileErr,
-					statErr:      tc.statErr,
 					writeFileErr: tc.writeFileErr,
 				},
 				scratchDir: scratchDir,
