@@ -47,17 +47,31 @@ type walkAndModifyVisitor func([]byte) ([]byte, error)
 //
 // If the visitor returns modified file contents for a given file, that file
 // will be overwritten with the new contents.
-func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPaths []model.String, v walkAndModifyVisitor) error {
+//
+// rawPaths is expected to have been cleaned already from processPaths.
+func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String, v walkAndModifyVisitor) error {
 	logger := logging.FromContext(ctx).With("logger", "walkAndModify")
 	seen := map[string]struct{}{}
+	rfs := sp.fs
+	scratchDir := sp.scratchDir
 
-	for _, relPathPos := range relPaths {
+	// raw rel
+	// paths rel
+	// globbed (abs -> rel)
+	// walkFrom abs
+	paths, err := processPaths(rawPaths, sp.scope)
+	if err != nil {
+		return err
+	}
+	globbedPaths, err := processGlobs(paths, sp.scratchDir)
+	if err != nil {
+		return err
+	}
+
+	for _, relPathPos := range globbedPaths {
 		pos := relPathPos.Pos
 		relPath := relPathPos.Val
-		relPath, err := safeRelPath(pos, relPath)
-		if err != nil {
-			return err
-		}
+
 		walkFrom := filepath.Join(scratchDir, relPath)
 		if _, err := rfs.Stat(walkFrom); err != nil {
 			if os.IsNotExist(err) {
@@ -66,7 +80,7 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 			return pos.Errorf("Stat(): %w", err)
 		}
 
-		err = filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.
 				return pos.Errorf("%w", err)
@@ -85,6 +99,7 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 				return pos.Errorf("Readfile(): %w", err)
 			}
 
+			// bug here @?
 			relToScratchDir, err := filepath.Rel(scratchDir, path)
 			if err != nil {
 				return pos.Errorf("Rel(): %w", err)
@@ -144,30 +159,38 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 // processGlobs processes a list of input String paths for simple file globbing.
 // Used after processPaths where applicable.
 func processGlobs(paths []model.String, fromDir string) ([]model.String, error) {
-	globbedPaths := map[string]*model.ConfigPos{}
+	seenPaths := map[string]struct{}{}
+	out := make([]model.String, 0, len(paths))
+
 	for _, p := range paths {
 		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
 		if err != nil {
 			return nil, err
 		}
-		for _, gp := range globPaths {
-			globbedPaths[gp] = p.Pos
+		if len(globPaths) == 0 {
+			return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
 		}
-	}
+		for _, globPath := range globPaths {
+			if _, ok := seenPaths[globPath]; !ok {
+				relPath, err := filepath.Rel(fromDir, globPath)
+				if err != nil {
+					return nil, err
+				}
 
-	out := make([]model.String, 0, len(globbedPaths))
-	for val, pos := range globbedPaths {
-		out = append(out, model.String{
-			Val: val,
-			Pos: pos,
-		})
+				out = append(out, model.String{
+					Val: relPath,
+					Pos: p.Pos,
+				})
+				seenPaths[globPath] = struct{}{}
+			}
+		}
 	}
 
 	return out, nil
 }
 
-// processPaths processes a list of input String paths for go templating,
-// relative paths, and OS-specific slashes.
+// processPaths processes a list of input String paths for go templating, relative paths,
+// and OS-specific slashes.
 func processPaths(paths []model.String, scope *common.Scope) ([]model.String, error) {
 	out := make([]model.String, 0, len(paths))
 

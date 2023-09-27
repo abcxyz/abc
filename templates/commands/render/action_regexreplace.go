@@ -68,12 +68,7 @@ func actionRegexReplace(ctx context.Context, rr *spec.RegexReplace, sp *stepPara
 		}
 	}
 
-	paths, err := processPaths(rr.Paths, sp.scope)
-	if err != nil {
-		return err
-	}
-
-	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(b []byte) ([]byte, error) {
+	if err := walkAndModify(ctx, sp, rr.Paths, func(b []byte) ([]byte, error) {
 		for i, rr := range rr.Replacements {
 			cr := compiledRegexes[i]
 			allMatches := cr.FindAllSubmatchIndex(b, -1)

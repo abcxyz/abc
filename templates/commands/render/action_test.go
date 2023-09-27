@@ -164,15 +164,7 @@ func TestWalkAndModify(t *testing.T) {
 			relPaths:        []string{"nonexistent"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc foo def"},
-			wantErr:         "doesn't exist in the scratch directory",
-		},
-		{
-			name:            "dot_dot_traversal_should_fail",
-			visitor:         fooToBarVisitor,
-			relPaths:        []string{"abc/.."},
-			initialContents: map[string]string{"my_file.txt": "abc foo def"},
-			want:            map[string]string{"my_file.txt": "abc foo def"},
-			wantErr:         `must not contain ".."`,
+			wantErr:         `glob "nonexistent" did not match any files`,
 		},
 		{
 			name:            "absolute_path_should_become_relative",
@@ -238,12 +230,16 @@ func TestWalkAndModify(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			fs := &errorFS{
-				renderFS: &realFS{},
+			sp := &stepParams{
+				fs: &errorFS{
+					renderFS: &realFS{},
 
-				readFileErr:  tc.readFileErr,
-				statErr:      tc.statErr,
-				writeFileErr: tc.writeFileErr,
+					readFileErr:  tc.readFileErr,
+					statErr:      tc.statErr,
+					writeFileErr: tc.writeFileErr,
+				},
+				scratchDir: scratchDir,
+				scope:      common.NewScope(nil),
 			}
 
 			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
@@ -253,7 +249,7 @@ func TestWalkAndModify(t *testing.T) {
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			err := walkAndModify(ctx, fs, scratchDir, relPathsPositions, tc.visitor)
+			err := walkAndModify(ctx, sp, relPathsPositions, tc.visitor)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

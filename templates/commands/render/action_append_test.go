@@ -116,7 +116,7 @@ func TestActionAppend(t *testing.T) {
 			with:            "foo",
 			initialContents: map[string]string{},
 			want:            map[string]string{},
-			wantErr:         "doesn't exist in the scratch directory",
+			wantErr:         `glob "my_file.txt" did not match any files`,
 		},
 		{
 			name:            "templated_name_and_text_should_succeed",
