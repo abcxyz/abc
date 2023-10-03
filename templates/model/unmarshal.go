@@ -102,3 +102,17 @@ func DecodeAndValidate(r io.Reader, filename string, outPtr Validator) error {
 	}
 	return nil
 }
+
+// ValidatorUpgrader is the interface implemented by every kind of YAML struct
+// (templates, golden tests, manifests, etc).
+type ValidatorUpgrader interface {
+	Validator
+
+	// Upgrade converts an old version of a YAML struct into newer version for
+	// example, from api_version v1 to v2. If the struct is already the most
+	// recent version, it returns nil. An error means that the model cannot be
+	// converted because either (1) something weird happened or (2) the YAML
+	// struct uses features in an old version that are not supported in newer
+	// versions.
+	Upgrade() (ValidatorUpgrader, error)
+}

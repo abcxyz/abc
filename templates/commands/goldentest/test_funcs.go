@@ -24,7 +24,8 @@ import (
 	"syscall"
 
 	"github.com/abcxyz/abc/templates/commands/render"
-	"github.com/abcxyz/abc/templates/model/goldentest"
+	"github.com/abcxyz/abc/templates/model/decode"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 )
 
 // TestCase describes a template golden test case.
@@ -103,11 +104,16 @@ func parseTestConfig(path string) (*goldentest.Test, error) {
 	}
 	defer f.Close()
 
-	test, err := goldentest.DecodeTest(f)
+	testI, err := decode.DecodeValidateUpgrade(f, path, decode.KindGoldenTest)
 	if err != nil {
 		return nil, fmt.Errorf("error reading golden test config file: %w", err)
 	}
-	return test, nil
+	out, ok := testI.(*goldentest.Test)
+	if !ok {
+		return nil, fmt.Errorf("internal error: expected golden test config to be of type *goldentest.Test but got %T", testI)
+	}
+
+	return out, nil
 }
 
 // clearTestDir clears a test directory and only keeps the test config file.

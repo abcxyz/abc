@@ -16,33 +16,16 @@ package manifest
 
 import (
 	"errors"
-	"io"
 
 	"github.com/abcxyz/abc/templates/model"
 	"gopkg.in/yaml.v3"
 )
-
-// Decode unmarshals the YAML Manifest from r. This function exists so we can
-// validate the Manifest model before providing it to the caller; we don't want the
-// caller to forget, and thereby introduce bugs.
-//
-// If the Manifest parses successfully but then fails validation, the manifest will be
-// returned along with the validation error.
-func Decode(r io.Reader) (*Manifest, error) {
-	out := &Manifest{}
-	if err := model.DecodeAndValidate(r, "manifest", out); err != nil {
-		return out, err //nolint:wrapcheck
-	}
-	return out, nil
-}
 
 // Manifest represents the contents of a manifest file. A manifest file is the
 // set of all information that is needed to cleanly upgrade to a new template
 // version in the future.
 type Manifest struct {
 	Pos model.ConfigPos `yaml:"-"`
-
-	APIVersion model.String `yaml:"api_version"`
 
 	// The template source address as passed to `abc templates render`.
 	TemplateLocation model.String `yaml:"template_location"`
@@ -61,7 +44,7 @@ type Manifest struct {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
-	return model.UnmarshalPlain(n, m, &m.Pos) //nolint:wrapcheck
+	return model.UnmarshalPlain(n, m, &m.Pos, "api_version", "apiVersion", "kind") //nolint:wrapcheck
 }
 
 // Validate() implements model.Validator.
@@ -69,7 +52,6 @@ func (m *Manifest) Validate() error {
 	// Inputs and OutputHashes can legally be empty, since a template doesn't
 	// necessarily have these.
 	return errors.Join(
-		model.IsKnownAPIVersion(&m.Pos, m.APIVersion, "api_version"),
 		model.NotZeroModel(&m.Pos, m.TemplateLocation, "template_location"),
 		model.NotZeroModel(&m.Pos, m.TemplateDirhash, "template_dirhash"),
 		model.ValidateEach(m.Inputs),

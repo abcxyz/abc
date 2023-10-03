@@ -33,7 +33,8 @@ import (
 	"time"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model/spec"
+	"github.com/abcxyz/abc/templates/model/decode"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
@@ -181,7 +182,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	spec, err := loadSpecFile(rp.fs, templateDir, specName)
+	spec, err := loadSpecFile(rp.fs, templateDir)
 	if err != nil {
 		return err
 	}
@@ -568,17 +569,22 @@ func executeOneStep(ctx context.Context, step *spec.Step, sp *stepParams) error 
 	}
 }
 
-func loadSpecFile(fs common.FS, templateDir, flagSpec string) (*spec.Spec, error) {
-	specPath := filepath.Join(templateDir, flagSpec)
+func loadSpecFile(fs common.FS, templateDir string) (*spec.Spec, error) {
+	specPath := filepath.Join(templateDir, specName)
 	f, err := fs.Open(specPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
 	}
 	defer f.Close()
 
-	spec, err := spec.Decode(f)
+	specI, err := decode.DecodeValidateUpgrade(f, specName, decode.KindTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("error reading template spec file: %w", err)
+	}
+
+	spec, ok := specI.(*spec.Spec)
+	if !ok {
+		return nil, fmt.Errorf("internal error: spec file did not decode to spec.Spec")
 	}
 
 	return spec, nil

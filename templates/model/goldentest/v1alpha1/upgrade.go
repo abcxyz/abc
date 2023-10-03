@@ -12,32 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package render
+package goldentest
 
-import (
-	"context"
-	"strings"
+import "github.com/abcxyz/abc/templates/model"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-)
-
-func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
-	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.scope)
-	if err != nil {
-		return err
-	}
-
-	if !ap.SkipEnsureNewline.Val {
-		if !strings.HasSuffix(with, "\n") {
-			with = with + "\n"
-		}
-	}
-
-	if err := walkAndModify(ctx, sp, ap.Paths, func(buf []byte) ([]byte, error) {
-		return append(buf, []byte(with)...), nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+func (t *Test) Upgrade() (model.ValidatorUpgrader, error) {
+	return nil, nil // This is the most recent API version
 }

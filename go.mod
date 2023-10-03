@@ -8,6 +8,7 @@ require (
 	github.com/google/cel-go v0.17.1
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-getter/v2 v2.2.1
+	github.com/jinzhu/copier v0.4.0
 	github.com/mattn/go-isatty v0.0.19
 	github.com/posener/complete/v2 v2.1.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63

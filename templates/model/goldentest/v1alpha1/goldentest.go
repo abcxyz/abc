@@ -16,7 +16,6 @@ package goldentest
 
 import (
 	"errors"
-	"io"
 
 	"github.com/abcxyz/abc/templates/model"
 	"gopkg.in/yaml.v3"
@@ -50,28 +49,17 @@ type Test struct {
 	// Pos is the YAML file location where this object started.
 	Pos model.ConfigPos `yaml:"-"`
 
-	APIVersion model.String  `yaml:"api_version"`
-	Inputs     []*InputValue `yaml:"inputs"`
+	Inputs []*InputValue `yaml:"inputs"`
 }
 
 // Validate implements model.Validator.
 func (t *Test) Validate() error {
 	return errors.Join(
-		model.IsKnownAPIVersion(&t.Pos, t.APIVersion, "api_version"),
 		model.ValidateEach(t.Inputs),
 	)
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (t *Test) UnmarshalYAML(n *yaml.Node) error {
-	return model.UnmarshalPlain(n, t, &t.Pos) //nolint:wrapcheck
-}
-
-// DecodeTest unmarshals the YAML Spec from r.
-func DecodeTest(r io.Reader) (*Test, error) {
-	var test Test
-	if err := model.DecodeAndValidate(r, "test", &test); err != nil {
-		return &test, err //nolint:wrapcheck
-	}
-	return &test, nil
+	return model.UnmarshalPlain(n, t, &t.Pos, "api_version", "apiVersion", "kind") //nolint:wrapcheck
 }

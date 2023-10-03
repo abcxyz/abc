@@ -52,7 +52,6 @@ output_hashes:
   - file: 'd/e/f.txt'
     hash: 'h1:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730'`,
 			want: &Manifest{
-				APIVersion:       model.String{Val: "cli.abcxyz.dev/v1alpha1"},
 				TemplateLocation: model.String{Val: "github.com/abcxyz/abc.git//t/rest_server"},
 				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
 				Inputs: []*Input{
@@ -81,7 +80,6 @@ output_hashes:
 			name: "fields_missing",
 			in:   `api_version: "foo"`,
 			wantValidateErr: []string{
-				`at line 1 column 14: field "api_version" value was "foo" but must be one of`,
 				`at line 1 column 1: field "template_location" is required`,
 				`at line 1 column 1: field "template_dirhash" is required`,
 			},
@@ -149,7 +147,6 @@ inputs:
     value: 'my_value_1'
 `,
 			want: &Manifest{
-				APIVersion:       model.String{Val: "cli.abcxyz.dev/v1alpha1"},
 				TemplateLocation: model.String{Val: "github.com/abcxyz/abc.git//t/rest_server"},
 				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
 				Inputs: []*Input{
@@ -170,7 +167,6 @@ output_hashes:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
 			want: &Manifest{
-				APIVersion:       model.String{Val: "cli.abcxyz.dev/v1alpha1"},
 				TemplateLocation: model.String{Val: "github.com/abcxyz/abc.git//t/rest_server"},
 				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
 				OutputHashes: []*OutputHash{

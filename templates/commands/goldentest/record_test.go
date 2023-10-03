@@ -40,7 +40,8 @@ steps:
     params:
       paths: ['.']
 `
-	testYaml := "api_version: 'cli.abcxyz.dev/v1alpha1'"
+	testYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'GoldenTest'`
 
 	cases := []struct {
 		name                  string

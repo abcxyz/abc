@@ -15,13 +15,13 @@
 package goldentest
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"gopkg.in/yaml.v3"
 )
 
 func TestTestUnmarshal(t *testing.T) {
@@ -42,7 +42,6 @@ inputs:
 - name: 'dog_name'
   value: 'iron_dog'`,
 			want: &Test{
-				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
 				Inputs: []*InputValue{
 					{
 						Name:  model.String{Val: "person_name"},
@@ -58,9 +57,7 @@ inputs:
 		{
 			name: "no_inputs_should_succeed",
 			in:   `api_version: 'cli.abcxyz.dev/v1alpha1'`,
-			want: &Test{
-				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-			},
+			want: &Test{},
 		},
 		{
 			name: "missing_field_should_fail",
@@ -76,14 +73,7 @@ inputs:
 - name: 'person_name'
   value: 'iron_man'
   pet: 'iron_dog'`,
-			wantErr: `error parsing test YAML file: at line 5 column 3: unknown field name "pet"; valid choices are [name value]`,
-		},
-		{
-			name: "missing_api_version_should_fail",
-			in: `inputs:
-- name: 'person_name'
-  value: 'iron_man'`,
-			wantErr: `at line 1 column 1: field "api_version" value was "" but must be one of`,
+			wantErr: `at line 5 column 3: unknown field name "pet"; valid choices are [name value]`,
 		},
 	}
 
@@ -91,7 +81,11 @@ inputs:
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := DecodeTest(strings.NewReader(tc.in))
+			got := &Test{}
+			err := yaml.Unmarshal([]byte(tc.in), got)
+			if err == nil {
+				err = got.Validate()
+			}
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)

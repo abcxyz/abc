@@ -12,32 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package render
+package v1alpha1
 
 import (
-	"context"
-	"strings"
+	"fmt"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	"github.com/jinzhu/copier"
 )
 
-func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
-	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.scope)
-	if err != nil {
-		return err
+func (s *Spec) Upgrade() (model.ValidatorUpgrader, error) {
+	out := &v1beta1.Spec{}
+	// The only difference between schema v1alpha1 and v1beta1 is the addition of the "if"
+	// field in the "step" struct. So a straight-across copy is sufficient.
+	if err := copier.Copy(out, s); err != nil {
+		return nil, fmt.Errorf("failed upgrading spec from v1alpha1 to v1beta1: %w", err)
 	}
-
-	if !ap.SkipEnsureNewline.Val {
-		if !strings.HasSuffix(with, "\n") {
-			with = with + "\n"
-		}
-	}
-
-	if err := walkAndModify(ctx, sp, ap.Paths, func(buf []byte) ([]byte, error) {
-		return append(buf, []byte(with)...), nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	return out, nil
 }
