@@ -16,10 +16,13 @@
 package goldentest
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/abcxyz/abc/templates/commands/render"
 	"github.com/abcxyz/abc/templates/model/goldentest"
 )
 
@@ -41,6 +44,9 @@ const (
 	// The golden test config file is always located in the test case root dir and
 	// named test.yaml.
 	configName = "test.yaml"
+
+	// Permission bits: rwx------ .
+	ownerRWXPerms = 0o700
 )
 
 // parseTestCases returns a list of test cases to record or verify.
@@ -104,4 +110,63 @@ func parseTestConfig(path string) (*goldentest.Test, error) {
 		return nil, fmt.Errorf("error reading golden test config file: %w", err)
 	}
 	return test, nil
+}
+
+// getTempDir returns a temporary directory for golden tests usage.
+func getTempDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home dir: %w", err)
+	}
+	tempDir := filepath.Join(
+		homeDir,
+		".abc",
+		"goldentests",
+		fmt.Sprint(time.Now().Unix()))
+
+	if err := os.MkdirAll(tempDir, ownerRWXPerms); err != nil {
+		return "", err //nolint:wrapcheck (will wrap the error in actions)
+	}
+	return tempDir, nil
+}
+
+func clearTestDir(dir string) error {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("failed read test dir: %w", err)
+	}
+
+	for _, file := range files {
+		if file.Name() != configName {
+			filePath := filepath.Join(dir, file.Name())
+			if err := os.RemoveAll(filePath); err != nil {
+				return fmt.Errorf("failed to remove outdated test artifact: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+// renderTestCase executes the "template render" command based upon test config
+func renderTestCase(templateDir, outputDir string, tc *TestCase) error {
+	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName)
+
+	clearTestDir(testDir)
+
+	args := []string{"--dest", testDir, "--force-overwrite"}
+	for _, input := range tc.TestConfig.Inputs {
+		args = append(args, "--input")
+		args = append(args, fmt.Sprintf("%s=%s", input.Name.Val, input.Value.Val))
+	}
+	args = append(args, templateDir)
+
+	r := &render.Command{}
+	// Mute stdout from command runs.
+	r.Pipe()
+
+	ctx := context.Background()
+	if err := r.Run(ctx, args); err != nil {
+		return err
+	}
+	return nil
 }
