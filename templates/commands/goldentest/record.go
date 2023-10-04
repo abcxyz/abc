@@ -75,7 +75,6 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
-
 	var merr error
 	for _, tc := range testCases {
 		merr = errors.Join(merr, renderTestCase(c.flags.Location, tempDir, tc))
@@ -83,11 +82,11 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	if merr != nil {
 		return fmt.Errorf("failed to render golden tests: %w", merr)
 	}
-
 	if err := os.RemoveAll(tempDir); err != nil {
 		return fmt.Errorf("failed to remove temporary directory: %w", err)
 	}
 
+	// Render outputs in template golden test directories.
 	logger := logging.DefaultLogger()
 	for _, tc := range testCases {
 		if err := renderTestCase(c.flags.Location, c.flags.Location, tc); err != nil {

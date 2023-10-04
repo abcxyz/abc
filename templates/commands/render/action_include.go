@@ -80,7 +80,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			// wants the spec file in the template output.
 			// 2. testdata/golden directory, this is reserved for golden test usage.
 			skipNow["spec.yaml"] = struct{}{}
-			skipNow["testdata/golden"] = struct{}{}
+			skipNow[filepath.Join("testdata", "golden")] = struct{}{}
 		}
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
