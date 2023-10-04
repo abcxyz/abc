@@ -1062,7 +1062,8 @@ func TestProcessGlobs(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			gotPaths, err := processGlobs(tc.paths, tempDir)
+			ctx := context.Background()
+			gotPaths, err := processGlobs(ctx, tc.paths, tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

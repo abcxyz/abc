@@ -59,7 +59,7 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	if err != nil {
 		return err
 	}
-	globbedPaths, err := processGlobs(paths, sp.scratchDir)
+	globbedPaths, err := processGlobs(ctx, paths, sp.scratchDir)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,8 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 
 // processGlobs processes a list of input String paths for simple file globbing.
 // Used after processPaths where applicable.
-func processGlobs(paths []model.String, fromDir string) ([]model.String, error) {
+func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]model.String, error) {
+	logger := logging.FromContext(ctx).With("logger", "processGlobs")
 	seenPaths := map[string]struct{}{}
 	out := make([]model.String, 0, len(paths))
 
@@ -161,6 +162,7 @@ func processGlobs(paths []model.String, fromDir string) ([]model.String, error) 
 		if len(globPaths) == 0 {
 			return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
 		}
+		logger.DebugContext(ctx, "glob path expanded:", "glob", p.Val, "matches", globPaths)
 		for _, globPath := range globPaths {
 			if _, ok := seenPaths[globPath]; !ok {
 				out = append(out, model.String{
