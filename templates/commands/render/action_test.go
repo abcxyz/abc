@@ -872,6 +872,14 @@ func TestProcessPaths(t *testing.T) {
 			scope:   common.NewScope(map[string]string{}),
 			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../foo.txt")),
 		},
+		{
+			name: "no_escaping_glob_paths",
+			paths: modelStrings([]string{
+				`file\1.txt`,
+			}),
+			scope:   common.NewScope(map[string]string{}),
+			wantErr: fmt.Sprintf(`escaping glob paths is not permitted: %q`, `file\1.txt`),
+		},
 	}
 
 	for _, tc := range cases {
@@ -1020,13 +1028,6 @@ func TestProcessGlobs(t *testing.T) {
 				filepath.FromSlash("subfolder2/file4.txt"),
 				filepath.FromSlash("subfolder2/file5.txt"),
 			}),
-		},
-		{
-			name: "no_escaping_glob_paths",
-			paths: modelStrings([]string{
-				`file\1.txt`,
-			}),
-			wantErr: fmt.Sprintf(`escaping glob paths is not permitted: %q`, `file\1.txt`),
 		},
 		{
 			name: "no_glob_matches",

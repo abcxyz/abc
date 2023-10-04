@@ -149,12 +149,6 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]
 	out := make([]model.String, 0, len(paths))
 
 	for _, p := range paths {
-		// on Windows, escaping is disabled. Therefore, to keep glob parsing
-		// behavior consistent across different OSes, escaping is not permitted.
-		if strings.Contains(p.Val, `\`) {
-			return nil, p.Pos.Errorf(`escaping glob paths is not permitted: %q`, p.Val)
-		}
-
 		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
 		if err != nil {
 			return nil, p.Pos.Errorf("file globbing error: %w", err)
@@ -187,6 +181,15 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 		if err != nil {
 			return nil, err
 		}
+
+		// on Windows, escaping is disabled in glob parsing. Therefore, to keep
+		// glob parsing behavior consistent across different OSes, escaping is
+		// not permitted. This is checked in processPaths because FromSlash converts
+		// separators to backslashes for Windows.
+		if strings.Contains(p.Val, `\`) {
+			return nil, p.Pos.Errorf(`escaping glob paths is not permitted: %q`, p.Val)
+		}
+
 		slashParsed := filepath.FromSlash(goParsed)
 		relParsed, err := safeRelPath(p.Pos, slashParsed)
 		if err != nil {
