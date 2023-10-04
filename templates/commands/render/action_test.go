@@ -878,7 +878,7 @@ func TestProcessPaths(t *testing.T) {
 				`file\1.txt`,
 			}),
 			scope:   common.NewScope(map[string]string{}),
-			wantErr: fmt.Sprintf(`escaping glob paths is not permitted: %q`, `file\1.txt`),
+			wantErr: fmt.Sprintf(`backslashes in glob paths are not permitted: %q`, `file\1.txt`),
 		},
 	}
 
