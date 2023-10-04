@@ -57,9 +57,9 @@ steps:
 				"testdata/golden/test/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml": testYaml,
-				"test/a.txt":     "file A content",
-				"test/b.txt":     "file B content",
+				filepath.Join("test", "test.yaml"): testYaml,
+				filepath.Join("test", "a.txt"):     "file A content",
+				filepath.Join("test", "b.txt"):     "file B content",
 			},
 		},
 		{
@@ -71,10 +71,10 @@ steps:
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml": testYaml,
-				"test1/a.txt":     "file A content",
-				"test2/test.yaml": testYaml,
-				"test2/a.txt":     "file A content",
+				filepath.Join("test1", "test.yaml"): testYaml,
+				filepath.Join("test1", "a.txt"):     "file A content",
+				filepath.Join("test2", "test.yaml"): testYaml,
+				filepath.Join("test2", "a.txt"):     "file A content",
 			},
 		},
 		{
@@ -86,8 +86,8 @@ steps:
 				"testdata/golden/test/oudated.txt": "oudated file",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml": testYaml,
-				"test/a.txt":     "file A content",
+				filepath.Join("test", "test.yaml"): testYaml,
+				filepath.Join("test", "a.txt"):     "file A content",
 			},
 		},
 		{
@@ -99,8 +99,8 @@ steps:
 				"testdata/golden/test/a.txt":     "old content",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml": testYaml,
-				"test/a.txt":     "new content",
+				filepath.Join("test", "test.yaml"): testYaml,
+				filepath.Join("test", "a.txt"):     "new content",
 			},
 		},
 		{
@@ -113,9 +113,9 @@ steps:
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml": testYaml,
-				"test1/a.txt":     "file A content",
-				"test2/test.yaml": testYaml,
+				filepath.Join("test1", "test.yaml"): testYaml,
+				filepath.Join("test1", "a.txt"):     "file A content",
+				filepath.Join("test2", "test.yaml"): testYaml,
 			},
 		},
 		{
@@ -127,8 +127,8 @@ steps:
 				"testdata/golden/test2/test.yaml": "broken yaml",
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml": "broken yaml",
-				"test2/test.yaml": "broken yaml",
+				filepath.Join("test1", "test.yaml"): "broken yaml",
+				filepath.Join("test2", "test.yaml"): "broken yaml",
 			},
 			wantErr: "failed to parse golden test",
 		},
@@ -158,7 +158,7 @@ steps:
 			}
 
 			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden"))
-			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})

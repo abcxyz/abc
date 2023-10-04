@@ -197,7 +197,7 @@ func TestClearTestDir(t *testing.T) {
 			}
 
 			gotDestContents := common.LoadDirWithoutMode(t, tempDir)
-			if diff := cmp.Diff(gotDestContents, tc.expected, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.expected); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
