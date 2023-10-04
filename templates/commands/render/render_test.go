@@ -575,7 +575,7 @@ steps:
 				return filepath.Join(tempDir, namePart), nil
 			}
 			backupDir := filepath.Join(tempDir, "backups")
-			rfs := &realFS{}
+			rfs := &common.RealFS{}
 			fg := &fakeGetter{
 				err:    tc.getterErr,
 				output: tc.templateContents,
@@ -584,7 +584,7 @@ steps:
 			rp := &runParams{
 				backupDir: backupDir,
 				fs: &errorFS{
-					renderFS:     rfs,
+					AbstractFS:   rfs,
 					removeAllErr: tc.removeAllErr,
 				},
 				getter:       fg,
@@ -1510,9 +1510,9 @@ func loadDirWithoutMode(t *testing.T, dir string) map[string]string {
 	return out
 }
 
-// A renderFS implementation that can inject errors for testing.
+// A AbstractFS implementation that can inject errors for testing.
 type errorFS struct {
-	renderFS
+	common.AbstractFS
 
 	mkdirAllErr  error
 	openErr      error
@@ -1527,49 +1527,49 @@ func (e *errorFS) MkdirAll(name string, mode fs.FileMode) error {
 	if e.mkdirAllErr != nil {
 		return e.mkdirAllErr
 	}
-	return e.renderFS.MkdirAll(name, mode)
+	return e.AbstractFS.MkdirAll(name, mode)
 }
 
 func (e *errorFS) Open(name string) (fs.File, error) {
 	if e.openErr != nil {
 		return nil, e.openErr
 	}
-	return e.renderFS.Open(name)
+	return e.AbstractFS.Open(name)
 }
 
 func (e *errorFS) OpenFile(name string, flag int, mode os.FileMode) (*os.File, error) {
 	if e.openFileErr != nil {
 		return nil, e.openFileErr
 	}
-	return e.renderFS.OpenFile(name, flag, mode)
+	return e.AbstractFS.OpenFile(name, flag, mode)
 }
 
 func (e *errorFS) ReadFile(name string) ([]byte, error) {
 	if e.readFileErr != nil {
 		return nil, e.readFileErr
 	}
-	return e.renderFS.ReadFile(name)
+	return e.AbstractFS.ReadFile(name)
 }
 
 func (e *errorFS) RemoveAll(name string) error {
 	if e.removeAllErr != nil {
 		return e.removeAllErr
 	}
-	return e.renderFS.RemoveAll(name)
+	return e.AbstractFS.RemoveAll(name)
 }
 
 func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
 	if e.statErr != nil {
 		return nil, e.statErr
 	}
-	return e.renderFS.Stat(name)
+	return e.AbstractFS.Stat(name)
 }
 
 func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	if e.writeFileErr != nil {
 		return e.writeFileErr
 	}
-	return e.renderFS.WriteFile(name, data, perm)
+	return e.AbstractFS.WriteFile(name, data, perm)
 }
 
 type fakeGetter struct {

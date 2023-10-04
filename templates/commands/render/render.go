@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -63,7 +62,7 @@ type Command struct {
 	cli.BaseCommand
 	flags RenderFlags
 
-	testFS     renderFS
+	testFS     common.AbstractFS
 	testGetter getterClient
 }
 
@@ -109,7 +108,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 	fSys := c.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
-		fSys = &realFS{}
+		fSys = &common.RealFS{}
 	}
 
 	if err := destOK(fSys, c.flags.Dest); err != nil {
@@ -149,66 +148,15 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	})
 }
 
-// Abstracts filesystem operations.
-//
-// We can't use os.DirFS or fs.StatFS because they lack some methods we need. So
-// we created our own interface.
-type renderFS interface {
-	fs.StatFS
-
-	// These methods correspond to methods in the "os" package of the same name.
-	MkdirAll(string, os.FileMode) error
-	MkdirTemp(string, string) (string, error)
-	OpenFile(string, int, os.FileMode) (*os.File, error)
-	ReadFile(string) ([]byte, error)
-	RemoveAll(string) error
-	WriteFile(string, []byte, os.FileMode) error
-}
-
 // Allows the github.com/hashicorp/go-getter/Client to be faked.
 type getterClient interface {
 	Get(ctx context.Context, req *getter.Request) (*getter.GetResult, error)
 }
 
-// This is the non-test implementation of the filesystem interface.
-type realFS struct{}
-
-func (r *realFS) MkdirAll(name string, perm os.FileMode) error {
-	return os.MkdirAll(name, perm) //nolint:wrapcheck
-}
-
-func (r *realFS) MkdirTemp(dir, pattern string) (string, error) {
-	return os.MkdirTemp(dir, pattern) //nolint:wrapcheck
-}
-
-func (r *realFS) Open(name string) (fs.File, error) {
-	return os.Open(name) //nolint:wrapcheck
-}
-
-func (r *realFS) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
-	return os.OpenFile(name, flag, perm) //nolint:wrapcheck
-}
-
-func (r *realFS) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name) //nolint:wrapcheck
-}
-
-func (r *realFS) RemoveAll(name string) error {
-	return os.RemoveAll(name) //nolint:wrapcheck
-}
-
-func (r *realFS) Stat(name string) (fs.FileInfo, error) {
-	return os.Stat(name) //nolint:wrapcheck
-}
-
-func (r *realFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(name, data, perm) //nolint:wrapcheck
-}
-
 type runParams struct {
 	backupDir string
 	cwd       string
-	fs        renderFS
+	fs        common.AbstractFS
 	getter    getterClient
 	stdout    io.Writer
 
@@ -273,10 +221,10 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	// first do a dry-run to check that the copy is likely to succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
-		visitor := func(relPath string, _ fs.DirEntry) (copyHint, error) {
+		visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
 			_, ok := includedFromDest[relPath]
-			return copyHint{
-				backupIfExists: true,
+			return common.CopyHint{
+				BackupIfExists: true,
 
 				// Special case: files that were "include"d from the
 				// *destination* directory (rather than the template directory),
@@ -285,14 +233,14 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				// ourself to write back to that file, even when
 				// --force-overwrite=false. When the template uses this feature,
 				// we know that the intent is to modify the files in place.
-				overwrite: ok || c.flags.ForceOverwrite,
+				Overwrite: ok || c.flags.ForceOverwrite,
 			}, nil
 		}
 
 		// We only want to call MkdirTemp once, and use the resulting backup
 		// directory for every step in this rendering operation.
 		var backupDir string
-		backupDirMaker := func(rfs renderFS) (string, error) {
+		backupDirMaker := func(rfs common.AbstractFS) (string, error) {
 			if backupDir != "" {
 				return backupDir, nil
 			}
@@ -304,15 +252,15 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
 
-		params := &copyParams{
-			backupDirMaker: backupDirMaker,
-			dryRun:         dryRun,
-			dstRoot:        c.flags.Dest,
-			srcRoot:        scratchDir,
-			rfs:            rp.fs,
-			visitor:        visitor,
+		params := &common.CopyParams{
+			BackupDirMaker: backupDirMaker,
+			DryRun:         dryRun,
+			DstRoot:        c.flags.Dest,
+			SrcRoot:        scratchDir,
+			Rfs:            rp.fs,
+			Visitor:        visitor,
 		}
-		if err := copyRecursive(ctx, nil, params); err != nil {
+		if err := common.CopyRecursive(ctx, nil, params); err != nil {
 			return fmt.Errorf("failed writing to --dest directory: %w", err)
 		}
 		if dryRun {
@@ -563,7 +511,7 @@ func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *step
 
 type stepParams struct {
 	flags *RenderFlags
-	fs    renderFS
+	fs    common.AbstractFS
 
 	// Scope contains all variable names that are in scope. This includes
 	// user-provided inputs, as well as any programmatically created variables
@@ -622,33 +570,7 @@ func executeOneStep(ctx context.Context, step *spec.Step, sp *stepParams) error 
 	}
 }
 
-// A fancy wrapper around MkdirAll with better error messages and a dry run
-// mode. In dry run mode, returns an error if the MkdirAll wouldn't succeed
-// (best-effort).
-func mkdirAllChecked(pos *model.ConfigPos, rfs renderFS, path string, dryRun bool) error {
-	create := false
-	info, err := rfs.Stat(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return pos.Errorf("Stat(): %w", err)
-		}
-		create = true
-	} else if !info.Mode().IsDir() {
-		return pos.Errorf("cannot overwrite a file with a directory of the same name, %q", path)
-	}
-
-	if dryRun || !create {
-		return nil
-	}
-
-	if err := rfs.MkdirAll(path, ownerRWXPerms); err != nil {
-		return pos.Errorf("MkdirAll(): %w", err)
-	}
-
-	return nil
-}
-
-func loadSpecFile(fs renderFS, templateDir, flagSpec string) (*spec.Spec, error) {
+func loadSpecFile(fs common.AbstractFS, templateDir, flagSpec string) (*spec.Spec, error) {
 	specPath := filepath.Join(templateDir, flagSpec)
 	f, err := fs.Open(specPath)
 	if err != nil {
@@ -694,7 +616,7 @@ func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, erro
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
-func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs renderFS, tempDirs ...string) error {
+func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.AbstractFS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
 		logger.DebugContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
