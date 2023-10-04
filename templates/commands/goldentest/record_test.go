@@ -26,9 +26,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+//nolint:paralleltest // This test cannot be run in parallel
 func TestRecordCommand(t *testing.T) {
-	t.Parallel()
-
 	specYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
@@ -139,8 +138,6 @@ steps:
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			tempDir := t.TempDir()
 
 			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {
