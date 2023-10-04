@@ -148,9 +148,15 @@ func processGlobs(paths []model.String, fromDir string) ([]model.String, error) 
 	out := make([]model.String, 0, len(paths))
 
 	for _, p := range paths {
+		// on Windows, escaping is disabled. Therefore, to keep glob parsing
+		// behavior consistent across different OSes, escaping is not permitted.
+		if strings.Contains(p.Val, `\`) {
+			return nil, p.Pos.Errorf(`escaping glob paths is not permitted: %q`, p.Val)
+		}
+
 		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
 		if err != nil {
-			return nil, err
+			return nil, p.Pos.Errorf("file globbing error: %w", err)
 		}
 		if len(globPaths) == 0 {
 			return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
