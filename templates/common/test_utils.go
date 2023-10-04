@@ -132,6 +132,9 @@ func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 	return out
 }
 
+// Read all the files recursively under "dir", returning their contents as a
+// map[filename]->contents but without file mode. Returns nil if dir doesn't
+// exist.
 func LoadDirWithoutMode(t *testing.T, dir string) map[string]string {
 	t.Helper()
 
