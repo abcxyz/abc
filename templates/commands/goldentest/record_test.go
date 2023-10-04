@@ -26,8 +26,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-//nolint:paralleltest // This test cannot be run in parallel
 func TestRecordCommand(t *testing.T) {
+	t.Parallel()
+
 	specYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
@@ -78,12 +79,12 @@ steps:
 			},
 		},
 		{
-			name: "oudated_golden_file_removed",
+			name: "outdated_golden_file_removed",
 			filesContent: map[string]string{
-				"spec.yaml":                        specYaml,
-				"a.txt":                            "file A content",
-				"testdata/golden/test/test.yaml":   testYaml,
-				"testdata/golden/test/oudated.txt": "oudated file",
+				"spec.yaml":                         specYaml,
+				"a.txt":                             "file A content",
+				"testdata/golden/test/test.yaml":    testYaml,
+				"testdata/golden/test/outdated.txt": "outdated file",
 			},
 			expectedGoldenContent: map[string]string{
 				filepath.Join("test", "test.yaml"): testYaml,
@@ -91,7 +92,7 @@ steps:
 			},
 		},
 		{
-			name: "oudated_golden_file_overwritten",
+			name: "outdated_golden_file_overwritten",
 			filesContent: map[string]string{
 				"spec.yaml":                      specYaml,
 				"a.txt":                          "new content",
@@ -138,6 +139,8 @@ steps:
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			tempDir := t.TempDir()
 
 			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {

@@ -22,7 +22,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/abcxyz/abc/templates/commands/render"
 	"github.com/abcxyz/abc/templates/model/goldentest"
@@ -46,9 +45,6 @@ const (
 	// The golden test config file is always located in the test case root dir and
 	// named test.yaml.
 	configName = "test.yaml"
-
-	// Permission bits: rwx------ .
-	ownerRWXPerms = 0o700
 )
 
 // parseTestCases returns a list of test cases to record or verify.
@@ -114,24 +110,6 @@ func parseTestConfig(path string) (*goldentest.Test, error) {
 	return test, nil
 }
 
-// getTempDir returns a temporary directory for golden tests usage.
-func getTempDir() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home dir: %w", err)
-	}
-	tempDir := filepath.Join(
-		homeDir,
-		".abc",
-		"goldentests",
-		fmt.Sprint(time.Now().Unix()))
-
-	if err := os.MkdirAll(tempDir, ownerRWXPerms); err != nil {
-		return "", fmt.Errorf("MkdirAll(%q): %w", tempDir, err)
-	}
-	return tempDir, nil
-}
-
 // clearTestDir clears a test directory and only keeps the test config file.
 func clearTestDir(dir string) error {
 	files, err := os.ReadDir(dir)
@@ -176,6 +154,7 @@ func renderTestCase(templateDir, outputDir string, tc *TestCase) error {
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
+	// TODO(chloechien): Use rendering library instead of calling cmd directly.
 	if err := r.Run(ctx, args); err != nil {
 		return fmt.Errorf("error running `templates render` command: %w", err)
 	}
