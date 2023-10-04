@@ -48,8 +48,6 @@ const (
 
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
-	// Permission bits: rw------- .
-	ownerRWPerms = 0o600
 
 	defaultLogLevel = "warn"
 	defaultLogMode  = "dev"
