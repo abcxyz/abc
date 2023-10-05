@@ -229,8 +229,7 @@ func TestWalkAndModify(t *testing.T) {
 
 			sp := &stepParams{
 				fs: &errorFS{
-					renderFS: &realFS{},
-
+					FS:           &common.RealFS{},
 					readFileErr:  tc.readFileErr,
 					writeFileErr: tc.writeFileErr,
 				},
@@ -266,7 +265,7 @@ func TestCopyRecursive(t *testing.T) {
 		srcDirContents        map[string]common.ModeAndContents
 		suffix                string
 		dryRun                bool
-		visitor               copyVisitor
+		visitor               common.CopyVisitor
 		want                  map[string]common.ModeAndContents
 		wantBackups           map[string]common.ModeAndContents
 		dstDirInitialContents map[string]common.ModeAndContents // only used in the tests for overwriting and backing up
@@ -307,10 +306,10 @@ func TestCopyRecursive(t *testing.T) {
 			dstDirInitialContents: map[string]common.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "old contents"},
 			},
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					backupIfExists: true,
-					overwrite:      true,
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+				return common.CopyHint{
+					BackupIfExists: true,
+					Overwrite:      true,
 				}, nil
 			},
 			want: map[string]common.ModeAndContents{
@@ -332,9 +331,9 @@ func TestCopyRecursive(t *testing.T) {
 				"file1.txt": {Mode: 0o600, Contents: "old contents"},
 			},
 			dryRun: true,
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					overwrite: false,
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+				return common.CopyHint{
+					Overwrite: false,
 				}, nil
 			},
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
@@ -404,9 +403,9 @@ func TestCopyRecursive(t *testing.T) {
 			dstDirInitialContents: map[string]common.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "old contents"},
 			},
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					overwrite: true,
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+				return common.CopyHint{
+					Overwrite: true,
 				}, nil
 			},
 			want: map[string]common.ModeAndContents{
@@ -428,9 +427,9 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "overwriting_dir_with_child_file_should_fail",
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					overwrite: true,
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+				return common.CopyHint{
+					Overwrite: true,
 				}, nil
 			},
 			srcDirContents: map[string]common.ModeAndContents{
@@ -446,9 +445,9 @@ func TestCopyRecursive(t *testing.T) {
 		},
 		{
 			name: "overwriting_file_with_dir_should_fail",
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					overwrite: true,
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+				return common.CopyHint{
+					Overwrite: true,
 				}, nil
 			},
 			srcDirContents: map[string]common.ModeAndContents{
@@ -471,9 +470,9 @@ func TestCopyRecursive(t *testing.T) {
 				"subdir/skip2.txt": {Mode: 0o600, Contents: "skip2.txt contents"},
 				"z.txt":            {Mode: 0o600, Contents: "z.txt contents"},
 			},
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					skip: slices.Contains([]string{"skip1.txt", filepath.Join("subdir", "skip2.txt")}, relPath),
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+				return common.CopyHint{
+					Skip: slices.Contains([]string{"skip1.txt", filepath.Join("subdir", "skip2.txt")}, relPath),
 				}, nil
 			},
 			want: map[string]common.ModeAndContents{
@@ -490,16 +489,16 @@ func TestCopyRecursive(t *testing.T) {
 				"subdir/file3.txt":   {Mode: 0o600, Contents: "file3 contents"},
 				"otherdir/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 			},
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
 				if relPath == "subdir" {
-					return copyHint{
-						skip: true,
+					return common.CopyHint{
+						Skip: true,
 					}, nil
 				}
 				if strings.HasPrefix(relPath, "subdir/") {
 					panic("no children of subdir/ should have been walked")
 				}
-				return copyHint{}, nil
+				return common.CopyHint{}, nil
 			},
 			want: map[string]common.ModeAndContents{
 				"file1.txt":          {Mode: 0o600, Contents: "file1 contents"},
@@ -516,10 +515,10 @@ func TestCopyRecursive(t *testing.T) {
 				"file1.txt":        {Mode: 0o600, Contents: "file1 old contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 old contents"},
 			},
-			visitor: func(relPath string, de fs.DirEntry) (copyHint, error) {
-				return copyHint{
-					backupIfExists: true,
-					overwrite:      true,
+			visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+				return common.CopyHint{
+					BackupIfExists: true,
+					Overwrite:      true,
 				}, nil
 			},
 			want: map[string]common.ModeAndContents{
@@ -598,7 +597,7 @@ func TestCopyRecursive(t *testing.T) {
 				t.Fatal(err)
 			}
 			fs := &errorFS{
-				renderFS: &realFS{},
+				FS: &common.RealFS{},
 
 				mkdirAllErr: tc.mkdirAllErr,
 				openErr:     tc.openErr,
@@ -611,13 +610,13 @@ func TestCopyRecursive(t *testing.T) {
 			const unixTime = 1688609125
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
-			err := copyRecursive(ctx, &model.ConfigPos{}, &copyParams{
-				backupDirMaker: func(rf renderFS) (string, error) { return backupDir, nil },
-				srcRoot:        from,
-				dstRoot:        to,
-				dryRun:         tc.dryRun,
-				rfs:            fs,
-				visitor:        tc.visitor,
+			err := common.CopyRecursive(ctx, &model.ConfigPos{}, &common.CopyParams{
+				BackupDirMaker: func(rf common.FS) (string, error) { return backupDir, nil },
+				SrcRoot:        from,
+				DstRoot:        to,
+				DryRun:         tc.dryRun,
+				RFS:            fs,
+				Visitor:        tc.visitor,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)

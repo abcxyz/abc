@@ -184,7 +184,7 @@ func TestActionAppend(t *testing.T) {
 			}
 			sp := &stepParams{
 				fs: &errorFS{
-					renderFS:    &realFS{},
+					FS:          &common.RealFS{},
 					readFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,

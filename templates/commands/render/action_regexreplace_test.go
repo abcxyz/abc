@@ -406,7 +406,7 @@ gamma`,
 
 			ctx := context.Background()
 			sp := &stepParams{
-				fs:         &realFS{},
+				fs:         &common.RealFS{},
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
 			}

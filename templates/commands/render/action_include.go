@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model/spec"
 	"golang.org/x/exp/maps"
 )
@@ -90,37 +91,37 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			return fmt.Errorf("Stat(): %w", err)
 		}
 
-		params := &copyParams{
-			dryRun:  false,
-			dstRoot: absDst,
-			rfs:     sp.fs,
-			srcRoot: absSrc,
-			visitor: func(relToAbsSrc string, de fs.DirEntry) (copyHint, error) {
+		params := &common.CopyParams{
+			DryRun:  false,
+			DstRoot: absDst,
+			RFS:     sp.fs,
+			SrcRoot: absSrc,
+			Visitor: func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
 				if _, ok := skipNow[relToAbsSrc]; ok {
-					return copyHint{
-						skip: true,
+					return common.CopyHint{
+						Skip: true,
 					}, nil
 				}
 
 				abs := filepath.Join(absSrc, relToAbsSrc)
 				relToFromDir, err := filepath.Rel(fromDir, abs)
 				if err != nil {
-					return copyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
+					return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
 				}
 				if !de.IsDir() && inc.From.Val == "destination" {
 					sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
 				}
 
-				return copyHint{
+				return common.CopyHint{
 					// Allow later includes to replace earlier includes in the
 					// scratch directory. This doesn't affect whether files in
 					// the final *destination* directory will be overwritten;
 					// that comes later.
-					overwrite: true,
+					Overwrite: true,
 				}, nil
 			},
 		}
-		if err := copyRecursive(ctx, p.Pos, params); err != nil {
+		if err := common.CopyRecursive(ctx, p.Pos, params); err != nil {
 			return p.Pos.Errorf("copying failed: %w", err)
 		}
 	}
