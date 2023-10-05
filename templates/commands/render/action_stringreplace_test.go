@@ -253,7 +253,7 @@ func TestActionStringReplace(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := loadDirWithoutMode(t, scratchDir)
+			got := common.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}

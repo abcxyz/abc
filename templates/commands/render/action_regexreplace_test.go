@@ -415,7 +415,7 @@ gamma`,
 				t.Error(diff)
 			}
 
-			got := loadDirWithoutMode(t, scratchDir)
+			got := common.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output differed from expected, (-got,+want): %s", diff)
 			}

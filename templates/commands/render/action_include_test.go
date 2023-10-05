@@ -235,8 +235,9 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"file1.txt": {Mode: 0o600, Contents: "my file contents"},
-				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
+				"file1.txt":                 {Mode: 0o600, Contents: "my file contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "my file contents"},
@@ -261,6 +262,25 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "golden_test_in_subdir_should_not_be_skipped",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"."}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt":                        {Mode: 0o600, Contents: "my file contents"},
+				"spec.yaml":                        {Mode: 0o600, Contents: "spec contents"},
+				"subdir/testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt":                        {Mode: 0o600, Contents: "my file contents"},
+				"subdir/testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
+			},
+		},
+		{
 			name: "skip_file",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
@@ -271,10 +291,11 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"file1.txt":           {Mode: 0o600, Contents: "file 1 contents"},
-				"file2.txt":           {Mode: 0o600, Contents: "file 2 contents"},
-				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
-				"spec.yaml":           {Mode: 0o600, Contents: "spec contents"},
+				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
+				"file2.txt":                 {Mode: 0o600, Contents: "file 2 contents"},
+				"subfolder/file3.txt":       {Mode: 0o600, Contents: "file 3 contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"file1.txt":           {Mode: 0o600, Contents: "file 1 contents"},
@@ -292,11 +313,12 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
-				"file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
-				"file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
-				"file4.txt": {Mode: 0o600, Contents: "file 4 contents"},
-				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
+				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
+				"file2.txt":                 {Mode: 0o600, Contents: "file 2 contents"},
+				"file3.txt":                 {Mode: 0o600, Contents: "file 3 contents"},
+				"file4.txt":                 {Mode: 0o600, Contents: "file 4 contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
@@ -313,10 +335,11 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"file1.txt":           {Mode: 0o600, Contents: "file 1 contents"},
-				"subfolder/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
-				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
-				"spec.yaml":           {Mode: 0o600, Contents: "spec contents"},
+				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
+				"subfolder/file2.txt":       {Mode: 0o600, Contents: "file 2 contents"},
+				"subfolder/file3.txt":       {Mode: 0o600, Contents: "file 3 contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
@@ -337,6 +360,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
@@ -354,7 +378,8 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			destDirContents: map[string]common.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
@@ -375,7 +400,8 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			destDirContents: map[string]common.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
@@ -397,7 +423,8 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"spec.yaml": {Mode: 0o600, Contents: "spec contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
 			destDirContents: map[string]common.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
@@ -458,13 +485,13 @@ func TestActionInclude(t *testing.T) {
 				t.Error(diff)
 			}
 
-			gotTemplateContents := loadDirContents(t, filepath.Join(tempDir, templateDirNamePart))
-			if diff := cmp.Diff(gotTemplateContents, tc.templateContents, cmpFileMode); diff != "" {
+			gotTemplateContents := common.LoadDirContents(t, filepath.Join(tempDir, templateDirNamePart))
+			if diff := cmp.Diff(gotTemplateContents, tc.templateContents, common.CmpFileMode); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
-			gotScratchContents := loadDirContents(t, filepath.Join(tempDir, scratchDirNamePart))
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpFileMode); diff != "" {
+			gotScratchContents := common.LoadDirContents(t, filepath.Join(tempDir, scratchDirNamePart))
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, common.CmpFileMode); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 

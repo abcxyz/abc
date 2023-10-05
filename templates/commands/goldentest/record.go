@@ -19,9 +19,12 @@ package goldentest
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
 )
 
 type RecordCommand struct {
@@ -60,9 +63,37 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	if _, err := parseTestCases(c.flags.Location, c.flags.TestName); err != nil {
+	testCases, err := parseTestCases(c.flags.Location, c.flags.TestName)
+	if err != nil {
 		return fmt.Errorf("failed to parse golden test: %w", err)
 	}
 
-	return fmt.Errorf("unimplemented")
+	// Create a temporary directory to validate golden tests rendered with no
+	// error. If any test fails, no data should be written to file system
+	// for atomicity purpose.
+	tempDir, err := os.MkdirTemp("", "abc-test-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	var merr error
+	for _, tc := range testCases {
+		merr = errors.Join(merr, renderTestCase(c.flags.Location, tempDir, tc))
+	}
+	if merr != nil {
+		return fmt.Errorf("failed to render golden tests: %w", merr)
+	}
+
+	// Render outputs in template golden test directories.
+	// TODO(chloechien): Copy rendered contents recursively instead of rendering twice.
+	logger := logging.FromContext(ctx)
+	for _, tc := range testCases {
+		if err := renderTestCase(c.flags.Location, c.flags.Location, tc); err != nil {
+			return fmt.Errorf("fatal error when recording golden test: %w", err)
+		}
+		logger.InfoContext(ctx, "completed recording", "test", tc.TestName)
+	}
+
+	return nil
 }

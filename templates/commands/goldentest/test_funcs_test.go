@@ -16,6 +16,7 @@
 package goldentest
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -143,6 +144,172 @@ func TestParseTestCases(t *testing.T) {
 			opt := cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{})
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Fatalf("Output test cases wasn't as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestClearTestDir(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		filesContent map[string]string
+		expected     map[string]string
+	}{
+		{
+			name: "outdated_test_artifacts_removed",
+			filesContent: map[string]string{
+				"test.yaml": "yaml",
+				"a.txt":     "file A content",
+				"b/b.txt":   "file B content",
+			},
+			expected: map[string]string{
+				"test.yaml": "yaml",
+			},
+		},
+		{
+			name: "test_config_in_sub_dir_removed",
+			filesContent: map[string]string{
+				"test.yaml":       "yaml",
+				"teset/test.yaml": "yaml",
+			},
+			expected: map[string]string{
+				"test.yaml": "yaml",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := clearTestDir(tempDir); err != nil {
+				t.Fatal(err)
+			}
+
+			gotDestContents := common.LoadDirWithoutMode(t, tempDir)
+			if diff := cmp.Diff(gotDestContents, tc.expected); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestRenderTestCase(t *testing.T) {
+	t.Parallel()
+
+	specYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'A simple template'
+
+inputs:
+  - name: 'input_a'
+    desc: 'input of A'
+    default: 'default'
+
+  - name: 'input_b'
+    desc: 'input of B'
+    default: 'default'
+
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['.']
+`
+
+	cases := []struct {
+		name                  string
+		testCase              *TestCase
+		filesContent          map[string]string
+		expectedGoldenContent map[string]string
+		wantErr               string
+	}{
+		{
+			name: "simple_test_succeeds",
+			testCase: &TestCase{
+				TestName: "test",
+				TestConfig: &goldentest.Test{
+					APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
+				},
+			},
+			filesContent: map[string]string{
+				"spec.yaml":                      specYaml,
+				"a.txt":                          "file A content",
+				"b.txt":                          "file B content",
+				"testdata/golden/test/test.yaml": "yaml",
+			},
+			expectedGoldenContent: map[string]string{
+				"test.yaml": "yaml",
+				"a.txt":     "file A content",
+				"b.txt":     "file B content",
+			},
+		},
+		{
+			name: "test_with_inputs_succeeds",
+			testCase: &TestCase{
+				TestName: "test",
+				TestConfig: &goldentest.Test{
+					APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
+					Inputs: []*goldentest.InputValue{
+						{
+							Name:  model.String{Val: "input_a"},
+							Value: model.String{Val: "a"},
+						},
+						{
+							Name:  model.String{Val: "input_b"},
+							Value: model.String{Val: "b"},
+						},
+					},
+				},
+			},
+			filesContent: map[string]string{
+				"spec.yaml":                      specYaml,
+				"a.txt":                          "file A content",
+				"b.txt":                          "file B content",
+				"testdata/golden/test/test.yaml": "yaml",
+			},
+			expectedGoldenContent: map[string]string{
+				"test.yaml": "yaml",
+				"a.txt":     "file A content",
+				"b.txt":     "file B content",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {
+				t.Fatal(err)
+			}
+
+			err := renderTestCase(tempDir, tempDir, tc.testCase)
+			if err != nil {
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+				return
+			}
+
+			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
+			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent, common.CmpFileMode); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}

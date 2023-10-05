@@ -77,9 +77,11 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		skipNow := maps.Clone(skip)
 		if absSrc == sp.templateDir {
 			// If we're copying the template root directory, automatically skip
-			// the spec.yaml file, because it's very unlikely that the user actually
+			// 1. spec.yaml file, because it's very unlikely that the user actually
 			// wants the spec file in the template output.
+			// 2. testdata/golden directory, this is reserved for golden test usage.
 			skipNow["spec.yaml"] = struct{}{}
+			skipNow[filepath.Join("testdata", "golden")] = struct{}{}
 		}
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {

@@ -56,7 +56,6 @@ func TestWalkAndModify(t *testing.T) {
 
 		// fakeable errors
 		readFileErr  error
-		statErr      error
 		writeFileErr error
 	}{
 		{
@@ -164,15 +163,7 @@ func TestWalkAndModify(t *testing.T) {
 			relPaths:        []string{"nonexistent"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc foo def"},
-			wantErr:         "doesn't exist in the scratch directory",
-		},
-		{
-			name:            "dot_dot_traversal_should_fail",
-			visitor:         fooToBarVisitor,
-			relPaths:        []string{"abc/.."},
-			initialContents: map[string]string{"my_file.txt": "abc foo def"},
-			want:            map[string]string{"my_file.txt": "abc foo def"},
-			wantErr:         `must not contain ".."`,
+			wantErr:         `glob "nonexistent" did not match any files`,
 		},
 		{
 			name:            "absolute_path_should_become_relative",
@@ -197,15 +188,6 @@ func TestWalkAndModify(t *testing.T) {
 			writeFileErr:    fmt.Errorf("WriteFile should not have been called"),
 		},
 		{
-			name:            "stat_error_should_be_returned",
-			visitor:         fooToBarVisitor,
-			relPaths:        []string{"."},
-			initialContents: map[string]string{"my_file.txt": "foo"},
-			want:            map[string]string{"my_file.txt": "foo"},
-			statErr:         fmt.Errorf("fake error for testing"),
-			wantErr:         "fake error for testing",
-		},
-		{
 			name:            "readfile_error_should_be_returned",
 			visitor:         fooToBarVisitor,
 			relPaths:        []string{"."},
@@ -223,6 +205,13 @@ func TestWalkAndModify(t *testing.T) {
 			writeFileErr:    fmt.Errorf("fake error for testing"),
 			wantErr:         "fake error for testing",
 		},
+		{
+			name:            "simple_glob_path_should_work",
+			visitor:         fooToBarVisitor,
+			relPaths:        []string{"*.txt"},
+			initialContents: map[string]string{"my_file.txt": "abc foo def"},
+			want:            map[string]string{"my_file.txt": "abc bar def"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -238,12 +227,14 @@ func TestWalkAndModify(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			fs := &errorFS{
-				AbstractFS: &common.RealFS{},
-
-				readFileErr:  tc.readFileErr,
-				statErr:      tc.statErr,
-				writeFileErr: tc.writeFileErr,
+			sp := &stepParams{
+				fs: &errorFS{
+					AbstractFS:   &common.RealFS{},
+					readFileErr:  tc.readFileErr,
+					writeFileErr: tc.writeFileErr,
+				},
+				scratchDir: scratchDir,
+				scope:      common.NewScope(nil),
 			}
 
 			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
@@ -253,12 +244,12 @@ func TestWalkAndModify(t *testing.T) {
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			err := walkAndModify(ctx, fs, scratchDir, relPathsPositions, tc.visitor)
+			err := walkAndModify(ctx, sp, relPathsPositions, tc.visitor)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
 
-			got := loadDirWithoutMode(t, scratchDir)
+			got := common.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}
@@ -631,13 +622,13 @@ func TestCopyRecursive(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := loadDirContents(t, toDir)
-			if diff := cmp.Diff(got, tc.want, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			got := common.LoadDirContents(t, toDir)
+			if diff := cmp.Diff(got, tc.want, common.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
 			}
 
-			gotBackups := loadDirContents(t, backupDir)
-			if diff := cmp.Diff(gotBackups, tc.wantBackups, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			gotBackups := common.LoadDirContents(t, backupDir)
+			if diff := cmp.Diff(gotBackups, tc.wantBackups, common.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -880,13 +871,20 @@ func TestProcessPaths(t *testing.T) {
 			scope:   common.NewScope(map[string]string{}),
 			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../foo.txt")),
 		},
+		{
+			name: "no_escaping_glob_paths",
+			paths: modelStrings([]string{
+				`file\1.txt`,
+			}),
+			scope:   common.NewScope(map[string]string{}),
+			wantErr: fmt.Sprintf(`backslashes in glob paths are not permitted: %q`, `file\1.txt`),
+		},
 	}
 
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
 			pathsCopy := make([]model.String, 0, len(tc.paths))
 
 			for _, p := range tc.paths {
@@ -903,6 +901,187 @@ func TestProcessPaths(t *testing.T) {
 				t.Errorf("input paths for action should not have been changed (-got,+want): %s", diff)
 			}
 			if diff := cmp.Diff(gotPaths, tc.wantPaths); diff != "" {
+				t.Errorf("resulting paths should match expected paths from input (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestProcessGlobs(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		dirContents map[string]common.ModeAndContents
+		paths       []model.String
+		wantPaths   []model.String
+		wantErr     string
+	}{
+		{
+			name: "non_glob_paths",
+			dirContents: map[string]common.ModeAndContents{
+				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
+				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
+				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
+			},
+			paths: modelStrings([]string{
+				"file1.txt",
+				"file2.txt",
+				"subfolder1",
+				"subfolder2/file4.txt",
+			}),
+			wantPaths: modelStrings([]string{
+				"file1.txt",
+				"file2.txt",
+				"subfolder1",
+				filepath.FromSlash("subfolder2/file4.txt"),
+			}),
+		},
+		{
+			name: "star_glob_paths",
+			dirContents: map[string]common.ModeAndContents{
+				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
+				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
+				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
+			},
+			paths: modelStrings([]string{
+				"*.txt",
+				"subfolder2/*.txt",
+			}),
+			wantPaths: modelStrings([]string{
+				"file1.txt",
+				"file2.txt",
+				filepath.FromSlash("subfolder2/file4.txt"),
+				filepath.FromSlash("subfolder2/file5.txt"),
+			}),
+		},
+		{
+			name: "star_in_middle",
+			dirContents: map[string]common.ModeAndContents{
+				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
+				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
+				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
+			},
+			paths: modelStrings([]string{
+				"f*e1.txt",
+				"f*e2.txt",
+				"sub*er2",
+			}),
+			wantPaths: modelStrings([]string{
+				"file1.txt",
+				"file2.txt",
+				"subfolder2",
+			}),
+		},
+		{
+			name: "star_all_paths",
+			dirContents: map[string]common.ModeAndContents{
+				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
+				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
+				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
+			},
+			paths: modelStrings([]string{"*"}),
+			wantPaths: modelStrings([]string{
+				"file1.txt",
+				"file2.txt",
+				"subfolder1",
+				"subfolder2",
+			}),
+		},
+		{
+			name: "star_matches_hidden_files",
+			dirContents: map[string]common.ModeAndContents{
+				".gitignore": {Mode: 0o600, Contents: ".gitignore contents"},
+				".something": {Mode: 0o600, Contents: ".something contents"},
+			},
+			paths: modelStrings([]string{"*"}),
+			wantPaths: modelStrings([]string{
+				".gitignore",
+				".something",
+			}),
+		},
+		{
+			name: "question_glob_paths",
+			dirContents: map[string]common.ModeAndContents{
+				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
+				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
+				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file4 contents"},
+			},
+			paths: modelStrings([]string{
+				"file?.txt",
+				"subfolder2/file?.txt",
+			}),
+			wantPaths: modelStrings([]string{
+				"file1.txt",
+				"file2.txt",
+				filepath.FromSlash("subfolder2/file4.txt"),
+				filepath.FromSlash("subfolder2/file5.txt"),
+			}),
+		},
+		{
+			name: "no_glob_matches",
+			paths: modelStrings([]string{
+				"file_not_found.txt",
+			}),
+			wantErr: fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
+		},
+		{
+			name: "character_range_paths",
+			dirContents: map[string]common.ModeAndContents{
+				"abc.txt": {Mode: 0o600, Contents: "bcd contents"},
+				"xyz.txt": {Mode: 0o600, Contents: "xyz contents"},
+			},
+			paths: modelStrings([]string{
+				"[a-c][a-c][a-c].txt",
+			}),
+			wantPaths: modelStrings([]string{
+				"abc.txt",
+			}),
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// pre-populate dir contents
+			tempDir := t.TempDir()
+			convertKeysToPlatformPaths(tc.dirContents) // Convert to OS-specific paths
+			if err := common.WriteAll(tempDir, tc.dirContents); err != nil {
+				t.Fatal(err)
+			}
+
+			ctx := context.Background()
+			gotPaths, err := processGlobs(ctx, tc.paths, tempDir)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+			if err != nil {
+				return // err was expected as part of the test
+			}
+			relGotPaths := make([]model.String, 0, len(gotPaths))
+			for _, p := range gotPaths {
+				relPath, err := filepath.Rel(tempDir, p.Val)
+				if err != nil {
+					t.Fatal(err)
+				}
+				relGotPaths = append(relGotPaths, model.String{
+					Val: relPath,
+					Pos: p.Pos,
+				})
+			}
+			if diff := cmp.Diff(relGotPaths, tc.wantPaths); diff != "" {
 				t.Errorf("resulting paths should match expected paths from input (-got,+want): %s", diff)
 			}
 		})
