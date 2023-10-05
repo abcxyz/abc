@@ -38,7 +38,7 @@ const (
 //
 // We can't use os.DirFS or fs.StatFS because they lack some methods we need. So
 // we created our own interface.
-type AbstractFS interface {
+type FS interface {
 	fs.StatFS
 
 	// These methods correspond to methods in the "os" package of the same name.
@@ -93,7 +93,7 @@ type CopyParams struct {
 	// needs to be backed up. It should create a directory and return its path,
 	// either relative to the cwd or absolute. Use os.MkdirTemp() in real code
 	// and something hardcoded in tests.
-	BackupDirMaker func(AbstractFS) (string, error)
+	BackupDirMaker func(FS) (string, error)
 	// // backupDir provides the path at which files will be saved before they're
 	// // overwritten.
 	// backupDir string
@@ -104,8 +104,8 @@ type CopyParams struct {
 	DstRoot string
 	// srcRoot is the file or directory from which to copy.
 	SrcRoot string
-	// rfs is the filesytem to use.
-	Rfs AbstractFS
+	// RFS is the filesytem to use.
+	RFS FS
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
@@ -143,7 +143,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 
 	backupDir := "" // will be set once the backup dir is actually created
 
-	return fs.WalkDir(p.Rfs, p.SrcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
+	return fs.WalkDir(p.RFS, p.SrcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
@@ -184,10 +184,10 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		// parent directory of $path, so we must create the target directory if
 		// it doesn't exist.
 		inDir := filepath.Dir(dst)
-		if err := mkdirAllChecked(pos, p.Rfs, inDir, p.DryRun); err != nil {
+		if err := mkdirAllChecked(pos, p.RFS, inDir, p.DryRun); err != nil {
 			return err
 		}
-		dstInfo, err := p.Rfs.Stat(dst)
+		dstInfo, err := p.RFS.Stat(dst)
 		if err == nil {
 			if dstInfo.IsDir() {
 				return pos.Errorf("cannot overwrite a directory with a file of the same name, %q", relToSrc)
@@ -197,18 +197,18 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			}
 			if ch.BackupIfExists && !p.DryRun {
 				if backupDir == "" {
-					if backupDir, err = p.BackupDirMaker(p.Rfs); err != nil {
+					if backupDir, err = p.BackupDirMaker(p.RFS); err != nil {
 						return fmt.Errorf("failed making backup directory: %w", err)
 					}
 				}
-				if err := backUp(ctx, p.Rfs, backupDir, p.DstRoot, relToSrc); err != nil {
+				if err := backUp(ctx, p.RFS, backupDir, p.DstRoot, relToSrc); err != nil {
 					return err
 				}
 			}
 		} else if !os.IsNotExist(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
-		srcInfo, err := p.Rfs.Stat(path)
+		srcInfo, err := p.RFS.Stat(path)
 		if err != nil {
 			return fmt.Errorf("Stat(): %w", err)
 		}
@@ -216,11 +216,11 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
 		mode := srcInfo.Mode().Perm()
-		return copyFile(ctx, pos, p.Rfs, path, dst, mode, p.DryRun)
+		return copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun)
 	})
 }
 
-func copyFile(ctx context.Context, pos *model.ConfigPos, rfs AbstractFS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
+func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "copyFile")
 
 	readFile, err := rfs.Open(src)
@@ -251,7 +251,7 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs AbstractFS, src, ds
 // When we overwrite a file in the destination dir, we back up the old version
 // in case the user had uncommitted changes in that file that were unrelated to
 // abc.
-func backUp(ctx context.Context, rfs AbstractFS, backupDir, srcRoot, relPath string) error {
+func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) error {
 	backupFile := filepath.Join(backupDir, relPath)
 	parent := filepath.Dir(backupFile)
 	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
@@ -274,7 +274,7 @@ func backUp(ctx context.Context, rfs AbstractFS, backupDir, srcRoot, relPath str
 // A fancy wrapper around MkdirAll with better error messages and a dry run
 // mode. In dry run mode, returns an error if the MkdirAll wouldn't succeed
 // (best-effort).
-func mkdirAllChecked(pos *model.ConfigPos, rfs AbstractFS, path string, dryRun bool) error {
+func mkdirAllChecked(pos *model.ConfigPos, rfs FS, path string, dryRun bool) error {
 	create := false
 	info, err := rfs.Stat(path)
 	if err != nil {

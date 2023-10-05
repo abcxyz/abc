@@ -94,7 +94,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		params := &common.CopyParams{
 			DryRun:  false,
 			DstRoot: absDst,
-			Rfs:     sp.fs,
+			RFS:     sp.fs,
 			SrcRoot: absSrc,
 			Visitor: func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
 				if _, ok := skipNow[relToAbsSrc]; ok {

@@ -560,7 +560,7 @@ steps:
 			rp := &runParams{
 				backupDir: backupDir,
 				fs: &errorFS{
-					AbstractFS:   rfs,
+					FS:           rfs,
 					removeAllErr: tc.removeAllErr,
 				},
 				getter:       fg,
@@ -1431,7 +1431,7 @@ func modelStrings(ss []string) []model.String {
 
 // A renderFS implementation that can inject errors for testing.
 type errorFS struct {
-	common.AbstractFS
+	common.FS
 
 	mkdirAllErr  error
 	openErr      error
@@ -1446,49 +1446,49 @@ func (e *errorFS) MkdirAll(name string, mode fs.FileMode) error {
 	if e.mkdirAllErr != nil {
 		return e.mkdirAllErr
 	}
-	return e.AbstractFS.MkdirAll(name, mode)
+	return e.FS.MkdirAll(name, mode)
 }
 
 func (e *errorFS) Open(name string) (fs.File, error) {
 	if e.openErr != nil {
 		return nil, e.openErr
 	}
-	return e.AbstractFS.Open(name)
+	return e.FS.Open(name)
 }
 
 func (e *errorFS) OpenFile(name string, flag int, mode os.FileMode) (*os.File, error) {
 	if e.openFileErr != nil {
 		return nil, e.openFileErr
 	}
-	return e.AbstractFS.OpenFile(name, flag, mode)
+	return e.FS.OpenFile(name, flag, mode)
 }
 
 func (e *errorFS) ReadFile(name string) ([]byte, error) {
 	if e.readFileErr != nil {
 		return nil, e.readFileErr
 	}
-	return e.AbstractFS.ReadFile(name)
+	return e.FS.ReadFile(name)
 }
 
 func (e *errorFS) RemoveAll(name string) error {
 	if e.removeAllErr != nil {
 		return e.removeAllErr
 	}
-	return e.AbstractFS.RemoveAll(name)
+	return e.FS.RemoveAll(name)
 }
 
 func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
 	if e.statErr != nil {
 		return nil, e.statErr
 	}
-	return e.AbstractFS.Stat(name)
+	return e.FS.Stat(name)
 }
 
 func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	if e.writeFileErr != nil {
 		return e.writeFileErr
 	}
-	return e.AbstractFS.WriteFile(name, data, perm)
+	return e.FS.WriteFile(name, data, perm)
 }
 
 type fakeGetter struct {

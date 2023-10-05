@@ -60,7 +60,7 @@ type Command struct {
 	cli.BaseCommand
 	flags RenderFlags
 
-	testFS     common.AbstractFS
+	testFS     common.FS
 	testGetter getterClient
 }
 
@@ -154,7 +154,7 @@ type getterClient interface {
 type runParams struct {
 	backupDir string
 	cwd       string
-	fs        common.AbstractFS
+	fs        common.FS
 	getter    getterClient
 	stdout    io.Writer
 
@@ -238,7 +238,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		// We only want to call MkdirTemp once, and use the resulting backup
 		// directory for every step in this rendering operation.
 		var backupDir string
-		backupDirMaker := func(rfs common.AbstractFS) (string, error) {
+		backupDirMaker := func(rfs common.FS) (string, error) {
 			if backupDir != "" {
 				return backupDir, nil
 			}
@@ -255,7 +255,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			DryRun:         dryRun,
 			DstRoot:        c.flags.Dest,
 			SrcRoot:        scratchDir,
-			Rfs:            rp.fs,
+			RFS:            rp.fs,
 			Visitor:        visitor,
 		}
 		if err := common.CopyRecursive(ctx, nil, params); err != nil {
@@ -509,7 +509,7 @@ func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *step
 
 type stepParams struct {
 	flags *RenderFlags
-	fs    common.AbstractFS
+	fs    common.FS
 
 	// Scope contains all variable names that are in scope. This includes
 	// user-provided inputs, as well as any programmatically created variables
@@ -568,7 +568,7 @@ func executeOneStep(ctx context.Context, step *spec.Step, sp *stepParams) error 
 	}
 }
 
-func loadSpecFile(fs common.AbstractFS, templateDir, flagSpec string) (*spec.Spec, error) {
+func loadSpecFile(fs common.FS, templateDir, flagSpec string) (*spec.Spec, error) {
 	specPath := filepath.Join(templateDir, flagSpec)
 	f, err := fs.Open(specPath)
 	if err != nil {
@@ -614,7 +614,7 @@ func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, erro
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
-func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.AbstractFS, tempDirs ...string) error {
+func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
 		logger.DebugContext(ctx, "keeping temporary directories due to --keep-temp-dirs",

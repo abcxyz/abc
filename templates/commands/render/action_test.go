@@ -229,7 +229,7 @@ func TestWalkAndModify(t *testing.T) {
 
 			sp := &stepParams{
 				fs: &errorFS{
-					AbstractFS:   &common.RealFS{},
+					FS:           &common.RealFS{},
 					readFileErr:  tc.readFileErr,
 					writeFileErr: tc.writeFileErr,
 				},
@@ -597,7 +597,7 @@ func TestCopyRecursive(t *testing.T) {
 				t.Fatal(err)
 			}
 			fs := &errorFS{
-				AbstractFS: &common.RealFS{},
+				FS: &common.RealFS{},
 
 				mkdirAllErr: tc.mkdirAllErr,
 				openErr:     tc.openErr,
@@ -611,11 +611,11 @@ func TestCopyRecursive(t *testing.T) {
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
 			err := common.CopyRecursive(ctx, &model.ConfigPos{}, &common.CopyParams{
-				BackupDirMaker: func(rf common.AbstractFS) (string, error) { return backupDir, nil },
+				BackupDirMaker: func(rf common.FS) (string, error) { return backupDir, nil },
 				SrcRoot:        from,
 				DstRoot:        to,
 				DryRun:         tc.dryRun,
-				Rfs:            fs,
+				RFS:            fs,
 				Visitor:        tc.visitor,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

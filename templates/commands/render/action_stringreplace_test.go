@@ -242,7 +242,7 @@ func TestActionStringReplace(t *testing.T) {
 			}
 			sp := &stepParams{
 				fs: &errorFS{
-					AbstractFS:  &common.RealFS{},
+					FS:          &common.RealFS{},
 					readFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,
