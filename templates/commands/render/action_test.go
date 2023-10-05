@@ -250,7 +250,7 @@ func TestWalkAndModify(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := loadDirWithoutMode(t, scratchDir)
+			got := common.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}
@@ -623,13 +623,13 @@ func TestCopyRecursive(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := loadDirContents(t, toDir)
-			if diff := cmp.Diff(got, tc.want, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			got := common.LoadDirContents(t, toDir)
+			if diff := cmp.Diff(got, tc.want, common.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
 			}
 
-			gotBackups := loadDirContents(t, backupDir)
-			if diff := cmp.Diff(gotBackups, tc.wantBackups, cmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			gotBackups := common.LoadDirContents(t, backupDir)
+			if diff := cmp.Diff(gotBackups, tc.wantBackups, common.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
 			}
 		})
