@@ -39,17 +39,17 @@ import (
 type walkAndModifyVisitor func([]byte) ([]byte, error)
 
 // For each given path, recursively traverses the directory or file
-// scratchDir/relPath, calling the given visitor for each file. If relPath is a single file, then the visitor
-// will be called for just that one file. If relPath is a directory, then the
-// visitor will be called for all files under that directory, recursively.
-// A file will only be visited once per call, even if multiple paths include
-// it.
+// scratchDir/relPath, calling the given visitor for each file. If relPath is a
+// single file, then the visitor will be called for just that one file. If
+// relPath is a directory, then the visitor will be called for all files under
+// that directory, recursively. A file will only be visited once per call, even
+// if multiple paths include it.
 //
 // If the visitor returns modified file contents for a given file, that file
 // will be overwritten with the new contents.
 //
-// paths are expected to be cleaned already from processPaths before being
-// passed into processGlobs.
+// rawPaths is a list of path strings that will be processed (processPaths,
+// processGlobs) before walking through.
 func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String, v walkAndModifyVisitor) error {
 	logger := logging.FromContext(ctx).With("logger", "walkAndModify")
 	seen := map[string]struct{}{}
