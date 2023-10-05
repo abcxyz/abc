@@ -93,7 +93,9 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
 		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName)
-		clearTestDir(testDir)
+		if err := clearTestDir(testDir); err != nil {
+			return fmt.Errorf("failed to clear test directory: %w", err)
+		}
 
 		visitor := func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
 			if !de.IsDir() {
