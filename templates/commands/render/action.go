@@ -39,37 +39,35 @@ import (
 type walkAndModifyVisitor func([]byte) ([]byte, error)
 
 // For each given path, recursively traverses the directory or file
-// scratchDir/relPath, calling the given visitor for each file. If relPath is a single file, then the visitor
-// will be called for just that one file. If relPath is a directory, then the
-// visitor will be called for all files under that directory, recursively.
-// A file will only be visited once per call, even if multiple paths include
-// it.
+// scratchDir/relPath, calling the given visitor for each file. If relPath is a
+// single file, then the visitor will be called for just that one file. If
+// relPath is a directory, then the visitor will be called for all files under
+// that directory, recursively. A file will only be visited once per call, even
+// if multiple paths include it.
 //
 // If the visitor returns modified file contents for a given file, that file
 // will be overwritten with the new contents.
-func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPaths []model.String, v walkAndModifyVisitor) error {
+//
+// rawPaths is a list of path strings that will be processed (processPaths,
+// processGlobs) before walking through.
+func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String, v walkAndModifyVisitor) error {
 	logger := logging.FromContext(ctx).With("logger", "walkAndModify")
 	seen := map[string]struct{}{}
 
-	for _, relPathPos := range relPaths {
-		pos := relPathPos.Pos
-		relPath := relPathPos.Val
-		relPath, err := safeRelPath(pos, relPath)
-		if err != nil {
-			return err
-		}
-		walkFrom := filepath.Join(scratchDir, relPath)
-		if _, err := rfs.Stat(walkFrom); err != nil {
-			if os.IsNotExist(err) {
-				return pos.Errorf(`path %q doesn't exist in the scratch directory, did you forget to "include" it first?"`, relPath)
-			}
-			return pos.Errorf("Stat(): %w", err)
-		}
+	paths, err := processPaths(rawPaths, sp.scope)
+	if err != nil {
+		return err
+	}
+	globbedPaths, err := processGlobs(ctx, paths, sp.scratchDir)
+	if err != nil {
+		return err
+	}
 
-		err = filepath.WalkDir(walkFrom, func(path string, d fs.DirEntry, err error) error {
+	for _, absPath := range globbedPaths {
+		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.
-				return pos.Errorf("%w", err)
+				return absPath.Pos.Errorf("%w", err)
 			}
 			if d.IsDir() {
 				return nil
@@ -80,14 +78,14 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 				logger.DebugContext(ctx, "skipping file as already seen", "path", path)
 				return nil
 			}
-			oldBuf, err := rfs.ReadFile(path)
+			oldBuf, err := sp.fs.ReadFile(path)
 			if err != nil {
-				return pos.Errorf("Readfile(): %w", err)
+				return absPath.Pos.Errorf("Readfile(): %w", err)
 			}
 
-			relToScratchDir, err := filepath.Rel(scratchDir, path)
+			relToScratchDir, err := filepath.Rel(sp.scratchDir, path)
 			if err != nil {
-				return pos.Errorf("Rel(): %w", err)
+				return absPath.Pos.Errorf("Rel(): %w", err)
 			}
 
 			// We must clone oldBuf to guarantee that the callee won't change the
@@ -107,8 +105,8 @@ func walkAndModify(ctx context.Context, rfs renderFS, scratchDir string, relPath
 
 			// The permissions in the following WriteFile call will be ignored
 			// because the file already exists.
-			if err := rfs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
-				return pos.Errorf("Writefile(): %w", err)
+			if err := sp.fs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
+				return absPath.Pos.Errorf("Writefile(): %w", err)
 			}
 			logger.DebugContext(ctx, "wrote modification", "path", path)
 
@@ -141,8 +139,38 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 	return compiled, merr
 }
 
+// processGlobs processes a list of input String paths for simple file globbing.
+// Used after processPaths where applicable.
+func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]model.String, error) {
+	logger := logging.FromContext(ctx).With("logger", "processGlobs")
+	seenPaths := map[string]struct{}{}
+	out := make([]model.String, 0, len(paths))
+
+	for _, p := range paths {
+		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
+		if err != nil {
+			return nil, p.Pos.Errorf("file globbing error: %w", err)
+		}
+		if len(globPaths) == 0 {
+			return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
+		}
+		logger.DebugContext(ctx, "glob path expanded:", "glob", p.Val, "matches", globPaths)
+		for _, globPath := range globPaths {
+			if _, ok := seenPaths[globPath]; !ok {
+				out = append(out, model.String{
+					Val: globPath,
+					Pos: p.Pos,
+				})
+				seenPaths[globPath] = struct{}{}
+			}
+		}
+	}
+
+	return out, nil
+}
+
 // processPaths processes a list of input String paths for go templating, relative paths,
-// OS-specific slashes, and (soon) file globbing.
+// and OS-specific slashes.
 func processPaths(paths []model.String, scope *common.Scope) ([]model.String, error) {
 	out := make([]model.String, 0, len(paths))
 
@@ -151,6 +179,15 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 		if err != nil {
 			return nil, err
 		}
+
+		// on Windows, escaping is disabled in glob parsing. Therefore, to keep
+		// glob parsing behavior consistent across different OSes, escaping is
+		// not permitted. This is checked in processPaths because FromSlash converts
+		// separators to backslashes for Windows.
+		if strings.Contains(p.Val, `\`) {
+			return nil, p.Pos.Errorf(`backslashes in glob paths are not permitted: %q`, p.Val)
+		}
+
 		slashParsed := filepath.FromSlash(goParsed)
 		relParsed, err := safeRelPath(p.Pos, slashParsed)
 		if err != nil {

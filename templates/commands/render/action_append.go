@@ -33,12 +33,7 @@ func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
 		}
 	}
 
-	paths, err := processPaths(ap.Paths, sp.scope)
-	if err != nil {
-		return err
-	}
-
-	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(buf []byte) ([]byte, error) {
+	if err := walkAndModify(ctx, sp, ap.Paths, func(buf []byte) ([]byte, error) {
 		return append(buf, []byte(with)...), nil
 	}); err != nil {
 		return err

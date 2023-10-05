@@ -36,12 +36,7 @@ func actionStringReplace(ctx context.Context, sr *spec.StringReplace, sp *stepPa
 	}
 	replacer := strings.NewReplacer(replacerArgs...)
 
-	paths, err := processPaths(sr.Paths, sp.scope)
-	if err != nil {
-		return err
-	}
-
-	if err := walkAndModify(ctx, sp.fs, sp.scratchDir, paths, func(buf []byte) ([]byte, error) {
+	if err := walkAndModify(ctx, sp, sr.Paths, func(buf []byte) ([]byte, error) {
 		return []byte(replacer.Replace(string(buf))), nil
 	}); err != nil {
 		return err
