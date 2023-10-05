@@ -21,8 +21,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -85,14 +88,31 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to render golden tests: %w", merr)
 	}
 
-	// Render outputs in template golden test directories.
-	// TODO(chloechien): Copy rendered contents recursively instead of rendering twice.
 	logger := logging.FromContext(ctx)
+
+	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
-		if err := renderTestCase(c.flags.Location, c.flags.Location, tc); err != nil {
-			return fmt.Errorf("fatal error when recording golden test: %w", err)
+		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName)
+		clearTestDir(testDir)
+
+		visitor := func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
+			if !de.IsDir() {
+				logger.InfoContext(ctx, "recording", "testname", tc.TestName, "testdata", relToAbsSrc)
+			}
+			return common.CopyHint{
+				Overwrite: true,
+			}, nil
 		}
-		logger.InfoContext(ctx, "completed recording", "test", tc.TestName)
+		params := &common.CopyParams{
+			DstRoot: testDir,
+			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName),
+			RFS:     &common.RealFS{},
+			Visitor: visitor,
+		}
+		merr = errors.Join(merr, common.CopyRecursive(ctx, nil, params))
+	}
+	if merr != nil {
+		return fmt.Errorf("failed to write golden test data: %w", merr)
 	}
 
 	return nil
