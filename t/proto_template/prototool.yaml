@@ -1,0 +1,5 @@
+protoc:
+  version: 'protobuf_version'
+
+lint:
+  group: 'google'

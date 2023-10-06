@@ -17,22 +17,34 @@ kind: 'Template'
 
 desc:
   'A template that sets up a protos directory along with a script to generate language specific protos.'
+
 inputs:
   - name: 'github_org_name'
     desc: 'The name of the github org the repo will belong to'
   - name: 'github_repo_name'
     desc: 'The name of the github repo'
+  - name: 'protobuf_version'
+    desc: 'The protobuf version to use, see https://github.com/protocolbuffers/protobuf/releases'
+    default: '24.3'
+  - name: 'protoc_gen_go_version'
+    desc: 'The protoc go plugin version to use, see https://pkg.go.dev/google.golang.org/protobuf/cmd/protoc-gen-go'
+    default: '1.31'
+
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['protos', 'scripts']
+      paths: ['protos', 'scripts', '.github', 'prototool.yaml']
   - desc: 'Replace "github_org_name" and "github_repo_name" with your organization and repo name.'
     action: 'string_replace'
     params:
-      paths: ['protos/v1/person_service/person.proto', 'scripts/generate.sh']
+      paths: ['.']
       replacements:
         - to_replace: 'github_org_name'
           with: '{{.github_org_name}}'
         - to_replace: 'github_repo_name'
           with: '{{.github_repo_name}}'
+        - to_replace: 'protobuf_version'
+          with: '{{.protobuf_version}}'
+        - to_replace: 'protoc_gen_go_version'
+          with: '{{.protoc_gen_go_version}}'

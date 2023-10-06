@@ -17,13 +17,14 @@ Ensure you have go installed, if not run the following
 
 ```
   brew install go
-  go version # confirm your go installation is recent i.e. 1.21
+  go version # confirm your go installation is recent i.e. >= 1.21
 ```
 
 Must have `protoc-gen-go` installed.
 
 ```
-  go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+  // use the same value from .github/workflows/ci.yml
+  go install google.golang.org/protobuf/cmd/protoc-gen-go@<i.e. v1.31>
 ```
 
 # Setup
