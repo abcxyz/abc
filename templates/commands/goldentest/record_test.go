@@ -58,9 +58,9 @@ steps:
 				"testdata/golden/test/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				filepath.Join("test", "test.yaml"): testYaml,
-				filepath.Join("test", "a.txt"):     "file A content",
-				filepath.Join("test", "b.txt"):     "file B content",
+				filepath.Join("test", "test.yaml"):  testYaml,
+				filepath.Join("test/data", "a.txt"): "file A content",
+				filepath.Join("test/data", "b.txt"): "file B content",
 			},
 		},
 		{
@@ -72,36 +72,49 @@ steps:
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				filepath.Join("test1", "test.yaml"): testYaml,
-				filepath.Join("test1", "a.txt"):     "file A content",
-				filepath.Join("test2", "test.yaml"): testYaml,
-				filepath.Join("test2", "a.txt"):     "file A content",
+				filepath.Join("test1", "test.yaml"):  testYaml,
+				filepath.Join("test1/data", "a.txt"): "file A content",
+				filepath.Join("test2", "test.yaml"):  testYaml,
+				filepath.Join("test2/data", "a.txt"): "file A content",
 			},
 		},
 		{
 			name: "outdated_golden_file_removed",
 			filesContent: map[string]string{
-				"spec.yaml":                         specYaml,
-				"a.txt":                             "file A content",
-				"testdata/golden/test/test.yaml":    testYaml,
-				"testdata/golden/test/outdated.txt": "outdated file",
+				"spec.yaml":                              specYaml,
+				"a.txt":                                  "file A content",
+				"testdata/golden/test/test.yaml":         testYaml,
+				"testdata/golden/test/data/outdated.txt": "outdated file",
 			},
 			expectedGoldenContent: map[string]string{
-				filepath.Join("test", "test.yaml"): testYaml,
-				filepath.Join("test", "a.txt"):     "file A content",
+				filepath.Join("test", "test.yaml"):  testYaml,
+				filepath.Join("test/data", "a.txt"): "file A content",
 			},
 		},
 		{
 			name: "outdated_golden_file_overwritten",
 			filesContent: map[string]string{
-				"spec.yaml":                      specYaml,
-				"a.txt":                          "new content",
-				"testdata/golden/test/test.yaml": testYaml,
-				"testdata/golden/test/a.txt":     "old content",
+				"spec.yaml":                       specYaml,
+				"a.txt":                           "new content",
+				"testdata/golden/test/test.yaml":  testYaml,
+				"testdata/golden/test/data/a.txt": "old content",
 			},
 			expectedGoldenContent: map[string]string{
-				filepath.Join("test", "test.yaml"): testYaml,
-				filepath.Join("test", "a.txt"):     "new content",
+				filepath.Join("test", "test.yaml"):  testYaml,
+				filepath.Join("test/data", "a.txt"): "new content",
+			},
+		},
+		{
+			name: "non_golden_test_data_removed",
+			filesContent: map[string]string{
+				"spec.yaml":                      specYaml,
+				"a.txt":                          "file A content",
+				"testdata/golden/test/test.yaml": testYaml,
+				"testdata/golden/test/unexpected_file.txt": "oh",
+			},
+			expectedGoldenContent: map[string]string{
+				filepath.Join("test", "test.yaml"):  testYaml,
+				filepath.Join("test/data", "a.txt"): "file A content",
 			},
 		},
 		{
@@ -114,9 +127,9 @@ steps:
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				filepath.Join("test1", "test.yaml"): testYaml,
-				filepath.Join("test1", "a.txt"):     "file A content",
-				filepath.Join("test2", "test.yaml"): testYaml,
+				filepath.Join("test1", "test.yaml"):  testYaml,
+				filepath.Join("test1/data", "a.txt"): "file A content",
+				filepath.Join("test2", "test.yaml"):  testYaml,
 			},
 		},
 		{
