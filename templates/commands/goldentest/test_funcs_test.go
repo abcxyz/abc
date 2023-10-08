@@ -250,9 +250,9 @@ steps:
 				"testdata/golden/test/test.yaml": "yaml",
 			},
 			expectedGoldenContent: map[string]string{
-				"test.yaml":  "yaml",
-				"data/a.txt": "file A content",
-				"data/b.txt": "file B content",
+				"test.yaml":                    "yaml",
+				filepath.Join("data", "a.txt"): "file A content",
+				filepath.Join("data", "b.txt"): "file B content",
 			},
 		},
 		{
@@ -280,9 +280,9 @@ steps:
 				"testdata/golden/test/test.yaml": "yaml",
 			},
 			expectedGoldenContent: map[string]string{
-				"test.yaml":  "yaml",
-				"data/a.txt": "file A content",
-				"data/b.txt": "file B content",
+				"test.yaml":                    "yaml",
+				filepath.Join("data", "a.txt"): "file A content",
+				filepath.Join("data", "b.txt"): "file B content",
 			},
 		},
 	}
