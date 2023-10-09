@@ -160,9 +160,9 @@ func TestClearTestDir(t *testing.T) {
 		{
 			name: "outdated_test_artifacts_removed",
 			filesContent: map[string]string{
-				"test.yaml": "yaml",
-				"a.txt":     "file A content",
-				"b/b.txt":   "file B content",
+				"test.yaml":    "yaml",
+				"data/a.txt":   "file A content",
+				"data/b/b.txt": "file B content",
 			},
 			expected: map[string]string{
 				"test.yaml": "yaml",
@@ -171,8 +171,8 @@ func TestClearTestDir(t *testing.T) {
 		{
 			name: "test_config_in_sub_dir_removed",
 			filesContent: map[string]string{
-				"test.yaml":       "yaml",
-				"teset/test.yaml": "yaml",
+				"test.yaml":      "yaml",
+				"test/test.yaml": "yaml",
 			},
 			expected: map[string]string{
 				"test.yaml": "yaml",
@@ -250,9 +250,9 @@ steps:
 				"testdata/golden/test/test.yaml": "yaml",
 			},
 			expectedGoldenContent: map[string]string{
-				"test.yaml": "yaml",
-				"a.txt":     "file A content",
-				"b.txt":     "file B content",
+				"test.yaml":                    "yaml",
+				filepath.Join("data", "a.txt"): "file A content",
+				filepath.Join("data", "b.txt"): "file B content",
 			},
 		},
 		{
@@ -280,9 +280,9 @@ steps:
 				"testdata/golden/test/test.yaml": "yaml",
 			},
 			expectedGoldenContent: map[string]string{
-				"test.yaml": "yaml",
-				"a.txt":     "file A content",
-				"b.txt":     "file B content",
+				"test.yaml":                    "yaml",
+				filepath.Join("data", "a.txt"): "file A content",
+				filepath.Join("data", "b.txt"): "file B content",
 			},
 		},
 	}

@@ -51,7 +51,7 @@ all tests will be recoreded.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
-  - a testdata/golden/<test_name>/inputs.yaml exists to define
+  - a testdata/golden/<test_name>/test.yaml exists to define
 template input params.`
 }
 
@@ -106,8 +106,8 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 			}, nil
 		}
 		params := &common.CopyParams{
-			DstRoot: testDir,
-			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName),
+			DstRoot: filepath.Join(testDir, testDataDir),
+			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir),
 			RFS:     &common.RealFS{},
 			Visitor: visitor,
 		}

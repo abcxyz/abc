@@ -42,6 +42,10 @@ const (
 	// named testdata/golden.
 	goldenTestDir = "testdata/golden"
 
+	// The subdirectory under a test case that records test data.
+	// Example: testdata/golden/test-case-1/data/...
+	testDataDir = "data"
+
 	// The golden test config file is always located in the test case root dir and
 	// named test.yaml.
 	configName = "test.yaml"
@@ -133,7 +137,7 @@ func clearTestDir(dir string) error {
 
 // renderTestCase executes the "template render" command based upon test config.
 func renderTestCase(templateDir, outputDir string, tc *TestCase) error {
-	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName)
+	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName, testDataDir)
 
 	if err := clearTestDir(testDir); err != nil {
 		return fmt.Errorf("failed to clear test directory: %w", err)
