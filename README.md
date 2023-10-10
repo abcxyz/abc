@@ -368,13 +368,20 @@ part of the Go standard library.
 
 ### Steps and actions
 
-Each step of the spec file performs a single action. A single step consists of
-an optional `desc`, a string `action`, and a `params` object whose fields depend
-on the `action`:
+Each step of the spec file performs a single action. A single step consists of:
+
+- an optional string named `desc`
+- a required string named `action`
+- (in `api_version` >= v1beta1) an optional string named `if` containing CEL
+  predicate (more [below](#using-cel) on CEL).
+- a required object named `params` whose fields depend on the `action`
+
+Example:
 
 ```yaml
 desc: 'An optional human-readable description of what this step is for'
 action: 'action-name' # One of 'include', 'print', 'append', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template
+if: 'bool(my_input) || int(my_other_input) > 42' # Optional CEL expression
 params:
   foo: bar # The params differ depending on the action
 ```
@@ -758,12 +765,14 @@ Params:
 # Using CEL
 
 We use the CEL language to allow template authors to embed scripts in the spec
-file in certain places. The two places you can use CEL are:
+file in certain places. The places you can use CEL are:
 
 - the `from_values` field inside `for_each` that produces a list of values to
   iterate over
 - the `rule` field inside an `input` that validates the input and returns a
   boolean
+- (starting in `api_version` v1beta1) the `if` field inside a
+  [step](#steps-and-actions) object
 
 [CEL, the Common Expression Language)](https://github.com/google/cel-spec), is a
 non-Turing complete language that's designed to be easily embedded in programs.

@@ -462,10 +462,10 @@ func (c *Command) checkInputsMissing(spec *spec.Spec) []string {
 }
 
 func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error {
-	logger := logging.FromContext(ctx).With("logger", "executeSpec")
+	logger := logging.FromContext(ctx).With("logger", "executeSteps")
 
 	for i, step := range steps {
-		if err := executeOneStep(ctx, step, sp); err != nil {
+		if err := executeOneStep(ctx, i, step, sp); err != nil {
 			return err
 		}
 		logger.DebugContext(ctx, "completed template action", "action", step.Action.Val)
@@ -546,7 +546,24 @@ func (s *stepParams) WithScope(vars map[string]string) *stepParams {
 	return &out
 }
 
-func executeOneStep(ctx context.Context, step *spec.Step, sp *stepParams) error {
+func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepParams) error {
+	logger := logging.FromContext(ctx).With("logger", "executeOneStep")
+
+	if step.If.Val != "" {
+		var celResult bool
+		if err := common.CelCompileAndEval(ctx, sp.scope, step.If, &celResult); err != nil {
+			return fmt.Errorf(`"if" expression "%s" failed at step index %d action %q: %w`,
+				step.If.Val, stepIdx, step.Action.Val, err)
+		}
+		if !celResult {
+			logger.DebugContext(ctx, `skipping step because "if" expression evaluated to false`,
+				"step_index_from_0", stepIdx, "action", step.Action.Val, "cel_expr", step.If.Val)
+			return nil
+		}
+		logger.DebugContext(ctx, `proceeding to execute step because "if" expression evaluated to true`,
+			"step_index_from_0", stepIdx, "action", step.Action.Val, "cel_expr", step.If.Val)
+	}
+
 	switch {
 	case step.Append != nil:
 		return actionAppend(ctx, step.Append, sp)
