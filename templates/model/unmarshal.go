@@ -26,6 +26,8 @@ package model
 //       based on the value of the "action" field.
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -110,9 +112,18 @@ type ValidatorUpgrader interface {
 
 	// Upgrade converts an old version of a YAML struct into newer version for
 	// example, from api_version v1 to v2. If the struct is already the most
-	// recent version, it returns nil. An error means that the model cannot be
-	// converted because either (1) something weird happened or (2) the YAML
-	// struct uses features in an old version that are not supported in newer
-	// versions.
-	Upgrade() (ValidatorUpgrader, error)
+	// recent version, it returns (nil,LatestVersion).
+	//
+	// An error other than LatestVersion means that the model cannot be converted
+	// because either:
+	//
+	//   1. something weird happened
+	//   2. the YAML struct uses features in an old version that are not supported in newer
+	//      versions.
+	Upgrade(context.Context) (ValidatorUpgrader, error)
 }
+
+// ErrLatestVersion is a sentinel error returned from Upgrade() meaning that there
+// is no further upgrading to be done because the current version is already the
+// latest version.
+var ErrLatestVersion = errors.New("this is the latest version")

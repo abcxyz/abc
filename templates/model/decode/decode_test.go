@@ -15,6 +15,7 @@
 package decode
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -354,7 +355,9 @@ kind: 'Template'`,
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			vu, err := DecodeValidateUpgrade(strings.NewReader(tc.fileContents), "file.yaml", "")
+			ctx := context.Background()
+			rd := strings.NewReader(tc.fileContents)
+			vu, err := DecodeValidateUpgrade(ctx, rd, "file.yaml", "")
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

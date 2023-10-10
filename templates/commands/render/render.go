@@ -182,7 +182,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	spec, err := loadSpecFile(rp.fs, templateDir)
+	spec, err := loadSpecFile(ctx, rp.fs, templateDir)
 	if err != nil {
 		return err
 	}
@@ -569,7 +569,7 @@ func executeOneStep(ctx context.Context, step *spec.Step, sp *stepParams) error 
 	}
 }
 
-func loadSpecFile(fs common.FS, templateDir string) (*spec.Spec, error) {
+func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.Spec, error) {
 	specPath := filepath.Join(templateDir, specName)
 	f, err := fs.Open(specPath)
 	if err != nil {
@@ -577,7 +577,7 @@ func loadSpecFile(fs common.FS, templateDir string) (*spec.Spec, error) {
 	}
 	defer f.Close()
 
-	specI, err := decode.DecodeValidateUpgrade(f, specName, decode.KindTemplate)
+	specI, err := decode.DecodeValidateUpgrade(ctx, f, specName, decode.KindTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("error reading template spec file: %w", err)
 	}

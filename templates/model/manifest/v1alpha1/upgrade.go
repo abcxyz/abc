@@ -14,8 +14,17 @@
 
 package manifest
 
-import "github.com/abcxyz/abc/templates/model"
+import (
+	"context"
 
-func (m *Manifest) Upgrade() (model.ValidatorUpgrader, error) {
-	return nil, nil // This is the most recent API version
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/logging"
+)
+
+// Upgrade implements model.ValidatorUpgrader.
+func (m *Manifest) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
+	logger := logging.FromContext(ctx).With("logger", "Upgrade")
+	logger.DebugContext(ctx, "finished upgrading, this is the most recent version")
+
+	return nil, model.ErrLatestVersion
 }

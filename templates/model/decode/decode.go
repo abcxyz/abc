@@ -15,6 +15,8 @@
 package decode
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -117,10 +119,10 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 	return vu, apiVersion, nil
 }
 
-// DecodeValidateUpgrade  parses the given YAML contents of r into a struct,
+// DecodeValidateUpgrade parses the given YAML contents of r into a struct,
 // then repeatedly calls Upgrade() and Validate() on it until it's the newest version, then
 // returns it. requireKind has the same meaning as in Decode().
-func DecodeValidateUpgrade(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, error) {
+func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, error) {
 	vu, apiVersion, err := Decode(r, filename, requireKind)
 	if err != nil {
 		return nil, err
@@ -131,12 +133,12 @@ func DecodeValidateUpgrade(r io.Reader, filename, requireKind string) (model.Val
 	}
 
 	for {
-		upgraded, err := vu.Upgrade()
+		upgraded, err := vu.Upgrade(ctx)
 		if err != nil {
+			if errors.Is(err, model.ErrLatestVersion) {
+				return vu, nil
+			}
 			return nil, fmt.Errorf("internal error: YAML model couldn't be upgraded from api_version %s: %w", apiVersion, err)
-		}
-		if upgraded == nil {
-			break
 		}
 		vu = upgraded
 		if err := vu.Validate(); err != nil {
@@ -147,8 +149,6 @@ func DecodeValidateUpgrade(r io.Reader, filename, requireKind string) (model.Val
 			return nil, fmt.Errorf("internal error: validation failed after automatic schema upgrade from %s in %s: %w", apiVersion, filename, err)
 		}
 	}
-
-	return vu, nil
 }
 
 // commonFields is the set fields that are present in every "kind" of YAML file

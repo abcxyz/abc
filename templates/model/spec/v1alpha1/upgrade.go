@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/abcxyz/abc/templates/model"
@@ -22,12 +23,13 @@ import (
 	"github.com/jinzhu/copier"
 )
 
-func (s *Spec) Upgrade() (model.ValidatorUpgrader, error) {
-	out := &v1beta1.Spec{}
+// Upgrade implements model.ValidatorUpgrader.
+func (s *Spec) Upgrade(context.Context) (model.ValidatorUpgrader, error) {
+	var out v1beta1.Spec
 	// The only difference between schema v1alpha1 and v1beta1 is the addition of the "if"
 	// field in the "step" struct. So a straight-across copy is sufficient.
-	if err := copier.Copy(out, s); err != nil {
+	if err := copier.Copy(&out, s); err != nil {
 		return nil, fmt.Errorf("failed upgrading spec from v1alpha1 to v1beta1: %w", err)
 	}
-	return out, nil
+	return &out, nil
 }

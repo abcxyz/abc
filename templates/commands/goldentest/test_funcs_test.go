@@ -16,6 +16,7 @@
 package goldentest
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -132,7 +133,8 @@ kind: 'GoldenTest'`
 				t.Fatal(err)
 			}
 
-			got, err := parseTestCases(tempDir, tc.testName)
+			ctx := context.Background()
+			got, err := parseTestCases(ctx, tempDir, tc.testName)
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)

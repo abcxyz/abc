@@ -12,7 +12,7 @@ In any of the following cases:
 
 Every api_version represents a distinct configuration "language", and we never
 want to change the semantics of an existing api_version that has already been
-release.
+released.
 
 ## Steps
 

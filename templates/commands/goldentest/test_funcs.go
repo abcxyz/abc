@@ -49,7 +49,7 @@ const (
 )
 
 // parseTestCases returns a list of test cases to record or verify.
-func parseTestCases(location, testName string) ([]*TestCase, error) {
+func parseTestCases(ctx context.Context, location, testName string) ([]*TestCase, error) {
 	if _, err := os.Stat(location); err != nil {
 		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)
 	}
@@ -58,7 +58,7 @@ func parseTestCases(location, testName string) ([]*TestCase, error) {
 
 	if testName != "" {
 		testConfig := filepath.Join(testDir, testName, configName)
-		test, err := parseTestConfig(testConfig)
+		test, err := parseTestConfig(ctx, testConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +82,7 @@ func parseTestCases(location, testName string) ([]*TestCase, error) {
 		}
 
 		testConfig := filepath.Join(testDir, entry.Name(), configName)
-		test, err := parseTestConfig(testConfig)
+		test, err := parseTestConfig(ctx, testConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -97,14 +97,14 @@ func parseTestCases(location, testName string) ([]*TestCase, error) {
 }
 
 // parseTestConfig reads a configuration yaml and returns the result.
-func parseTestConfig(path string) (*goldentest.Test, error) {
+func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("error opening test config (%s): %w", path, err)
 	}
 	defer f.Close()
 
-	testI, err := decode.DecodeValidateUpgrade(f, path, decode.KindGoldenTest)
+	testI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindGoldenTest)
 	if err != nil {
 		return nil, fmt.Errorf("error reading golden test config file: %w", err)
 	}
