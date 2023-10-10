@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package model contains the structs for unmarshaled YAML files.
-//
 //nolint:wrapcheck // We don't want to excessively wrap errors, like "yaml error: yaml error: ..."
-package spec
+package v1alpha1
 
 import (
 	"errors"
-	"io"
 	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
@@ -27,27 +24,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Decode unmarshals the YAML Spec from r. This function exists so we can
-// validate the Spec model before providing it to the caller; we don't want the
-// caller to forget, and thereby introduce bugs.
-//
-// If the Spec parses successfully but then fails validation, the spec will be
-// returned along with the validation error.
-func Decode(r io.Reader) (*Spec, error) {
-	out := &Spec{}
-	if err := model.DecodeAndValidate(r, "spec", out); err != nil {
-		return out, err
-	}
-	return out, nil
-}
-
 // Spec represents a parsed spec.yaml file describing a template.
 type Spec struct {
 	// Pos is the YAML file location where this object started.
 	Pos model.ConfigPos `yaml:"-"`
-
-	APIVersion model.String // this field is unmarshalled specially, see Spec.UnmarshalYAML
-	Kind       model.String `yaml:"kind"`
 
 	Desc   model.String `yaml:"desc"`
 	Inputs []*Input     `yaml:"inputs"`
@@ -57,36 +37,16 @@ type Spec struct {
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 	// The api_version field was mistakenly named apiVersion in the past, so accept both.
-	if err := model.UnmarshalPlain(n, s, &s.Pos, "api_version", "apiVersion"); err != nil {
+	if err := model.UnmarshalPlain(n, s, &s.Pos, "api_version", "apiVersion", "kind"); err != nil {
 		return err
 	}
 
-	avShim := struct {
-		OldStyle model.String `yaml:"apiVersion"`
-		NewStyle model.String `yaml:"api_version"`
-	}{}
-	if err := n.Decode(&avShim); err != nil {
-		return err
-	}
-
-	if avShim.NewStyle.Val != "" && avShim.OldStyle.Val != "" {
-		return avShim.OldStyle.Pos.Errorf("must not set both apiVersion and api_version, please use api_version only")
-	}
-	if avShim.NewStyle.Val != "" {
-		s.APIVersion = avShim.NewStyle
-		return nil
-	}
-	if avShim.OldStyle.Val != "" {
-		s.APIVersion = avShim.OldStyle
-	}
 	return nil
 }
 
 // Validate implements Validator.
 func (s *Spec) Validate() error {
 	return errors.Join(
-		model.IsKnownAPIVersion(&s.Pos, s.APIVersion, "api_version"),
-		model.OneOf(&s.Pos, s.Kind, []string{"Template"}, "kind"),
 		model.NotZeroModel(&s.Pos, s.Desc, "desc"),
 		model.NonEmptySlice(&s.Pos, s.Steps, "steps"),
 		model.ValidateEach(s.Inputs),

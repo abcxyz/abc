@@ -16,12 +16,13 @@
 package goldentest
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/model/goldentest"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -30,11 +31,10 @@ import (
 func TestParseTestCases(t *testing.T) {
 	t.Parallel()
 
-	validYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'`
+	validYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'GoldenTest'`
 	invalidYaml := "bad yaml"
-	validTestCase := &goldentest.Test{
-		APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-	}
+	validTestCase := &goldentest.Test{}
 
 	cases := []struct {
 		name         string
@@ -133,7 +133,8 @@ func TestParseTestCases(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			got, err := parseTestCases(tempDir, tc.testName)
+			ctx := context.Background()
+			got, err := parseTestCases(ctx, tempDir, tc.testName)
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
@@ -238,10 +239,8 @@ steps:
 		{
 			name: "simple_test_succeeds",
 			testCase: &TestCase{
-				TestName: "test",
-				TestConfig: &goldentest.Test{
-					APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-				},
+				TestName:   "test",
+				TestConfig: &goldentest.Test{},
 			},
 			filesContent: map[string]string{
 				"spec.yaml":                      specYaml,
@@ -260,7 +259,6 @@ steps:
 			testCase: &TestCase{
 				TestName: "test",
 				TestConfig: &goldentest.Test{
-					APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
 					Inputs: []*goldentest.InputValue{
 						{
 							Name:  model.String{Val: "input_a"},

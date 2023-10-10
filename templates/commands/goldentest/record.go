@@ -66,7 +66,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	testCases, err := parseTestCases(c.flags.Location, c.flags.TestName)
+	testCases, err := parseTestCases(ctx, c.flags.Location, c.flags.TestName)
 	if err != nil {
 		return fmt.Errorf("failed to parse golden test: %w", err)
 	}

@@ -29,7 +29,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/model/spec"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -284,7 +284,7 @@ steps:
 			wantTemplateContents: map[string]string{
 				"spec.yaml": "this is an unparseable YAML file *&^#%$",
 			},
-			wantErr: "error parsing spec",
+			wantErr: "error parsing file spec.yaml",
 		},
 		{
 			name: "existing_dest_file_with_overwrite_flag_should_succeed",

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package spec
+package v1beta1
 
 import (
 	"strings"
@@ -52,9 +52,6 @@ steps:
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
 			want: &Spec{
-				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-				Kind:       model.String{Val: "Template"},
-
 				Desc: model.String{Val: "A simple template that just prints and exits"},
 				Inputs: []*Input{
 					{
@@ -91,9 +88,6 @@ steps:
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
 			want: &Spec{
-				APIVersion: model.String{Val: "cli.abcxyz.dev/v1alpha1"},
-				Kind:       model.String{Val: "Template"},
-
 				Desc: model.String{Val: "A simple template that just prints and exits"},
 				Inputs: []*Input{
 					{
@@ -114,25 +108,6 @@ steps:
 			},
 		},
 		{
-			name: "api_version_both_forms",
-			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
-kind: 'Template'
-
-desc: 'A simple template that just prints and exits'
-inputs:
-- name: 'person_name'
-  desc: 'An optional name of a person to greet'
-  default: 'default value'
-
-steps:
-- desc: 'Print a message'
-  action: 'print'
-  params:
-    message: 'Hello, {{.or .person_name "World"}}'`,
-			wantUnmarshalErr: "must not set both apiVersion and api_version, please use api_version only",
-		},
-		{
 			name: "validation_of_children_should_occur_and_fail",
 			in: `desc: 'A simple template that just prints and exits'
 inputs:
@@ -149,9 +124,6 @@ steps:
 			name: "check_required_fields",
 			in:   "inputs:",
 			wantValidateErr: []string{
-				`at line 1 column 1: field "api_version" value was "" but must be one of`,
-				`you might need to upgrade your abc CLI. See https://github.com/abcxyz/abc/#installation`,
-				`at line 1 column 1: field "kind" value was "" but must be one of [Template]`,
 				`at line 1 column 1: field "desc" is required`,
 				`at line 1 column 1: field "steps" is required`,
 			},
@@ -1098,6 +1070,23 @@ params:
         message: 'Hello, {{.name}}'
 `,
 			wantUnmarshalErr: `line 6: cannot unmarshal`,
+		},
+		{
+			name: "print_with_if",
+			in: `desc: 'mydesc'
+action: 'print'
+if: '{{.myinput}}'
+params:
+  message: 'Hello'
+`,
+			want: &Step{
+				Desc:   model.String{Val: "mydesc"},
+				Action: model.String{Val: "print"},
+				If:     model.String{Val: "{{.myinput}}"},
+				Print: &Print{
+					Message: model.String{Val: "Hello"},
+				},
+			},
 		},
 	}
 

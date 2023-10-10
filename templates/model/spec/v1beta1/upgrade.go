@@ -12,32 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package render
+package v1beta1
 
 import (
 	"context"
-	"strings"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/logging"
 )
 
-func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
-	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.scope)
-	if err != nil {
-		return err
-	}
+// Upgrade implements model.ValidatorUpgrader.
+func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
+	logger := logging.FromContext(ctx).With("logger", "Upgrade")
+	logger.DebugContext(ctx, "finished upgrading, this is the most recent version")
 
-	if !ap.SkipEnsureNewline.Val {
-		if !strings.HasSuffix(with, "\n") {
-			with = with + "\n"
-		}
-	}
-
-	if err := walkAndModify(ctx, sp, ap.Paths, func(buf []byte) ([]byte, error) {
-		return append(buf, []byte(with)...), nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	return nil, model.ErrLatestVersion
 }

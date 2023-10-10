@@ -258,15 +258,24 @@ steps:
           with: '{{.whomever}}'
 ```
 
-The `api_version` field currently has only one valid value,
-`cli.abcxyz.dev/v1alpha1`. The field name `api_version` may also be named
-`apiVersion` in old templates, but the newer form `api_version` is preferred.
+#### List of api_versions
+
+The `api_version` field controls the interpretation of the YAML file. Some
+features are only available in more recent versions.
+
+The currently valid versions are:
+
+| api_version                               | Binary versions | Notes                                         |
+| ----------------------------------------- | --------------- | --------------------------------------------- |
+| cli.abcxyz.dev/v1alpha1                   | From 0.0.0      | version                                       |
+| cli.abcxyz.dev/v1beta1 (not released yet) | From 0.2.0      | Adds support for `if` predicates on each step |
 
 #### Template inputs
 
 Typically the CLI user will supply certain values as `--input=inputname=value`
 which will be used by the spec file (such as `whomever` in the preceding
-example).
+example). Alternatively, the user can use `--prompt` rather than `--input` to
+enter values interactively.
 
 A template may not need any inputs, in which case the `inputs` top-level field
 can be omitted.

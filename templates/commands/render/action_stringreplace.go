@@ -18,7 +18,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/abcxyz/abc/templates/model/spec"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 )
 
 func actionStringReplace(ctx context.Context, sr *spec.StringReplace, sp *stepParams) error {
