@@ -265,10 +265,10 @@ features are only available in more recent versions.
 
 The currently valid versions are:
 
-| api_version                               | Binary versions | Notes                                         |
-| ----------------------------------------- | --------------- | --------------------------------------------- |
-| cli.abcxyz.dev/v1alpha1                   | From 0.0.0      | version                                       |
-| cli.abcxyz.dev/v1beta1 (not released yet) | From 0.2.0      | Adds support for `if` predicates on each step |
+| api_version             | Binary versions | Notes                                           |
+| ----------------------- | --------------- | ----------------------------------------------- |
+| cli.abcxyz.dev/v1alpha1 | From 0.0.0      | Initial version                                 |
+| cli.abcxyz.dev/v1beta1  | From 0.2        | Adds support for an `if` predicate on each step |
 
 #### Template inputs
 
