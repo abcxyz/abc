@@ -51,6 +51,7 @@ kind: 'Template'
 desc: 'mydesc'
 steps:
   - action: 'include'
+    desc: 'include all files'
     params:
       paths: ['.']`,
 			want: &specv1alpha1.Spec{
@@ -58,6 +59,7 @@ steps:
 				Steps: []*specv1alpha1.Step{
 					{
 						Action: model.String{Val: "include"},
+						Desc:   model.String{Val: "include all files"},
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
@@ -111,6 +113,7 @@ kind: 'Template'
 desc: 'mydesc'
 steps:
   - action: 'include'
+    desc: 'include all files'
     if: 'true'
     params:
       paths: ['.']`,
@@ -120,6 +123,7 @@ steps:
 					{
 						Action: model.String{Val: "include"},
 						If:     model.String{Val: "true"},
+						Desc:   model.String{Val: "include all files"},
 						Include: &specv1beta1.Include{
 							Paths: []*specv1beta1.IncludePath{
 								{
@@ -173,6 +177,7 @@ kind: 'Template'
 desc: 'mydesc'
 steps:
   - action: 'include'
+    desc: 'include all files'
     params:
       paths: ['.']`,
 			want: &specv1alpha1.Spec{
@@ -180,6 +185,7 @@ steps:
 				Steps: []*specv1alpha1.Step{
 					{
 						Action: model.String{Val: "include"},
+						Desc:   model.String{Val: "include all files"},
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
@@ -242,6 +248,39 @@ kind: 'GoldenTest'`,
 api_version: 'cli.abcxyz.dev/v1beta1'
 kind: 'GoldenTest'`,
 			wantErr: `must not set both apiVersion and api_version, please use api_version only`,
+		},
+		{
+			name:        "speculative_upgrade",
+			requireKind: KindTemplate,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'mydesc'
+steps:
+  - action: 'include'
+    desc: 'include all files'
+    if: 'true'
+    params:
+      paths: ['.']`,
+			want: &specv1beta1.Spec{
+				Desc: model.String{Val: "mydesc"},
+				Steps: []*specv1beta1.Step{
+					{
+						Action: model.String{Val: "include"},
+						If:     model.String{Val: "true"},
+						Desc:   model.String{Val: "include all files"},
+						Include: &specv1beta1.Include{
+							Paths: []*specv1beta1.IncludePath{
+								{
+									Paths: []model.String{
+										{Val: "."},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version to "cli.abcxyz.dev/v1beta1".`,
 		},
 	}
 
