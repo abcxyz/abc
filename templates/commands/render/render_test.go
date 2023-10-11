@@ -525,6 +525,64 @@ steps:
 			flagSkipInputValidation: true,
 			wantStdout:              "my_input is crocodile\n",
 		},
+		{
+			name: "step_with_if",
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta1'
+kind: 'Template'
+desc: 'My template'
+
+inputs:
+  - name: 'my_input'
+    desc: 'My input'
+    default: 'true'
+
+steps:
+  - action: 'print'
+    desc: 'Conditionally print hello'
+    if: 'bool(my_input)'
+    params:
+      message: 'Hello'
+  - action: 'print'
+    desc: 'Conditionally print goodbye'
+    if: '!bool(my_input)'
+    params:
+      message: 'Goodbye'`,
+			},
+			wantStdout: "Hello\n",
+		},
+		{
+			name: "step_with_if_needs_v1beta1",
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'My template'
+
+steps:
+  - action: 'print'
+    desc: 'print the input value'
+    if: 'true'
+    params:
+      message: 'Hello'`,
+			},
+			wantErr: `unknown field name "if"`,
+		},
+		{
+			name: "if_invalid",
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta1'
+kind: 'Template'
+desc: 'My template'
+
+steps:
+  - action: 'print'
+    desc: 'print the input value'
+    if: 'bad_expression'
+    params:
+      message: 'Hello'`,
+			},
+			wantErr: `"if" expression "bad_expression" failed at step index 0 action "print"`,
+		},
 	}
 
 	for _, tc := range cases {
