@@ -71,10 +71,12 @@ var apiVersions = []apiVersionDef{
 	},
 }
 
-// Decode parses the given YAML contents of r into a struct and returns it. The given filename
-// is used only for error messages. The type of struct to return is determined by the "kind" field
-// in the YAML. If the given requireKind is non-empty, then we'll also validate that the "kind"
-// of the YAML file matches requireKind, and return error if not.
+// Decode parses the given YAML contents of r into a struct and returns it. The
+// given filename is used only for error messages. The type of struct to return
+// is determined by the "kind" field in the YAML. If the given requireKind is
+// non-empty, then we'll also validate that the "kind" of the YAML file matches
+// requireKind, and return error if not. This also calls Validate() on
+// the returned struct and returns error if invalid.
 func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, string, error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {
@@ -107,16 +109,28 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 		return nil, "", fmt.Errorf("file %s has kind %q, but %q is required", filename, cf.Kind, requireKind)
 	}
 
-	vu, err := modelForKind(filename, apiVersion, cf.Kind)
-	if err != nil {
-		return nil, "", err
+	vu, err := decodeFromVersionKind(filename, apiVersion, cf.Kind, buf)
+	if err == nil {
+		return vu, apiVersion, nil
 	}
 
-	if err := yaml.Unmarshal(buf, vu); err != nil {
-		return nil, "", fmt.Errorf("error parsing YAML file %s: %w", filename, err)
+	// Parsing or validation failed. We'll try to detect a common user error
+	// that might have caused this problem and print a helpful message. The user
+	// might be trying to use a new feature, but the api_version declared in
+	// their YAML file doesn't support that new feature. To detect this, we'll
+	// speculatively try to parse the YAML file with a newer api_version and see
+	// if that version would have been valid. If so, we inform the user that
+	// they should change the api_version field in their YAML file.
+	attemptAPIVersion := apiVersions[len(apiVersions)-1].apiVersion
+	if attemptAPIVersion == apiVersion {
+		return nil, "", err // api_version upgrade isn't possible, they're already on the latest.
+	}
+	if _, attemptErr := decodeFromVersionKind(filename, attemptAPIVersion, cf.Kind, buf); attemptErr == nil {
+		return nil, "", fmt.Errorf("file %s sets api_version %q but does not parse and validate successfully under that version. However, it will be valid if you change the api_version to %q. The error was: %w",
+			filename, apiVersion, attemptAPIVersion, err)
 	}
 
-	return vu, apiVersion, nil
+	return nil, "", err
 }
 
 // DecodeValidateUpgrade parses the given YAML contents of r into a struct,
@@ -126,10 +140,6 @@ func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKi
 	vu, apiVersion, err := Decode(r, filename, requireKind)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := vu.Validate(); err != nil {
-		return nil, fmt.Errorf("validation failed in %s: %w", filename, err)
 	}
 
 	for {
@@ -159,8 +169,9 @@ type commonFields struct {
 	Kind               string       `yaml:"kind"`
 }
 
-// modelForKind returns an instance of the YAML struct for the given API version and kind.
-func modelForKind(filename, apiVersion, kind string) (model.ValidatorUpgrader, error) {
+// decodeFromVersionKind returns an instance of the YAML struct for the given API version and kind.
+// It also validates the resulting struct.
+func decodeFromVersionKind(filename, apiVersion, kind string, buf []byte) (model.ValidatorUpgrader, error) {
 	idx := slices.IndexFunc(apiVersions, func(v apiVersionDef) bool {
 		return v.apiVersion == apiVersion
 	})
@@ -181,5 +192,14 @@ func modelForKind(filename, apiVersion, kind string) (model.ValidatorUpgrader, e
 	if !ok {
 		return nil, fmt.Errorf("internal error: type-assertion to ValidatorUpgrader failed")
 	}
+
+	if err := yaml.Unmarshal(buf, vu); err != nil {
+		return nil, fmt.Errorf("error parsing YAML file %s: %w", filename, err)
+	}
+
+	if err := vu.Validate(); err != nil {
+		return nil, fmt.Errorf("validation failed in %s: %w", filename, err)
+	}
+
 	return vu, nil
 }
