@@ -28,23 +28,28 @@ inputs:
     default: '24.3'
   - name: 'protoc_gen_go_version'
     desc: 'The protoc go plugin version to use, see https://pkg.go.dev/google.golang.org/protobuf/cmd/protoc-gen-go'
-    default: '1.31'
+    default: '1.31.0'
+  - name: 'go_version'
+    desc: 'The go version to use'
+    default: '1.21.1'
 
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['protos', 'scripts', '.github', 'prototool.yaml']
-  - desc: 'Replace "github_org_name" and "github_repo_name" with your organization and repo name.'
+  - desc: 'Replace proto related configurations'
     action: 'string_replace'
     params:
       paths: ['.']
       replacements:
-        - to_replace: 'github_org_name'
+        - to_replace: 'REPLACE_GITHUB_ORG_NAME'
           with: '{{.github_org_name}}'
-        - to_replace: 'github_repo_name'
+        - to_replace: 'REPLACE_GITHUB_REPO_NAME'
           with: '{{.github_repo_name}}'
-        - to_replace: 'protobuf_version'
+        - to_replace: 'REPLACE_PROTOBUF_VERSION'
           with: '{{.protobuf_version}}'
-        - to_replace: 'protoc_gen_go_version'
+        - to_replace: 'REPLACE_PROTOC_GEN_GO_VERSION'
           with: '{{.protoc_gen_go_version}}'
+        - to_replace: 'REPLACE_GO_VERSION'
+          with: '{{.go_version}}'

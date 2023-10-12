@@ -44,7 +44,7 @@ function pre_gen_go {
   # Check if the go.mod exists
   if [ ! -f "$1/go.mod" ]; then
     cd $1
-    if ! go mod init github.com/github_org_name/github_repo_name
+    if ! go mod init github.com/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME
     then
         echo "go mod init not recognized, add go to your PATH"
         exit 1

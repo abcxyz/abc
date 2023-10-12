@@ -14,9 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  GO_VERSION: 'REPLACE_GO_VERSION'
   PROTOTOOL_VERSION: '1.10.0' # this is the last released version before the project was completed
-  PROTOBUF_VERSION: 'protobuf_version'
-  PROTOC_GEN_GO_PLUGIN_VERSION: 'protoc_gen_go_version'
+  PROTOBUF_VERSION: 'REPLACE_PROTOBUF_VERSION'
+  PROTOC_GEN_GO_VERSION: 'REPLACE_PROTOC_GEN_GO_VERSION'
 
 jobs:
   prototool:
@@ -29,7 +30,7 @@ jobs:
       - name: 'Setup Go'
         uses: 'actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753' # ratchet:actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '${{ env.GO_VERSION }}'
 
       - name: 'Install protobuf'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:exclude
@@ -42,7 +43,7 @@ jobs:
 
       - name: 'Install protoc-gen-go'
         run: |
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@v${{ env.PROTOC_GEN_GO_PLUGIN_VERSION }}
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v${{ env.PROTOC_GEN_GO_VERSION }}
 
       - name: 'Install prototool binary'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:exclude
