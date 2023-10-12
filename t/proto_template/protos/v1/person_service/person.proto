@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package person.v1;
 
-option go_package = "github.com/github_org_name/github_repo_name/v1/person;personpb";
+option go_package = "v1/person;personpb";
 
 message Person {
   int32 id = 1;

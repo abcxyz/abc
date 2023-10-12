@@ -1,5 +1,5 @@
 protoc:
-  version: 'protobuf_version'
+  version: 'REPLACE_PROTOBUF_VERSION'
 
 lint:
   group: 'google'
