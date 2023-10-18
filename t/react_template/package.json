@@ -61,6 +61,7 @@
     "typescript": "~4.7.0"
   },
   "overrides": {
-    "@cypress/request": "^3.0.0"
+    "@cypress/request": "^3.0.0",
+    "postcss": "^8.4.31"
   }
 }
