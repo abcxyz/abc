@@ -51,10 +51,10 @@ func TestExec(t *testing.T) {
 		},
 		{
 			name:        "windows_simple_stderr",
-			args:        []string{"ipconfig", "/nonexistent"},
+			args:        []string{"cmd", "/c", `echo hello 1>&2`},
 			windowsOnly: true,
-			wantErr:     "exec of [ipconfig /nonexistent] failed",
-			wantStderr:  `Error: unrecognized or incomplete command line`,
+			wantErr:     "exec of [cmd /c echo hello 1>&2] failed",
+			wantStderr:  "hello",
 		},
 		{
 			name:    "nonexistent_cmd",
@@ -96,7 +96,7 @@ func TestExec(t *testing.T) {
 			}
 
 			if len(tc.wantStderr) > 0 && !strings.Contains(stderr, tc.wantStderr) {
-				t.Errorf("got stderr:\n%q\nbut wanted stderr to contain: %q", stdout, tc.wantStderr)
+				t.Errorf("got stderr:\n%q\nbut wanted stderr to contain: %q", stderr, tc.wantStderr)
 			}
 		})
 	}
