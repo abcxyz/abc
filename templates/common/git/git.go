@@ -16,12 +16,10 @@ package git
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -38,7 +36,7 @@ import (
 func Clone(ctx context.Context, remote, branchOrTag, outDir string) error {
 	_, _, err := common.Exec(ctx, "git", "clone", "--depth", "1", "--branch", branchOrTag, remote, outDir)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	links, err := findSymlinks(outDir)
@@ -87,13 +85,11 @@ func findSymlinks(dir string) ([]string, error) {
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Tags(ctx context.Context, remote string) ([]string, error) {
-	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--tags", remote)
-	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-	cmd.Stdout, cmd.Stderr = stdout, stderr
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("git exec of %v failed: %w\nstdout: %s\nstderr: %s", cmd.Args, err, cmd.Stdout, cmd.Stderr)
+	stdout, _, err := common.Exec(ctx, "git", "ls-remote", "--tags", remote)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
 	}
-	lineScanner := bufio.NewScanner(stdout)
+	lineScanner := bufio.NewScanner(strings.NewReader(stdout))
 	var tags []string
 	for lineScanner.Scan() {
 		line := lineScanner.Text()

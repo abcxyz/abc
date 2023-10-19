@@ -199,7 +199,7 @@ func TestFindSymlinks(t *testing.T) {
 
 			for _, r := range tc.regularFiles {
 				path := filepath.Join(tempDir, filepath.FromSlash(r))
-				if err := os.WriteFile(path, []byte("my-contents"), 0o744); err != nil {
+				if err := os.WriteFile(path, []byte("my-contents"), 0o644); err != nil { //nolint:gosec
 					t.Fatal(err)
 				}
 			}
