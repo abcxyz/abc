@@ -59,7 +59,7 @@ func TestExec(t *testing.T) {
 		{
 			name:    "nonexistent_cmd",
 			args:    []string{"nonexistent-cmd"},
-			wantErr: `exec: "nonexistent-cmd": executable file not found in $PATH`,
+			wantErr: `exec: "nonexistent-cmd": executable file not found`,
 		},
 		{
 			name:    "timeout",
