@@ -19,6 +19,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -29,6 +30,7 @@ func TestExec(t *testing.T) {
 	cases := []struct {
 		name           string
 		args           []string
+		timeout        time.Duration
 		windowsOnly    bool
 		nonWindowsOnly bool
 		wantStdout     string
@@ -59,6 +61,12 @@ func TestExec(t *testing.T) {
 			args:    []string{"nonexistent-cmd"},
 			wantErr: `exec: "nonexistent-cmd": executable file not found in $PATH`,
 		},
+		{
+			name:    "timeout",
+			args:    []string{"sleep", "1"},
+			timeout: time.Millisecond,
+			wantErr: "context deadline exceeded",
+		},
 	}
 
 	for _, tc := range cases {
@@ -74,7 +82,12 @@ func TestExec(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			stdout, stderr, err := Exec(ctx, tc.args...)
+			if tc.timeout != 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, tc.timeout)
+				defer cancel()
+			}
+			stdout, stderr, err := Run(ctx, tc.args...)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

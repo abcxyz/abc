@@ -22,9 +22,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/abcxyz/abc/templates/common"
 )
+
+// How long to wait for git operations. This was chosen arbitrarily.
+var gitTimeout = time.Minute
 
 // Clone checks out the given branch or tag from the given repo. It uses the git
 // CLI already installed on the system.
@@ -34,7 +38,9 @@ import (
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Clone(ctx context.Context, remote, branchOrTag, outDir string) error {
-	_, _, err := common.Exec(ctx, "git", "clone", "--depth", "1", "--branch", branchOrTag, remote, outDir)
+	ctx, cancel := context.WithTimeout(ctx, gitTimeout)
+	defer cancel()
+	_, _, err := common.Run(ctx, "git", "clone", "--depth", "1", "--branch", branchOrTag, remote, outDir)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -85,7 +91,10 @@ func findSymlinks(dir string) ([]string, error) {
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Tags(ctx context.Context, remote string) ([]string, error) {
-	stdout, _, err := common.Exec(ctx, "git", "ls-remote", "--tags", remote)
+	ctx, cancel := context.WithTimeout(ctx, gitTimeout)
+	defer cancel()
+
+	stdout, _, err := common.Run(ctx, "git", "ls-remote", "--tags", remote)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}

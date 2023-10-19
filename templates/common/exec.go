@@ -21,13 +21,20 @@ import (
 	"os/exec"
 )
 
-// Exec is a wrapper around exec.CommandContext that captures stdout and stderr
-// as strings. The input args must have len>=1.
+// Run is a wrapper around exec.CommandContext and Run() that captures stdout
+// and stderr as strings. The input args must have len>=1.
+//
+// This is intended to be used for commands that run non-interactively then
+// exit.
+//
+// This doesn't execute a shell (unless of course args[0] is the name of a shell
+// binary).
 //
 // If the command fails, the error message will include the contents of stdout
 // and stderr. This saves boilerplate in the caller.
-func Exec(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
+func Run(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec // exec'ing the input args is fundamentally the whole point
+
 	stdoutBuf := &bytes.Buffer{}
 	stderrBuf := &bytes.Buffer{}
 	cmd.Stdout = stdoutBuf
@@ -36,7 +43,7 @@ func Exec(ctx context.Context, args ...string) (stdout, stderr string, _ error) 
 	err := cmd.Run()
 	stdout, stderr = stdoutBuf.String(), stderrBuf.String()
 	if err != nil {
-		err = fmt.Errorf("exec of %v failed: %w\nstdout: %s\nstderr: %s", args, err, cmd.Stdout, cmd.Stderr)
+		err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w"\nstdout: %s\nstderr: %s`, args, err, ctx.Err(), cmd.Stdout, cmd.Stderr)
 	}
 	return stdout, stderr, err
 }
