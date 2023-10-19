@@ -51,10 +51,10 @@ func TestExec(t *testing.T) {
 		},
 		{
 			name:        "windows_simple_stderr",
-			args:        []string{"dir", "/nonexistent"},
+			args:        []string{"ipconfig", "/nonexistent"},
 			windowsOnly: true,
-			wantErr:     "exec of [dir /nonexistent] failed",
-			wantStderr:  `Parameter format not correct - "nonexistent"`,
+			wantErr:     "exec of [ipconfig /nonexistent] failed",
+			wantStderr:  `Error: unrecognized or incomplete command line`,
 		},
 		{
 			name:    "nonexistent_cmd",

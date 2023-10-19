@@ -218,7 +218,11 @@ func TestFindSymlinks(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if !slices.Equal(got, tc.want) {
+			want := make([]string, 0, len(tc.want))
+			for _, w := range tc.want {
+				want = append(want, filepath.FromSlash(w))
+			}
+			if !slices.Equal(got, want) {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
