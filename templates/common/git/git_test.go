@@ -110,7 +110,7 @@ func TestClone(t *testing.T) {
 			name:        "symlinks_forbidden",
 			remote:      "https://github.com/abcxyz/abc.git",
 			branchOrTag: "drevell/forbidden-symlink-for-test",
-			wantErr:     `a symlink was found in "https://github.com/abcxyz/abc.git" at "example-symlink"`,
+			wantErr:     `one or more symlinks were found in \"https://github.com/abcxyz/abc.git\" at [example-symlink]`,
 		},
 	}
 
@@ -138,6 +138,88 @@ func TestClone(t *testing.T) {
 					t.Fatalf("git clone seemed to work but the output didn't contain %q, something weird happened", wantFile)
 				}
 				t.Error(err)
+			}
+		})
+	}
+}
+
+func TestFindSymlinks(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		regularFiles []string
+		symlinks     []string
+		want         []string
+	}{
+		{
+			name:     "one_symlink",
+			symlinks: []string{"my-symlink"},
+			want:     []string{"my-symlink"},
+		},
+		{
+			name: "multi_symlinks",
+			symlinks: []string{
+				"my-symlink-1",
+				"my-symlink-2",
+			},
+			want: []string{"my-symlink-1", "my-symlink-2"},
+		},
+		{
+			name:         "mix_symlinks_and_regular",
+			symlinks:     []string{"my-symlink"},
+			regularFiles: []string{"my-regular-file"},
+			want:         []string{"my-symlink"},
+		},
+		{
+			name:         "no_symlinks",
+			regularFiles: []string{"my-regular-file"},
+		},
+		{
+			name:     "dot_git_is_skipped",
+			symlinks: []string{".git/my-symlink"},
+		},
+		{
+			name:     "dot_git_outside_of_root_is_not_skipped",
+			symlinks: []string{"foo/.git/my-symlink"},
+			want:     []string{"foo/.git/my-symlink"},
+		},
+		{
+			name: "empty_dir",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			for _, r := range tc.regularFiles {
+				path := filepath.Join(tempDir, filepath.FromSlash(r))
+				if err := os.WriteFile(path, []byte("my-contents"), 0o744); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, s := range tc.symlinks {
+				path := filepath.Join(tempDir, filepath.FromSlash(s))
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("link-dest", path); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			got, err := findSymlinks(tempDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
 	}

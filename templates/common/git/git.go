@@ -24,6 +24,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/abcxyz/abc/templates/common"
 )
 
 // Clone checks out the given branch or tag from the given repo. It uses the git
@@ -34,20 +36,33 @@ import (
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Clone(ctx context.Context, remote, branchOrTag, outDir string) error {
-	cmd := exec.CommandContext(ctx, "git", "clone", "--depth", "1", "--branch", branchOrTag, remote, outDir)
-	cmd.Stderr = &bytes.Buffer{}
-	cmd.Stdout = &bytes.Buffer{}
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git exec of %v failed: %w\nstdout: %s\nstderr: %s", cmd.Args, err, cmd.Stdout, cmd.Stderr)
+	_, _, err := common.Exec(ctx, "git", "clone", "--depth", "1", "--branch", branchOrTag, remote, outDir)
+	if err != nil {
+		return err
 	}
 
-	// Make sure there are no symlinks.
-	if err := filepath.WalkDir(outDir, func(path string, d fs.DirEntry, err error) error {
+	links, err := findSymlinks(outDir)
+	if err != nil {
+		return fmt.Errorf("findSymlinks: %w", err)
+	}
+	if len(links) > 0 {
+		return fmt.Errorf("one or more symlinks were found in %q at %v; for security reasons and to support windows, git repos containing symlinks are not allowed", remote, links)
+	}
+	return nil
+}
+
+func findSymlinks(dir string) ([]string, error) {
+	var out []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err // There was some filesystem error while crawling.
+			return err
 		}
-		if path == filepath.Join(outDir, ".git") {
-			return nil // skip crawling the git directory to save time.
+		relativeToOutDir, err := filepath.Rel(dir, path)
+		if err != nil {
+			return fmt.Errorf("Rel(): %w", err)
+		}
+		if relativeToOutDir == ".git" {
+			return fs.SkipDir // skip crawling the git directory to save time.
 		}
 		fi, err := os.Lstat(path)
 		if err != nil {
@@ -56,16 +71,15 @@ func Clone(ctx context.Context, remote, branchOrTag, outDir string) error {
 		if fi.Mode()&os.ModeSymlink == 0 {
 			return nil
 		}
-		relPathToSymlink, err := filepath.Rel(outDir, path)
-		if err != nil {
-			return fmt.Errorf("Rel(): %w", err)
-		}
-		return fmt.Errorf("a symlink was found in %q at %q; for security reasons and to support windows, git repos containing symlinks are not allowed", remote, relPathToSymlink)
-	}); err != nil {
-		return err //nolint:wrapcheck
+
+		out = append(out, relativeToOutDir)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
 	}
 
-	return nil
+	return out, nil
 }
 
 // Tags looks up the tags in the given remote repo.
