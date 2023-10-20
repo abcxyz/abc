@@ -53,7 +53,6 @@ func TestExec(t *testing.T) {
 			name:        "windows_simple_stderr",
 			args:        []string{"cmd", "/c", `echo hello 1>&2`},
 			windowsOnly: true,
-			wantErr:     "exec of [cmd /c echo hello 1>&2] failed",
 			wantStderr:  "hello",
 		},
 		{
