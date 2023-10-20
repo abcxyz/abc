@@ -3,6 +3,7 @@ module github.com/abcxyz/abc
 go 1.21
 
 require (
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/abcxyz/pkg v0.7.1
 	github.com/benbjohnson/clock v1.3.5
 	github.com/google/cel-go v0.17.1
