@@ -56,6 +56,10 @@ type gitSourceParser struct {
 func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (templateDownloader, bool, error) {
 	match := g.re.FindStringSubmatchIndex(src)
 	if match == nil {
+		// It's not an error if this regex match fails, it just means that src
+		// isn't formatted as the kind of template source that we're looking
+		// for. It's probably something else, like a local directory name, and
+		// the caller should continue and try a different sourceParser.
 		return nil, false, nil
 	}
 

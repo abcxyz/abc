@@ -80,20 +80,14 @@ var realSourceParsers = []sourceParser{
 // A list of sourceParsers is accepted as input for the purpose of testing,
 // rather than hardcoding the real list of sourceParsers.
 func parseSource(ctx context.Context, srcParsers []sourceParser, source, protocol string) (templateDownloader, error) {
-	var dl templateDownloader
 	for _, sp := range srcParsers {
 		downloader, ok, err := sp.sourceParse(ctx, source, protocol)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}
 		if ok {
-			dl = downloader
-			break
+			return downloader, nil
 		}
 	}
-	if dl == nil {
-		return nil, fmt.Errorf("template source %q isn't something that we know how to download", source)
-	}
-
-	return dl, nil
+	return nil, fmt.Errorf("template source %q isn't something that we know how to download", source)
 }
