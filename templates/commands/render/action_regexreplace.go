@@ -129,7 +129,7 @@ var subGroupExtractRegex = regexp.MustCompile(`(?P<dollars>\$+)` + // some numbe
 	`[{]?` + // then optionally has a brace character
 	`[0-9]+`) // and then has some number of decimal digits (as a capturing group)
 
-// Given a string that will be passed to Regexp.Expand(), make sure it that it
+// Given a string that will be passed to Regexp.Expand(), make sure that it
 // doesn't use any numbered subgroup expansions (like ${1}). Named subgroup
 // expansions are allowed (like ${mygroup}). This is a policy decision because
 // we consider the numbered form to be harder to read.

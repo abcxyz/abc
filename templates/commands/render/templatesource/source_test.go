@@ -16,8 +16,11 @@ package templatesource
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -26,11 +29,12 @@ func TestParseSource(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name     string
-		in       string
-		protocol string
-		want     templateDownloader
-		wantErr  string
+		name            string
+		in              string
+		protocol        string
+		tempDirContents map[string]string
+		want            templateDownloader
+		wantErr         string
 	}{
 		{
 			name: "latest",
@@ -90,37 +94,101 @@ func TestParseSource(t *testing.T) {
 		{
 			name:    "missing_version_with_@",
 			in:      "github.com/myorg/myrepo@",
-			wantErr: "isn't something that we know how to download",
+			wantErr: "isn't a valid template name",
 		},
 		{
 			name:    "missing_version",
 			in:      "github.com/myorg/myrepo",
-			wantErr: "isn't something that we know how to download",
+			wantErr: "isn't a valid template name",
 		},
 		{
-			name:    "local_relative_dir_not_supported_yet",
-			in:      "my/dir",
-			wantErr: "isn't something that we know how to download",
+			name: "local_absolute_dir",
+			in:   filepath.FromSlash("my/dir"),
+			tempDirContents: map[string]string{
+				"my/dir/spec.yaml": "my spec file contents",
+			},
+			want: &localDownloader{
+				srcPath: filepath.FromSlash("my/dir"),
+			},
 		},
 		{
-			name:    "local_absolute_dir_not_supported_yet",
-			in:      "/my/dir",
-			wantErr: "isn't something that we know how to download",
+			name:    "https_remote_format_rejected",
+			in:      "https://github.com/myorg/myrepo.git",
+			wantErr: "isn't a valid template name",
+		},
+		{
+			name:    "ssh_remote_format_rejected",
+			in:      "git@github.com:myorg/myrepo.git",
+			wantErr: "isn't a valid template name",
+		},
+		{
+			name:    "nonexistent_local_dir",
+			in:      "./my-dir",
+			wantErr: "isn't a valid template name",
+		},
+		{
+			name: "dot_slash_forces_treating_as_local_dir",
+			in:   filepath.FromSlash("./github.com/myorg/myrepo/mysubdir@latest"),
+			tempDirContents: map[string]string{
+				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
+			},
+			want: &localDownloader{
+				srcPath: filepath.FromSlash("./github.com/myorg/myrepo/mysubdir@latest"),
+			},
+		},
+		{
+			name: "git_has_higher_precedence_than_local_dir",
+			in:   "github.com/myorg/myrepo/mysubdir@latest",
+			tempDirContents: map[string]string{
+				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
+			},
+			want: &gitDownloader{
+				remote:  "https://github.com/myorg/myrepo.git",
+				subdir:  "mysubdir",
+				version: "latest",
+				cloner:  &realCloner{},
+				tagser:  &realTagser{},
+			},
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range cases { //nolint:paralleltest
+		// We can't use t.Parallel() here because we use os.Chdir. We don't
+		// want multiple goroutines messing with the working directory at
+		// the same time. The test is fast enough that the peformance impact
+		// is negligible.
+
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			ctx := context.Background()
+
+			tempDir := t.TempDir()
+
+			// cd into the temp dir, and restore the previous working dir when
+			// done.
+			oldWD, err := os.Getwd()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chdir(tempDir); err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Chdir(oldWD); err != nil {
+					t.Fatal(err)
+				}
+			}()
+
+			common.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
+
 			dl, err := parseSource(ctx, realSourceParsers, tc.in, tc.protocol)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
-			if diff := cmp.Diff(dl, tc.want, cmp.AllowUnexported(gitDownloader{})); diff != "" {
+
+			opt := cmp.AllowUnexported(gitDownloader{}, localDownloader{})
+			if diff := cmp.Diff(dl, tc.want, opt); diff != "" {
 				t.Errorf("templateDownloader was not as expected (-got,+want): %s", diff)
 			}
 		})
