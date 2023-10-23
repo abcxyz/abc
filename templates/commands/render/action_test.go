@@ -219,13 +219,8 @@ func TestWalkAndModify(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Convert to OS-specific paths
-			convertKeysToPlatformPaths(tc.initialContents, tc.want)
-
 			scratchDir := t.TempDir()
-			if err := common.WriteAllDefaultMode(scratchDir, tc.initialContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
 
 			sp := &stepParams{
 				fs: &errorFS{
@@ -575,17 +570,7 @@ func TestCopyRecursive(t *testing.T) {
 			toDir := filepath.Join(tempDir, "to_dir")
 			backupDir := filepath.Join(tempDir, "backups")
 
-			// Convert to OS-specific paths
-			convertKeysToPlatformPaths(
-				tc.srcDirContents,
-				tc.dstDirInitialContents,
-				tc.want,
-				tc.wantBackups,
-			)
-
-			if err := common.WriteAll(fromDir, tc.srcDirContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAll(t, fromDir, tc.srcDirContents)
 
 			from := fromDir
 			to := toDir
@@ -593,9 +578,7 @@ func TestCopyRecursive(t *testing.T) {
 				from = filepath.Join(fromDir, tc.suffix)
 				to = filepath.Join(toDir, tc.suffix)
 			}
-			if err := common.WriteAll(toDir, tc.dstDirInitialContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAll(t, toDir, tc.dstDirInitialContents)
 			fs := &errorFS{
 				FS: &common.RealFS{},
 
@@ -1057,10 +1040,7 @@ func TestProcessGlobs(t *testing.T) {
 
 			// pre-populate dir contents
 			tempDir := t.TempDir()
-			convertKeysToPlatformPaths(tc.dirContents) // Convert to OS-specific paths
-			if err := common.WriteAll(tempDir, tc.dirContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAll(t, tempDir, tc.dirContents)
 
 			ctx := context.Background()
 			gotPaths, err := processGlobs(ctx, tc.paths, tempDir)
