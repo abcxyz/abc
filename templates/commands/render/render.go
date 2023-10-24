@@ -39,6 +39,7 @@ import (
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-getter/v2"
 	"github.com/mattn/go-isatty"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -185,6 +186,19 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	spec, err := loadSpecFile(ctx, rp.fs, templateDir)
 	if err != nil {
 		return err
+	}
+
+	if c.flags.InputFile != "" {
+		inputsFromFile, err := loadInputFile(ctx, rp.fs, c.flags.InputFile)
+		if err != nil {
+			return err
+		}
+		for key, val := range inputsFromFile {
+			// Prefer input flag value if key already exists.
+			if _, ok := c.flags.Inputs[key]; !ok {
+				c.flags.Inputs[key] = val
+			}
+		}
 	}
 
 	if err := c.resolveInputs(ctx, spec); err != nil {
@@ -584,6 +598,24 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 	default:
 		return fmt.Errorf("internal error: unknown step action type %q", step.Action.Val)
 	}
+}
+
+func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]string, error) {
+	f, err := fs.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("error opening input file: ReadFile(): %w", err)
+	}
+	defer f.Close()
+
+	m := make(map[string]string)
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(data, m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.Spec, error) {
