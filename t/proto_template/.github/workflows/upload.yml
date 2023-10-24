@@ -70,4 +70,3 @@ jobs:
           --location='${{ env.GO_GAR_REPOSITORY_LOCATION }}' \
           --repository='${{ env.GO_GAR_REPOSITORY_NAME }}' \
           --version=$VERSION
-
