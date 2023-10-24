@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -590,27 +591,16 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Convert to OS-specific paths
-			convertKeysToPlatformPaths(
-				tc.templateContents,
-				tc.existingDestContents,
-				tc.wantBackupContents,
-				tc.wantDestContents,
-				tc.wantScratchContents,
-				tc.wantTemplateContents,
-			)
-
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
-			if err := common.WriteAllDefaultMode(dest, tc.existingDestContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAllDefaultMode(t, dest, tc.existingDestContents)
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
 			backupDir := filepath.Join(tempDir, "backups")
 			rfs := &common.RealFS{}
 			fg := &fakeGetter{
+				t:      t,
 				err:    tc.getterErr,
 				output: tc.templateContents,
 			}
@@ -681,13 +671,13 @@ steps:
 }
 
 // Since os.MkdirTemp adds an extra random token, we strip it back out to get
-// determistic results.
+// determistic results. Input map keys should use forward slash separator.
 func stripFirstPathElem(m map[string]string) map[string]string {
 	out := map[string]string{}
 	for k, v := range m {
 		// Panic in the case where k has no slashes; this is just a test helper.
-		elems := strings.Split(k, string(filepath.Separator))
-		newKey := filepath.Join(elems[1:]...)
+		elems := strings.Split(k, "/")
+		newKey := path.Join(elems[1:]...)
 		out[newKey] = v
 	}
 	return out
@@ -1470,6 +1460,7 @@ func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 }
 
 type fakeGetter struct {
+	t         *testing.T
 	gotSource string
 	output    map[string]string
 	err       error
@@ -1480,23 +1471,8 @@ func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetR
 	if f.err != nil {
 		return nil, f.err
 	}
-	if err := common.WriteAllDefaultMode(req.Dst, f.output); err != nil {
-		return nil, err
-	}
+	common.WriteAllDefaultMode(f.t, req.Dst, f.output)
 	return &getter.GetResult{Dst: req.Dst}, nil
-}
-
-// convertKeysToPlatformPaths is a helper that converts the keys in all of the
-// given maps to a platform-specific file path. The maps are modified in place.
-func convertKeysToPlatformPaths[T any](maps ...map[string]T) {
-	for _, m := range maps {
-		for k, v := range m {
-			if newKey := filepath.FromSlash(k); newKey != k {
-				m[newKey] = v
-				delete(m, k)
-			}
-		}
-	}
 }
 
 // toPlatformPaths converts each element of each input slice from a/b/c style
