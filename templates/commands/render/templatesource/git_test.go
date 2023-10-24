@@ -16,7 +16,6 @@ package templatesource
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -29,8 +28,8 @@ func TestGitDownloader_Download(t *testing.T) {
 
 	// Most subtests can use this simple set of files.
 	basicFiles := map[string]string{
-		"file1.txt":                         "hello",
-		filepath.FromSlash("dir/file2.txt"): "world",
+		"file1.txt":     "hello",
+		"dir/file2.txt": "world",
 	}
 
 	cases := []struct {
@@ -86,8 +85,8 @@ func TestGitDownloader_Download(t *testing.T) {
 				cloner: &fakeCloner{
 					t: t,
 					out: map[string]string{
-						filepath.FromSlash("my-subdir/file1.txt"): "hello",
-						"file2.txt": "world",
+						"my-subdir/file1.txt": "hello",
+						"file2.txt":           "world",
 					},
 					wantRemote:      "fake-remote",
 					wantBranchOrTag: "v1.2.3",
@@ -106,15 +105,15 @@ func TestGitDownloader_Download(t *testing.T) {
 				cloner: &fakeCloner{
 					t: t,
 					out: map[string]string{
-						filepath.FromSlash("my/deep/subdir/file1.txt"): "hello",
-						"file2.txt": "world",
+						"my/deep/subdir/file1.txt": "hello",
+						"file2.txt":                "world",
 					},
 					wantRemote:      "fake-remote",
 					wantBranchOrTag: "v1.2.3",
 				},
 			},
 			want: map[string]string{
-				filepath.FromSlash("subdir/file1.txt"): "hello",
+				"subdir/file1.txt": "hello",
 			},
 		},
 		{
@@ -277,7 +276,8 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, branchOrTag, outDir stri
 		f.t.Errorf("got branchOrTag %q, want %q", branchOrTag, f.wantBranchOrTag)
 	}
 
-	return common.WriteAllDefaultMode(outDir, f.out)
+	common.WriteAllDefaultMode(f.t, outDir, f.out)
+	return nil
 }
 
 type fakeTagser struct {
