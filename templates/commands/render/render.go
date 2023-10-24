@@ -603,17 +603,17 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]string, error) {
 	f, err := fs.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("error opening input file: ReadFile(): %w", err)
+		return nil, fmt.Errorf("error opening input file: %w", err)
 	}
 	defer f.Close()
 
 	m := make(map[string]string)
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading input file: %w", err)
 	}
 	if err := yaml.Unmarshal(data, m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error parsing yaml file: %w", err)
 	}
 	return m, nil
 }
