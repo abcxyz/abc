@@ -277,7 +277,8 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, branchOrTag, outDir stri
 		f.t.Errorf("got branchOrTag %q, want %q", branchOrTag, f.wantBranchOrTag)
 	}
 
-	return common.WriteAllDefaultMode(outDir, f.out)
+	common.WriteAllDefaultMode(f.t, outDir, f.out)
+	return nil
 }
 
 type fakeTagser struct {
