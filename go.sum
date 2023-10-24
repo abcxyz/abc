@@ -1,3 +1,5 @@
+github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
+github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/abcxyz/pkg v0.7.1 h1:cH9VzzSLqjLI2OzxSaIutboq6Df8PB4N7zDvX9SOZfU=
 github.com/abcxyz/pkg v0.7.1/go.mod h1:ckJAhXvWQOFUIz85SGZvJa3REkfQviPKnqUNxZZ3qX0=
 github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df h1:7RFfzj4SSt6nnvCPbCqijJi1nWCd+TqAT3bYCStRC18=

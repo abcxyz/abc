@@ -184,9 +184,9 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 		}
 
 		slashParsed := filepath.FromSlash(goParsed)
-		relParsed, err := safeRelPath(p.Pos, slashParsed)
+		relParsed, err := common.SafeRelPath(p.Pos, slashParsed)
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:wrapcheck
 		}
 		out = append(out, model.String{
 			Val: relParsed,
@@ -296,13 +296,4 @@ func (n *unknownTemplateKeyError) Unwrap() error {
 func (n *unknownTemplateKeyError) Is(other error) bool {
 	_, ok := other.(*unknownTemplateKeyError)
 	return ok
-}
-
-// safeRelPath returns an error if the path contains a ".." traversal, and
-// converts it to a relative path by removing any leading "/".
-func safeRelPath(pos *model.ConfigPos, p string) (string, error) {
-	if strings.Contains(p, "..") {
-		return "", pos.Errorf(`path %q must not contain ".."`, p)
-	}
-	return strings.TrimLeft(p, string(filepath.Separator)), nil
 }
