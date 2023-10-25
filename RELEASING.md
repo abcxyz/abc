@@ -33,4 +33,5 @@ number, as follows.
 - If the release has anything interesting in it, consider sending a message to
   the
   [abc-templates-announce mailing list](https://groups.google.com/g/abc-templates-announce)
-  to tell people that a new version has been released, and what's new about it.
+  to tell people that a new version has been released, and what's new about it
+  ([example](https://groups.google.com/g/abc-templates-announce/c/pR8Su8Toqls).
