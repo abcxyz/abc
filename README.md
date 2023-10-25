@@ -54,6 +54,9 @@ Examples of template locations:
   one of the inputs declared by the template in its `spec.yaml`. May be repeated
   to provide multiple inputs, like
   `--input=name=alice --input=email=alice@example.com`.
+- `--input-file=file`: provide a yaml file with input(s) to the template. If `key`
+  exists in the file but is also provided as an input parameter, the input value
+  takes precedence.
 - `--log-level`: one of `debug|info|warning|error`. How verbose to log.
 - `--force-overwrite`: normally, the template rendering operation will abort if
   the template would output a file at a location that already exists on the
