@@ -642,15 +642,15 @@ steps:
 
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
-      common.WriteAllDefaultMode(t, dest, tc.existingDestContents)
-      
+			common.WriteAllDefaultMode(t, dest, tc.existingDestContents)
+
 			inputFilePath := ""
 			if tc.inputFileName != "" {
 				inputFileDir := filepath.Join(tempDir, "inputs")
 				common.WriteAllDefaultMode(t, inputFileDir, map[string]string{tc.inputFileName: tc.inputFileContents})
 				inputFilePath = filepath.Join(inputFileDir, tc.inputFileName)
 			}
-      
+
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
