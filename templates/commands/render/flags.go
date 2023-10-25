@@ -99,7 +99,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Example: "/my/git/abc-inputs.yaml",
 		Default: "",
 		Target:  &r.InputFile,
-		Usage:   "The file with the key=val pairs of template values.",
+		Usage:   "The yaml file with key: val pairs of template values; may be repeated.",
 	})
 
 	f.StringVar(&cli.StringVar{

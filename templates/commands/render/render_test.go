@@ -54,6 +54,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"--dest", "my_dir",
 				"--git-protocol", "https",
 				"--input", "x=y",
+				"--input-file", "abc-inputs.yaml",
 				"--log-level", "info",
 				"--force-overwrite",
 				"--keep-temp-dirs",
@@ -66,6 +67,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				Dest:                 "my_dir",
 				GitProtocol:          "https",
 				Inputs:               map[string]string{"x": "y"},
+				InputFile:            "abc-inputs.yaml",
 				LogLevel:             "info",
 				ForceOverwrite:       true,
 				KeepTempDirs:         true,
@@ -203,6 +205,8 @@ steps:
 		templateContents        map[string]string
 		existingDestContents    map[string]string
 		flagInputs              map[string]string
+		inputFileName           string
+		inputFileContents       string
 		flagKeepTempDirs        bool
 		flagForceOverwrite      bool
 		flagSkipInputValidation bool
@@ -217,7 +221,7 @@ steps:
 		wantErr                 string
 	}{
 		{
-			name: "simple_success",
+			name: "simple_success_with_inputs_flag",
 
 			flagInputs: map[string]string{
 				"name_to_greet":   "Bob",
@@ -232,6 +236,51 @@ steps:
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantStdout: "Hello, Bob🐈\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
+		{
+			name: "simple_success_with_input_file_flag",
+
+			inputFileName: "inputs.yaml",
+			inputFileContents: `
+name_to_greet: 'Bob'
+emoji_suffix: '🐈'
+defaulted_input: 'default'`,
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Bob🐈\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
+		{
+			name: "simple_success_with_both_inputs_and_input_file_flags",
+
+			flagInputs:    map[string]string{"name_to_greet": "Robert"},
+			inputFileName: "inputs.yaml",
+			inputFileContents: `
+name_to_greet: 'Bob'
+emoji_suffix: '🐈'
+defaulted_input: 'default'`,
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Robert🐈\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -605,6 +654,14 @@ steps:
 			if err := common.WriteAllDefaultMode(dest, tc.existingDestContents); err != nil {
 				t.Fatal(err)
 			}
+			inputFilePath := ""
+			if tc.inputFileName != "" {
+				inputFileDir := filepath.Join(tempDir, "inputs")
+				if err := common.WriteAllDefaultMode(inputFileDir, map[string]string{tc.inputFileName: tc.inputFileContents}); err != nil {
+					t.Fatal(err)
+				}
+				inputFilePath = filepath.Join(inputFileDir, tc.inputFileName)
+			}
 			tempDirNamer := func(namePart string) (string, error) {
 				return filepath.Join(tempDir, namePart), nil
 			}
@@ -630,6 +687,7 @@ steps:
 					Dest:                dest,
 					ForceOverwrite:      tc.flagForceOverwrite,
 					Inputs:              tc.flagInputs,
+					InputFile:           inputFilePath,
 					KeepTempDirs:        tc.flagKeepTempDirs,
 					SkipInputValidation: tc.flagSkipInputValidation,
 					Source:              "github.com/myorg/myrepo",

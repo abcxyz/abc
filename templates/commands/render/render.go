@@ -193,6 +193,9 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		if err != nil {
 			return err
 		}
+		if c.flags.Inputs == nil {
+			c.flags.Inputs = make(map[string]string)
+		}
 		for key, val := range inputsFromFile {
 			// Prefer input flag value if key already exists.
 			if _, ok := c.flags.Inputs[key]; !ok {
@@ -601,18 +604,12 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 }
 
 func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]string, error) {
-	f, err := fs.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("error opening input file: %w", err)
-	}
-	defer f.Close()
-
-	m := make(map[string]string)
-	data, err := io.ReadAll(f)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading input file: %w", err)
 	}
-	if err := yaml.Unmarshal(data, m); err != nil {
+	m := make(map[string]string)
+	if err := yaml.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("error parsing yaml file: %w", err)
 	}
 	return m, nil
