@@ -447,10 +447,6 @@ func TestActionInclude(t *testing.T) {
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 			// Convert to OS-specific paths
-			convertKeysToPlatformPaths(
-				tc.templateContents,
-				tc.wantScratchContents,
-			)
 			toPlatformPaths(tc.wantIncludedFromDest)
 
 			tempDir := t.TempDir()
@@ -458,14 +454,10 @@ func TestActionInclude(t *testing.T) {
 			scratchDir := filepath.Join(tempDir, scratchDirNamePart)
 			destDir := filepath.Join(tempDir, "dest")
 
-			if err := common.WriteAll(templateDir, tc.templateContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAll(t, templateDir, tc.templateContents)
 
 			// For testing "include from destination"
-			if err := common.WriteAll(destDir, tc.destDirContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAll(t, destDir, tc.destDirContents)
 
 			sp := &stepParams{
 				flags: &RenderFlags{

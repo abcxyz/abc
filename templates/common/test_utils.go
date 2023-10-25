@@ -57,7 +57,9 @@ type ModeAndContents struct {
 }
 
 // WriteAllDefaultMode wraps writeAll and sets file permissions to 0600.
-func WriteAllDefaultMode(root string, files map[string]string) error {
+func WriteAllDefaultMode(t *testing.T, root string, files map[string]string) {
+	t.Helper()
+
 	withMode := map[string]ModeAndContents{}
 	for name, contents := range files {
 		withMode[name] = ModeAndContents{
@@ -65,32 +67,35 @@ func WriteAllDefaultMode(root string, files map[string]string) error {
 			Contents: contents,
 		}
 	}
-	return WriteAll(root, withMode)
+	WriteAll(t, root, withMode)
 }
 
 // WriteAll saves the given file contents with the given permissions.
-func WriteAll(root string, files map[string]ModeAndContents) error {
+func WriteAll(t *testing.T, root string, files map[string]ModeAndContents) {
+	t.Helper()
+
+	files = mapKeyFunc(filepath.FromSlash, files)
+
 	for path, mc := range files {
 		fullPath := filepath.Join(root, path)
 		dir := filepath.Dir(fullPath)
 		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return fmt.Errorf("MkdirAll(%q): %w", dir, err)
+			t.Fatalf("MkdirAll(%q): %v", dir, err)
 		}
 		if err := os.WriteFile(fullPath, []byte(mc.Contents), mc.Mode); err != nil {
-			return fmt.Errorf("WriteFile(%q): %w", fullPath, err)
+			t.Fatalf("WriteFile(%q): %v", fullPath, err)
 		}
 		// The user's may have prevented the file from being created with the
 		// desired permissions. Use chmod to really set the desired permissions.
 		if err := os.Chmod(fullPath, mc.Mode); err != nil {
-			return fmt.Errorf("Chmod(): %w", err)
+			t.Fatalf("Chmod(): %v", err)
 		}
 	}
-
-	return nil
 }
 
-// Read all the files recursively under "dir", returning their contents as a
-// map[filename]->contents. Returns nil if dir doesn't exist.
+// LoadDirContents reads all the files recursively under "dir", returning their contents as a
+// map[filename]->contents. Returns nil if dir doesn't exist. Keys use slash separators, not
+// native.
 func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 	t.Helper()
 
@@ -129,12 +134,13 @@ func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 	if err != nil {
 		t.Fatalf("WalkDir(): %v", err)
 	}
+	out = mapKeyFunc(filepath.ToSlash, out)
 	return out
 }
 
 // Read all the files recursively under "dir", returning their contents as a
 // map[filename]->contents but without file mode. Returns nil if dir doesn't
-// exist.
+// exist. Keys use slash separators, not native.
 func LoadDirWithoutMode(t *testing.T, dir string) map[string]string {
 	t.Helper()
 
@@ -145,6 +151,15 @@ func LoadDirWithoutMode(t *testing.T, dir string) map[string]string {
 	out := map[string]string{}
 	for name, mc := range withMode {
 		out[name] = mc.Contents
+	}
+	return out
+}
+
+// Return a copy of the input map where each key is transformed as f(key).
+func mapKeyFunc[T any](f func(string) string, in map[string]T) map[string]T {
+	out := make(map[string]T, len(in))
+	for k, v := range in {
+		out[f(k)] = v
 	}
 	return out
 }

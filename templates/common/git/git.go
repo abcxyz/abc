@@ -80,7 +80,8 @@ func findSymlinks(dir string) ([]string, error) {
 	return out, nil
 }
 
-// Tags looks up the tags in the given remote repo.
+// Tags looks up the tags in the given remote repo. The length of each returned
+// string is guaranteed to be >0.
 //
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .

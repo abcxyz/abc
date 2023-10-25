@@ -163,13 +163,8 @@ func TestActionAppend(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Convert to OS-specific paths
-			convertKeysToPlatformPaths(tc.want)
-
 			scratchDir := t.TempDir()
-			if err := common.WriteAllDefaultMode(scratchDir, tc.initialContents); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
 
 			sr := &spec.Append{
 				Paths: modelStrings(tc.paths),

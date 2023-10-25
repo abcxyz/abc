@@ -129,9 +129,7 @@ kind: 'GoldenTest'`
 
 			tempDir := t.TempDir()
 
-			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			got, err := parseTestCases(ctx, tempDir, tc.testName)
@@ -189,9 +187,7 @@ func TestClearTestDir(t *testing.T) {
 
 			tempDir := t.TempDir()
 
-			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			if err := clearTestDir(tempDir); err != nil {
 				t.Fatal(err)
@@ -249,9 +245,9 @@ steps:
 				"testdata/golden/test/test.yaml": "yaml",
 			},
 			expectedGoldenContent: map[string]string{
-				"test.yaml":                    "yaml",
-				filepath.Join("data", "a.txt"): "file A content",
-				filepath.Join("data", "b.txt"): "file B content",
+				"test.yaml":  "yaml",
+				"data/a.txt": "file A content",
+				"data/b.txt": "file B content",
 			},
 		},
 		{
@@ -278,9 +274,9 @@ steps:
 				"testdata/golden/test/test.yaml": "yaml",
 			},
 			expectedGoldenContent: map[string]string{
-				"test.yaml":                    "yaml",
-				filepath.Join("data", "a.txt"): "file A content",
-				filepath.Join("data", "b.txt"): "file B content",
+				"test.yaml":  "yaml",
+				"data/a.txt": "file A content",
+				"data/b.txt": "file B content",
 			},
 		},
 	}
@@ -293,9 +289,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			if err := common.WriteAllDefaultMode(tempDir, tc.filesContent); err != nil {
-				t.Fatal(err)
-			}
+			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			err := renderTestCase(tempDir, tempDir, tc.testCase)
 			if err != nil {
