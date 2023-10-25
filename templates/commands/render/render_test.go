@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,7 +35,6 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/hashicorp/go-getter/v2"
 	"golang.org/x/exp/maps"
 )
 
@@ -211,7 +209,6 @@ steps:
 		flagKeepTempDirs        bool
 		flagForceOverwrite      bool
 		flagSkipInputValidation bool
-		getterErr               error
 		removeAllErr            error
 		wantScratchContents     map[string]string
 		wantTemplateContents    map[string]string
@@ -389,15 +386,10 @@ defaulted_input: 'default'`,
 			wantErr: "overwriting was not enabled",
 		},
 		{
-			name:      "getter_error",
-			getterErr: fmt.Errorf("fake error for testing"),
-			wantErr:   "fake error for testing",
-		},
-		{
-			name:         "errors_are_combined",
-			getterErr:    fmt.Errorf("fake getter error for testing"),
-			removeAllErr: fmt.Errorf("fake removeAll error for testing"),
-			wantErr:      "fake getter error for testing\nfake removeAll error for testing",
+			name:                 "fs_error",
+			removeAllErr:         fmt.Errorf("fake removeAll error for testing"),
+			wantTemplateContents: map[string]string{},
+			wantErr:              "fake removeAll error for testing",
 		},
 		{
 			name: "defaults_inputs",
@@ -651,16 +643,10 @@ steps:
 				inputFilePath = filepath.Join(inputFileDir, tc.inputFileName)
 			}
 
-			tempDirNamer := func(namePart string) (string, error) {
-				return filepath.Join(tempDir, namePart), nil
-			}
 			backupDir := filepath.Join(tempDir, "backups")
+			sourceDir := filepath.Join(tempDir, "source")
+			common.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
 			rfs := &common.RealFS{}
-			fg := &fakeGetter{
-				t:      t,
-				err:    tc.getterErr,
-				output: tc.templateContents,
-			}
 			stdoutBuf := &strings.Builder{}
 			rp := &runParams{
 				backupDir: backupDir,
@@ -668,9 +654,8 @@ steps:
 					FS:           rfs,
 					removeAllErr: tc.removeAllErr,
 				},
-				getter:       fg,
-				stdout:       stdoutBuf,
-				tempDirNamer: tempDirNamer,
+				stdout:      stdoutBuf,
+				tempDirBase: tempDir,
 			}
 			r := &Command{
 				flags: RenderFlags{
@@ -680,7 +665,7 @@ steps:
 					InputFile:           inputFilePath,
 					KeepTempDirs:        tc.flagKeepTempDirs,
 					SkipInputValidation: tc.flagSkipInputValidation,
-					Source:              "github.com/myorg/myrepo",
+					Source:              sourceDir,
 				},
 			}
 
@@ -688,10 +673,6 @@ steps:
 			err := r.realRun(ctx, rp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
-			}
-
-			if fg.gotSource != r.flags.Source {
-				t.Errorf("fake getter got template source %s but wanted %s", fg.gotSource, r.flags.Source)
 			}
 
 			if tc.wantFlagInputs != nil {
@@ -704,12 +685,20 @@ steps:
 				t.Errorf("template output was not as expected; (-got,+want): %s", diff)
 			}
 
-			gotTemplateContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, templateDirNamePart))
+			var gotTemplateContents map[string]string
+			templateDir, ok := mustGlob(t, filepath.Join(tempDir, templateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
+			if ok {
+				gotTemplateContents = common.LoadDirWithoutMode(t, templateDir)
+			}
 			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, common.CmpFileMode); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotScratchContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, scratchDirNamePart))
+			var gotScratchContents map[string]string
+			scratchDir, ok := mustGlob(t, filepath.Join(tempDir, scratchDirNamePart+"*"))
+			if ok {
+				gotScratchContents = common.LoadDirWithoutMode(t, scratchDir)
+			}
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, common.CmpFileMode); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -719,8 +708,11 @@ steps:
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotBackupContents := common.LoadDirWithoutMode(t, backupDir)
-			gotBackupContents = stripFirstPathElem(gotBackupContents)
+			var gotBackupContents map[string]string
+			backupSubdir, ok := mustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
+			if ok {
+				gotBackupContents = common.LoadDirWithoutMode(t, backupSubdir)
+			}
 			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -728,17 +720,21 @@ steps:
 	}
 }
 
-// Since os.MkdirTemp adds an extra random token, we strip it back out to get
-// determistic results. Input map keys should use forward slash separator.
-func stripFirstPathElem(m map[string]string) map[string]string {
-	out := map[string]string{}
-	for k, v := range m {
-		// Panic in the case where k has no slashes; this is just a test helper.
-		elems := strings.Split(k, "/")
-		newKey := path.Join(elems[1:]...)
-		out[newKey] = v
+func mustGlob(t *testing.T, glob string) (string, bool) {
+	t.Helper()
+
+	matches, err := filepath.Glob(glob)
+	if err != nil {
+		t.Fatalf("couldn't find template directory: %v", err)
 	}
-	return out
+	switch len(matches) {
+	case 0:
+		return "", false
+	case 1:
+		return matches[0], true
+	}
+	t.Fatalf("got %d matches for glob %q, wanted 1: %s", len(matches), glob, matches)
+	panic("unreachable")
 }
 
 func TestPromptForInputs(t *testing.T) {
@@ -1515,22 +1511,6 @@ func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 		return e.writeFileErr
 	}
 	return e.FS.WriteFile(name, data, perm)
-}
-
-type fakeGetter struct {
-	t         *testing.T
-	gotSource string
-	output    map[string]string
-	err       error
-}
-
-func (f *fakeGetter) Get(ctx context.Context, req *getter.Request) (*getter.GetResult, error) {
-	f.gotSource = req.Src
-	if f.err != nil {
-		return nil, f.err
-	}
-	common.WriteAllDefaultMode(f.t, req.Dst, f.output)
-	return &getter.GetResult{Dst: req.Dst}, nil
 }
 
 // toPlatformPaths converts each element of each input slice from a/b/c style

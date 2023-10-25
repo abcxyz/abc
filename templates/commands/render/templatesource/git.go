@@ -53,7 +53,7 @@ type gitSourceParser struct {
 	versionExpansion string
 }
 
-func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (templateDownloader, bool, error) {
+func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error) {
 	match := g.re.FindStringSubmatchIndex(src)
 	if match == nil {
 		// It's not an error if this regex match fails, it just means that src
@@ -97,7 +97,7 @@ type gitDownloader struct {
 	tagser tagser
 }
 
-// Download implements templateDownloader.
+// Download implements Downloader.
 func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "gitDownloader.Download")
 

@@ -19,25 +19,24 @@ package render
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/abcxyz/abc/templates/commands/render/templatesource"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model/decode"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/hashicorp/go-getter/v2"
 	"github.com/mattn/go-isatty"
 	"gopkg.in/yaml.v3"
 )
@@ -45,8 +44,8 @@ import (
 const (
 	// These will be used as part of the names of the temporary directories to
 	// make them identifiable.
-	templateDirNamePart = "template-copy"
-	scratchDirNamePart  = "scratch"
+	templateDirNamePart = "template-copy-"
+	scratchDirNamePart  = "scratch-"
 
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
@@ -62,8 +61,7 @@ type Command struct {
 	cli.BaseCommand
 	flags RenderFlags
 
-	testFS     common.FS
-	testGetter getterClient
+	testFS common.FS
 }
 
 // Desc implements cli.Command.
@@ -115,14 +113,6 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	gg := c.testGetter
-	if gg == nil {
-		gg = &getter.Client{
-			Getters:       getter.Getters,
-			Decompressors: getter.Decompressors,
-		}
-	}
-
 	wd, err := c.WorkingDir()
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
@@ -139,32 +129,22 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		fmt.Sprint(time.Now().Unix()))
 
 	return c.realRun(ctx, &runParams{
-		backupDir:    backupDir,
-		cwd:          wd,
-		fs:           fSys,
-		getter:       gg,
-		stdout:       c.Stdout(),
-		tempDirNamer: tempDirName,
+		backupDir: backupDir,
+		cwd:       wd,
+		fs:        fSys,
+		stdout:    c.Stdout(),
 	})
-}
-
-// Allows the github.com/hashicorp/go-getter/Client to be faked.
-type getterClient interface {
-	Get(ctx context.Context, req *getter.Request) (*getter.GetResult, error)
 }
 
 type runParams struct {
 	backupDir string
 	cwd       string
 	fs        common.FS
-	getter    getterClient
 	stdout    io.Writer
 
-	// Constructs a name for a temp directory that doesn't exist yet and won't
-	// collide with other directories. Doesn't actually create a directory, the
-	// caller does that. This accommodates quirky behavior of go-getter that
-	// doesn't want the destination directory to exist already.
-	tempDirNamer func(namePart string) (string, error)
+	// The directory under which temp directories will be created. The default
+	// if this is empty is to use the OS temp directory.
+	tempDirBase string
 }
 
 // realRun is for testability; it's Run() with fakeable interfaces.
@@ -208,9 +188,9 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	scratchDir, err := rp.tempDirNamer(scratchDirNamePart)
+	scratchDir, err := rp.fs.MkdirTemp(rp.tempDirBase, scratchDirNamePart)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
 	if err := rp.fs.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
@@ -640,28 +620,26 @@ func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.
 // was saved. If error is returned, then the returned directory name may or may
 // not exist, and may or may not be empty.
 func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
-	templateDir, err := rp.tempDirNamer(templateDirNamePart)
-	if err != nil {
-		return "", err
-	}
-	req := &getter.Request{
-		DisableSymlinks: true,
-		Dst:             templateDir,
-		GetMode:         getter.ModeAny,
-		Pwd:             rp.cwd,
-		Src:             c.flags.Source,
-	}
+	logger := logging.FromContext(ctx).With("logger", "copyTemplate")
 
-	_, err = rp.getter.Get(ctx, req)
+	templateDir, err := rp.fs.MkdirTemp(rp.tempDirBase, templateDirNamePart)
 	if err != nil {
-		return templateDir, fmt.Errorf("go-getter.Get(): %w", err)
+		return "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
 	}
-	logger := logging.FromContext(ctx)
 	logger.DebugContext(ctx, "created temporary template directory",
 		"path", templateDir)
-	logger.DebugContext(ctx, "copied source template temporary directory",
-		"source", c.flags.Source,
-		"destination", templateDir)
+
+	downloader, err := templatesource.ParseSource(ctx, c.flags.Source, c.flags.GitProtocol)
+	if err != nil {
+		return templateDir, err //nolint:wrapcheck
+	}
+	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
+
+	if err := downloader.Download(ctx, templateDir); err != nil {
+		return templateDir, err //nolint:wrapcheck
+	}
+	logger.DebugContext(ctx, "copied source template temporary directory", "source", c.flags.Source, "destination", templateDir)
+
 	return templateDir, nil
 }
 
@@ -692,31 +670,6 @@ func (c *Command) setLogEnvVars() {
 	} else if os.Getenv("ABC_LOG_LEVEL") == "" {
 		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
 	}
-}
-
-// Generate the name for a temporary directory, without creating it. namePart is
-// an optional name that can be included to help template developers distinguish
-// between the various template directories created by this program, such as
-// "template" or "scratch".
-//
-// We can't use MkdirTemp() for a go-getter output directory because go-getter
-// silently fails to clone a git repo into an existing (empty) directory.
-// go-getter assumes that the dir must already be a git repo if it exists.
-func tempDirName(namePart string) (string, error) {
-	rnd, err := randU64()
-	if err != nil {
-		return "", err
-	}
-	basename := fmt.Sprintf("abc-%s-%d", namePart, rnd)
-	return filepath.Join(os.TempDir(), basename), nil
-}
-
-func randU64() (uint64, error) {
-	randBuf := make([]byte, 8)
-	if _, err := rand.Read(randBuf); err != nil { // safe to ignore returned int per docs, "n == len(b) if and only if err == nil"
-		return 0, fmt.Errorf("rand.Read(): %w", err)
-	}
-	return binary.BigEndian.Uint64(randBuf), nil
 }
 
 // destOK makes sure that the output directory looks sane.

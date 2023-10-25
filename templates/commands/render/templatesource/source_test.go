@@ -33,7 +33,7 @@ func TestParseSource(t *testing.T) {
 		in              string
 		protocol        string
 		tempDirContents map[string]string
-		want            templateDownloader
+		want            Downloader
 		wantErr         string
 	}{
 		{
@@ -182,14 +182,14 @@ func TestParseSource(t *testing.T) {
 
 			common.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
 
-			dl, err := parseSource(ctx, realSourceParsers, tc.in, tc.protocol)
+			dl, err := ParseSource(ctx, tc.in, tc.protocol)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
 			opt := cmp.AllowUnexported(gitDownloader{}, localDownloader{})
 			if diff := cmp.Diff(dl, tc.want, opt); diff != "" {
-				t.Errorf("templateDownloader was not as expected (-got,+want): %s", diff)
+				t.Errorf("downloader was not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
