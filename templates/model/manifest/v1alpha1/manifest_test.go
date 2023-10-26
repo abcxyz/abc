@@ -39,7 +39,7 @@ func TestDecode(t *testing.T) {
 			name: "simple_success",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
-template_location: 'github.com/abcxyz/abc.git//t/rest_server'
+template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - name: 'my_input_1'
@@ -52,7 +52,7 @@ output_hashes:
   - file: 'd/e/f.txt'
     hash: 'h1:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730'`,
 			want: &Manifest{
-				TemplateLocation: model.String{Val: "github.com/abcxyz/abc.git//t/rest_server"},
+				TemplateLocation: model.String{Val: "github.com/abcxyz/abc/t/rest_server@latest"},
 				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
 				Inputs: []*Input{
 					{
@@ -88,7 +88,7 @@ output_hashes:
 			name: "input_missing_name",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
-template_location: 'github.com/abcxyz/abc.git//t/rest_server'
+template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - value: 'my_value_1'
@@ -101,7 +101,7 @@ output_hashes:
 			name: "input_missing_value",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
-template_location: 'github.com/abcxyz/abc.git//t/rest_server'
+template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - name: 'my_input_1'
@@ -114,7 +114,7 @@ output_hashes:
 			name: "output_hash_missing_file",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
-template_location: 'github.com/abcxyz/abc.git//t/rest_server'
+template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - name: 'my_input_1'
@@ -127,7 +127,7 @@ output_hashes:
 			name: "output_hash_missing_file",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
-template_location: 'github.com/abcxyz/abc.git//t/rest_server'
+template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - name: 'my_input_1'
@@ -140,14 +140,14 @@ output_hashes:
 			name: "no_hashes", // It's rare but legal for a template to have no output files
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
-template_location: 'github.com/abcxyz/abc.git//t/rest_server'
+template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - name: 'my_input_1'
     value: 'my_value_1'
 `,
 			want: &Manifest{
-				TemplateLocation: model.String{Val: "github.com/abcxyz/abc.git//t/rest_server"},
+				TemplateLocation: model.String{Val: "github.com/abcxyz/abc/t/rest_server@latest"},
 				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
 				Inputs: []*Input{
 					{
@@ -161,13 +161,13 @@ inputs:
 			name: "no_inputs", // It's legal for a template to have no inputs
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
-template_location: 'github.com/abcxyz/abc.git//t/rest_server'
+template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 output_hashes:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
 			want: &Manifest{
-				TemplateLocation: model.String{Val: "github.com/abcxyz/abc.git//t/rest_server"},
+				TemplateLocation: model.String{Val: "github.com/abcxyz/abc/t/rest_server@latest"},
 				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
 				OutputHashes: []*OutputHash{
 					{
