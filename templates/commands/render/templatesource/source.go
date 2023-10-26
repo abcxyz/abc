@@ -66,8 +66,9 @@ var realSourceParsers = []sourceParser{
 		versionExpansion:     `${version}`,
 	},
 
+	&localSourceParser{}, // Handles a template source that's a local directory.
+
 	// More sourceParsers are coming imminently for:
-	//  - local template directories
 	//  - go-getter-style git URLs
 }
 
@@ -89,5 +90,5 @@ func parseSource(ctx context.Context, srcParsers []sourceParser, source, protoco
 			return downloader, nil
 		}
 	}
-	return nil, fmt.Errorf("template source %q isn't something that we know how to download", source)
+	return nil, fmt.Errorf(`template source %q isn't a valid template name or doesn't exist; examples of valid names are: "github.com/myorg/myrepo/subdir@v1.2.3", "github.com/myorg/myrepo/subdir@latest", "./my-local-directory"`, source)
 }
