@@ -59,8 +59,30 @@ var realSourceParsers = []sourceParser{
 
 	&localSourceParser{}, // Handles a template source that's a local directory.
 
-	// More sourceParsers are coming imminently for:
-	//  - go-getter-style git URLs
+	&gitSourceParser{
+		// This source parser recognizes template sources like
+		// github.com/abcxyz/abc.git//t/react_template?ref=latest.
+		// This is the old template location format from abc <=0.2
+		// when we used the go-getter library. We don't attempt to
+		// handle all the cases supported by go-getter, just the
+		// ones that we know people use.
+		re: regexp.MustCompile(
+			`^` + // Anchor the start, must match the entire input
+				`(?P<host>[a-zA-Z0-9_.-]+)` +
+				`/` +
+				`(?P<org>[a-zA-Z0-9_-]+)` +
+				`/` +
+				`(?P<repo>[a-zA-Z0-9_-]+)` +
+				`\.git` +
+				`(//(?P<subdir>[^?]*))?` + // Optional subdir
+				`(\?ref=(?P<version>[a-zA-Z0-9_/.-]+))?` + // optional ?ref=branch_or_tag
+				`$`), // Anchor the end, must match the entire input
+		httpsRemoteExpansion: `https://${host}/${org}/${repo}.git`,
+		sshRemoteExpansion:   `git@${host}:${org}/${repo}.git`,
+		subdirExpansion:      `${subdir}`,
+		versionExpansion:     `${version}`,
+		warning:              `go-getter style URL support will be removed in mid-2024, please use the newer format instead, eg github.com/myorg/myrepo[/subdir]@v1.2.3 (or @latest)`,
+	},
 }
 
 // ParseSource maps the input template source to a particular kind of source

@@ -150,6 +150,72 @@ func TestParseSource(t *testing.T) {
 				tagser:  &realTagser{},
 			},
 		},
+		{
+			name: "go_getter_with_ref_and_subdirs",
+			in:   "github.com/myorg/myrepo.git//sub/dir?ref=latest",
+			want: &gitDownloader{
+				remote:  "https://github.com/myorg/myrepo.git",
+				subdir:  "sub/dir",
+				version: "latest",
+				cloner:  &realCloner{},
+				tagser:  &realTagser{},
+			},
+		},
+		{
+			name: "go_getter_with_ref_no_subdirs",
+			in:   "github.com/myorg/myrepo.git?ref=latest",
+			want: &gitDownloader{
+				remote:  "https://github.com/myorg/myrepo.git",
+				subdir:  "",
+				version: "latest",
+				cloner:  &realCloner{},
+				tagser:  &realTagser{},
+			},
+		},
+		{
+			name: "go_getter_no_ref_no_subdirs",
+			in:   "github.com/myorg/myrepo.git",
+			want: &gitDownloader{
+				remote:  "https://github.com/myorg/myrepo.git",
+				subdir:  "",
+				version: "",
+				cloner:  &realCloner{},
+				tagser:  &realTagser{},
+			},
+		},
+		{
+			name: "go_getter_no_ref_with_subdirs",
+			in:   "github.com/myorg/myrepo.git//sub/dir",
+			want: &gitDownloader{
+				remote:  "https://github.com/myorg/myrepo.git",
+				subdir:  "sub/dir",
+				version: "",
+				cloner:  &realCloner{},
+				tagser:  &realTagser{},
+			},
+		},
+		{
+			name: "go_getter_no_ref_single_subdir",
+			in:   "github.com/myorg/myrepo.git//subdir",
+			want: &gitDownloader{
+				remote:  "https://github.com/myorg/myrepo.git",
+				subdir:  "subdir",
+				version: "",
+				cloner:  &realCloner{},
+				tagser:  &realTagser{},
+			},
+		},
+		{
+			name: "go_getter_semver_ref",
+			in:   "github.com/myorg/myrepo.git?ref=v1.2.3",
+			want: &gitDownloader{
+				remote:  "https://github.com/myorg/myrepo.git",
+				subdir:  "",
+				version: "v1.2.3",
+				cloner:  &realCloner{},
+				tagser:  &realTagser{},
+			},
+		},
 	}
 
 	for _, tc := range cases { //nolint:paralleltest
