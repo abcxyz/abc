@@ -1,8 +1,8 @@
 ## Release guide for team members
 
 To build and publish a new version of `abc`, including publishing binaries for
-all supported OSes and architectures, you just push a new tag containing the
-version number, as follows.
+all supported OSes and architectures, you push a new tag containing the version
+number, as follows.
 
 - Find the previously released version. You can do this by looking at the git
   tags or by looking at the frontpage of this repo on the right side under the
@@ -19,14 +19,19 @@ version number, as follows.
   journey in a way that could break an existing use-case, we must increment the
   major version.
 
-- Push a signed tag in git, with the tag named with your version number, with a
-  message saying why you're creating this release. For example:
-
-      $ git tag -s -a v0.2.1 -m 'Release the bugfix for crashing during leap second'
-      $ git push origin v0.2.1
+- Run the
+  [create tag workflow](https://github.com/abcxyz/abc/actions/workflows/create-tag.yml)
+  using the version number you've decided on. It's OK to leave the "message"
+  field blank.
 
 - A GitHub workflow will be triggered by the tag push and will handle
   everything. You will see the new release created within a few minutes. If not,
   look for failed
   [Release workflow runs](https://github.com/abcxyz/abc/actions/workflows/release.yml)
   and look at their logs.
+
+- If the release has anything interesting in it, consider sending a message to
+  the
+  [abc-templates-announce mailing list](https://groups.google.com/g/abc-templates-announce)
+  to tell people that a new version has been released, and what's new about it
+  ([example](https://groups.google.com/g/abc-templates-announce/c/pR8Su8Toqls).
