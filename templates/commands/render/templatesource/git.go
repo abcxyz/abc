@@ -51,9 +51,15 @@ type gitSourceParser struct {
 	subdirExpansion string
 	// Example: `${version}`
 	versionExpansion string
+
+	// If non-empty, will be logged as a warning when parsing succeeds. It's
+	// intended for deprecation notices.
+	warning string
 }
 
 func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (templateDownloader, bool, error) {
+	logger := logging.FromContext(ctx).With("logger", "gitSourceParser.sourceParse")
+
 	match := g.re.FindStringSubmatchIndex(src)
 	if match == nil {
 		// It's not an error if this regex match fails, it just means that src
@@ -71,6 +77,10 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string)
 		remote = string(g.re.ExpandString(nil, g.sshRemoteExpansion, src, match))
 	default:
 		return nil, false, fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", protocol)
+	}
+
+	if g.warning != "" {
+		logger.WarnContext(ctx, g.warning)
 	}
 
 	return &gitDownloader{
