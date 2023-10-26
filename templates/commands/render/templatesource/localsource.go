@@ -44,7 +44,10 @@ func (l *localSourceParser) sourceParse(ctx context.Context, src, protocol strin
 
 	_, err := os.Stat(src)
 	if err != nil {
-		_, isPathError := err.(*fs.PathError) //nolint:errorlint // we'd like to use errors.Is(), but it doesn't work with *fs.PathError
+		// We'd like to use errors.Is(), but it doesn't work with *fs.PathError
+		// because fs.PathError has unpredictable field contents.
+		_, isPathError := err.(*fs.PathError) //nolint:errorlint
+
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) || isPathError {
 			logger.WarnContext(ctx, "won't treat src as a local path because that path doesn't exist", "src", src)
 			return nil, false, nil
