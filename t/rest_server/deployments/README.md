@@ -9,4 +9,4 @@ This directory contains the CI/CD GitHub Action workflows for the REST server te
     -input="cr_service=[cr_service]" \
     -input="region=[region]" \
     -input="project_id=[project_id]" \
-    github.com/abcxyz/abc.git//t/rest_server/workflows
+    github.com/abcxyz/abc.git//t/rest_server/deployments
