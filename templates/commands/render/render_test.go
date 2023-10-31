@@ -677,7 +677,7 @@ steps:
 					Dest:                dest,
 					ForceOverwrite:      tc.flagForceOverwrite,
 					Inputs:              tc.flagInputs,
-					InputFile:           inputFilePath,
+					InputFiles:          []string{inputFilePath},
 					KeepTempDirs:        tc.flagKeepTempDirs,
 					SkipInputValidation: tc.flagSkipInputValidation,
 					Source:              "github.com/myorg/myrepo",
