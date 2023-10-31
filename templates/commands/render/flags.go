@@ -55,8 +55,8 @@ type RenderFlags struct {
 	// values are added and as the user is prompted for inputs.
 	Inputs map[string]string // these are just the --input values from flags; doesn't include values from env vars
 
-	// InputFile is the file containing a list of inputs. See Inputs flag for details.
-	InputFile string
+	// InputFiles are the files containing a list of inputs. See Inputs flag for details.
+	InputFiles []string
 
 	// KeepTempDirs prevents the cleanup of temporary directories after rendering is complete.
 	// This can be useful for debugging a failing template.
@@ -94,12 +94,11 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Usage:   "The key=val pairs of template values; may be repeated.",
 	})
 
-	f.StringVar(&cli.StringVar{
+	f.StringSliceVar(&cli.StringSliceVar{
 		Name:    "input-file",
 		Example: "/my/git/abc-inputs.yaml",
-		Default: "",
-		Target:  &r.InputFile,
-		Usage:   "The yaml file with key: val pairs of template values; may be repeated.",
+		Target:  &r.InputFiles,
+		Usage:   "The yaml files with key: val pairs of template values; may be repeated.",
 	})
 
 	f.StringVar(&cli.StringVar{

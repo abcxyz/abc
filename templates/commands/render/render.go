@@ -188,8 +188,8 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	if c.flags.InputFile != "" {
-		inputsFromFile, err := loadInputFile(ctx, rp.fs, c.flags.InputFile)
+	for _, f := range c.flags.InputFiles {
+		inputsFromFile, err := loadInputFile(ctx, rp.fs, f)
 		if err != nil {
 			return err
 		}

@@ -68,7 +68,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				Dest:                 "my_dir",
 				GitProtocol:          "https",
 				Inputs:               map[string]string{"x": "y"},
-				InputFile:            "abc-inputs.yaml",
+				InputFiles:           []string{"abc-inputs.yaml"},
 				LogLevel:             "info",
 				ForceOverwrite:       true,
 				KeepTempDirs:         true,
