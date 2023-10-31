@@ -251,7 +251,8 @@ steps:
 				"inputs.yaml": `
 name_to_greet: 'Bob'
 emoji_suffix: '🐈'
-defaulted_input: 'default'`},
+defaulted_input: 'default'`,
+			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -275,7 +276,8 @@ defaulted_input: 'default'`},
 				"inputs.yaml": `
 name_to_greet: 'Bob'
 emoji_suffix: '🐈'
-defaulted_input: 'default'`},
+defaulted_input: 'default'`,
+			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
