@@ -673,7 +673,7 @@ steps:
 			dest := filepath.Join(tempDir, "dest")
 			common.WriteAllDefaultMode(t, dest, tc.existingDestContents)
 
-			var inputFilePaths []string
+			inputFilePaths := make([]string, 0, len(tc.inputFileNames))
 			for _, f := range tc.inputFileNames {
 				inputFileDir := filepath.Join(tempDir, "inputs")
 				common.WriteAllDefaultMode(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
