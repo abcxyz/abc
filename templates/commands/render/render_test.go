@@ -68,7 +68,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				Dest:                 "my_dir",
 				GitProtocol:          "https",
 				Inputs:               map[string]string{"x": "y"},
-				InputFile:            "abc-inputs.yaml",
+				InputFiles:           []string{"abc-inputs.yaml"},
 				LogLevel:             "info",
 				ForceOverwrite:       true,
 				KeepTempDirs:         true,
@@ -206,8 +206,8 @@ steps:
 		templateContents        map[string]string
 		existingDestContents    map[string]string
 		flagInputs              map[string]string
-		inputFileName           string
-		inputFileContents       string
+		inputFileNames          []string
+		inputFileContents       map[string]string
 		flagKeepTempDirs        bool
 		flagForceOverwrite      bool
 		flagSkipInputValidation bool
@@ -246,11 +246,13 @@ steps:
 		{
 			name: "simple_success_with_input_file_flag",
 
-			inputFileName: "inputs.yaml",
-			inputFileContents: `
+			inputFileNames: []string{"inputs.yaml"},
+			inputFileContents: map[string]string{
+				"inputs.yaml": `
 name_to_greet: 'Bob'
 emoji_suffix: '🐈'
 defaulted_input: 'default'`,
+			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -268,12 +270,14 @@ defaulted_input: 'default'`,
 		{
 			name: "simple_success_with_both_inputs_and_input_file_flags",
 
-			flagInputs:    map[string]string{"name_to_greet": "Robert"},
-			inputFileName: "inputs.yaml",
-			inputFileContents: `
+			flagInputs:     map[string]string{"name_to_greet": "Robert"},
+			inputFileNames: []string{"inputs.yaml"},
+			inputFileContents: map[string]string{
+				"inputs.yaml": `
 name_to_greet: 'Bob'
 emoji_suffix: '🐈'
 defaulted_input: 'default'`,
+			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -282,6 +286,31 @@ defaulted_input: 'default'`,
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantStdout: "Hello, Robert🐈\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
+		{
+			name: "simple_success_with_two_input_file_flags",
+
+			inputFileNames: []string{"inputs.yaml", "other-inputs.yaml"},
+			inputFileContents: map[string]string{
+				"inputs.yaml": `
+name_to_greet: 'Bob'`,
+				"other-inputs.yaml": `
+emoji_suffix: '🐈'
+defaulted_input: 'default'`,
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Bob🐈\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -644,11 +673,11 @@ steps:
 			dest := filepath.Join(tempDir, "dest")
 			common.WriteAllDefaultMode(t, dest, tc.existingDestContents)
 
-			inputFilePath := ""
-			if tc.inputFileName != "" {
+			inputFilePaths := make([]string, 0, len(tc.inputFileNames))
+			for _, f := range tc.inputFileNames {
 				inputFileDir := filepath.Join(tempDir, "inputs")
-				common.WriteAllDefaultMode(t, inputFileDir, map[string]string{tc.inputFileName: tc.inputFileContents})
-				inputFilePath = filepath.Join(inputFileDir, tc.inputFileName)
+				common.WriteAllDefaultMode(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
+				inputFilePaths = append(inputFilePaths, filepath.Join(inputFileDir, f))
 			}
 
 			tempDirNamer := func(namePart string) (string, error) {
@@ -677,7 +706,7 @@ steps:
 					Dest:                dest,
 					ForceOverwrite:      tc.flagForceOverwrite,
 					Inputs:              tc.flagInputs,
-					InputFile:           inputFilePath,
+					InputFiles:          inputFilePaths,
 					KeepTempDirs:        tc.flagKeepTempDirs,
 					SkipInputValidation: tc.flagSkipInputValidation,
 					Source:              "github.com/myorg/myrepo",
