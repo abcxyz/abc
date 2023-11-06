@@ -81,6 +81,7 @@ var realSourceParsers = []sourceParser{
 		sshRemoteExpansion:   `git@${host}:${org}/${repo}.git`,
 		subdirExpansion:      `${subdir}`,
 		versionExpansion:     `${version}`,
+		defaultVersion:       "latest",
 		warning:              `go-getter style URL support will be removed in mid-2024, please use the newer format instead, eg github.com/myorg/myrepo[/subdir]@v1.2.3 (or @latest)`,
 	},
 }

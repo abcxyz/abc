@@ -178,7 +178,7 @@ func TestParseSource(t *testing.T) {
 			want: &gitDownloader{
 				remote:  "https://github.com/myorg/myrepo.git",
 				subdir:  "",
-				version: "",
+				version: "latest",
 				cloner:  &realCloner{},
 				tagser:  &realTagser{},
 			},
@@ -189,7 +189,7 @@ func TestParseSource(t *testing.T) {
 			want: &gitDownloader{
 				remote:  "https://github.com/myorg/myrepo.git",
 				subdir:  "sub/dir",
-				version: "",
+				version: "latest",
 				cloner:  &realCloner{},
 				tagser:  &realTagser{},
 			},
@@ -200,7 +200,7 @@ func TestParseSource(t *testing.T) {
 			want: &gitDownloader{
 				remote:  "https://github.com/myorg/myrepo.git",
 				subdir:  "subdir",
-				version: "",
+				version: "latest",
 				cloner:  &realCloner{},
 				tagser:  &realTagser{},
 			},
