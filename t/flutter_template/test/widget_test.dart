@@ -13,6 +13,6 @@ void main() {
     await tester.pumpWidget(const FlutterApp());
 
     // Verify that element exists.
-    expect(find.text('Flutter Template'), findsOneWidget);
+    expect(find.text('Welcome!'), findsOneWidget);
   });
 }

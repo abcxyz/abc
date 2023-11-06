@@ -17,8 +17,28 @@ kind: 'Template'
 
 desc:
   'A Flutter application template.'
+inputs:
+  - name: 'auth0_domain'
+    desc: 'The Auth0 ternant domain'
+  - name: 'auth0_client_id'
+    desc: 'The Auth0 application client ID'
+  - name: 'auth0_url_scheme'
+    desc: 'The base URL of the Auth0 tenant domain'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['.']
+  - desc: 'Replace Auth0 configuration variables'
+    action: 'string_replace'
+    params:
+      paths:
+        - 'android/app/build.gradle'
+        - 'lib/state/authentication/bloc/authentication_bloc.dart'
+      replacements:
+        - to_replace: 'REPLACE_AUTH0_DOMAIN'
+          with: '{{.auth0_domain}}'
+        - to_replace: 'REPLACE_AUTH0_CLIENT_ID'
+          with: '{{.auth0_client_id}}'
+        - to_replace: 'REPLACE_AUTH0_URL_SCHEME'
+          with: '{{.auth0_url_scheme}}'
