@@ -25,8 +25,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseSource(t *testing.T) {
-	t.Parallel()
+func TestParseSource(t *testing.T) { //nolint:paralleltest
+	// We can't use t.Parallel() here because we use os.Chdir. We don't want
+	// multiple goroutines messing with the working directory at the same time.
+	// The test is fast enough that the peformance impact is negligible.
 
 	cases := []struct {
 		name            string
