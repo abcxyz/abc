@@ -15,6 +15,9 @@ and [BLoC](https://pub.dev/packages/flutter_bloc)
 
     ```
     abc templates render \
+      -input=auth0_domain='AUTH0_DOMAIN' \
+      -input=auth0_client_id='AUTH0_CLIENT_ID' \
+      -input=auth0_url_scheme='AUTH0_URL_SCHEME' \
       https://github.com/abcxyz/abc/tree/main/t/flutter_template
     ```
 
