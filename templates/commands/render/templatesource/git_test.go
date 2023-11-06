@@ -237,7 +237,7 @@ func TestResolveBranchOrTag(t *testing.T) {
 				wantRemote: "my-remote",
 				out:        []string{},
 			},
-			wantErr: `there were no semver-formatted tags in "my-remote"`,
+			wantErr: `there were no semver-formatted tags beginning with "v" in "my-remote"`,
 		},
 	}
 
