@@ -686,7 +686,7 @@ steps:
 			}
 
 			var gotTemplateContents map[string]string
-			templateDir, ok := mustGlob(t, filepath.Join(tempDir, templateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
+			templateDir, ok := testMustGlob(t, filepath.Join(tempDir, templateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
 			if ok {
 				gotTemplateContents = common.LoadDirWithoutMode(t, templateDir)
 			}
@@ -695,7 +695,7 @@ steps:
 			}
 
 			var gotScratchContents map[string]string
-			scratchDir, ok := mustGlob(t, filepath.Join(tempDir, scratchDirNamePart+"*"))
+			scratchDir, ok := testMustGlob(t, filepath.Join(tempDir, scratchDirNamePart+"*"))
 			if ok {
 				gotScratchContents = common.LoadDirWithoutMode(t, scratchDir)
 			}
@@ -709,7 +709,7 @@ steps:
 			}
 
 			var gotBackupContents map[string]string
-			backupSubdir, ok := mustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
+			backupSubdir, ok := testMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
 			if ok {
 				gotBackupContents = common.LoadDirWithoutMode(t, backupSubdir)
 			}
@@ -720,7 +720,7 @@ steps:
 	}
 }
 
-func mustGlob(t *testing.T, glob string) (string, bool) {
+func testMustGlob(t *testing.T, glob string) (string, bool) {
 	t.Helper()
 
 	matches, err := filepath.Glob(glob)
@@ -734,7 +734,7 @@ func mustGlob(t *testing.T, glob string) (string, bool) {
 		return matches[0], true
 	}
 	t.Fatalf("got %d matches for glob %q, wanted 1: %s", len(matches), glob, matches)
-	panic("unreachable")
+	panic("unreachable") // silence compiler warning for "missing return"
 }
 
 func TestPromptForInputs(t *testing.T) {
