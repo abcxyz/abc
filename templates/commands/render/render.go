@@ -647,7 +647,7 @@ func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, erro
 func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
-		logger.DebugContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
+		logger.WarnContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
 			"paths", tempDirs)
 		return nil
 	}
