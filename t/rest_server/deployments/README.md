@@ -10,4 +10,4 @@ template.
     -input="cr_service=[cr_service]" \
     -input="region=[region]" \
     -input="project_id=[project_id]" \
-    github.com/abcxyz/abc/t/rest_server/workflows@latest
+    github.com/abcxyz/abc/t/rest_server/deployments@latest
