@@ -51,6 +51,8 @@ type gitSourceParser struct {
 	subdirExpansion string
 	// Example: `${version}`
 	versionExpansion string
+	// Will be used as the version if versionExpansion expands to ""
+	defaultVersion string
 
 	// If non-empty, will be logged as a warning when parsing succeeds. It's
 	// intended for deprecation notices.
@@ -83,10 +85,15 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string)
 		logger.WarnContext(ctx, g.warning)
 	}
 
+	version := string(g.re.ExpandString(nil, g.versionExpansion, src, match))
+	if version == "" {
+		version = g.defaultVersion
+	}
+
 	return &gitDownloader{
 		remote:  remote,
 		subdir:  string(g.re.ExpandString(nil, g.subdirExpansion, src, match)),
-		version: string(g.re.ExpandString(nil, g.versionExpansion, src, match)),
+		version: version,
 		cloner:  &realCloner{},
 		tagser:  &realTagser{},
 	}, true, nil
