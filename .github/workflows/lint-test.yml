@@ -38,13 +38,13 @@ jobs:
       # allow all os suites to complete, even if one fails
       fail-fast: false
       matrix:
-        os:
+        runner:
           - 'macos-latest'
           - 'ubuntu-latest'
           - 'windows-latest'
     with:
       go_version: '1.21'
-      os: '${{ matrix.os }}'
+      runs-on: '"${{ matrix.runner }}"'
 
   yaml_lint:
     uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
