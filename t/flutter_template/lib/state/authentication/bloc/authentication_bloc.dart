@@ -19,7 +19,7 @@ class AuthenticationBloc
             UserModel(
               credentials.user.name!,
               credentials.user.email!,
-              credentials.user.pictureUrl!,
+              credentials.user.pictureUrl,
             ),
           ),
         );

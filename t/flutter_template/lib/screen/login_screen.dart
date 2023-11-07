@@ -31,12 +31,21 @@ class LoginScreen extends StatelessWidget {
           body: Column(
             children: <Widget>[
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 200),
+                padding: EdgeInsets.symmetric(vertical: 100),
                 child: Center(
                   child: Text(
                     'Welcome!',
                     style: TextStyle(fontSize: 28),
                   ),
+                ),
+              ),
+              // Logo asset.
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Image.asset(
+                  'assets/bp_logo.png',
+                  height: 100,
+                  fit: BoxFit.contain,
                 ),
               ),
               Expanded(
