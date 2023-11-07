@@ -30,7 +30,7 @@ import (
 // directory.
 type localSourceParser struct{}
 
-func (l *localSourceParser) sourceParse(ctx context.Context, src, protocol string) (templateDownloader, bool, error) {
+func (l *localSourceParser) sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "localSourceParser.sourceParse")
 
 	// Design decision: we could try to look at src and guess whether it looks

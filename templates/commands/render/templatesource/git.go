@@ -57,7 +57,7 @@ type gitSourceParser struct {
 	warning string
 }
 
-func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (templateDownloader, bool, error) {
+func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "gitSourceParser.sourceParse")
 
 	match := g.re.FindStringSubmatchIndex(src)
@@ -107,7 +107,7 @@ type gitDownloader struct {
 	tagser tagser
 }
 
-// Download implements templateDownloader.
+// Download implements Downloader.
 func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "gitDownloader.Download")
 

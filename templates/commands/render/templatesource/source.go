@@ -20,27 +20,18 @@ import (
 	"regexp"
 )
 
-var (
-	// This feature is being submitted in pieces, so there's dead code. This
-	// makes the linter stop complaining.
-	_ sourceParser
-	_ templateDownloader
-	_ = realSourceParsers
-	_ = parseSource
-)
-
 // sourceParser is implemented for each particular kind of template source (git,
 // local file, etc.).
 type sourceParser interface {
 	// sourceParse attempts to parse the given src. If the src is recognized as
 	// being downloadable by this sourceParser, then it returns true, along with
 	// a downloader that can download that template.
-	sourceParse(ctx context.Context, src, protocol string) (templateDownloader, bool, error)
+	sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error)
 }
 
-// A templateDownloader is returned by a sourceParser, and offers the ability to
+// A Downloader is returned by a sourceParser, and offers the ability to
 // download a template.
-type templateDownloader interface {
+type Downloader interface {
 	// Download downloads this template into the given directory.
 	Download(ctx context.Context, outDir string) error
 }
@@ -94,7 +85,7 @@ var realSourceParsers = []sourceParser{
 	},
 }
 
-// parseSource maps the input template source to a particular kind of source
+// ParseSource maps the input template source to a particular kind of source
 // (e.g. git) and returns a downloader that will download that source.
 //
 // source is a template location, like "github.com/foo/bar@v1.2.3". protocol
@@ -102,8 +93,8 @@ var realSourceParsers = []sourceParser{
 //
 // A list of sourceParsers is accepted as input for the purpose of testing,
 // rather than hardcoding the real list of sourceParsers.
-func parseSource(ctx context.Context, srcParsers []sourceParser, source, protocol string) (templateDownloader, error) {
-	for _, sp := range srcParsers {
+func ParseSource(ctx context.Context, source, protocol string) (Downloader, error) {
+	for _, sp := range realSourceParsers {
 		downloader, ok, err := sp.sourceParse(ctx, source, protocol)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
