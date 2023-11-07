@@ -28,7 +28,7 @@ type RenderFlags struct {
 
 	// Source is the location of the input template to be rendered.
 	//
-	// Example: github.com/abcxyz/abc.git//t/rest_server
+	// Example: github.com/abcxyz/abc/t/rest_server@latest
 	Source string
 
 	// Flag arguments (--foo):

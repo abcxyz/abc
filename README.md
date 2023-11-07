@@ -22,24 +22,26 @@ This doc contains a [User Guide](#user-guide) and a
 
 Usage: `abc templates render [flags] <template_location>`
 
-The `<template_location>` parameter is any directory-like location that can be
-downloaded by the library that we use for template downloads,
-github.com/hashicorp/go-getter. It should contain a `spec.yaml` file in its
-root.
+Example:
+`abc templates render --prompt github.com/abcxyz/gcp-org-terraform-template@latest`
 
-Examples of template locations:
+The `<template_location>` parameter is one of these two things:
 
-- Git repo: `github.com/abcxyz/abc.git`
-- A subdirectory of a git repo (useful when a single repo contains multiple
-  templates):
-  `github.com/abcxyz/abc.git//examples/templates/render/hello_jupiter`
-- A specific branch or SHA of a git repo:
-  `github.com/abcxyz/abc.git?ref=d3beffc21f324fc23f954c6602c49dfe8f9988e8`
-- A local directory (useful for template developers, you can run a template
-  without committing and merging it to github):
-  `~/git/example.com/myorg/mytemplaterepo`
-- A tarball, local or remote: `~/my_downloaded_tarball.tgz`
-- A GCS bucket (no example yet)
+- A remote git repository. The subdirectory is optional, defaulting to the root
+  of the repo. This directory must contain a `spec.yaml`. The version suffix
+  must be either `@latest` or a semantic version with a leading 'v' like
+  `@v1.2.3`. Examples:
+
+  - `github.com/abcxyz/gcp-org-terraform-template@latest` (no subdirectory)
+  - `github.com/abcxyz/abc/t/rest_server@latest` (with subdirectory)
+  - `github.com/abcxyz/abc/t/rest_server@v0.2.1` (uses semver instead of
+    "latest")
+
+- A local directory as an absolute or relative path. This directory must contain
+  a `spec.yaml`. Examples:
+  - `/my/template/dir`
+  - `my/template/dir`
+  - `./my/template/dir` (equivalent to previous)
 
 #### Flags
 
@@ -141,12 +143,8 @@ create a "hello world" Go web service.
 
    ```shell
    $ abc templates render \
-     github.com/abcxyz/abc.git//examples/templates/render/hello_jupiter
+     github.com/abcxyz/abc/examples/templates/render/hello_jupiter@latest
    ```
-
-   Note: this URL format will change to a cleaner format in the future so the
-   command will become something like
-   `abc templates render abc/examples/templates/render/hello_jupiter`.
 
    This command will output files in your curent directory that are the result
    of executing the template.
@@ -484,7 +482,7 @@ Params:
 
   - `{{._flag_dest}}`: the value of the the `--dest` flag, e.g. `.`
   - `{{._flag_source}}`: the template location that's being rendered, e.g.
-    `github.com/abcxyz/abc.git//t/my_template`
+    `github.com/abcxyz/abc/t/my_template@latest`
 
 Example:
 

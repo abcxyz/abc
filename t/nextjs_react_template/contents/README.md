@@ -30,7 +30,7 @@ the transformed program.
         -input=issuer_base_url='AUTH0_DOMAIN_URL' \
         -input=client_id='AUTH0_CLIENT_ID' \
         -input=client_secret='AUTH0_CLIENT_SECRET' \
-        github.com/abcxyz/abc.git//t/nextjs_react_template
+        github.com/abcxyz/abc/t/nextjs_react_template@latest
     ```
 
 ### Template Inputs

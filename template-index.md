@@ -13,7 +13,7 @@ Just send a GitHub Pull Request.
 The docs are at https://github.com/abcxyz/abc, but to recap: rendering a
 template looks like this:
 
-    abc templates render --prompt github.com/org/repo.git//path/to/dir
+    abc templates render --prompt github.com/org/repo/path/to/dir@latest
 
 ... or use `--input=foo=bar` instead of `--prompt`.
 
@@ -23,8 +23,8 @@ Please keep this list sorted when adding new entries.
 
 | Install as                                                | Docs/link                                                                 | Description                                                                                       |
 | --------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| github.com/abcxyz/abc.git//examples/templates/render/$FOO | [link](https://github.com/abcxyz/abc/tree/main/examples/templates/render) | Tiny educational examples of how to use various features in your spec.yaml                        |
-| github.com/abcxyz/abc.git//t/data_migration_pipeline      | [link](https://github.com/abcxyz/abc/tree/main/t/data_migration_pipeline) | Simple Spanner data migration pipeline in Go, using Apache Beam to migrate from a MySQL CSV dump. |
-| github.com/abcxyz/abc.git//t/react_template               | [link](https://github.com/abcxyz/abc/tree/main/t/react_template)          | A CRA React frontend example app intended to be extended and customized                               |
-| github.com/abcxyz/abc.git//t/rest_server                  | [link](https://github.com/abcxyz/abc/tree/main/t/rest_server)             | A "hello world" Go HTTP server intended to be extended and customized                             |
-| github.com/abcxyz/gcp-org-terraform-template.git          | [link](https://github.com/abcxyz/gcp-org-terraform-template)              | Terraform files for setting up a GCP org. Restricted access.                                                          |
+| github.com/abcxyz/abc/examples/templates/render/$FOO | [link](https://github.com/abcxyz/abc/tree/main/examples/templates/render) | Tiny educational examples of how to use various features in your spec.yaml                        |
+| github.com/abcxyz/abc/t/data_migration_pipeline      | [link](https://github.com/abcxyz/abc/tree/main/t/data_migration_pipeline) | Simple Spanner data migration pipeline in Go, using Apache Beam to migrate from a MySQL CSV dump. |
+| github.com/abcxyz/abc/t/react_template               | [link](https://github.com/abcxyz/abc/tree/main/t/react_template)          | A CRA React frontend example app intended to be extended and customized                               |
+| github.com/abcxyz/abc/t/rest_server                  | [link](https://github.com/abcxyz/abc/tree/main/t/rest_server)             | A "hello world" Go HTTP server intended to be extended and customized                             |
+| github.com/abcxyz/gcp-org-terraform-template          | [link](https://github.com/abcxyz/gcp-org-terraform-template)              | Terraform files for setting up a GCP org. Restricted access.                                                          |

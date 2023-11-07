@@ -32,7 +32,7 @@ This will output a file named `main.go` in your working directory containing
 the transformed program.
 
     ```shell
-    $ abc templates render github.com/abcxyz/abc.git//t/react_template
+    $ abc templates render github.com/abcxyz/abc/t/react_template@latest
     ```
 
 ## Available Scripts
