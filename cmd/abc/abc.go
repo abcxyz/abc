@@ -28,6 +28,11 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
+const (
+	defaultLogLevel = "warn"
+	defaultLogMode  = "text"
+)
+
 var rootCmd = func() *cli.RootCommand {
 	return &cli.RootCommand{
 		Name:    version.Name,
@@ -67,12 +72,23 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
+	setLogEnvVars()
 	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	if err := realMain(ctx); err != nil {
 		done()
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
+	}
+}
+
+func setLogEnvVars() {
+	if os.Getenv("ABC_LOG_FORMAT") == "" {
+		os.Setenv("ABC_LOG_FORMAT", defaultLogMode)
+	}
+
+	if os.Getenv("ABC_LOG_LEVEL") == "" {
+		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
 	}
 }
 
