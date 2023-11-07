@@ -74,7 +74,7 @@ func realMain(ctx context.Context) error {
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 
-	logger.InfoContext(ctx, "starting server on ", *port)
+	logger.InfoContext(ctx, "starting server", "port", *port)
 	server, err := serving.New(*port)
 	if err != nil {
 		return fmt.Errorf("error creating server: %w", err)
