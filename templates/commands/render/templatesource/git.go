@@ -199,7 +199,7 @@ func resolveBranchOrTag(ctx context.Context, t tagser, remote, branchOrTag strin
 	}
 
 	if len(versions) == 0 {
-		return "", fmt.Errorf(`the template source requested the "latest" release, but there were no semver-formatted tags in %q. Available tags were: %v`, remote, tags)
+		return "", fmt.Errorf(`the template source requested the "latest" release, but there were no semver-formatted tags beginning with "v" in %q. Available tags were: %v`, remote, tags)
 	}
 
 	max := slices.MaxFunc(versions, func(l, r *semver.Version) int {
