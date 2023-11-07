@@ -62,7 +62,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add in assets section,
+  # To add assets to your application, add in assets section below.
   assets:
     - assets/bp_logo.png
 
