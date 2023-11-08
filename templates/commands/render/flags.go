@@ -40,9 +40,6 @@ type RenderFlags struct {
 	// GitProtocol is not yet used.
 	GitProtocol string
 
-	// LogLevel is one of debug|info|warn|error|panic.
-	LogLevel string
-
 	// ForceOverwrite lets existing output files in the Dest directory be overwritten
 	// with the output of the template.
 	ForceOverwrite bool
@@ -99,14 +96,6 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Example: "/my/git/abc-inputs.yaml",
 		Target:  &r.InputFiles,
 		Usage:   "The yaml files with key: val pairs of template values; may be repeated.",
-	})
-
-	f.StringVar(&cli.StringVar{
-		Name:    "log-level",
-		Example: "info",
-		Default: defaultLogLevel,
-		Target:  &r.LogLevel,
-		Usage:   "How verbose to log; any of debug|info|warn|error.",
 	})
 
 	f.BoolVar(&cli.BoolVar{

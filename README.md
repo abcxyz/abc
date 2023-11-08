@@ -73,22 +73,26 @@ The `<template_location>` parameter is one of these two things:
   `abc` command itself. The two temp directories are the "template directory",
   into which the template is downloaded, and the "scratch directory", where
   files are staged during transformations before being written to the output
-  directory. Use `--log-level` verbosity of `info` or higher to see the
-  locations of the directories.
+  directory. Use environment variable `ABC_LOG_LEVEL=debug` to see the locations
+  of the directories.
 - `--prompt`: the user will be prompted for inputs that are needed by the
-  template but are not supplied by `--inputs`.
+  template but are not supplied by `--inputs` or `--input-file`.
 - `--skip-input-validation`: don't run any of the validation rules for template
   inputs. This could be useful if a template has overly strict validation logic
   and you know for sure that the value you want to use is OK.
 
 #### Logging
 
-Use the environment variable `ABC_LOG_MODE` to configure JSON logging.
+Use the environment variables `ABC_LOG_MODE` and `ABC_LOG_LEVEL` to configure
+logging.
 
 The valid values for `ABC_LOG_MODE` are:
 
-- `dev`: (the default) non-JSON logs, best for human readability in a terminal
-- `production`: JSON formatted logs, better for feeding into a program
+- `text`: (the default) non-JSON logs, best for human readability in a terminal
+- `json`: JSON formatted logs, better for feeding into a program
+
+The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
+`error`, and `emergency`. The default is `warn`.
 
 ## User Guide
 
