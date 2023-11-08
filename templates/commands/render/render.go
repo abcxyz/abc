@@ -52,9 +52,6 @@ const (
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
 
-	defaultLogLevel = "warn"
-	defaultLogMode  = "dev"
-
 	// The spec file is always located in the template root dir and named spec.yaml.
 	specName = "spec.yaml"
 )
@@ -102,9 +99,6 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-
-	c.setLogEnvVars()
-	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))
 
 	fSys := c.testFS // allow filesystem interaction to be faked for testing
 	if fSys == nil {
@@ -483,7 +477,7 @@ func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *step
 		if err != nil {
 			return fmt.Errorf("filepath.Rel(): %w", err)
 		}
-		fmt.Fprintf(sb, "  %s\n", rel)
+		fmt.Fprintf(sb, " %s", rel)
 		return nil
 	})
 	if err != nil {
@@ -659,7 +653,7 @@ func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, erro
 func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
-		logger.DebugContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
+		logger.WarnContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
 			"paths", tempDirs)
 		return nil
 	}
@@ -670,18 +664,6 @@ func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDir
 		merr = errors.Join(merr, fs.RemoveAll(p))
 	}
 	return merr
-}
-
-func (c *Command) setLogEnvVars() {
-	if os.Getenv("ABC_LOG_MODE") == "" {
-		os.Setenv("ABC_LOG_MODE", defaultLogMode)
-	}
-
-	if c.flags.LogLevel != "" {
-		os.Setenv("ABC_LOG_LEVEL", c.flags.LogLevel)
-	} else if os.Getenv("ABC_LOG_LEVEL") == "" {
-		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
-	}
 }
 
 // destOK makes sure that the output directory looks sane.

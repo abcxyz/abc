@@ -64,7 +64,6 @@ func TestActionPrint(t *testing.T) {
 				Source:         "mysource",
 				Dest:           "mydest",
 				GitProtocol:    "mygitprotocol",
-				LogLevel:       "myloglevel",
 				ForceOverwrite: true,
 				KeepTempDirs:   true,
 			},
