@@ -147,8 +147,6 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
-		// We don't have to worry about symlinks here because we passed
-		// DisableSymlinks=true to go-getter.
 		relToSrc, err := filepath.Rel(p.SrcRoot, path)
 		if err != nil {
 			return pos.Errorf("filepath.Rel(%s,%s): %w", p.SrcRoot, path, err)
