@@ -148,7 +148,7 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("the repo %q at tag %q doesn't contain a subdirectory named %q", g.remote, branchOrTag, subdir)
+			return fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, branchOrTag, subdir, branchOrTag)
 		}
 		return err
 	}
