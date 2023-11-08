@@ -126,6 +126,38 @@ func TestGitDownloader_Download(t *testing.T) {
 			wantErr: `must not contain ".."`,
 			want:    map[string]string{},
 		},
+		{
+			name: "missing_subdir",
+			dl: &gitDownloader{
+				remote:  "fake-remote",
+				subdir:  "nonexistent",
+				version: "v1.2.3",
+				cloner: &fakeCloner{
+					t:               t,
+					out:             basicFiles,
+					wantRemote:      "fake-remote",
+					wantBranchOrTag: "v1.2.3",
+				},
+			},
+			wantErr: `doesn't contain a subdirectory named "nonexistent"`,
+			want:    map[string]string{},
+		},
+		{
+			name: "file_instead_of_dir",
+			dl: &gitDownloader{
+				remote:  "fake-remote",
+				subdir:  "file1.txt",
+				version: "v1.2.3",
+				cloner: &fakeCloner{
+					t:               t,
+					out:             basicFiles,
+					wantRemote:      "fake-remote",
+					wantBranchOrTag: "v1.2.3",
+				},
+			},
+			wantErr: "is not a directory",
+			want:    map[string]string{},
+		},
 	}
 
 	for _, tc := range cases {

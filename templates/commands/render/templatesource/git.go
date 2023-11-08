@@ -16,6 +16,7 @@ package templatesource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -142,6 +143,17 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 
 	if err := g.cloner.Clone(ctx, g.remote, branchOrTag, tmpDir); err != nil {
 		return fmt.Errorf("Clone(): %w", err)
+	}
+
+	fi, err := os.Stat(subdirToCopy)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, branchOrTag, subdir, branchOrTag)
+		}
+		return err //nolint:wrapcheck // Stat() returns a decently informative error
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("the path %q is not a directory", subdir)
 	}
 
 	logger.DebugContext(ctx, "cloned repo", "remote", g.remote, "branchOrTag", branchOrTag)
