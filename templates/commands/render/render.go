@@ -37,7 +37,9 @@ import (
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/sets"
 	"github.com/mattn/go-isatty"
+	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
 
@@ -162,23 +164,8 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err
 	}
 
-	for _, f := range c.flags.InputFiles {
-		inputsFromFile, err := loadInputFile(ctx, rp.fs, f)
-		if err != nil {
-			return err
-		}
-		if c.flags.Inputs == nil {
-			c.flags.Inputs = make(map[string]string)
-		}
-		for key, val := range inputsFromFile {
-			// Prefer input flag value if key already exists.
-			if _, ok := c.flags.Inputs[key]; !ok {
-				c.flags.Inputs[key] = val
-			}
-		}
-	}
-
-	if err := c.resolveInputs(ctx, spec); err != nil {
+	resolvedInputs, err := c.resolveInputs(ctx, rp.fs, spec)
+	if err != nil {
 		return err
 	}
 
@@ -196,7 +183,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	sp := &stepParams{
 		flags:       &c.flags,
 		fs:          rp.fs,
-		scope:       common.NewScope(c.flags.Inputs),
+		scope:       common.NewScope(resolvedInputs),
 		scratchDir:  scratchDir,
 		stdout:      rp.stdout,
 		templateDir: templateDir,
@@ -272,56 +259,58 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.
-func (c *Command) checkUnknownInputs(spec *spec.Spec) []string {
-	specInputs := make(map[string]any, len(spec.Inputs))
+func checkUnknownInputs(spec *spec.Spec, inputs map[string]string) []string {
+	specInputs := make([]string, 0, len(spec.Inputs))
 	for _, v := range spec.Inputs {
-		specInputs[v.Name.Val] = struct{}{}
+		specInputs = append(specInputs, v.Name.Val)
 	}
 
-	unknownInputs := make([]string, 0, len(c.flags.Inputs))
-	for key := range c.flags.Inputs {
-		if _, ok := specInputs[key]; !ok {
-			unknownInputs = append(unknownInputs, key)
-		}
-	}
-
+	seenInputs := maps.Keys(inputs)
+	unknownInputs := sets.Subtract(seenInputs, specInputs)
 	sort.Strings(unknownInputs)
-
 	return unknownInputs
 }
 
 // resolveInputs combines flags, user prompts, and defaults to get the full set
 // of template inputs.
-func (c *Command) resolveInputs(ctx context.Context, spec *spec.Spec) error {
-	if unknownInputs := c.checkUnknownInputs(spec); len(unknownInputs) > 0 {
-		return fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Spec) (map[string]string, error) {
+	fileInputs, err := loadInputFiles(ctx, fs, c.flags.InputFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	// Order matters: values from --input take precedence over --input-file.
+	inputs := sets.UnionMapKeys(c.flags.Inputs, fileInputs)
+
+	if unknownInputs := checkUnknownInputs(spec, inputs); len(unknownInputs) > 0 {
+		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
 
 	if c.flags.Prompt {
 		isATTY := (c.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
 		if !isATTY {
-			return fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
+			return nil, fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
 		}
 
 		if err := c.promptForInputs(ctx, spec); err != nil {
-			return err
+			return nil, err
 		}
 	} else {
-		c.collapseDefaultInputs(spec)
-		if missing := c.checkInputsMissing(spec); len(missing) > 0 {
-			return fmt.Errorf("missing input(s): %s", strings.Join(missing, ", "))
+		insertDefaultInputs(spec, inputs)
+		if missing := checkInputsMissing(spec, inputs); len(missing) > 0 {
+			return nil, fmt.Errorf("missing input(s): %s", strings.Join(missing, ", "))
 		}
 	}
 
 	if c.flags.SkipInputValidation {
-		return nil
+		return inputs, nil
 	}
 
 	if err := c.validateInputs(ctx, spec.Inputs); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return inputs, nil
 }
 
 func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) error {
@@ -425,24 +414,22 @@ func writeRule(tw *tabwriter.Writer, rule *spec.InputRule, includeIndex bool, in
 	}
 }
 
-// collapseDefaultInputs defaults any missing input flags if default is set.
-func (c *Command) collapseDefaultInputs(spec *spec.Spec) {
-	if c.flags.Inputs == nil {
-		c.flags.Inputs = map[string]string{}
-	}
-	for _, input := range spec.Inputs {
-		if _, ok := c.flags.Inputs[input.Name.Val]; !ok && input.Default != nil {
-			c.flags.Inputs[input.Name.Val] = input.Default.Val
+// insertDefaultInputs defaults any missing inputs for which a default
+// exists. The input map will be mutated by adding new keys.
+func insertDefaultInputs(spec *spec.Spec, inputs map[string]string) {
+	for _, specInput := range spec.Inputs {
+		if _, ok := inputs[specInput.Name.Val]; !ok && specInput.Default != nil {
+			inputs[specInput.Name.Val] = specInput.Default.Val
 		}
 	}
 }
 
-// checkInputsMissing checks for missing input flags returns them as a slice.
-func (c *Command) checkInputsMissing(spec *spec.Spec) []string {
-	missing := make([]string, 0, len(c.flags.Inputs))
+// checkInputsMissing checks for missing inputs and returns them as a slice.
+func checkInputsMissing(spec *spec.Spec, inputs map[string]string) []string {
+	missing := make([]string, 0, len(inputs))
 
 	for _, input := range spec.Inputs {
-		if _, ok := c.flags.Inputs[input.Name.Val]; !ok {
+		if _, ok := inputs[input.Name.Val]; !ok {
 			missing = append(missing, input.Name.Val)
 		}
 	}
@@ -577,6 +564,31 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 	}
 }
 
+// loadInputFiles iterates over each --input-file and combines them all into a map.
+func loadInputFiles(ctx context.Context, fs common.FS, paths []string) (map[string]string, error) {
+	out := make(map[string]string)
+	sourceFileForInput := make(map[string]string)
+
+	for _, f := range paths {
+		inputsThisFile, err := loadInputFile(ctx, fs, f)
+		if err != nil {
+			return nil, err
+		}
+
+		for key, val := range inputsThisFile {
+			if _, ok := out[key]; ok {
+				return nil, fmt.Errorf("input key %q appears in multiple input files %q and %q; there must not be any overlap between input files",
+					key, f, sourceFileForInput[key])
+			}
+
+			out[key] = val
+			sourceFileForInput[key] = f
+		}
+	}
+	return out, nil
+}
+
+// loadInputFile loads a single --input-file into a map.
 func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

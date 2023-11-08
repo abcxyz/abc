@@ -174,14 +174,14 @@ inputs:
   desc: 'A name to include in the message'
 - name: 'emoji_suffix'
   desc: 'An emoji suffix to include in message'
-- name: 'defaulted_input'
-  desc: 'The defaulted input'
-  default:  'default'
+- name: 'ending_punctuation'
+  desc: 'The punctuation mark with which to end the message'
+  default:  '.'
 steps:
 - desc: 'Print a message'
   action: 'print'
   params:
-    message: 'Hello, {{.name_to_greet}}{{.emoji_suffix}}'
+    message: 'Hello, {{.name_to_greet}}{{.emoji_suffix}}{{.ending_punctuation}}'
 - desc: 'Include some files and directories'
   action: 'include'
   params:
@@ -217,11 +217,10 @@ steps:
 	}{
 		{
 			name: "simple_success_with_inputs_flag",
-
 			flagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -230,7 +229,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Bob🐈\n",
+			wantStdout: "Hello, Bob🐈!\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -244,8 +243,7 @@ steps:
 			inputFileContents: map[string]string{
 				"inputs.yaml": `
 name_to_greet: 'Bob'
-emoji_suffix: '🐈'
-defaulted_input: 'default'`,
+emoji_suffix: '🐈'`,
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -254,7 +252,7 @@ defaulted_input: 'default'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Bob🐈\n",
+			wantStdout: "Hello, Bob🐈.\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -269,8 +267,7 @@ defaulted_input: 'default'`,
 			inputFileContents: map[string]string{
 				"inputs.yaml": `
 name_to_greet: 'Bob'
-emoji_suffix: '🐈'
-defaulted_input: 'default'`,
+emoji_suffix: '🐈'`,
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -279,7 +276,7 @@ defaulted_input: 'default'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Robert🐈\n",
+			wantStdout: "Hello, Robert🐈.\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -287,15 +284,13 @@ defaulted_input: 'default'`,
 			},
 		},
 		{
-			name: "simple_success_with_two_input_file_flags",
-
+			name:           "simple_success_with_two_input_file_flags",
 			inputFileNames: []string{"inputs.yaml", "other-inputs.yaml"},
 			inputFileContents: map[string]string{
 				"inputs.yaml": `
 name_to_greet: 'Bob'`,
 				"other-inputs.yaml": `
-emoji_suffix: '🐈'
-defaulted_input: 'default'`,
+emoji_suffix: '🐈'`,
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -304,7 +299,7 @@ defaulted_input: 'default'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Bob🐈\n",
+			wantStdout: "Hello, Bob🐈.\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -312,11 +307,22 @@ defaulted_input: 'default'`,
 			},
 		},
 		{
+			name:           "conflicting_input_files",
+			inputFileNames: []string{"inputs.yaml", "other-inputs.yaml"},
+			inputFileContents: map[string]string{
+				"inputs.yaml":       `name_to_greet: 'Alice'`,
+				"other-inputs.yaml": `name_to_greet: 'Bob'`,
+			},
+			templateContents: map[string]string{
+				"spec.yaml": specContents,
+			},
+			wantErr: "input key \"name_to_greet\" appears in multiple input files",
+		},
+		{
 			name: "keep_temp_dirs_on_success_if_flag",
 			flagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
 			},
 			flagKeepTempDirs: true,
 			templateContents: map[string]string{
@@ -325,7 +331,7 @@ defaulted_input: 'default'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Bob🐈\n",
+			wantStdout: "Hello, Bob🐈.\n",
 			wantScratchContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -346,9 +352,8 @@ defaulted_input: 'default'`,
 		{
 			name: "keep_temp_dirs_on_failure_if_flag",
 			flagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
 			},
 			flagKeepTempDirs: true,
 			templateContents: map[string]string{
@@ -362,9 +367,8 @@ defaulted_input: 'default'`,
 		{
 			name: "existing_dest_file_with_overwrite_flag_should_succeed",
 			flagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
 			},
 			flagForceOverwrite: true,
 			existingDestContents: map[string]string{
@@ -377,7 +381,7 @@ defaulted_input: 'default'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Bob🐈\n",
+			wantStdout: "Hello, Bob🐈.\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "new contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -390,9 +394,8 @@ defaulted_input: 'default'`,
 		{
 			name: "existing_dest_file_without_overwrite_flag_should_fail",
 			flagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
 			},
 			flagForceOverwrite: false,
 			existingDestContents: map[string]string{
@@ -405,7 +408,7 @@ defaulted_input: 'default'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Bob🐈\n",
+			wantStdout: "Hello, Bob🐈.\n",
 			wantDestContents: map[string]string{
 				"file1.txt": "old contents",
 			},
@@ -430,16 +433,15 @@ defaulted_input: 'default'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Bob🐈\n",
+			wantStdout: "Hello, Bob🐈.\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "file1 contents",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
 			wantFlagInputs: map[string]string{
-				"name_to_greet":   "Bob",
-				"emoji_suffix":    "🐈",
-				"defaulted_input": "default",
+				"name_to_greet": "Bob",
+				"emoji_suffix":  "🐈",
 			},
 		},
 		{
