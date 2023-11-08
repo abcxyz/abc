@@ -496,7 +496,7 @@ func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *step
 		if err != nil {
 			return fmt.Errorf("filepath.Rel(): %w", err)
 		}
-		fmt.Fprintf(sb, "  %s\n", rel)
+		fmt.Fprintf(sb, " %s", rel)
 		return nil
 	})
 	if err != nil {

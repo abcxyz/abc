@@ -46,9 +46,11 @@ The `<template_location>` parameter is one of these two things:
 #### Flags
 
 - `--debug-scratch-contents`: for template authors, not regular users. This will
-  print the contents of the scratch directory after executing each step of the
-  spec.yaml. Useful for debugging errors like
+  print the filename of every file in the scratch directory after executing each
+  step of the spec.yaml. Useful for debugging errors like
   `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`
+  You'll want to set the environment variable `ABC_LOG_LEVEL=debug` when you use
+  this.
 - `--dest <output_dir>`: the directory on the local filesystem to write output
   to. Defaults to the current directory. If it doesn't exist, it will be
   created.
@@ -56,9 +58,10 @@ The `<template_location>` parameter is one of these two things:
   one of the inputs declared by the template in its `spec.yaml`. May be repeated
   to provide multiple inputs, like
   `--input=name=alice --input=email=alice@example.com`.
-- `--input-file=file`: provide a yaml file with input(s) to the template. Each `key` 
-  must have a string `val` (i.e. no nesting and no arrays). If `key` exists in the 
-  file but is also provided as an input parameter, the input value takes precedence.
+- `--input-file=file`: provide a yaml file with input(s) to the template. Each
+  `key` must have a string `val` (i.e. no nesting and no arrays). If `key`
+  exists in the file but is also provided as an input parameter, the input value
+  takes precedence.
 - `--log-level`: one of `debug|info|warning|error`. How verbose to log.
 - `--force-overwrite`: normally, the template rendering operation will abort if
   the template would output a file at a location that already exists on the
