@@ -150,7 +150,7 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, branchOrTag, subdir, branchOrTag)
 		}
-		return err
+		return err //nolint:wrapcheck // Stat() returns a decently informative error
 	}
 	if !fi.IsDir() {
 		return fmt.Errorf("the path %q is not a directory", subdir)
