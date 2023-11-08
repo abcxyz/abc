@@ -181,16 +181,12 @@ This section explains how you can create a template for others to install (aka
 
 ### Concepts
 
-A template can take many forms. It can be anything downloadable by the
-https://github.com/hashicorp/go-getter library, including:
+A template is installed from a location that you provide. These locations may be
+either a GitHub repository or a local directory. If you install a template from
+GitHub, it will be downloaded into a temp directory by `abc`.
 
-- A GitHub repo
-- A .tgz or .zip file downloaded over HTTPS
-- A local directory
-- A GCP Cloud Storage bucket
-
-In essence, a template is a directory or directory-like object containing a
-"spec file", named `spec.yaml`
+In essence, a template is a directory containing a "spec file", named
+`spec.yaml`
 ([example](https://github.com/abcxyz/abc/blob/main/examples/templates/render/hello_jupiter/spec.yaml)),
 and other files such as source code and config files.
 
@@ -217,7 +213,7 @@ Template rendering has a few phases:
     - This means that for example a string_replace after an append will affect
       the appended text, but if put before it will not.
 - Once all steps are executed, the contents of the scratch directory are copied
-  to the output directory.
+  to the `--dest` directory (which default to your current working directory).
 
 Normally, the template and scratch directories are deleted when rendering
 completes. For debugging, you can provide the flag `--keep-temp-dirs` to retain
@@ -228,15 +224,18 @@ them for inspection.
 The spec file, named `spec.yaml` describes the template, including:
 
 - A human-readable description of the template
-- What inputs are needed from the user (e.g. their service name)
+- The version of the YAML schema that is used by this file; we may add or remove
+  fields from spec.yaml
+- What inputs are needed from the user (e.g. their GCP service account name or
+  the port number to listen on)
 - The sequence of steps to be executed by the CLI when rendering the template
-  (e.g. "replace every instance of `__replace_me_service_name__` with the
-  user-provided input named `service_name`).
+  (e.g. "replace every instance of `__replace_me_service_account__` with the
+  user-provided input named `service_account`).
 
-The following is an example spec file. It has a single templated file,
-`main.go`, and during template rendering all instances of the word `world` are
-replaced by a user-provided string. Thus "hello, world" is transformed into
-"hello, $whatever" in `main.go`.
+Here is an example spec file. It has a single templated file, `main.go`, and
+during template rendering all instances of the word `world` are replaced by a
+user-provided string. Thus "hello, world" is transformed into "hello, $whatever"
+in `main.go`.
 
 ```yaml
 api_version: 'cli.abcxyz.dev/v1alpha1'
@@ -269,10 +268,10 @@ features are only available in more recent versions.
 
 The currently valid versions are:
 
-| api_version             | Binary versions | Notes                                           |
-| ----------------------- | --------------- | ----------------------------------------------- |
-| cli.abcxyz.dev/v1alpha1 | From 0.0.0      | Initial version                                 |
-| cli.abcxyz.dev/v1beta1  | From 0.2        | Adds support for an `if` predicate on each step |
+| api_version             | Supported in abc CLI versions | Notes                                           |
+| ----------------------- | ----------------------------- | ----------------------------------------------- |
+| cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                 |
+| cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step |
 
 #### Template inputs
 
@@ -282,7 +281,7 @@ example). Alternatively, the user can use `--prompt` rather than `--input` to
 enter values interactively.
 
 A template may not need any inputs, in which case the `inputs` top-level field
-can be omitted.
+in the spec.yaml can be omitted.
 
 Each input in the `inputs` list has these fields:
 
@@ -384,7 +383,7 @@ Example:
 
 ```yaml
 desc: 'An optional human-readable description of what this step is for'
-action: 'action-name' # One of 'include', 'print', 'append', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template
+action: 'action-name' # One of 'include', 'print', 'append', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template`, `for_each`
 if: 'bool(my_input) || int(my_other_input) > 42' # Optional CEL expression
 params:
   foo: bar # The params differ depending on the action
@@ -393,7 +392,7 @@ params:
 ### Action: `include`
 
 Copies files or directories from the template directory to the scratch
-directory.
+directory. It's similar to the `COPY` command in a Dockerfile.
 
 Params:
 
@@ -423,10 +422,11 @@ Params:
   These may use template expressions (e.g. `{{.my_input}}`).
 
 - `from`: rarely used. The only currently valid value is `'destination'`. This
-  copies files into the scratch from the _destination_ directory instead of the
-  _template_ directory. The `paths` must point to files that exist in the
-  destination directory (which defaults to the current working directory. See
-  the example below.
+  allows the template to modify a file that is already present on the user's
+  filesystem. This copies files into the scratch from the _destination_
+  directory instead of the _template_ directory. The `paths` must point to files
+  that exist in the destination directory (which defaults to the current working
+  directory. See the example below.
 
 Examples:
 
