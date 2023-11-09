@@ -21,16 +21,19 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/logging"
 )
 
+var _ sourceParser = (*localSourceParser)(nil)
+
 // localSourceParser implements sourceParser for reading a template from a local
 // directory.
 type localSourceParser struct{}
 
-func (l *localSourceParser) sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error) {
+func (l *localSourceParser) sourceParse(ctx context.Context, cwd, src, protocol string) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "localSourceParser.sourceParse")
 
 	// Design decision: we could try to look at src and guess whether it looks
@@ -42,18 +45,26 @@ func (l *localSourceParser) sourceParse(ctx context.Context, src, protocol strin
 	// This sourceParser should run after the sourceParser that recognizes remote
 	// git repos, so this code won't run if the source looks like a git repo.
 
-	_, err := os.Stat(src)
-	if err != nil {
+	// If the filepath was not absolute, convert it to be relative to the cwd.
+	originalSrc := src
+	if !filepath.IsAbs(src) {
+		src = filepath.Join(cwd, src)
+		logger.DebugContext(ctx, "source path is relative, converting to absolute path",
+			"originalSrc", originalSrc,
+			"src", src)
+	}
+
+	if _, err := os.Stat(src); err != nil {
 		var pathErrPtr *fs.PathError
 
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) || errors.As(err, &pathErrPtr) {
-			logger.DebugContext(ctx, "won't treat src as a local path because that path doesn't exist", "src", src)
+			logger.DebugContext(ctx, "will not treat src as a local path because the path does not exist", "src", src)
 			return nil, false, nil
 		}
 		return nil, false, fmt.Errorf("Stat(): %w", err)
 	}
 
-	logger.InfoContext(ctx, "Treating src as a local path", "src", src)
+	logger.InfoContext(ctx, "treating src as a local path", "src", src)
 
 	return &localDownloader{
 		srcPath: src, // Uses OS-native file separator
