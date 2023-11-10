@@ -246,7 +246,7 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratc
 		BackupDirMaker: backupDirMaker,
 		DryRun:         dryRun,
 		DstRoot:        c.flags.Dest,
-		Hash:           sha256.New(),
+		Hasher:         sha256.New,
 		OutHashes:      map[string][]byte{},
 		SrcRoot:        scratchDir,
 		RFS:            rp.fs,

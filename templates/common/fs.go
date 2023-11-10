@@ -111,16 +111,12 @@ type CopyParams struct {
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
 
-	// If Hash and OutHashes are not nil, then each copied file will be hashed
+	// If Hasher and OutHashes are not nil, then each copied file will be hashed
 	// and the raw binary hash will be saved in OutHashes. If a file is
 	// "skipped" (CopyHint.Skip==true) then the hash will not be computed. In
 	// dry run mode, the hash will be computed normally. OutHashes always uses
 	// forward slashes as path separator, regardless of OS.
-	//
-	// Note to maintainers: a hash.Hash is stateful and therefore not
-	// thread-safe. If we ever add concurrency inside CopyRecursive, we'll need
-	// to change this.
-	Hash      hash.Hash
+	Hasher    func() hash.Hash
 	OutHashes map[string][]byte
 }
 
@@ -227,18 +223,24 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
 		mode := srcInfo.Mode().Perm()
-		if err := copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun, p.Hash); err != nil {
+		var hash hash.Hash
+		if p.Hasher != nil {
+			hash = p.Hasher()
+		}
+		if err := copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun, hash); err != nil {
 			return err
 		}
-		if p.Hash != nil && p.OutHashes != nil {
-			p.OutHashes[filepath.ToSlash(relToSrc)] = p.Hash.Sum(nil)
+		if hash != nil && p.OutHashes != nil {
+			p.OutHashes[filepath.ToSlash(relToSrc)] = hash.Sum(nil)
 		}
 		return nil
 	})
 }
 
-// hash is nil-able. If not nil, it will be Reset() and written to with the file
-// contents. The caller should call hash.Sum() to get the hash output.
+// copyFile copies the contents of src to dst.
+//
+// hash is nil-able. If not nil, it will be written to with the file contents.
+// The caller should call hash.Sum() to get the hash output.
 func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, mode fs.FileMode, dryRun bool, hash hash.Hash) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "copyFile")
 
@@ -262,7 +264,6 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 	}
 
 	if hash != nil {
-		hash.Reset()
 		reader = io.TeeReader(readFile, hash)
 	}
 

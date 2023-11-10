@@ -43,7 +43,7 @@ func TestCopyRecursive(t *testing.T) {
 		srcDirContents        map[string]ModeAndContents
 		suffix                string
 		dryRun                bool
-		hash                  hash.Hash
+		hasher                func() hash.Hash
 		visitor               CopyVisitor
 		want                  map[string]ModeAndContents
 		wantBackups           map[string]ModeAndContents
@@ -125,7 +125,7 @@ func TestCopyRecursive(t *testing.T) {
 			srcDirContents: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			hash:   sha256.New(),
+			hasher: sha256.New,
 			dryRun: true,
 			wantHashes: map[string][]byte{
 				"file1.txt": mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
@@ -328,7 +328,7 @@ func TestCopyRecursive(t *testing.T) {
 			srcDirContents: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			hash: sha256.New(),
+			hasher: sha256.New,
 			want: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
@@ -341,7 +341,7 @@ func TestCopyRecursive(t *testing.T) {
 			srcDirContents: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			hash: sha512.New(),
+			hasher: sha512.New,
 			want: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
@@ -355,7 +355,7 @@ func TestCopyRecursive(t *testing.T) {
 				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			hash: sha256.New(),
+			hasher: sha256.New,
 			want: map[string]ModeAndContents{
 				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
@@ -434,7 +434,7 @@ func TestCopyRecursive(t *testing.T) {
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
 			var hashes map[string][]byte
-			if tc.hash != nil {
+			if tc.hasher != nil {
 				hashes = make(map[string][]byte)
 			}
 
@@ -443,7 +443,7 @@ func TestCopyRecursive(t *testing.T) {
 				SrcRoot:        from,
 				DstRoot:        to,
 				DryRun:         tc.dryRun,
-				Hash:           tc.hash,
+				Hasher:         tc.hasher,
 				OutHashes:      hashes,
 				RFS:            fs,
 				Visitor:        tc.visitor,
