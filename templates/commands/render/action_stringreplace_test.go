@@ -236,9 +236,9 @@ func TestActionStringReplace(t *testing.T) {
 				Replacements: tc.replacements,
 			}
 			sp := &stepParams{
-				fs: &errorFS{
+				fs: &common.ErrorFS{
 					FS:          &common.RealFS{},
-					readFileErr: tc.readFileErr,
+					ReadFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,
 				scope:      common.NewScope(tc.inputs),
