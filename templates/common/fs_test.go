@@ -16,7 +16,10 @@ package common
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"hash"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -39,6 +42,7 @@ func TestCopyRecursive(t *testing.T) {
 		srcDirContents        map[string]ModeAndContents
 		suffix                string
 		dryRun                bool
+		hash                  hash.Hash
 		visitor               CopyVisitor
 		want                  map[string]ModeAndContents
 		wantBackups           map[string]ModeAndContents
@@ -50,6 +54,7 @@ func TestCopyRecursive(t *testing.T) {
 		statErr               error
 		writeFileErr          error
 		wantErr               string
+		wantHashes            map[string][]byte
 	}{
 		{
 			name: "simple_success",
@@ -113,6 +118,19 @@ func TestCopyRecursive(t *testing.T) {
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 			wantErr:     "file file1.txt already exists and overwriting was not enabled",
+		},
+		{
+			name: "dry_run_should_calculate_hashes",
+			srcDirContents: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			hash:   sha256.New(),
+			dryRun: true,
+			wantHashes: map[string][]byte{
+				"file1.txt": mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
+			},
+			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
+			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 		},
 		{
 			name: "owner_execute_bit_should_be_preserved",
@@ -305,6 +323,32 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
+			name: "sha256_hash",
+			srcDirContents: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			hash: sha256.New(),
+			want: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantHashes: map[string][]byte{
+				"file1.txt": mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
+			},
+		},
+		{
+			name: "hash_in_subdir",
+			srcDirContents: map[string]ModeAndContents{
+				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			hash: sha256.New(),
+			want: map[string]ModeAndContents{
+				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantHashes: map[string][]byte{
+				filepath.FromSlash("subdir/file1.txt"): mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
+			},
+		},
+		{
 			name: "MkdirAll error should be returned",
 			srcDirContents: map[string]ModeAndContents{
 				"dir/file.txt": {Mode: 0o600, Contents: "file1 contents"},
@@ -372,11 +416,18 @@ func TestCopyRecursive(t *testing.T) {
 			const unixTime = 1688609125
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
+			var hashes map[string][]byte
+			if tc.hash != nil {
+				hashes = make(map[string][]byte)
+			}
+
 			err := CopyRecursive(ctx, &model.ConfigPos{}, &CopyParams{
 				BackupDirMaker: func(rf FS) (string, error) { return backupDir, nil },
 				SrcRoot:        from,
 				DstRoot:        to,
 				DryRun:         tc.dryRun,
+				Hash:           tc.hash,
+				OutHashes:      hashes,
 				RFS:            fs,
 				Visitor:        tc.visitor,
 			})
@@ -393,6 +444,20 @@ func TestCopyRecursive(t *testing.T) {
 			if diff := cmp.Diff(gotBackups, tc.wantBackups, CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
 			}
+
+			if diff := cmp.Diff(hashes, tc.wantHashes); diff != "" {
+				t.Errorf("hashes were not as expected: (-got,+want): %s", diff)
+			}
 		})
 	}
+}
+
+func mustHexDecode(t *testing.T, hexStr string) []byte {
+	t.Helper()
+
+	out, err := hex.DecodeString(hexStr)
+	if err != nil {
+		t.Fatalf("hex.DecodeString: %v", err)
+	}
+	return out
 }

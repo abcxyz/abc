@@ -19,6 +19,7 @@ package render
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -198,55 +199,67 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	// first do a dry-run to check that the copy is likely to succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
-		visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
-			_, ok := includedFromDest[relPath]
-			return common.CopyHint{
-				BackupIfExists: true,
-
-				// Special case: files that were "include"d from the
-				// *destination* directory (rather than the template directory),
-				// are always allowed to be overwritten. For example, if we grab
-				// file_to_modify.txt from the --dest dir, then we always allow
-				// ourself to write back to that file, even when
-				// --force-overwrite=false. When the template uses this feature,
-				// we know that the intent is to modify the files in place.
-				Overwrite: ok || c.flags.ForceOverwrite,
-			}, nil
-		}
-
-		// We only want to call MkdirTemp once, and use the resulting backup
-		// directory for every step in this rendering operation.
-		var backupDir string
-		backupDirMaker := func(rfs common.FS) (string, error) {
-			if backupDir != "" {
-				return backupDir, nil
-			}
-			if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
-				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
-			}
-			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
-			logger.DebugContext(ctx, "created backup directory", "path", backupDir)
-			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
-		}
-
-		params := &common.CopyParams{
-			BackupDirMaker: backupDirMaker,
-			DryRun:         dryRun,
-			DstRoot:        c.flags.Dest,
-			SrcRoot:        scratchDir,
-			RFS:            rp.fs,
-			Visitor:        visitor,
-		}
-		if err := common.CopyRecursive(ctx, nil, params); err != nil {
-			return fmt.Errorf("failed writing to --dest directory: %w", err)
-		}
-		if dryRun {
-			logger.DebugContext(ctx, "template render (dry run) succeeded")
-		} else {
-			logger.DebugContext(ctx, "template render succeeded")
+		if err := c.commit(ctx, dryRun, rp, scratchDir, includedFromDest); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratchDir string, includedFromDest map[string]struct{}) error {
+	logger := logging.FromContext(ctx).With("logger", "commit")
+
+	visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
+		_, ok := includedFromDest[relPath]
+		return common.CopyHint{
+			BackupIfExists: true,
+
+			// Special case: files that were "include"d from the
+			// *destination* directory (rather than the template directory),
+			// are always allowed to be overwritten. For example, if we grab
+			// file_to_modify.txt from the --dest dir, then we always allow
+			// ourself to write back to that file, even when
+			// --force-overwrite=false. When the template uses this feature,
+			// we know that the intent is to modify the files in place.
+			Overwrite: ok || c.flags.ForceOverwrite,
+		}, nil
+	}
+
+	// We only want to call MkdirTemp once, and use the resulting backup
+	// directory for every step in this rendering operation.
+	var backupDir string
+	var err error
+	backupDirMaker := func(rfs common.FS) (string, error) {
+		if backupDir != "" {
+			return backupDir, nil
+		}
+		if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
+			return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+		}
+		backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
+		logger.DebugContext(ctx, "created backup directory", "path", backupDir)
+		return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+	}
+
+	params := &common.CopyParams{
+		BackupDirMaker: backupDirMaker,
+		DryRun:         dryRun,
+		DstRoot:        c.flags.Dest,
+		Hash:           sha256.New(),
+		OutHashes:      map[string][]byte{},
+		SrcRoot:        scratchDir,
+		RFS:            rp.fs,
+		Visitor:        visitor,
+	}
+	if err := common.CopyRecursive(ctx, nil, params); err != nil {
+		return fmt.Errorf("failed writing to --dest directory: %w", err)
+	}
+	if dryRun {
+		logger.DebugContext(ctx, "template render (dry run) succeeded")
+	} else {
+		logger.InfoContext(ctx, "template render succeeded")
+	}
 	return nil
 }
 
