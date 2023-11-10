@@ -114,7 +114,8 @@ type CopyParams struct {
 	// If Hash and OutHashes are not nil, then each copied file will be hashed
 	// and the raw binary hash will be saved in OutHashes. If a file is
 	// "skipped" (CopyHint.Skip==true) then the hash will not be computed. In
-	// dry run mode, the hash will be computed normally.
+	// dry run mode, the hash will be computed normally. OutHashes always uses
+	// forward slashes as path separator, regardless of OS.
 	//
 	// Note to maintainers: a hash.Hash is stateful and therefore not
 	// thread-safe. If we ever add concurrency inside CopyRecursive, we'll need
@@ -230,7 +231,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			return err
 		}
 		if p.Hash != nil && p.OutHashes != nil {
-			p.OutHashes[relToSrc] = p.Hash.Sum(nil)
+			p.OutHashes[filepath.ToSlash(relToSrc)] = p.Hash.Sum(nil)
 		}
 		return nil
 	})

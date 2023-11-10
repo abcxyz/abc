@@ -17,6 +17,7 @@ package common
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"hash"
@@ -336,16 +337,32 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
+			name: "hash_other_than_sha256",
+			srcDirContents: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			hash: sha512.New(),
+			want: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantHashes: map[string][]byte{
+				"file1.txt": mustHexDecode(t, "a4b1d14ff0861c692abb6789d38c92d118a5febd000248d3b1002357ce0633d23ab12034bb1efd8d884058cec99da31cf646fb6179979b2fb231ba80e0bbc495"),
+			},
+		},
+		{
 			name: "hash_in_subdir",
 			srcDirContents: map[string]ModeAndContents{
 				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 			hash: sha256.New(),
 			want: map[string]ModeAndContents{
 				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 			wantHashes: map[string][]byte{
-				filepath.FromSlash("subdir/file1.txt"): mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
+				"subdir/file1.txt": mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
+				"subdir/file2.txt": mustHexDecode(t, "0140c0c66a644ab2dd27ac5536f20cc373d6fd1896f9838ecb4595675dda01fa"),
 			},
 		},
 		{
