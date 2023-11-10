@@ -294,3 +294,65 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs FS, path string, dryRun bool) err
 
 	return nil
 }
+
+// A renderFS implementation that can inject errors for testing.
+type ErrorFS struct {
+	FS
+
+	MkdirAllErr  error
+	OpenErr      error
+	OpenFileErr  error
+	ReadFileErr  error
+	RemoveAllErr error
+	StatErr      error
+	WriteFileErr error
+}
+
+func (e *ErrorFS) MkdirAll(name string, mode fs.FileMode) error {
+	if e.MkdirAllErr != nil {
+		return e.MkdirAllErr
+	}
+	return e.FS.MkdirAll(name, mode) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) Open(name string) (fs.File, error) {
+	if e.OpenErr != nil {
+		return nil, e.OpenErr
+	}
+	return e.FS.Open(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) OpenFile(name string, flag int, mode os.FileMode) (*os.File, error) {
+	if e.OpenFileErr != nil {
+		return nil, e.OpenFileErr
+	}
+	return e.FS.OpenFile(name, flag, mode) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) ReadFile(name string) ([]byte, error) {
+	if e.ReadFileErr != nil {
+		return nil, e.ReadFileErr
+	}
+	return e.FS.ReadFile(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) RemoveAll(name string) error {
+	if e.RemoveAllErr != nil {
+		return e.RemoveAllErr
+	}
+	return e.FS.RemoveAll(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) Stat(name string) (fs.FileInfo, error) {
+	if e.StatErr != nil {
+		return nil, e.StatErr
+	}
+	return e.FS.Stat(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	if e.WriteFileErr != nil {
+		return e.WriteFileErr
+	}
+	return e.FS.WriteFile(name, data, perm) //nolint:wrapcheck
+}

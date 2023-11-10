@@ -463,9 +463,9 @@ func TestActionInclude(t *testing.T) {
 				flags: &RenderFlags{
 					Dest: destDir,
 				},
-				fs: &errorFS{
+				fs: &common.ErrorFS{
 					FS:      &common.RealFS{},
-					statErr: tc.statErr,
+					StatErr: tc.statErr,
 				},
 				scratchDir:  scratchDir,
 				templateDir: templateDir,

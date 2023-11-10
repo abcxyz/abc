@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -143,7 +142,7 @@ func TestDestOK(t *testing.T) {
 		{
 			name:    "stat_returns_error",
 			dest:    "my/git/dir",
-			fs:      &errorFS{statErr: fmt.Errorf("yikes")},
+			fs:      &common.ErrorFS{StatErr: fmt.Errorf("yikes")},
 			wantErr: "yikes",
 		},
 	}
@@ -678,9 +677,9 @@ steps:
 			stdoutBuf := &strings.Builder{}
 			rp := &runParams{
 				backupDir: backupDir,
-				fs: &errorFS{
+				fs: &common.ErrorFS{
 					FS:           rfs,
-					removeAllErr: tc.removeAllErr,
+					RemoveAllErr: tc.removeAllErr,
 				},
 				stdout:      stdoutBuf,
 				tempDirBase: tempDir,
@@ -1477,68 +1476,6 @@ func modelStrings(ss []string) []model.String {
 		}
 	}
 	return out
-}
-
-// A renderFS implementation that can inject errors for testing.
-type errorFS struct {
-	common.FS
-
-	mkdirAllErr  error
-	openErr      error
-	openFileErr  error
-	readFileErr  error
-	removeAllErr error
-	statErr      error
-	writeFileErr error
-}
-
-func (e *errorFS) MkdirAll(name string, mode fs.FileMode) error {
-	if e.mkdirAllErr != nil {
-		return e.mkdirAllErr
-	}
-	return e.FS.MkdirAll(name, mode)
-}
-
-func (e *errorFS) Open(name string) (fs.File, error) {
-	if e.openErr != nil {
-		return nil, e.openErr
-	}
-	return e.FS.Open(name)
-}
-
-func (e *errorFS) OpenFile(name string, flag int, mode os.FileMode) (*os.File, error) {
-	if e.openFileErr != nil {
-		return nil, e.openFileErr
-	}
-	return e.FS.OpenFile(name, flag, mode)
-}
-
-func (e *errorFS) ReadFile(name string) ([]byte, error) {
-	if e.readFileErr != nil {
-		return nil, e.readFileErr
-	}
-	return e.FS.ReadFile(name)
-}
-
-func (e *errorFS) RemoveAll(name string) error {
-	if e.removeAllErr != nil {
-		return e.removeAllErr
-	}
-	return e.FS.RemoveAll(name)
-}
-
-func (e *errorFS) Stat(name string) (fs.FileInfo, error) {
-	if e.statErr != nil {
-		return nil, e.statErr
-	}
-	return e.FS.Stat(name)
-}
-
-func (e *errorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	if e.writeFileErr != nil {
-		return e.writeFileErr
-	}
-	return e.FS.WriteFile(name, data, perm)
 }
 
 // toPlatformPaths converts each element of each input slice from a/b/c style
