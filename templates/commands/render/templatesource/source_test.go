@@ -25,195 +25,332 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseSourceWithWorkingDIr(t *testing.T) {
+func TestParseSourceWithWorkingDir(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
 		name            string
-		in              string
-		protocol        string
+		source          string
+		gitProtocol     string
 		tempDirContents map[string]string
-		want            Downloader
+		dest            string
+		want            *ParsedSource
 		wantErr         string
 	}{
 		{
-			name: "latest",
-			in:   "github.com/myorg/myrepo@latest",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "",
-				version: "latest",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "latest",
+			source: "github.com/myorg/myrepo@latest",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "",
+					version: "latest",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "given_version",
-			in:   "github.com/myorg/myrepo@v1.2.3",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "",
-				version: "v1.2.3",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "given_version",
+			source: "github.com/myorg/myrepo@v1.2.3",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "",
+					version: "v1.2.3",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "version_with_weird_chars",
-			in:   "github.com/myorg/myrepo@v1.2.3-foo/bar",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "",
-				version: "v1.2.3-foo/bar",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "version_with_weird_chars",
+			source: "github.com/myorg/myrepo@v1.2.3-foo/bar",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "",
+					version: "v1.2.3-foo/bar",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "subdir",
-			in:   "github.com/myorg/myrepo/mysubdir@v1.2.3",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "mysubdir",
-				version: "v1.2.3",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "subdir",
+			source: "github.com/myorg/myrepo/mysubdir@v1.2.3",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo/mysubdir",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "mysubdir",
+					version: "v1.2.3",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "deep_subdir",
-			in:   "github.com/myorg/myrepo/my/deep/subdir@v1.2.3",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "my/deep/subdir",
-				version: "v1.2.3",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "deep_subdir",
+			source: "github.com/myorg/myrepo/my/deep/subdir@v1.2.3",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo/my/deep/subdir",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "my/deep/subdir",
+					version: "v1.2.3",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
 			name:    "missing_version_with_@",
-			in:      "github.com/myorg/myrepo@",
+			source:  "github.com/myorg/myrepo@",
 			wantErr: "isn't a valid template name",
 		},
 		{
 			name:    "missing_version",
-			in:      "github.com/myorg/myrepo",
+			source:  "github.com/myorg/myrepo",
 			wantErr: "isn't a valid template name",
 		},
 		{
-			name: "local_absolute_dir",
-			in:   filepath.FromSlash("my/dir"),
+			name:   "local_absolute_dir",
+			source: filepath.FromSlash("my/dir"),
 			tempDirContents: map[string]string{
 				"my/dir/spec.yaml": "my spec file contents",
 			},
-			want: &localDownloader{
-				srcPath: filepath.FromSlash("my/dir"),
+			want: &ParsedSource{
+				HasCanonicalSource: false,
+				Downloader: &localDownloader{
+					srcPath: filepath.FromSlash("my/dir"),
+				},
+			},
+		},
+		{
+			name:   "dest_dir_in_same_git_workspace",
+			source: filepath.FromSlash("dir1/mytemplate"),
+			tempDirContents: map[string]string{
+				"dir1/mytemplate/spec.yaml": "my spec file contents",
+
+				// A minimal .git directory
+				"dir1/.git/refs/_":    "",
+				"dir1/.git/objects/_": "",
+				"dir1/.git/HEAD":      "ref: refs/heads/main",
+			},
+			dest: "dir1/dest",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "../mytemplate",
+				Downloader: &localDownloader{
+					srcPath: filepath.FromSlash("dir1/mytemplate"),
+				},
+			},
+		},
+		{
+			name:   "dest_dir_in_different_git_workspace",
+			source: filepath.FromSlash("dir1/mytemplate"),
+			tempDirContents: map[string]string{
+				"dir1/mytemplate/spec.yaml": "my spec file contents",
+
+				// A minimal .git directory
+				"dir1/.git/refs/_":    "",
+				"dir1/.git/objects/_": "",
+				"dir1/.git/HEAD":      "ref: refs/heads/main",
+
+				// Another minimal .git directory
+				"dir2/.git/refs/_":    "",
+				"dir2/.git/objects/_": "",
+				"dir2/.git/HEAD":      "ref: refs/heads/main",
+			},
+			dest: "dir2",
+			want: &ParsedSource{
+				HasCanonicalSource: false,
+				Downloader: &localDownloader{
+					srcPath: filepath.FromSlash("dir1/mytemplate"),
+				},
+			},
+		},
+		{
+			name:   "source_in_git_but_dest_is_not",
+			source: filepath.FromSlash("dir1/mytemplate"),
+			tempDirContents: map[string]string{
+				"dir1/mytemplate/spec.yaml": "my spec file contents",
+
+				// A minimal .git directory
+				"dir1/.git/refs/_":    "",
+				"dir1/.git/objects/_": "",
+				"dir1/.git/HEAD":      "ref: refs/heads/main",
+			},
+			dest: "dir2",
+			want: &ParsedSource{
+				HasCanonicalSource: false,
+				Downloader: &localDownloader{
+					srcPath: filepath.FromSlash("dir1/mytemplate"),
+				},
+			},
+		},
+		{
+			name:   "dist_in_git_but_src_is_not",
+			source: filepath.FromSlash("dir1/mytemplate"),
+			tempDirContents: map[string]string{
+				"dir1/mytemplate/spec.yaml": "my spec file contents",
+
+				// A minimal .git directory
+				"dir2/.git/refs/_":    "",
+				"dir2/.git/objects/_": "",
+				"dir2/.git/HEAD":      "ref: refs/heads/main",
+			},
+			dest: "dir2",
+			want: &ParsedSource{
+				HasCanonicalSource: false,
+				Downloader: &localDownloader{
+					srcPath: filepath.FromSlash("dir1/mytemplate"),
+				},
 			},
 		},
 		{
 			name:    "https_remote_format_rejected",
-			in:      "https://github.com/myorg/myrepo.git",
+			source:  "https://github.com/myorg/myrepo.git",
 			wantErr: "isn't a valid template name",
 		},
 		{
 			name:    "ssh_remote_format_rejected",
-			in:      "git@github.com:myorg/myrepo.git",
+			source:  "git@github.com:myorg/myrepo.git",
 			wantErr: "isn't a valid template name",
 		},
 		{
 			name:    "nonexistent_local_dir",
-			in:      "./my-dir",
+			source:  "./my-dir",
 			wantErr: "isn't a valid template name",
 		},
 		{
-			name: "dot_slash_forces_treating_as_local_dir",
-			in:   filepath.FromSlash("./github.com/myorg/myrepo/mysubdir@latest"),
+			name:   "dot_slash_forces_treating_as_local_dir",
+			source: filepath.FromSlash("./github.com/myorg/myrepo/mysubdir@latest"),
 			tempDirContents: map[string]string{
 				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
 			},
-			want: &localDownloader{
-				srcPath: filepath.FromSlash("github.com/myorg/myrepo/mysubdir@latest"),
+			want: &ParsedSource{
+				HasCanonicalSource: false,
+				Downloader: &localDownloader{
+					srcPath: filepath.FromSlash("github.com/myorg/myrepo/mysubdir@latest"),
+				},
 			},
 		},
 		{
-			name: "git_has_higher_precedence_than_local_dir",
-			in:   "github.com/myorg/myrepo/mysubdir@latest",
+			name:   "git_has_higher_precedence_than_local_dir",
+			source: "github.com/myorg/myrepo/mysubdir@latest",
 			tempDirContents: map[string]string{
 				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
 			},
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "mysubdir",
-				version: "latest",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo/mysubdir",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "mysubdir",
+					version: "latest",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "go_getter_with_ref_and_subdirs",
-			in:   "github.com/myorg/myrepo.git//sub/dir?ref=latest",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "sub/dir",
-				version: "latest",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "go_getter_with_ref_and_subdirs",
+			source: "github.com/myorg/myrepo.git//sub/dir?ref=latest",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo/sub/dir",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "sub/dir",
+					version: "latest",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "go_getter_with_ref_no_subdirs",
-			in:   "github.com/myorg/myrepo.git?ref=latest",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "",
-				version: "latest",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "go_getter_with_ref_no_subdirs",
+			source: "github.com/myorg/myrepo.git?ref=latest",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "",
+					version: "latest",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "go_getter_no_ref_no_subdirs",
-			in:   "github.com/myorg/myrepo.git",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "",
-				version: "latest",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "go_getter_no_ref_no_subdirs",
+			source: "github.com/myorg/myrepo.git",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "",
+					version: "latest",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "go_getter_no_ref_with_subdirs",
-			in:   "github.com/myorg/myrepo.git//sub/dir",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "sub/dir",
-				version: "latest",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "go_getter_no_ref_with_subdirs",
+			source: "github.com/myorg/myrepo.git//sub/dir",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo/sub/dir",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "sub/dir",
+					version: "latest",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "go_getter_no_ref_single_subdir",
-			in:   "github.com/myorg/myrepo.git//subdir",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "subdir",
-				version: "latest",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "go_getter_no_ref_single_subdir",
+			source: "github.com/myorg/myrepo.git//subdir",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo/subdir",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "subdir",
+					version: "latest",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 		{
-			name: "go_getter_semver_ref",
-			in:   "github.com/myorg/myrepo.git?ref=v1.2.3",
-			want: &gitDownloader{
-				remote:  "https://github.com/myorg/myrepo.git",
-				subdir:  "",
-				version: "v1.2.3",
-				cloner:  &realCloner{},
-				tagser:  &realTagser{},
+			name:   "go_getter_semver_ref",
+			source: "github.com/myorg/myrepo.git?ref=v1.2.3",
+			want: &ParsedSource{
+				HasCanonicalSource: true,
+				CanonicalSource:    "github.com/myorg/myrepo",
+				Downloader: &gitDownloader{
+					remote:  "https://github.com/myorg/myrepo.git",
+					subdir:  "",
+					version: "v1.2.3",
+					cloner:  &realCloner{},
+					tagser:  &realTagser{},
+				},
 			},
 		},
 	}
@@ -230,7 +367,12 @@ func TestParseSourceWithWorkingDIr(t *testing.T) {
 
 			common.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
 
-			dl, err := parseSourceWithCwd(ctx, tempDir, tc.in, tc.protocol)
+			params := &ParseSourceParams{
+				Source:      tc.source,
+				Dest:        tc.dest,
+				GitProtocol: tc.gitProtocol,
+			}
+			got, err := parseSourceWithCwd(ctx, tempDir, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -247,7 +389,7 @@ func TestParseSourceWithWorkingDIr(t *testing.T) {
 					return l == r
 				}),
 			}
-			if diff := cmp.Diff(dl, tc.want, opts...); diff != "" {
+			if diff := cmp.Diff(got, tc.want, opts...); diff != "" {
 				t.Errorf("downloader was not as expected (-got,+want): %s", diff)
 			}
 		})

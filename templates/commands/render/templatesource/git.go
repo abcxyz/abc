@@ -16,7 +16,6 @@ package templatesource
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,10 +61,10 @@ type gitSourceParser struct {
 	warning string
 }
 
-func (g *gitSourceParser) sourceParse(ctx context.Context, cwd, src, protocol string) (Downloader, bool, error) {
+func (g *gitSourceParser) sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (*ParsedSource, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "gitSourceParser.sourceParse")
 
-	match := g.re.FindStringSubmatchIndex(src)
+	match := g.re.FindStringSubmatchIndex(params.Source)
 	if match == nil {
 		// It's not an error if this regex match fails, it just means that src
 		// isn't formatted as the kind of template source that we're looking
@@ -75,31 +74,42 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, cwd, src, protocol st
 	}
 
 	var remote string
-	switch protocol {
+	switch params.GitProtocol {
 	case "https", "":
-		remote = string(g.re.ExpandString(nil, g.httpsRemoteExpansion, src, match))
+		remote = string(g.re.ExpandString(nil, g.httpsRemoteExpansion, params.Source, match))
 	case "ssh":
-		remote = string(g.re.ExpandString(nil, g.sshRemoteExpansion, src, match))
+		remote = string(g.re.ExpandString(nil, g.sshRemoteExpansion, params.Source, match))
 	default:
-		return nil, false, fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", protocol)
+		return nil, false, fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", params.GitProtocol)
 	}
 
 	if g.warning != "" {
 		logger.WarnContext(ctx, g.warning)
 	}
 
-	version := string(g.re.ExpandString(nil, g.versionExpansion, src, match))
+	version := string(g.re.ExpandString(nil, g.versionExpansion, params.Source, match))
 	if version == "" {
 		version = g.defaultVersion
 	}
 
-	return &gitDownloader{
-		remote:  remote,
-		subdir:  string(g.re.ExpandString(nil, g.subdirExpansion, src, match)),
-		version: version,
-		cloner:  &realCloner{},
-		tagser:  &realTagser{},
-	}, true, nil
+	canonicalSource := string(g.re.ExpandString(nil, "${host}/${org}/${repo}", params.Source, match))
+	if subdir := string(g.re.ExpandString(nil, "${subdir}", params.Source, match)); subdir != "" {
+		canonicalSource += "/" + subdir
+	}
+
+	out := &ParsedSource{
+		Downloader: &gitDownloader{
+			remote:  remote,
+			subdir:  string(g.re.ExpandString(nil, g.subdirExpansion, params.Source, match)),
+			version: version,
+			cloner:  &realCloner{},
+			tagser:  &realTagser{},
+		},
+		HasCanonicalSource: true,
+		CanonicalSource:    canonicalSource,
+	}
+
+	return out, true, nil
 }
 
 // gitDownloader implements templateSource for templates hosted in a remote git
@@ -149,7 +159,7 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if common.IsStatNotExistErr(err) {
 			return fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, branchOrTag, subdir, branchOrTag)
 		}
 		return err //nolint:wrapcheck // Stat() returns a decently informative error

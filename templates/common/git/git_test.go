@@ -16,11 +16,11 @@ package git
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/testutil"
 	"golang.org/x/exp/slices"
 )
@@ -134,7 +134,7 @@ func TestClone(t *testing.T) {
 			wantFile := "README.md"
 			_, err = os.Stat(filepath.Join(outDir, wantFile))
 			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
+				if common.IsStatNotExistErr(err) {
 					t.Fatalf("git clone seemed to work but the output didn't contain %q, something weird happened", wantFile)
 				}
 				t.Error(err)

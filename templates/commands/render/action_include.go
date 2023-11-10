@@ -16,10 +16,8 @@ package render
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -85,7 +83,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 
 		if _, err := sp.fs.Stat(absSrc); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
+			if common.IsStatNotExistErr(err) {
 				return p.Pos.Errorf("include path doesn't exist: %q", p.Val)
 			}
 			return fmt.Errorf("Stat(): %w", err)

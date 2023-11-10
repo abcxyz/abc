@@ -102,9 +102,10 @@ type CopyParams struct {
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	DryRun bool
-	// dstRoot is the output directory.
+	// dstRoot is the output directory. May be absolute or relative.
 	DstRoot string
-	// srcRoot is the file or directory from which to copy.
+	// srcRoot is the file or directory from which to copy. May be absolute or
+	// relative.
 	SrcRoot string
 	// RFS is the filesytem to use.
 	RFS FS
@@ -213,7 +214,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 					return err
 				}
 			}
-		} else if !os.IsNotExist(err) {
+		} else if !IsStatNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
 		srcInfo, err := p.RFS.Stat(path)
@@ -307,7 +308,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs FS, path string, dryRun bool) err
 	create := false
 	info, err := rfs.Stat(path)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !IsStatNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
 		create = true
@@ -386,4 +387,14 @@ func (e *ErrorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 		return e.WriteFileErr
 	}
 	return e.FS.WriteFile(name, data, perm) //nolint:wrapcheck
+}
+
+// IsStatNotExistErr takes an error returned by os.Stat() and returns true if
+// the error means "the path you stat'ed doesn't exist." It otherwise returns
+// false. This exists because on Windows there are a variety of possible errors
+// depending on what exactly is wrong with the path.
+func IsStatNotExistErr(err error) bool {
+	return errors.Is(err, fs.ErrNotExist) ||
+		errors.Is(err, fs.ErrInvalid) ||
+		errors.As(err, new(*fs.PathError))
 }
