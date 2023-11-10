@@ -30,6 +30,8 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+var _ sourceParser = (*gitSourceParser)(nil)
+
 // gitSourceParser implements sourceParser for downloading templates from a
 // remote git repo.
 type gitSourceParser struct {
@@ -60,7 +62,7 @@ type gitSourceParser struct {
 	warning string
 }
 
-func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error) {
+func (g *gitSourceParser) sourceParse(ctx context.Context, cwd, src, protocol string) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "gitSourceParser.sourceParse")
 
 	match := g.re.FindStringSubmatchIndex(src)
