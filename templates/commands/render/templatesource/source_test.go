@@ -16,8 +16,8 @@ package templatesource
 
 import (
 	"context"
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -25,10 +25,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseSource(t *testing.T) { //nolint:paralleltest
-	// We can't use t.Parallel() here because we use os.Chdir. We don't want
-	// multiple goroutines messing with the working directory at the same time.
-	// The test is fast enough that the peformance impact is negligible.
+func TestParseSourceWithWorkingDIr(t *testing.T) {
+	t.Parallel()
 
 	cases := []struct {
 		name            string
@@ -220,43 +218,34 @@ func TestParseSource(t *testing.T) { //nolint:paralleltest
 		},
 	}
 
-	for _, tc := range cases { //nolint:paralleltest
-		// We can't use t.Parallel() here because we use os.Chdir. We don't
-		// want multiple goroutines messing with the working directory at
-		// the same time. The test is fast enough that the peformance impact
-		// is negligible.
-
+	for _, tc := range cases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 
 			tempDir := t.TempDir()
 
-			// cd into the temp dir, and restore the previous working dir when
-			// done.
-			oldWD, err := os.Getwd()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Chdir(tempDir); err != nil {
-				t.Fatal(err)
-			}
-			defer func() {
-				if err := os.Chdir(oldWD); err != nil {
-					t.Fatal(err)
-				}
-			}()
-
 			common.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
 
-			dl, err := ParseSource(ctx, tc.in, tc.protocol)
+			dl, err := parseSourceWithCwd(ctx, tempDir, tc.in, tc.protocol)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
-			opt := cmp.AllowUnexported(gitDownloader{}, localDownloader{})
-			if diff := cmp.Diff(dl, tc.want, opt); diff != "" {
+			opts := []cmp.Option{
+				cmp.AllowUnexported(gitDownloader{}, localDownloader{}),
+
+				// The localDownloader may modify the provided source path if it was
+				// relative. This comparer removes the tempDir prefix so that test cases
+				// can still do relative filepath comparisons.
+				cmp.Comparer(func(a, b localDownloader) bool {
+					return strings.TrimPrefix(tempDir, a.srcPath) == strings.TrimPrefix(tempDir, b.srcPath)
+				}),
+			}
+			if diff := cmp.Diff(dl, tc.want, opts...); diff != "" {
 				t.Errorf("downloader was not as expected (-got,+want): %s", diff)
 			}
 		})
