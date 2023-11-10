@@ -16,8 +16,10 @@ package common
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"os"
@@ -109,6 +111,14 @@ type CopyParams struct {
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
+
+	// If Hasher and OutHashes are not nil, then each copied file will be hashed
+	// and the hex hash will be saved in OutHashes. If a file is "skipped"
+	// (CopyHint.Skip==true) then the hash will not be computed. In dry run
+	// mode, the hash will be computed normally. OutHashes always uses forward
+	// slashes as path separator, regardless of OS.
+	Hasher    func() hash.Hash
+	OutHashes map[string]string
 }
 
 // CopyVisitor is the type for callback functions that are called by
@@ -214,11 +224,25 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
 		mode := srcInfo.Mode().Perm()
-		return copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun)
+		var hash hash.Hash
+		if p.Hasher != nil {
+			hash = p.Hasher()
+		}
+		if err := copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun, hash); err != nil {
+			return err
+		}
+		if hash != nil && p.OutHashes != nil {
+			p.OutHashes[filepath.ToSlash(relToSrc)] = hex.EncodeToString(hash.Sum(nil))
+		}
+		return nil
 	})
 }
 
-func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
+// copyFile copies the contents of src to dst.
+//
+// hash is nil-able. If not nil, it will be written to with the file contents.
+// The caller should call hash.Sum() to get the hash output.
+func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, mode fs.FileMode, dryRun bool, hash hash.Hash) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "copyFile")
 
 	readFile, err := rfs.Open(src)
@@ -226,18 +250,25 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 		return pos.Errorf("Open(): %w", err)
 	}
 	defer func() { outErr = errors.Join(outErr, readFile.Close()) }()
+	var reader io.Reader = readFile
 
+	var writer io.Writer
 	if dryRun {
-		return nil
+		writer = io.Discard
+	} else {
+		writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+		if err != nil {
+			return pos.Errorf("OpenFile(): %w", err)
+		}
+		defer func() { outErr = errors.Join(outErr, writeFile.Close()) }()
+		writer = writeFile
 	}
 
-	writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
-	if err != nil {
-		return pos.Errorf("OpenFile(): %w", err)
+	if hash != nil {
+		reader = io.TeeReader(readFile, hash)
 	}
-	defer func() { outErr = errors.Join(outErr, writeFile.Close()) }()
 
-	if _, err := io.Copy(writeFile, readFile); err != nil {
+	if _, err := io.Copy(writer, reader); err != nil {
 		return fmt.Errorf("Copy(): %w", err)
 	}
 	logger.DebugContext(ctx, "copied file", "source", src, "destination", dst)
@@ -258,7 +289,7 @@ func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) err
 
 	fileToBackup := filepath.Join(srcRoot, relPath)
 
-	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
+	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, ownerRWPerms, false, nil); err != nil {
 		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
 			fileToBackup, backupFile, err)
 	}

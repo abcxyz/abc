@@ -16,7 +16,10 @@ package common
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
+	"hash"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -39,6 +42,7 @@ func TestCopyRecursive(t *testing.T) {
 		srcDirContents        map[string]ModeAndContents
 		suffix                string
 		dryRun                bool
+		hasher                func() hash.Hash
 		visitor               CopyVisitor
 		want                  map[string]ModeAndContents
 		wantBackups           map[string]ModeAndContents
@@ -50,6 +54,7 @@ func TestCopyRecursive(t *testing.T) {
 		statErr               error
 		writeFileErr          error
 		wantErr               string
+		wantHashes            map[string]string
 	}{
 		{
 			name: "simple_success",
@@ -113,6 +118,19 @@ func TestCopyRecursive(t *testing.T) {
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 			wantErr:     "file file1.txt already exists and overwriting was not enabled",
+		},
+		{
+			name: "dry_run_should_calculate_hashes",
+			srcDirContents: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			hasher: sha256.New,
+			dryRun: true,
+			wantHashes: map[string]string{
+				"file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
+			},
+			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
+			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 		},
 		{
 			name: "owner_execute_bit_should_be_preserved",
@@ -305,6 +323,48 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
+			name: "sha256_hash",
+			srcDirContents: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			hasher: sha256.New,
+			want: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantHashes: map[string]string{
+				"file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
+			},
+		},
+		{
+			name: "hash_other_than_sha256",
+			srcDirContents: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			hasher: sha512.New,
+			want: map[string]ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantHashes: map[string]string{
+				"file1.txt": "a4b1d14ff0861c692abb6789d38c92d118a5febd000248d3b1002357ce0633d23ab12034bb1efd8d884058cec99da31cf646fb6179979b2fb231ba80e0bbc495",
+			},
+		},
+		{
+			name: "hash_in_subdir",
+			srcDirContents: map[string]ModeAndContents{
+				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			hasher: sha256.New,
+			want: map[string]ModeAndContents{
+				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantHashes: map[string]string{
+				"subdir/file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
+				"subdir/file2.txt": "0140c0c66a644ab2dd27ac5536f20cc373d6fd1896f9838ecb4595675dda01fa",
+			},
+		},
+		{
 			name: "MkdirAll error should be returned",
 			srcDirContents: map[string]ModeAndContents{
 				"dir/file.txt": {Mode: 0o600, Contents: "file1 contents"},
@@ -372,11 +432,18 @@ func TestCopyRecursive(t *testing.T) {
 			const unixTime = 1688609125
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
+			var hashes map[string]string
+			if tc.hasher != nil {
+				hashes = make(map[string]string)
+			}
+
 			err := CopyRecursive(ctx, &model.ConfigPos{}, &CopyParams{
 				BackupDirMaker: func(rf FS) (string, error) { return backupDir, nil },
 				SrcRoot:        from,
 				DstRoot:        to,
 				DryRun:         tc.dryRun,
+				Hasher:         tc.hasher,
+				OutHashes:      hashes,
 				RFS:            fs,
 				Visitor:        tc.visitor,
 			})
@@ -392,6 +459,10 @@ func TestCopyRecursive(t *testing.T) {
 			gotBackups := LoadDirContents(t, backupDir)
 			if diff := cmp.Diff(gotBackups, tc.wantBackups, CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
+			}
+
+			if diff := cmp.Diff(hashes, tc.wantHashes); diff != "" {
+				t.Errorf("hashes were not as expected: (-got,+want): %s", diff)
 			}
 		})
 	}
