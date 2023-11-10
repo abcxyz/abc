@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/hex"
 	"fmt"
 	"hash"
 	"io/fs"
@@ -55,7 +54,7 @@ func TestCopyRecursive(t *testing.T) {
 		statErr               error
 		writeFileErr          error
 		wantErr               string
-		wantHashes            map[string][]byte
+		wantHashes            map[string]string
 	}{
 		{
 			name: "simple_success",
@@ -127,8 +126,8 @@ func TestCopyRecursive(t *testing.T) {
 			},
 			hasher: sha256.New,
 			dryRun: true,
-			wantHashes: map[string][]byte{
-				"file1.txt": mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
+			wantHashes: map[string]string{
+				"file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
 			},
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
@@ -332,8 +331,8 @@ func TestCopyRecursive(t *testing.T) {
 			want: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantHashes: map[string][]byte{
-				"file1.txt": mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
+			wantHashes: map[string]string{
+				"file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
 			},
 		},
 		{
@@ -345,8 +344,8 @@ func TestCopyRecursive(t *testing.T) {
 			want: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantHashes: map[string][]byte{
-				"file1.txt": mustHexDecode(t, "a4b1d14ff0861c692abb6789d38c92d118a5febd000248d3b1002357ce0633d23ab12034bb1efd8d884058cec99da31cf646fb6179979b2fb231ba80e0bbc495"),
+			wantHashes: map[string]string{
+				"file1.txt": "a4b1d14ff0861c692abb6789d38c92d118a5febd000248d3b1002357ce0633d23ab12034bb1efd8d884058cec99da31cf646fb6179979b2fb231ba80e0bbc495",
 			},
 		},
 		{
@@ -360,9 +359,9 @@ func TestCopyRecursive(t *testing.T) {
 				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantHashes: map[string][]byte{
-				"subdir/file1.txt": mustHexDecode(t, "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72"),
-				"subdir/file2.txt": mustHexDecode(t, "0140c0c66a644ab2dd27ac5536f20cc373d6fd1896f9838ecb4595675dda01fa"),
+			wantHashes: map[string]string{
+				"subdir/file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
+				"subdir/file2.txt": "0140c0c66a644ab2dd27ac5536f20cc373d6fd1896f9838ecb4595675dda01fa",
 			},
 		},
 		{
@@ -433,9 +432,9 @@ func TestCopyRecursive(t *testing.T) {
 			const unixTime = 1688609125
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
-			var hashes map[string][]byte
+			var hashes map[string]string
 			if tc.hasher != nil {
-				hashes = make(map[string][]byte)
+				hashes = make(map[string]string)
 			}
 
 			err := CopyRecursive(ctx, &model.ConfigPos{}, &CopyParams{
@@ -467,14 +466,4 @@ func TestCopyRecursive(t *testing.T) {
 			}
 		})
 	}
-}
-
-func mustHexDecode(t *testing.T, hexStr string) []byte {
-	t.Helper()
-
-	out, err := hex.DecodeString(hexStr)
-	if err != nil {
-		t.Fatalf("hex.DecodeString: %v", err)
-	}
-	return out
 }

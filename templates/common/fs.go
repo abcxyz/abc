@@ -16,6 +16,7 @@ package common
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash"
@@ -112,12 +113,12 @@ type CopyParams struct {
 	Visitor CopyVisitor
 
 	// If Hasher and OutHashes are not nil, then each copied file will be hashed
-	// and the raw binary hash will be saved in OutHashes. If a file is
-	// "skipped" (CopyHint.Skip==true) then the hash will not be computed. In
-	// dry run mode, the hash will be computed normally. OutHashes always uses
-	// forward slashes as path separator, regardless of OS.
+	// and the hex hash will be saved in OutHashes. If a file is "skipped"
+	// (CopyHint.Skip==true) then the hash will not be computed. In dry run
+	// mode, the hash will be computed normally. OutHashes always uses forward
+	// slashes as path separator, regardless of OS.
 	Hasher    func() hash.Hash
-	OutHashes map[string][]byte
+	OutHashes map[string]string
 }
 
 // CopyVisitor is the type for callback functions that are called by
@@ -231,7 +232,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			return err
 		}
 		if hash != nil && p.OutHashes != nil {
-			p.OutHashes[filepath.ToSlash(relToSrc)] = hash.Sum(nil)
+			p.OutHashes[filepath.ToSlash(relToSrc)] = hex.EncodeToString(hash.Sum(nil))
 		}
 		return nil
 	})

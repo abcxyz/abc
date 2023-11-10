@@ -247,7 +247,7 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratc
 		DryRun:         dryRun,
 		DstRoot:        c.flags.Dest,
 		Hasher:         sha256.New,
-		OutHashes:      map[string][]byte{},
+		OutHashes:      map[string]string{},
 		SrcRoot:        scratchDir,
 		RFS:            rp.fs,
 		Visitor:        visitor,
