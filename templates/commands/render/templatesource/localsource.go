@@ -139,7 +139,7 @@ func gitWorkspace(ctx context.Context, path string) (string, bool, error) {
 	for {
 		fileInfo, err := os.Stat(filepath.Join(path, ".git"))
 		if err != nil && !common.IsStatNotExistErr(err) {
-			return "", false, err
+			return "", false, err //nolint:wrapcheck
 		}
 		if fileInfo != nil && fileInfo.IsDir() {
 			return path, true, nil

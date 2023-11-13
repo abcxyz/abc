@@ -42,7 +42,7 @@ type ParsedSource struct {
 	// because not every has that directory downloaded on their machine. On the
 	// other hand, a template location like
 	// github.com/abcxyz/gcp-org-terraform-template *is* canonical because
-	// everyone everwhere can access it by that name.
+	// everyone everywhere can access it by that name.
 	//
 	// Canonical template locations are preferred because they make automatic
 	// template upgrades easier. Given a destination directory that is the output
