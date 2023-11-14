@@ -319,20 +319,20 @@ func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Sp
 		return inputs, nil
 	}
 
-	if err := c.validateInputs(ctx, spec.Inputs); err != nil {
+	if err := c.validateInputs(ctx, spec.Inputs, inputs); err != nil {
 		return nil, err
 	}
 
 	return inputs, nil
 }
 
-func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) error {
-	scope := common.NewScope(c.flags.Inputs)
+func (c *Command) validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map[string]string) error {
+	scope := common.NewScope(inputVals)
 
 	sb := &strings.Builder{}
 	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
 
-	for _, input := range inputs {
+	for _, input := range specInputs {
 		for _, rule := range input.Rules {
 			var ok bool
 			err := common.CelCompileAndEval(ctx, scope, rule.Rule, &ok)
@@ -341,7 +341,7 @@ func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) erro
 			}
 
 			fmt.Fprintf(tw, "\nInput name:\t%s", input.Name.Val)
-			fmt.Fprintf(tw, "\nInput value:\t%s", c.flags.Inputs[input.Name.Val])
+			fmt.Fprintf(tw, "\nInput value:\t%s", inputVals[input.Name.Val])
 			writeRule(tw, rule, false, 0)
 			if err != nil {
 				fmt.Fprintf(tw, "\nCEL error:\t%s", err.Error())

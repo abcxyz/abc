@@ -1387,13 +1387,9 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			r := &Command{
-				flags: RenderFlags{
-					Inputs: tc.inputVals,
-				},
-			}
+			r := &Command{}
 			ctx := context.Background()
-			err := r.validateInputs(ctx, tc.inputModels)
+			err := r.validateInputs(ctx, tc.inputModels, tc.inputVals)
 			if diff := testutil.DiffErrString(err, tc.want); diff != "" {
 				t.Error(diff)
 			}
