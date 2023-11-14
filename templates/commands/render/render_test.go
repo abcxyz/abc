@@ -1031,16 +1031,12 @@ Enter value, or leave empty to accept default: `,
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			flagInputVals := map[string]string{}
+			inputs := map[string]string{}
 			if tc.flagInputVals != nil {
-				flagInputVals = maps.Clone(tc.flagInputVals)
+				inputs = maps.Clone(tc.flagInputVals)
 			}
 
-			cmd := &Command{
-				flags: RenderFlags{
-					Inputs: flagInputVals,
-				},
-			}
+			cmd := &Command{}
 
 			stdinReader, stdinWriter := io.Pipe()
 			stdoutReader, stdoutWriter := io.Pipe()
@@ -1056,7 +1052,7 @@ Enter value, or leave empty to accept default: `,
 				defer close(errCh)
 				errCh <- cmd.promptForInputs(ctx, &spec.Spec{
 					Inputs: tc.inputs,
-				})
+				}, inputs)
 			}()
 
 			for _, ds := range tc.dialog {
@@ -1072,7 +1068,7 @@ Enter value, or leave empty to accept default: `,
 			case <-time.After(time.Second):
 				t.Fatal("timed out waiting for background goroutine to finish")
 			}
-			if diff := cmp.Diff(cmd.flags.Inputs, tc.want, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(inputs, tc.want, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("input values were different than expected (-got,+want): %s", diff)
 			}
 		})
@@ -1101,13 +1097,14 @@ func TestPromptForInputs_CanceledContext(t *testing.T) {
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
-		errCh <- cmd.promptForInputs(ctx, &spec.Spec{
+		spec := &spec.Spec{
 			Inputs: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
 				},
 			},
-		})
+		}
+		errCh <- cmd.promptForInputs(ctx, spec, map[string]string{})
 	}()
 
 	go func() {
@@ -1390,13 +1387,9 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			r := &Command{
-				flags: RenderFlags{
-					Inputs: tc.inputVals,
-				},
-			}
+			r := &Command{}
 			ctx := context.Background()
-			err := r.validateInputs(ctx, tc.inputModels)
+			err := r.validateInputs(ctx, tc.inputModels, tc.inputVals)
 			if diff := testutil.DiffErrString(err, tc.want); diff != "" {
 				t.Error(diff)
 			}
