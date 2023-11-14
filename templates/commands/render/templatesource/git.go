@@ -61,7 +61,7 @@ type gitSourceParser struct {
 	warning string
 }
 
-func (g *gitSourceParser) sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (*ParsedSource, bool, error) {
+func (g *gitSourceParser) sourceParse(ctx context.Context, _ string, params *ParseSourceParams) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "gitSourceParser.sourceParse")
 
 	match := g.re.FindStringSubmatchIndex(params.Source)
@@ -97,16 +97,13 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, cwd string, params *P
 		canonicalSource += "/" + subdir
 	}
 
-	out := &ParsedSource{
-		Downloader: &gitDownloader{
-			remote:  remote,
-			subdir:  string(g.re.ExpandString(nil, g.subdirExpansion, params.Source, match)),
-			version: version,
-			cloner:  &realCloner{},
-			tagser:  &realTagser{},
-		},
-		HasCanonicalSource: true,
-		CanonicalSource:    canonicalSource,
+	out := &gitDownloader{
+		remote:          remote,
+		subdir:          string(g.re.ExpandString(nil, g.subdirExpansion, params.Source, match)),
+		version:         version,
+		cloner:          &realCloner{},
+		tagser:          &realTagser{},
+		canonicalSource: canonicalSource,
 	}
 
 	return out, true, nil
@@ -122,6 +119,8 @@ type gitDownloader struct {
 
 	// either a semver-formatted tag, or the magic value "latest"
 	version string
+
+	canonicalSource string
 
 	cloner cloner
 	tagser tagser
@@ -180,6 +179,10 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 	}
 
 	return nil
+}
+
+func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string, bool, error) {
+	return g.canonicalSource, true, nil
 }
 
 // resolveBranchOrTag returns the latest release tag if branchOrTag is "latest", and otherwise

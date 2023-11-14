@@ -152,7 +152,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		outErr = errors.Join(outErr, err)
 	}()
 
-	_, templateDir, err := c.copyTemplate(ctx, rp)
+	_, templateDir, err := c.downloadTemplate(ctx, rp)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
@@ -641,8 +641,8 @@ func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.
 //
 // If error is returned, then the returned directory name may or may not exist,
 // and may or may not be empty.
-func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (*templatesource.ParsedSource, string, error) {
-	logger := logging.FromContext(ctx).With("logger", "copyTemplate")
+func (c *Command) downloadTemplate(ctx context.Context, rp *runParams) (templatesource.Downloader, string, error) {
+	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
 
 	templateDir, err := rp.fs.MkdirTemp(rp.tempDirBase, templateDirNamePart)
 	if err != nil {
@@ -651,21 +651,21 @@ func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (*templatesou
 	logger.DebugContext(ctx, "created temporary template directory",
 		"path", templateDir)
 
-	parsedSource, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
+	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
 		Source:      c.flags.Source,
 		GitProtocol: c.flags.GitProtocol,
 	})
 	if err != nil {
 		return nil, templateDir, err //nolint:wrapcheck
 	}
-	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(parsedSource.Downloader).String())
+	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
 
-	if err := parsedSource.Downloader.Download(ctx, templateDir); err != nil {
+	if err := downloader.Download(ctx, templateDir); err != nil {
 		return nil, templateDir, err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "copied source template temporary directory", "source", c.flags.Source, "destination", templateDir)
 
-	return parsedSource, templateDir, nil
+	return downloader, templateDir, nil
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.

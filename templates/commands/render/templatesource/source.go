@@ -28,14 +28,18 @@ type sourceParser interface {
 	// being downloadable by this sourceParser, then it returns true, along with
 	// a downloader that can download that template, and other metadata. See
 	// ParsedSource.
-	sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (*ParsedSource, bool, error)
+	sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, bool, error)
 }
 
-// ParsedSource is returned from ParseSource provide the ability to download
-// a template, as well as some metadata about the template.
-type ParsedSource struct {
-	Downloader Downloader
+// A Downloader is returned by a sourceParser. It offers the ability to
+// download a template, and provides some metadata.
+type Downloader interface {
+	// Download downloads this template into the given directory.
+	Download(ctx context.Context, outDir string) error
 
+	// CanonicalSource() returns the canonical source location for this
+	// template, if it exists.
+	//
 	// A "canonical" location is one that's the same for everybody. When
 	// installing a template source like
 	// "~/my_downloaded_templates/foo_template", that location is not canonical,
@@ -45,31 +49,25 @@ type ParsedSource struct {
 	// everyone everywhere can access it by that name.
 	//
 	// Canonical template locations are preferred because they make automatic
-	// template upgrades easier. Given a destination directory that is the output
-	// of a template, we can easily upgrade it if we know the canonical location
-	// of the template that created it. We just go look for new git tags at the
-	// canonical location.
+	// template upgrades easier. Given a destination directory that is the
+	// output of a template, we can easily upgrade it if we know the canonical
+	// location of the template that created it. We just go look for new git
+	// tags at the canonical location.
 	//
-	// A local template directory is not a canonical location except for one special
-	// case: when the template source directory and the destination directory are
-	// within the same repo. This supports the case where a single git repo contains
-	// templates that are rendered into that repo. Since the relative path between
-	// the template directory and the destination directory are the same for
-	// everyone who clones the repo, that means the relative path counts as a
-	// canonical source.
-	HasCanonicalSource bool // true iff CanonicalLocation is valid.
-
-	// CanonicalSource is the globally usable path to this template that anyone
-	// can use on any machine to reference this template. Does not include
-	// @version suffix.
-	CanonicalSource string
-}
-
-// A Downloader is returned by a sourceParser, and offers the ability to
-// download a template.
-type Downloader interface {
-	// Download downloads this template into the given directory.
-	Download(ctx context.Context, outDir string) error
+	// A local template directory is not a canonical location except for one
+	// special case: when the template source directory and the destination
+	// directory are within the same repo. This supports the case where a single
+	// git repo contains templates that are rendered into that repo. Since the
+	// relative path between the template directory and the destination
+	// directory are the same for everyone who clones the repo, that means the
+	// relative path counts as a canonical source.
+	//
+	// CanonicalSource should only be called after Download() has returned
+	// successfully. This lets us account for redirects encountered while
+	// downloading.
+	//
+	// "dest" is the value of --dest. cwd is the current working directory.
+	CanonicalSource(ctx context.Context, cwd, dest string) (string, bool, error)
 }
 
 // realSourceParsers contains the non-test sourceParsers.
@@ -122,8 +120,7 @@ var realSourceParsers = []sourceParser{
 	},
 }
 
-// ParseSourceParams contains the arguments to ParseSource, since there were a
-// lot of them.
+// ParseSourceParams contains the arguments to ParseSource.
 type ParseSourceParams struct {
 	// Source could be any of the template source types we accept. Examples:
 	//  - github.com/foo/bar@latest
@@ -133,14 +130,6 @@ type ParseSourceParams struct {
 	// In the case where the source is a local filesystem path, it uses native
 	// filesystem separators.
 	Source string
-
-	// Dest is the value of --dest. You might justifiably wonder why this is
-	// here since it's not obviously relevant to parsing the template source.
-	// This is here so that we can determine whether the template source
-	// directory is in the same git workspace as the destination directory. This
-	// matters when determining whether the template source location is
-	// canonical or not. See the docs on ParsedSource for more.
-	Dest string
 
 	// The value of --git-protocol.
 	GitProtocol string
@@ -154,7 +143,7 @@ type ParseSourceParams struct {
 //
 // A list of sourceParsers is accepted as input for the purpose of testing,
 // rather than hardcoding the real list of sourceParsers.
-func parseSourceWithCwd(ctx context.Context, cwd string, params *ParseSourceParams) (*ParsedSource, error) {
+func parseSourceWithCwd(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, error) {
 	for _, sp := range realSourceParsers {
 		downloader, ok, err := sp.sourceParse(ctx, cwd, params)
 		if err != nil {
@@ -169,7 +158,7 @@ func parseSourceWithCwd(ctx context.Context, cwd string, params *ParseSourcePara
 
 // ParseSource is the same as [ParseSourceWithWorkingDir], but it uses the
 // current working directory [os.Getwd] as the base path.
-func ParseSource(ctx context.Context, params *ParseSourceParams) (*ParsedSource, error) {
+func ParseSource(ctx context.Context, params *ParseSourceParams) (Downloader, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current working directory: %w", err)
