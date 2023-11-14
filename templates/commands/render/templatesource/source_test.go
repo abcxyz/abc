@@ -133,7 +133,7 @@ func TestParseSourceWithWorkingDIr(t *testing.T) {
 				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
 			},
 			want: &localDownloader{
-				srcPath: filepath.FromSlash("./github.com/myorg/myrepo/mysubdir@latest"),
+				srcPath: filepath.FromSlash("github.com/myorg/myrepo/mysubdir@latest"),
 			},
 		},
 		{
@@ -242,7 +242,9 @@ func TestParseSourceWithWorkingDIr(t *testing.T) {
 				// relative. This comparer removes the tempDir prefix so that test cases
 				// can still do relative filepath comparisons.
 				cmp.Comparer(func(a, b localDownloader) bool {
-					return strings.TrimPrefix(tempDir, a.srcPath) == strings.TrimPrefix(tempDir, b.srcPath)
+					l := strings.TrimPrefix(a.srcPath, tempDir+string(filepath.Separator))
+					r := strings.TrimPrefix(b.srcPath, tempDir+string(filepath.Separator))
+					return l == r
 				}),
 			}
 			if diff := cmp.Diff(dl, tc.want, opts...); diff != "" {
