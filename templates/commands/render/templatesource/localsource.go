@@ -150,8 +150,9 @@ func gitWorkspace(ctx context.Context, path string) (string, bool, error) {
 		//
 		// In both cases, we'll continue crawling upward in the directory tree
 		// looking for a .git directory.
+		pathBefore := path
 		path = filepath.Dir(path)
-		if len(path) <= 1 {
+		if path == pathBefore || len(path) <= 1 {
 			// We crawled to the root of the filesystem without finding a .git
 			// directory.
 			return "", false, nil
