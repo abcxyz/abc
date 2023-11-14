@@ -16,6 +16,7 @@ package manifest
 
 import (
 	"errors"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -27,6 +28,18 @@ import (
 // version in the future.
 type Manifest struct {
 	Pos model.ConfigPos `yaml:"-"`
+
+	// The UTC time when the template was first rendered (it's not touched for
+	// upgrades). Will be marshaled in RFC3339 format, like
+	// "2006-01-02T15:04:05Z". This is only as accurate as the system clock
+	// on the machine where the operation ran.
+	CreationTime time.Time `yaml:"creation_time"`
+
+	// The UTC time when the template was most recently upgraded, or if has
+	// never been upgraded, the time of initial template rendering. Will be
+	// marshaled in RFC3339 format, like "2006-01-02T15:04:05Z". This is only as
+	// accurate as the system clock on the machine where the operation ran.
+	ModificationTime time.Time `yaml:"modification_time"`
 
 	// The template source address as passed to `abc templates render`.
 	TemplateLocation model.String `yaml:"template_location"`
@@ -63,7 +76,7 @@ func (m *Manifest) Validate() error {
 // Input is a YAML object representing an input value that was provided to the
 // template when it was rendered.
 type Input struct {
-	Pos model.ConfigPos
+	Pos model.ConfigPos `yaml:"-"`
 
 	// The name of the template input, e.g. "my_service_account"
 	Name model.String `yaml:"name"`
@@ -87,7 +100,7 @@ func (i *Input) Validate() error {
 // OutputHash records a checksum of a single file as it was created during
 // template rendering.
 type OutputHash struct {
-	Pos model.ConfigPos
+	Pos model.ConfigPos `yaml:"-"`
 
 	// The path, relative to the destination directory, of this file.
 	File model.String `yaml:"file"`

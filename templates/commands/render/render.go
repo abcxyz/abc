@@ -31,6 +31,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/mattn/go-isatty"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
@@ -50,9 +51,6 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy-"
 	scratchDirNamePart  = "scratch-"
-
-	// Permission bits: rwx------ .
-	ownerRWXPerms = 0o700
 )
 
 type Command struct {
@@ -124,6 +122,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 	return c.realRun(ctx, &runParams{
 		backupDir: backupDir,
+		clock:     clock.New(),
 		cwd:       wd,
 		fs:        fSys,
 		stdout:    c.Stdout(),
@@ -132,6 +131,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 type runParams struct {
 	backupDir string
+	clock     clock.Clock
 	cwd       string
 	fs        common.FS
 	stdout    io.Writer
@@ -149,7 +149,13 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		outErr = errors.Join(outErr, err)
 	}()
 
-	_, templateDir, err := templatesource.Download(ctx, rp.fs, rp.tempDirBase, c.flags.Source, c.flags.GitProtocol)
+	downloader, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
+		FS:          rp.fs,
+		TempDirBase: rp.tempDirBase,
+		Source:      c.flags.Source,
+		Dest:        c.flags.Dest,
+		GitProtocol: c.flags.GitProtocol,
+	})
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
@@ -171,7 +177,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
-	if err := rp.fs.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
+	if err := rp.fs.MkdirAll(scratchDir, common.OwnerRWXPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
@@ -191,20 +197,46 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 
 	includedFromDest := sliceToSet(sp.includedFromDest)
+	var outputHashes map[string][]byte
 
 	// Commit the contents of the scratch directory to the output directory. We
 	// first do a dry-run to check that the copy is likely to succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
-		if err := c.commit(ctx, dryRun, rp, scratchDir, includedFromDest); err != nil {
+		if outputHashes, err = c.commit(ctx, dryRun, rp, scratchDir, includedFromDest); err != nil {
 			return err
+		}
+
+		if c.flags.Manifest {
+			if err := writeManifest(ctx, &writeManifestParams{
+				clock:        rp.clock,
+				cwd:          rp.cwd,
+				destDir:      c.flags.Dest,
+				cs:           downloader,
+				dryRun:       dryRun,
+				fs:           rp.fs,
+				inputs:       resolvedInputs,
+				outputHashes: outputHashes,
+				src:          c.flags.Source,
+				templateDir:  templateDir,
+			}); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratchDir string, includedFromDest map[string]struct{}) error {
+// commit copies the contents of scratchDir to rp.Dest. If dryRun==true, then
+// files are read but nothing is written to the destination. includedFromDest is
+// a set of files that were the subject of an "include" action that set "from:
+// destination".
+//
+// The return value is a map containing a SHA256 hash of each file in
+// scratchDir. The keys are paths relative to scratchDir, using forward slashes
+// regardless of the OS.
+func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratchDir string, includedFromDest map[string]struct{}) (map[string][]byte, error) {
 	logger := logging.FromContext(ctx).With("logger", "commit")
 
 	visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
@@ -231,7 +263,7 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratc
 		if backupDir != "" {
 			return backupDir, nil
 		}
-		if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
+		if err := rfs.MkdirAll(rp.backupDir, common.OwnerRWXPerms); err != nil {
 			return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
 		backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
@@ -244,20 +276,20 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratc
 		DryRun:         dryRun,
 		DstRoot:        c.flags.Dest,
 		Hasher:         sha256.New,
-		OutHashes:      map[string]string{},
+		OutHashes:      map[string][]byte{},
 		SrcRoot:        scratchDir,
 		RFS:            rp.fs,
 		Visitor:        visitor,
 	}
 	if err := common.CopyRecursive(ctx, nil, params); err != nil {
-		return fmt.Errorf("failed writing to --dest directory: %w", err)
+		return nil, fmt.Errorf("failed writing to --dest directory: %w", err)
 	}
 	if dryRun {
 		logger.DebugContext(ctx, "template render (dry run) succeeded")
 	} else {
 		logger.InfoContext(ctx, "template render succeeded")
 	}
-	return nil
+	return params.OutHashes, nil
 }
 
 func sliceToSet[T comparable](vals []T) map[T]struct{} {
@@ -646,7 +678,9 @@ func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.
 	return spec, nil
 }
 
-// Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
+// Calls RemoveAll on each temp directory. A nonexistent directory is not an
+// error. The "maybe" in the function name just means that we're not strict
+// about the directories existing or about tempDirs being non-empty.
 func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {

@@ -71,6 +71,10 @@ type RenderFlags struct {
 	// SkipInputValidation skips the execution of the input validation rules as
 	// configured in the template's spec.yaml file.
 	SkipInputValidation bool
+
+	// Manifest enables the writing of manifest files, which are an experimental
+	// feature related to template upgrades.
+	Manifest bool
 }
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
@@ -139,6 +143,13 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Target:  &r.SkipInputValidation,
 		Default: false,
 		Usage:   "Skip running the validation expressions for inputs that were configured in spec.yaml.",
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "manifest",
+		Target:  &r.Manifest,
+		Default: false,
+		Usage:   "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
 	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")

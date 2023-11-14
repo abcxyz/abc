@@ -14,6 +14,7 @@ require (
 	github.com/posener/complete/v2 v2.1.0
 	github.com/sergi/go-diff v1.3.1
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
+	golang.org/x/mod v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/logging"
@@ -70,16 +71,36 @@ type Downloader interface {
 	CanonicalSource(ctx context.Context, cwd, dest string) (string, bool, error)
 }
 
+// The parameters to Download, wrapped in a struct because there are so many.
+type DownloadParams struct {
+	FS common.FS
+
+	// The directory under which to create temp directories.
+	TempDirBase string
+
+	// The template source location, e.g. github.com/abcxyz/abc/t/rest_server.
+	Source string
+
+	// The value of --dest.
+	Dest string
+
+	// The value of --git-protocol.
+	GitProtocol string
+
+	// The value of os.Getwd().
+	CWD string
+}
+
 // Downloads the template and returns:
 //   - the ParsedSource giving metadata about the template
 //   - the name of the temp directory where the template contents were saved.
 //
 // If error is returned, then the returned directory name may or may not exist,
 // and may or may not be empty.
-func Download(ctx context.Context, fs common.FS, tempDirBase, source, gitProtocol string) (Downloader, string, error) {
-	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
+func Download(ctx context.Context, p *DownloadParams) (Downloader, string, error) {
+	logger := logging.FromContext(ctx).With("logger", "Download")
 
-	templateDir, err := fs.MkdirTemp(tempDirBase, templateDirNamePart)
+	templateDir, err := p.FS.MkdirTemp(p.TempDirBase, templateDirNamePart)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
 	}
@@ -87,8 +108,8 @@ func Download(ctx context.Context, fs common.FS, tempDirBase, source, gitProtoco
 		"path", templateDir)
 
 	downloader, err := ParseSource(ctx, &ParseSourceParams{
-		Source:      source,
-		GitProtocol: gitProtocol,
+		Source:      p.Source,
+		GitProtocol: p.GitProtocol,
 	})
 	if err != nil {
 		return nil, templateDir, err
@@ -98,9 +119,16 @@ func Download(ctx context.Context, fs common.FS, tempDirBase, source, gitProtoco
 	if err := downloader.Download(ctx, templateDir); err != nil {
 		return nil, templateDir, err //nolint:wrapcheck
 	}
-	logger.DebugContext(ctx, "copied source template temporary directory",
-		"source", source,
+	logger.DebugContext(ctx, "downloaded source template temporary directory",
+		"source", p.Source,
 		"destination", templateDir)
+
+	if canonicalSource, _, err := downloader.CanonicalSource(ctx, p.CWD, p.Dest); err != nil {
+		return nil, "", err //nolint:wrapcheck
+	} else if canonicalSource != "" && strings.ContainsAny(canonicalSource, `\`+"\n") { // TODO test
+		return nil, "", fmt.Errorf("the template location contains a disallowed character; no backslashes or newlines are allowed in the canonicalized source %q",
+			canonicalSource)
+	}
 
 	return downloader, templateDir, nil
 }

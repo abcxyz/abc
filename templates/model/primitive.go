@@ -43,3 +43,8 @@ func (v *valWithPos[T]) UnmarshalYAML(n *yaml.Node) error {
 	v.Pos = YAMLPos(n)
 	return nil
 }
+
+// MarshalYAML implements yaml.Marshaler.
+func (v valWithPos[T]) MarshalYAML() (interface{}, error) {
+	return v.Val, nil
+}
