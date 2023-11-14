@@ -149,7 +149,7 @@ func TestParseSourceWithWorkingDir(t *testing.T) {
 			dest: "dir1/dest",
 			want: &ParsedSource{
 				HasCanonicalSource: true,
-				CanonicalSource:    "../mytemplate",
+				CanonicalSource:    filepath.FromSlash("../mytemplate"),
 				Downloader: &localDownloader{
 					srcPath: filepath.FromSlash("dir1/mytemplate"),
 				},
