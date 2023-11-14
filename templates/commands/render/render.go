@@ -305,7 +305,7 @@ func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Sp
 			return nil, fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
 		}
 
-		if err := c.promptForInputs(ctx, spec); err != nil {
+		if err := c.promptForInputs(ctx, spec, inputs); err != nil {
 			return nil, err
 		}
 	} else {
@@ -358,14 +358,14 @@ func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) erro
 }
 
 // promptForInputs looks for template inputs that were not provided on the
-// command line and prompts the user for them. This mutates c.flags.Inputs.
+// command line and prompts the user for them. This mutates "inputs".
 //
 // This must only be called when the user specified --prompt and the input is a
 // terminal (or in a test).
-func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec) error {
+func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec, inputs map[string]string) error {
 	for _, i := range spec.Inputs {
-		if _, ok := c.flags.Inputs[i.Name.Val]; ok {
-			// Don't prompt if the cmdline had an --input for this key.
+		if _, ok := inputs[i.Name.Val]; ok {
+			// Don't prompt if we already have a value for this input.
 			continue
 		}
 		sb := &strings.Builder{}
@@ -404,7 +404,7 @@ func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec) error {
 			inputVal = i.Default.Val
 		}
 
-		c.flags.Inputs[i.Name.Val] = inputVal
+		inputs[i.Name.Val] = inputVal
 	}
 	return nil
 }
