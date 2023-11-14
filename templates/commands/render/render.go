@@ -635,9 +635,12 @@ func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.
 	return spec, nil
 }
 
-// Downloads the template and returns the name of the temp directory where it
-// was saved. If error is returned, then the returned directory name may or may
-// not exist, and may or may not be empty.
+// Downloads the template and returns:
+//   - the ParsedSource giving metadata about the template
+//   - the name of the temp directory where the template contents were saved.
+//
+// If error is returned, then the returned directory name may or may not exist,
+// and may or may not be empty.
 func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (*templatesource.ParsedSource, string, error) {
 	logger := logging.FromContext(ctx).With("logger", "copyTemplate")
 
