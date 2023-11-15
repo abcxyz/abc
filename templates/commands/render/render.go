@@ -284,6 +284,14 @@ func checkUnknownInputs(spec *spec.Spec, inputs map[string]string) []string {
 	return unknownInputs
 }
 
+func filterUnknownInputs(spec *spec.Spec, inputs map[string]string) map[string]string {
+	specInputs := make(map[string]string)
+	for _, v := range spec.Inputs {
+		specInputs[v.Name.Val] = ""
+	}
+	return sets.IntersectMapKeys(inputs, specInputs)
+}
+
 // resolveInputs combines flags, user prompts, and defaults to get the full set
 // of template inputs.
 func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Spec) (map[string]string, error) {
@@ -295,9 +303,11 @@ func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Sp
 	if err != nil {
 		return nil, err
 	}
+	// Effectively ignore inputs in file that are not in spec inputs, thereby ignoring them
+	knownFileInputs := filterUnknownInputs(spec, fileInputs)
 
 	// Order matters: values from --input take precedence over --input-file.
-	inputs := sets.UnionMapKeys(c.flags.Inputs, fileInputs)
+	inputs := sets.UnionMapKeys(c.flags.Inputs, knownFileInputs)
 
 	if c.flags.Prompt {
 		isATTY := (c.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))

@@ -675,6 +675,28 @@ emoji_suffix: '🐈'`,
 				"dir2/file2.txt":       "file2 contents",
 			},
 		},
+		{
+			name:           "fail_if_input_missing_in_spec_file_but_in_inputs_file",
+			inputFileNames: []string{"inputs.yaml"},
+			inputFileContents: map[string]string{
+				"inputs.yaml": `
+name_to_greet: 'Robert'
+emoji_suffix: '🐈'`, // missing in spec.yaml inputs
+			},
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta1'
+kind: 'Template'
+desc: 'My template'
+inputs:
+  - name: 'name_to_greet',
+steps:
+  - action: 'print'
+    desc: 'print greeting',
+    params:
+      message: 'Hello, {{.name_to_greet}}{{.emoji_suffix}}'`,
+			},
+			wantErr: "error reading template spec file",
+		},
 	}
 
 	for _, tc := range cases {
