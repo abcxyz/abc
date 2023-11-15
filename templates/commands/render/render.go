@@ -287,6 +287,10 @@ func checkUnknownInputs(spec *spec.Spec, inputs map[string]string) []string {
 // resolveInputs combines flags, user prompts, and defaults to get the full set
 // of template inputs.
 func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Spec) (map[string]string, error) {
+	if unknownInputs := checkUnknownInputs(spec, c.flags.Inputs); len(unknownInputs) > 0 {
+		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+	}
+
 	fileInputs, err := loadInputFiles(ctx, fs, c.flags.InputFiles)
 	if err != nil {
 		return nil, err
@@ -294,10 +298,6 @@ func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Sp
 
 	// Order matters: values from --input take precedence over --input-file.
 	inputs := sets.UnionMapKeys(c.flags.Inputs, fileInputs)
-
-	if unknownInputs := checkUnknownInputs(spec, inputs); len(unknownInputs) > 0 {
-		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
-	}
 
 	if c.flags.Prompt {
 		isATTY := (c.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))

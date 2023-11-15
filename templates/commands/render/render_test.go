@@ -652,6 +652,29 @@ steps:
 			},
 			wantErr: `"if" expression "bad_expression" failed at step index 0 action "print"`,
 		},
+		{
+			name:           "unknown_input_file_flags should be ignored",
+			flagInputs:     map[string]string{"name_to_greet": "Robert"},
+			inputFileNames: []string{"inputs.yaml"},
+			inputFileContents: map[string]string{
+				"inputs.yaml": `
+unknown_key: 'unknown value'
+emoji_suffix: '🐈'`,
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Robert🐈.\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
 	}
 
 	for _, tc := range cases {
