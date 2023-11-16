@@ -6,3 +6,8 @@
 
 # Go readability
 *.go    @abcxyz/go-readability
+
+# Typescript readability
+*.js      @abcxyz/typescript-readability
+*.ts      @abcxyz/typescript-readability
+*.tsx      @abcxyz/typescript-readability
