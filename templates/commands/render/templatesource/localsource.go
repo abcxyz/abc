@@ -17,9 +17,7 @@ package templatesource
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -33,7 +31,7 @@ var _ sourceParser = (*localSourceParser)(nil)
 // directory.
 type localSourceParser struct{}
 
-func (l *localSourceParser) sourceParse(ctx context.Context, cwd, src, protocol string) (Downloader, bool, error) {
+func (l *localSourceParser) sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "localSourceParser.sourceParse")
 
 	// Design decision: we could try to look at src and guess whether it looks
@@ -46,33 +44,30 @@ func (l *localSourceParser) sourceParse(ctx context.Context, cwd, src, protocol 
 	// git repos, so this code won't run if the source looks like a git repo.
 
 	// If the filepath was not absolute, convert it to be relative to the cwd.
-	originalSrc := src
-	if !filepath.IsAbs(src) {
-		src = filepath.Join(cwd, src)
-		logger.DebugContext(ctx, "source path is relative, converting to absolute path",
-			"originalSrc", originalSrc,
-			"src", src)
+	absSource := params.Source
+	if !filepath.IsAbs(params.Source) {
+		absSource = filepath.Join(cwd, params.Source)
 	}
 
-	if _, err := os.Stat(src); err != nil {
-		var pathErrPtr *fs.PathError
-
-		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) || errors.As(err, &pathErrPtr) {
-			logger.DebugContext(ctx, "will not treat src as a local path because the path does not exist", "src", src)
+	if _, err := os.Stat(absSource); err != nil {
+		if common.IsStatNotExistErr(err) {
+			logger.DebugContext(ctx, "will not treat template location as a local path because the path does not exist", "src", absSource)
 			return nil, false, nil
 		}
 		return nil, false, fmt.Errorf("Stat(): %w", err)
 	}
 
-	logger.InfoContext(ctx, "treating src as a local path", "src", src)
+	logger.InfoContext(ctx, "treating src as a local path", "src", absSource)
 
 	return &localDownloader{
-		srcPath: src, // Uses OS-native file separator
+		srcPath: absSource,
 	}, true, nil
 }
 
+// localDownloader implements Downloader.
 type localDownloader struct {
-	srcPath string // uses OS-native file separator
+	// This path uses the OS-native file separator and is an absolute path.
+	srcPath string
 }
 
 func (l *localDownloader) Download(ctx context.Context, outDir string) error {
@@ -84,4 +79,75 @@ func (l *localDownloader) Download(ctx context.Context, outDir string) error {
 		DstRoot: outDir,
 		RFS:     &common.RealFS{},
 	})
+}
+
+func (l *localDownloader) CanonicalSource(ctx context.Context, cwd, dest string) (string, bool, error) {
+	logger := logging.FromContext(ctx).With("logger", "localDownloader.CanonicalSource")
+
+	absDest := dest
+	if !filepath.IsAbs(dest) {
+		absDest = filepath.Join(cwd, dest)
+	}
+
+	// See the docs on ParsedSource for an explanation of why we compare the git
+	// workspaces to decide if source is canonical.
+	sourceGitWorkspace, templateIsGit, err := gitWorkspace(ctx, l.srcPath)
+	if err != nil {
+		return "", false, err
+	}
+	destGitWorkspace, destIsGit, err := gitWorkspace(ctx, absDest)
+	if err != nil {
+		return "", false, err
+	}
+	if !templateIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
+		logger.DebugContext(ctx, "local template source is not canonical, template dir and dest dir do not share a git workspace",
+			"source", l.srcPath, "dest", absDest, "source_git_workspace", sourceGitWorkspace, "dest_git_workspace", destGitWorkspace)
+		return "", false, nil
+	}
+
+	logger.DebugContext(ctx, "local template source is canonical because template dir and dest dir are both in the same git workspace",
+		"source", l.srcPath, "dest", absDest, "git_workspace", destGitWorkspace)
+	out, err := filepath.Rel(absDest, l.srcPath)
+	if err != nil {
+		return "", false, fmt.Errorf("filepath.Rel(%q,%q): %w", dest, l.srcPath, err)
+	}
+	return out, true, nil
+}
+
+// gitWorkspace looks for the presence of a .git directory in parent directories
+// to determine the root directory of the git workspace containing "path".
+// Returns false if the given path is not inside a git workspace.
+//
+// The input path need not actually exist yet. For example, suppose "/a/b" is a
+// git workspace, which means that "/a/b/.git" is a directory that exists.
+// Calling gitWorkspace("/a/b/c") will return "/a/b" whether or not "c" actually
+// exists yet. This supports the case where the user is rendering into a
+// directory that doesn't exist yet but will be created by the render operation.
+func gitWorkspace(ctx context.Context, path string) (string, bool, error) {
+	// Alternative considered and rejected: use "git rev-parse --git-dir" to
+	// print the .git dir. We can't use that here because that would require the
+	// directory to already exist in the filesystem, but this function is called
+	// for hypothetical directories that might not exist yet.
+	for {
+		fileInfo, err := os.Stat(filepath.Join(path, ".git"))
+		if err != nil && !common.IsStatNotExistErr(err) {
+			return "", false, err //nolint:wrapcheck
+		}
+		if fileInfo != nil && fileInfo.IsDir() {
+			return path, true, nil
+		}
+		// At this point, we know that one of two things is true:
+		//   - $path/.git doesn't exist
+		//   - $path/.git is a file (not a directory)
+		//
+		// In both cases, we'll continue crawling upward in the directory tree
+		// looking for a .git directory.
+		pathBefore := path
+		path = filepath.Dir(path)
+		if path == pathBefore || len(path) <= 1 {
+			// We crawled to the root of the filesystem without finding a .git
+			// directory.
+			return "", false, nil
+		}
+	}
 }

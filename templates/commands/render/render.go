@@ -152,7 +152,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		outErr = errors.Join(outErr, err)
 	}()
 
-	templateDir, err := c.copyTemplate(ctx, rp)
+	_, templateDir, err := c.downloadTemplate(ctx, rp)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
@@ -645,31 +645,37 @@ func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.
 	return spec, nil
 }
 
-// Downloads the template and returns the name of the temp directory where it
-// was saved. If error is returned, then the returned directory name may or may
-// not exist, and may or may not be empty.
-func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
-	logger := logging.FromContext(ctx).With("logger", "copyTemplate")
+// Downloads the template and returns:
+//   - the ParsedSource giving metadata about the template
+//   - the name of the temp directory where the template contents were saved.
+//
+// If error is returned, then the returned directory name may or may not exist,
+// and may or may not be empty.
+func (c *Command) downloadTemplate(ctx context.Context, rp *runParams) (templatesource.Downloader, string, error) {
+	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
 
 	templateDir, err := rp.fs.MkdirTemp(rp.tempDirBase, templateDirNamePart)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
+		return nil, "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
 	}
 	logger.DebugContext(ctx, "created temporary template directory",
 		"path", templateDir)
 
-	downloader, err := templatesource.ParseSource(ctx, c.flags.Source, c.flags.GitProtocol)
+	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
+		Source:      c.flags.Source,
+		GitProtocol: c.flags.GitProtocol,
+	})
 	if err != nil {
-		return templateDir, err //nolint:wrapcheck
+		return nil, templateDir, err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
 
 	if err := downloader.Download(ctx, templateDir); err != nil {
-		return templateDir, err //nolint:wrapcheck
+		return nil, templateDir, err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "copied source template temporary directory", "source", c.flags.Source, "destination", templateDir)
 
-	return templateDir, nil
+	return downloader, templateDir, nil
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
@@ -693,7 +699,7 @@ func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDir
 func destOK(fs fs.StatFS, dest string) error {
 	fi, err := fs.Stat(dest)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if common.IsStatNotExistErr(err) {
 			return nil
 		}
 		return fmt.Errorf("os.Stat(%s): %w", dest, err)

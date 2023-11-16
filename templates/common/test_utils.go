@@ -17,7 +17,6 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -100,7 +99,7 @@ func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 	t.Helper()
 
 	if _, err := os.Stat(dir); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
+		if IsStatNotExistErr(err) {
 			return nil
 		}
 		t.Fatal(err)
