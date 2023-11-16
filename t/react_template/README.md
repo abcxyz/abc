@@ -31,8 +31,17 @@ A branch protection rule will be established to enforce checks on each pull requ
 This will output a file named `main.go` in your working directory containing
 the transformed program.
 
-    ```shell
-    $ abc templates render github.com/abcxyz/abc/t/react_template@latest
+    ```
+    abc templates render \
+      -input=automation_service_account='SERVICE_ACCOUNT' \
+      -input=wif_provider='WIF_PROVIDER' \
+      -input=ar_repository='AR_REPO' \
+      -input=ar_location='AR_LOCATION' \
+      -input=cr_service='CR_SERVICE' \
+      -input=region='REGION' \
+      -input=project_id='PROJECT_ID' \
+      -input=backend_url='BE_URL' \
+    github.com/abcxyz/abc/t/react_template@latest
     ```
 
 ## Available Scripts
