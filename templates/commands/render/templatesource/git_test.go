@@ -198,6 +198,31 @@ func TestResolveVersion(t *testing.T) {
 			want: "v1.2.3",
 		},
 		{
+			name:    "version_semver_with_leading_zero",
+			in:      "v01.2.3",
+			wantErr: "not a valid format",
+		},
+		{
+			name:    "version_malformed_semantic_versioning",
+			in:      "v1..23",
+			wantErr: "not a valid format",
+		},
+		{
+			name: "version_branch_name_with_v_prefix",
+			in:   "vbranch",
+			want: "vbranch",
+		},
+		{
+			name: "version_with_sha",
+			in:   "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+			want: "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+		},
+		{
+			name: "version_with_main_branch",
+			in:   "main",
+			want: "main",
+		},
+		{
 			name:    "empty_input",
 			in:      "",
 			wantErr: `cannot be empty`,
