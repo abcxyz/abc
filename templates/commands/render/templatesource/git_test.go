@@ -223,6 +223,16 @@ func TestResolveVersion(t *testing.T) {
 			want: "main",
 		},
 		{
+			name: "version_with_forward_slash",
+			in:   "username/branch-name",
+			want: "username/branch-name",
+		},
+		{
+			name: "version_with_snake_case",
+			in:   "branch_name",
+			want: "branch_name",
+		},
+		{
 			name:    "empty_input",
 			in:      "",
 			wantErr: `cannot be empty`,
