@@ -45,10 +45,10 @@ func TestGitDownloader_Download(t *testing.T) {
 				subdir:  "",
 				version: "v1.2.3",
 				cloner: &fakeCloner{
-					t:               t,
-					out:             basicFiles,
-					wantRemote:      "fake-remote",
-					wantBranchOrTag: "v1.2.3",
+					t:           t,
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+					wantVersion: "v1.2.3",
 				},
 			},
 			want: basicFiles,
@@ -60,10 +60,10 @@ func TestGitDownloader_Download(t *testing.T) {
 				subdir:  "",
 				version: "latest",
 				cloner: &fakeCloner{
-					t:               t,
-					out:             basicFiles,
-					wantRemote:      "fake-remote",
-					wantBranchOrTag: "v1.2.3",
+					t:           t,
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+					wantVersion: "v1.2.3",
 				},
 				tagser: &fakeTagser{
 					t:          t,
@@ -88,8 +88,8 @@ func TestGitDownloader_Download(t *testing.T) {
 						"my-subdir/file1.txt": "hello",
 						"file2.txt":           "world",
 					},
-					wantRemote:      "fake-remote",
-					wantBranchOrTag: "v1.2.3",
+					wantRemote:  "fake-remote",
+					wantVersion: "v1.2.3",
 				},
 			},
 			want: map[string]string{
@@ -108,8 +108,8 @@ func TestGitDownloader_Download(t *testing.T) {
 						"my/deep/subdir/file1.txt": "hello",
 						"file2.txt":                "world",
 					},
-					wantRemote:      "fake-remote",
-					wantBranchOrTag: "v1.2.3",
+					wantRemote:  "fake-remote",
+					wantVersion: "v1.2.3",
 				},
 			},
 			want: map[string]string{
@@ -133,10 +133,10 @@ func TestGitDownloader_Download(t *testing.T) {
 				subdir:  "nonexistent",
 				version: "v1.2.3",
 				cloner: &fakeCloner{
-					t:               t,
-					out:             basicFiles,
-					wantRemote:      "fake-remote",
-					wantBranchOrTag: "v1.2.3",
+					t:           t,
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+					wantVersion: "v1.2.3",
 				},
 			},
 			wantErr: `doesn't contain a subdirectory named "nonexistent"`,
@@ -149,10 +149,10 @@ func TestGitDownloader_Download(t *testing.T) {
 				subdir:  "file1.txt",
 				version: "v1.2.3",
 				cloner: &fakeCloner{
-					t:               t,
-					out:             basicFiles,
-					wantRemote:      "fake-remote",
-					wantBranchOrTag: "v1.2.3",
+					t:           t,
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+					wantVersion: "v1.2.3",
 				},
 			},
 			wantErr: "is not a directory",
@@ -294,18 +294,18 @@ func TestResolveVersion(t *testing.T) {
 }
 
 type fakeCloner struct {
-	t               *testing.T
-	out             map[string]string
-	wantRemote      string
-	wantBranchOrTag string
+	t           *testing.T
+	out         map[string]string
+	wantRemote  string
+	wantVersion string
 }
 
-func (f *fakeCloner) Clone(ctx context.Context, remote, branchOrTag, outDir string) error {
+func (f *fakeCloner) Clone(ctx context.Context, remote, version, outDir string) error {
 	if remote != f.wantRemote {
 		f.t.Errorf("got remote %q, want %q", remote, f.wantRemote)
 	}
-	if branchOrTag != f.wantBranchOrTag {
-		f.t.Errorf("got branchOrTag %q, want %q", branchOrTag, f.wantBranchOrTag)
+	if version != f.wantVersion {
+		f.t.Errorf("got version %q, want %q", version, f.wantVersion)
 	}
 
 	common.WriteAllDefaultMode(f.t, outDir, f.out)
