@@ -180,7 +180,7 @@ func TestGitDownloader_Download(t *testing.T) {
 	}
 }
 
-func TestResolveBranchOrTag(t *testing.T) {
+func TestResolveVersion(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -281,7 +281,7 @@ func TestResolveBranchOrTag(t *testing.T) {
 
 			ctx := context.Background()
 
-			got, err := resolveBranchOrTag(ctx, tc.tagser, tc.inRemote, tc.in)
+			got, err := resolveVersion(ctx, tc.tagser, tc.inRemote, tc.in)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

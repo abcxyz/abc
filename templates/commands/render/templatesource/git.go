@@ -136,7 +136,7 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 		return fmt.Errorf("invalid subdirectory: %w", err)
 	}
 
-	branchOrTag, err := resolveBranchOrTag(ctx, g.tagser, g.remote, g.version)
+	branchOrTag, err := resolveVersion(ctx, g.tagser, g.remote, g.version)
 	if err != nil {
 		return err
 	}
@@ -185,11 +185,11 @@ func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string
 	return g.canonicalSource, true, nil
 }
 
-// resolveBranchOrTag returns the latest release tag if branchOrTag is "latest", and otherwise
+// resolveVersion returns the latest release tag if branchOrTag is "latest", and otherwise
 // just returns the input branchOrTag after validating it. The return value always begins
 // with "v" (unless there's an error).
-func resolveBranchOrTag(ctx context.Context, t tagser, remote, branchOrTag string) (string, error) {
-	logger := logging.FromContext(ctx).With("logger", "resolveBranchOrTag")
+func resolveVersion(ctx context.Context, t tagser, remote, branchOrTag string) (string, error) {
+	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
 
 	if branchOrTag != "latest" {
 		if !strings.HasPrefix(branchOrTag, "v") {
