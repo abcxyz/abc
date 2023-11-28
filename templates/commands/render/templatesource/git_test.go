@@ -198,14 +198,9 @@ func TestResolveVersion(t *testing.T) {
 			want: "v1.2.3",
 		},
 		{
-			name:    "version_without_v_prefix_rejected",
-			in:      "1.2.3",
-			wantErr: `must start with "v"`,
-		},
-		{
 			name:    "empty_input",
 			in:      "",
-			wantErr: `must start with "v"`,
+			wantErr: `cannot be empty`,
 		},
 		{
 			name: "version_with_suffix_can_be_specifically_requested",
