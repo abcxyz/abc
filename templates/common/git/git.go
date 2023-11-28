@@ -21,10 +21,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/abcxyz/abc/templates/common"
 )
+
+var sha = regexp.MustCompile("^[[0-9a-f]{40}$")
 
 // Clone checks out the given branch or tag from the given repo. It uses the git
 // CLI already installed on the system.
@@ -33,10 +36,23 @@ import (
 //
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
-func Clone(ctx context.Context, remote, branchOrTag, outDir string) error {
-	_, _, err := common.Run(ctx, "git", "clone", "--depth", "1", "--branch", branchOrTag, remote, outDir)
-	if err != nil {
-		return err //nolint:wrapcheck
+func Clone(ctx context.Context, remote, version, outDir string) error {
+	// if it looks like a sha, run clone, then reset --hard
+	if sha.MatchString(version) {
+		_, _, err := common.Run(ctx, "git", "clone", "--depth", "1", remote, outDir)
+		if err != nil {
+			return err //nolint:wrapcheck
+		}
+
+		_, _, err = common.Run(ctx, "git", "clone", "reset", "--hard", version)
+		if err != nil {
+			return err //nolint:wrapcheck
+		}
+	} else {
+		_, _, err := common.Run(ctx, "git", "clone", "--depth", "1", "--branch", version, remote, outDir)
+		if err != nil {
+			return err //nolint:wrapcheck
+		}
 	}
 
 	links, err := findSymlinks(outDir)
