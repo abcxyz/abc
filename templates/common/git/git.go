@@ -27,7 +27,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 )
 
-var sha = regexp.MustCompile("^[[0-9a-f]{40}$")
+var sha = regexp.MustCompile("^[0-9a-f]{40}$")
 
 // Clone checks out the given branch or tag from the given repo. It uses the git
 // CLI already installed on the system.
@@ -39,12 +39,12 @@ var sha = regexp.MustCompile("^[[0-9a-f]{40}$")
 func Clone(ctx context.Context, remote, version, outDir string) error {
 	// if it looks like a sha, run clone, then reset --hard
 	if sha.MatchString(version) {
-		_, _, err := common.Run(ctx, "git", "clone", "--depth", "1", remote, outDir)
+		_, _, err := common.Run(ctx, "git", "clone", remote, outDir)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
 
-		_, _, err = common.Run(ctx, "git", "clone", "reset", "--hard", version)
+		_, _, err = common.Run(ctx, "git", "-C", outDir, "checkout", version)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
