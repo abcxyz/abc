@@ -96,6 +96,12 @@ func TestClone(t *testing.T) {
 			version: "b6687471f424efd125f9a3e156c68ed78b9d3b47",
 		},
 		{
+			name:    "non_hexadecimal_long_commit",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "z668747&-424.fd125f9a3e156c68ed78b9d3b47",
+			wantErr: "z668747&-424.fd125f9a3e156c68ed78b9d3b47 not found",
+		},
+		{
 			name:    "short_commit_not_supported",
 			remote:  "https://github.com/abcxyz/abc.git",
 			version: "b668747",
