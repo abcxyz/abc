@@ -220,7 +220,7 @@ func TestResolveVersion(t *testing.T) {
 		{
 			name:    "empty_input",
 			in:      "",
-			wantErr: `cannot be empty`,
+			wantErr: "cannot be empty",
 		},
 		{
 			name: "version_with_suffix_can_be_specifically_requested",
