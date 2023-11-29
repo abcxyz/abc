@@ -30,10 +30,7 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
-var (
-	_  sourceParser = (*gitSourceParser)(nil)
-	re              = regexp.MustCompile("^[a-zA-Z0-9/_-]+$")
-)
+var _ sourceParser = (*gitSourceParser)(nil)
 
 // gitSourceParser implements sourceParser for downloading templates from a
 // remote git repo.
@@ -190,8 +187,8 @@ func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string
 }
 
 // resolveVersion returns the latest release tag if version is "latest", and otherwise
-// just returns the input version after validating it. The return value always begins
-// with "v" (unless there's an error).
+// just returns the input version. The return value is either a branch, tag, or
+// a long commit SHA (unless there's an error).
 func resolveVersion(ctx context.Context, t tagser, remote, version string) (string, error) {
 	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
 

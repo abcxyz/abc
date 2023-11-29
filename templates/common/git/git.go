@@ -29,8 +29,8 @@ import (
 
 var sha = regexp.MustCompile("^[0-9a-f]{40}$")
 
-// Clone checks out the given branch or tag from the given repo. It uses the git
-// CLI already installed on the system.
+// Clone checks out the given branch, tag or long commit SHA from the given repo.
+// It uses the git CLI already installed on the system.
 //
 // To optimize storage and bandwidth, the full git history is not fetched.
 //
