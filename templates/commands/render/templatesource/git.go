@@ -30,7 +30,10 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
-var _ sourceParser = (*gitSourceParser)(nil)
+var (
+	_  sourceParser = (*gitSourceParser)(nil)
+	re              = regexp.MustCompile("^[a-zA-Z0-9/_-]+$")
+)
 
 // gitSourceParser implements sourceParser for downloading templates from a
 // remote git repo.
@@ -198,7 +201,7 @@ func resolveVersion(ctx context.Context, t tagser, remote, version string) (stri
 	case "latest":
 		return resolveLatest(ctx, t, remote, version)
 	default:
-		logger.DebugContext(ctx, `using user provided version, no need to look up remote tags`, "version", version)
+		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)
 		return version, nil
 	}
 }
