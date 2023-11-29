@@ -203,6 +203,8 @@ func resolveVersion(ctx context.Context, t tagser, remote, version string) (stri
 	}
 }
 
+// resolveLatest retrieves the tags from the remote repository and returns the
+// highest semver tag. An error is thrown if no semver tags are found.
 func resolveLatest(ctx context.Context, t tagser, remote, version string) (string, error) {
 	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
 
