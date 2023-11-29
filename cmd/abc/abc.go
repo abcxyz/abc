@@ -60,9 +60,6 @@ var rootCmd = func() *cli.RootCommand {
 								},
 							}
 						},
-						"describe": func() cli.Command {
-							return nil
-						},
 					},
 				}
 			},
