@@ -17,8 +17,9 @@ package manifest
 import (
 	"errors"
 
-	"github.com/abcxyz/abc/templates/model"
 	"gopkg.in/yaml.v3"
+
+	"github.com/abcxyz/abc/templates/model"
 )
 
 // Manifest represents the contents of a manifest file. A manifest file is the

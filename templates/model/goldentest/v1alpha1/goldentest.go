@@ -17,8 +17,9 @@ package goldentest
 import (
 	"errors"
 
-	"github.com/abcxyz/abc/templates/model"
 	"gopkg.in/yaml.v3"
+
+	"github.com/abcxyz/abc/templates/model"
 )
 
 // This file parses a YAML file that describes test configs.

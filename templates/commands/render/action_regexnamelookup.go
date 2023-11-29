@@ -18,10 +18,11 @@ import (
 	"context"
 	"regexp"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-	"golang.org/x/exp/maps"
 )
 
 // actionRegexNameLookup replaces named regex capturing groups with the template

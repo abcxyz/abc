@@ -24,9 +24,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestRealMain(t *testing.T) {

@@ -20,9 +20,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/testutil"
-	"golang.org/x/exp/slices"
 )
 
 // To actually run the tests in this file, you'll need to set this environment

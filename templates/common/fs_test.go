@@ -26,12 +26,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/benbjohnson/clock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"golang.org/x/exp/slices"
+
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestCopyRecursive(t *testing.T) {

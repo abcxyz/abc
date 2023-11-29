@@ -32,6 +32,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/mattn/go-isatty"
+	"golang.org/x/exp/maps"
+	"gopkg.in/yaml.v3"
+
 	"github.com/abcxyz/abc/templates/commands/render/templatesource"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model/decode"
@@ -39,9 +43,6 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
-	"github.com/mattn/go-isatty"
-	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v3"
 )
 
 const (

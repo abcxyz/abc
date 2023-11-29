@@ -26,10 +26,11 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
-	"golang.org/x/exp/maps"
 )
 
 // Called with the contents of a file, and returns the new contents of the file

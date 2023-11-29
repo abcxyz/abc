@@ -20,6 +20,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
@@ -27,9 +31,6 @@ import (
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"golang.org/x/exp/maps"
 )
 
 func TestDecode(t *testing.T) {

@@ -19,9 +19,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/abcxyz/abc/templates/model"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
+
+	"github.com/abcxyz/abc/templates/model"
 )
 
 // Spec represents a parsed spec.yaml file describing a template.
