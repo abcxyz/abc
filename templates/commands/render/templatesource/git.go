@@ -187,25 +187,27 @@ func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string
 }
 
 // resolveVersion returns the latest release tag if version is "latest", and otherwise
-// just returns the input version after validating it. The return value always begins
-// with "v" (unless there's an error).
+// just returns the input version. The return value is either a branch, tag, or
+// a long commit SHA (unless there's an error).
 func resolveVersion(ctx context.Context, t tagser, remote, version string) (string, error) {
 	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
 
-	if version != "latest" {
-		if !strings.HasPrefix(version, "v") {
-			return "", fmt.Errorf(`the template source version %q must start with "v", like "v1.2.3"`, version)
-		}
-		ersion := version[1:] // trim off "v" prefix
-		if _, err := semver.StrictNewVersion(ersion); err != nil {
-			return "", fmt.Errorf("the template source requested git tag %q, which is not a valid format for a semver.org version", version)
-		}
-		logger.DebugContext(ctx, `using user provided version, no need to look up remote tags`, "version", version)
+	switch version {
+	case "":
+		return "", fmt.Errorf("the template source version cannot be empty")
+	case "latest":
+		return resolveLatest(ctx, t, remote, version)
+	default:
+		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)
 		return version, nil
 	}
+}
 
-	// If we're here, then the user requested version "latest", so we need to
-	// look up the latest version.
+// resolveLatest retrieves the tags from the remote repository and returns the
+// highest semver tag. An error is thrown if no semver tags are found.
+func resolveLatest(ctx context.Context, t tagser, remote, version string) (string, error) {
+	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
+
 	logger.DebugContext(ctx, `looking up semver tags to resolve "latest"`, "git_remote", remote)
 	tags, err := t.Tags(ctx, remote)
 	if err != nil {

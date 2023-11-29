@@ -29,13 +29,17 @@ The `<template_location>` parameter is one of these two things:
 
 - A remote git repository. The subdirectory is optional, defaulting to the root
   of the repo. This directory must contain a `spec.yaml`. The version suffix
-  must be either `@latest` or a semantic version with a leading 'v' like
-  `@v1.2.3`. Examples:
+  must be either `@latest`, long commit SHA, branch name or tag. Short commit
+  SHA's are not supported and if provided, they will be tried as a
+  branch or tag name. Examples:
 
   - `github.com/abcxyz/gcp-org-terraform-template@latest` (no subdirectory)
   - `github.com/abcxyz/abc/t/rest_server@latest` (with subdirectory)
-  - `github.com/abcxyz/abc/t/rest_server@v0.2.1` (uses semver instead of
+  - `github.com/abcxyz/abc/t/rest_server@v0.2.1` (uses tag instead of
     "latest")
+  - `github.com/abcxyz/abc/t/rest_server@main` (use branch name instead of "latest")
+  - `github.com/abcxyz/abc/t/rest_server@0402ed8413f02e1069c2aec368eca208895918b1`
+    (use ref to long commit SHA)
 
 - A local directory as an absolute or relative path. This directory must contain
   a `spec.yaml`. Examples:

@@ -198,14 +198,29 @@ func TestResolveVersion(t *testing.T) {
 			want: "v1.2.3",
 		},
 		{
-			name:    "version_without_v_prefix_rejected",
-			in:      "1.2.3",
-			wantErr: `must start with "v"`,
+			name: "version_with_sha",
+			in:   "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+			want: "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+		},
+		{
+			name: "version_with_main_branch",
+			in:   "main",
+			want: "main",
+		},
+		{
+			name: "version_with_forward_slash",
+			in:   "username/branch-name",
+			want: "username/branch-name",
+		},
+		{
+			name: "version_with_snake_case",
+			in:   "branch_name",
+			want: "branch_name",
 		},
 		{
 			name:    "empty_input",
 			in:      "",
-			wantErr: `must start with "v"`,
+			wantErr: "cannot be empty",
 		},
 		{
 			name: "version_with_suffix_can_be_specifically_requested",
@@ -255,11 +270,6 @@ func TestResolveVersion(t *testing.T) {
 				out:        []string{"v1.2.3", "nonsense"},
 			},
 			want: "v1.2.3",
-		},
-		{
-			name:    "malformed_version_rejected",
-			in:      "v👍.😀.🎉",
-			wantErr: "not a valid format",
 		},
 		{
 			name:     "no_tags_exist",
