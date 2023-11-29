@@ -23,10 +23,11 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"golang.org/x/exp/slices"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/git"
 	"github.com/abcxyz/pkg/logging"
-	"golang.org/x/exp/slices"
 )
 
 var _ sourceParser = (*gitSourceParser)(nil)

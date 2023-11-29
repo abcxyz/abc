@@ -20,9 +20,10 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-	"golang.org/x/exp/maps"
 )
 
 func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error {

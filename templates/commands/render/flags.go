@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/abcxyz/pkg/cli"
 	"github.com/posener/complete/v2/predict"
+
+	"github.com/abcxyz/pkg/cli"
 )
 
 // RenderFlags describes what template to render and how.

@@ -20,11 +20,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/cel-go/cel"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestCompileAndEvalCEL(t *testing.T) {

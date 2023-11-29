@@ -18,11 +18,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gopkg.in/yaml.v3"
+
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestSpecUnmarshal(t *testing.T) {
