@@ -37,14 +37,13 @@ var sha = regexp.MustCompile("^[0-9a-f]{40}$")
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Clone(ctx context.Context, remote, version, outDir string) error {
-	// if it looks like a sha, run clone, then reset --hard
 	if sha.MatchString(version) {
 		_, _, err := common.Run(ctx, "git", "clone", remote, outDir)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
 
-		_, _, err = common.Run(ctx, "git", "-C", outDir, "checkout", version)
+		_, _, err = common.Run(ctx, "git", "-C", outDir, "reset", "--hard", version)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
