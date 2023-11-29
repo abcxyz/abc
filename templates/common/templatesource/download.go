@@ -33,14 +33,14 @@ const (
 )
 
 type RunParams struct {
-	backupDir string
-	cwd       string
-	fs        common.FS
-	stdout    io.Writer
+	BackupDir string
+	CWD       string
+	FS        common.FS
+	Stdout    io.Writer
 
 	// The directory under which temp directories will be created. The default
 	// if this is empty is to use the OS temp directory.
-	tempDirBase string
+	TempDirBase string
 }
 
 // A Downloader is returned by a sourceParser. It offers the ability to
@@ -91,7 +91,7 @@ type Downloader interface {
 func DownloadTemplate(ctx context.Context, rp *RunParams, source, gitProtocol string) (Downloader, string, error) {
 	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
 
-	templateDir, err := rp.fs.MkdirTemp(rp.tempDirBase, templateDirNamePart)
+	templateDir, err := rp.FS.MkdirTemp(rp.TempDirBase, templateDirNamePart)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
 	}
@@ -103,7 +103,7 @@ func DownloadTemplate(ctx context.Context, rp *RunParams, source, gitProtocol st
 		GitProtocol: gitProtocol,
 	})
 	if err != nil {
-		return nil, templateDir, err //nolint:wrapcheck
+		return nil, templateDir, err
 	}
 	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
 

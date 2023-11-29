@@ -31,6 +31,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
@@ -721,14 +722,14 @@ steps:
 			common.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
-			rp := &runParams{
-				backupDir: backupDir,
-				fs: &common.ErrorFS{
+			rp := &templatesource.RunParams{
+				BackupDir: backupDir,
+				FS: &common.ErrorFS{
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
 				},
-				stdout:      stdoutBuf,
-				tempDirBase: tempDir,
+				Stdout:      stdoutBuf,
+				TempDirBase: tempDir,
 			}
 			r := &Command{
 				flags: RenderFlags{

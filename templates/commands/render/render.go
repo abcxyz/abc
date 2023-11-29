@@ -26,7 +26,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -126,56 +125,45 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		"backups",
 		fmt.Sprint(time.Now().Unix()))
 
-	return c.realRun(ctx, &runParams{
-		backupDir: backupDir,
-		cwd:       wd,
-		fs:        fSys,
-		stdout:    c.Stdout(),
+	return c.realRun(ctx, &templatesource.RunParams{
+		BackupDir: backupDir,
+		CWD:       wd,
+		FS:        fSys,
+		Stdout:    c.Stdout(),
 	})
 }
 
-type runParams struct {
-	backupDir string
-	cwd       string
-	fs        common.FS
-	stdout    io.Writer
-
-	// The directory under which temp directories will be created. The default
-	// if this is empty is to use the OS temp directory.
-	tempDirBase string
-}
-
 // realRun is for testability; it's Run() with fakeable interfaces.
-func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
+func (c *Command) realRun(ctx context.Context, rp *templatesource.RunParams) (outErr error) {
 	var tempDirs []string
 	defer func() {
-		err := c.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
+		err := c.maybeRemoveTempDirs(ctx, rp.FS, tempDirs...)
 		outErr = errors.Join(outErr, err)
 	}()
 
-	_, templateDir, err := c.downloadTemplate(ctx, rp)
+	_, templateDir, err := templatesource.DownloadTemplate(ctx, rp, c.flags.Source, c.flags.GitProtocol)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	spec, err := loadSpecFile(ctx, rp.fs, templateDir)
+	spec, err := loadSpecFile(ctx, rp.FS, templateDir)
 	if err != nil {
 		return err
 	}
 
-	resolvedInputs, err := c.resolveInputs(ctx, rp.fs, spec)
+	resolvedInputs, err := c.resolveInputs(ctx, rp.FS, spec)
 	if err != nil {
 		return err
 	}
 
-	scratchDir, err := rp.fs.MkdirTemp(rp.tempDirBase, scratchDirNamePart)
+	scratchDir, err := rp.FS.MkdirTemp(rp.TempDirBase, scratchDirNamePart)
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
-	if err := rp.fs.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
+	if err := rp.FS.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
@@ -184,10 +172,10 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 
 	sp := &stepParams{
 		flags:       &c.flags,
-		fs:          rp.fs,
+		fs:          rp.FS,
 		scope:       common.NewScope(resolvedInputs),
 		scratchDir:  scratchDir,
-		stdout:      rp.stdout,
+		stdout:      rp.Stdout,
 		templateDir: templateDir,
 	}
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
@@ -208,7 +196,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	return nil
 }
 
-func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratchDir string, includedFromDest map[string]struct{}) error {
+func (c *Command) commit(ctx context.Context, dryRun bool, rp *templatesource.RunParams, scratchDir string, includedFromDest map[string]struct{}) error {
 	logger := logging.FromContext(ctx).With("logger", "commit")
 
 	visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
@@ -235,10 +223,10 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratc
 		if backupDir != "" {
 			return backupDir, nil
 		}
-		if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
+		if err := rfs.MkdirAll(rp.BackupDir, ownerRWXPerms); err != nil {
 			return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
-		backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
+		backupDir, err = rfs.MkdirTemp(rp.BackupDir, "")
 		logger.DebugContext(ctx, "created backup directory", "path", backupDir)
 		return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 	}
@@ -250,7 +238,7 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratc
 		Hasher:         sha256.New,
 		OutHashes:      map[string]string{},
 		SrcRoot:        scratchDir,
-		RFS:            rp.fs,
+		RFS:            rp.FS,
 		Visitor:        visitor,
 	}
 	if err := common.CopyRecursive(ctx, nil, params); err != nil {
@@ -644,39 +632,6 @@ func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.
 	}
 
 	return spec, nil
-}
-
-// Downloads the template and returns:
-//   - the ParsedSource giving metadata about the template
-//   - the name of the temp directory where the template contents were saved.
-//
-// If error is returned, then the returned directory name may or may not exist,
-// and may or may not be empty.
-func (c *Command) downloadTemplate(ctx context.Context, rp *runParams) (templatesource.Downloader, string, error) {
-	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
-
-	templateDir, err := rp.fs.MkdirTemp(rp.tempDirBase, templateDirNamePart)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
-	}
-	logger.DebugContext(ctx, "created temporary template directory",
-		"path", templateDir)
-
-	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-		Source:      c.flags.Source,
-		GitProtocol: c.flags.GitProtocol,
-	})
-	if err != nil {
-		return nil, templateDir, err //nolint:wrapcheck
-	}
-	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
-
-	if err := downloader.Download(ctx, templateDir); err != nil {
-		return nil, templateDir, err //nolint:wrapcheck
-	}
-	logger.DebugContext(ctx, "copied source template temporary directory", "source", c.flags.Source, "destination", templateDir)
-
-	return downloader, templateDir, nil
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
