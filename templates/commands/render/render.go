@@ -125,23 +125,34 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		"backups",
 		fmt.Sprint(time.Now().Unix()))
 
-	return c.realRun(ctx, &templatesource.RunParams{
-		BackupDir: backupDir,
-		CWD:       wd,
-		FS:        fSys,
-		Stdout:    c.Stdout(),
+	return c.realRun(ctx, &runParams{
+		backupDir: backupDir,
+		cwd:       wd,
+		fs:        fSys,
+		stdout:    c.Stdout(),
 	})
 }
 
+type runParams struct {
+	backupDir string
+	cwd       string
+	fs        common.FS
+	stdout    io.Writer
+
+	// The directory under which temp directories will be created. The default
+	// if this is empty is to use the OS temp directory.
+	tempDirBase string
+}
+
 // realRun is for testability; it's Run() with fakeable interfaces.
-func (c *Command) realRun(ctx context.Context, rp *templatesource.RunParams) (outErr error) {
+func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	var tempDirs []string
 	defer func() {
-		err := c.maybeRemoveTempDirs(ctx, rp.FS, tempDirs...)
+		err := c.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
 		outErr = errors.Join(outErr, err)
 	}()
 
-	_, templateDir, err := templatesource.DownloadTemplate(ctx, rp, c.flags.Source, c.flags.GitProtocol)
+	_, templateDir, err := templatesource.DownloadTemplate(ctx, rp.fs, rp.tempDirBase, c.flags.Source, c.flags.GitProtocol)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
@@ -149,21 +160,21 @@ func (c *Command) realRun(ctx context.Context, rp *templatesource.RunParams) (ou
 		return err //nolint:wrapcheck
 	}
 
-	spec, err := loadSpecFile(ctx, rp.FS, templateDir)
+	spec, err := loadSpecFile(ctx, rp.fs, templateDir)
 	if err != nil {
 		return err
 	}
 
-	resolvedInputs, err := c.resolveInputs(ctx, rp.FS, spec)
+	resolvedInputs, err := c.resolveInputs(ctx, rp.fs, spec)
 	if err != nil {
 		return err
 	}
 
-	scratchDir, err := rp.FS.MkdirTemp(rp.TempDirBase, scratchDirNamePart)
+	scratchDir, err := rp.fs.MkdirTemp(rp.tempDirBase, scratchDirNamePart)
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
-	if err := rp.FS.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
+	if err := rp.fs.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
@@ -172,10 +183,10 @@ func (c *Command) realRun(ctx context.Context, rp *templatesource.RunParams) (ou
 
 	sp := &stepParams{
 		flags:       &c.flags,
-		fs:          rp.FS,
+		fs:          rp.fs,
 		scope:       common.NewScope(resolvedInputs),
 		scratchDir:  scratchDir,
-		stdout:      rp.Stdout,
+		stdout:      rp.stdout,
 		templateDir: templateDir,
 	}
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
@@ -196,7 +207,7 @@ func (c *Command) realRun(ctx context.Context, rp *templatesource.RunParams) (ou
 	return nil
 }
 
-func (c *Command) commit(ctx context.Context, dryRun bool, rp *templatesource.RunParams, scratchDir string, includedFromDest map[string]struct{}) error {
+func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratchDir string, includedFromDest map[string]struct{}) error {
 	logger := logging.FromContext(ctx).With("logger", "commit")
 
 	visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
@@ -223,10 +234,10 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *templatesource.Ru
 		if backupDir != "" {
 			return backupDir, nil
 		}
-		if err := rfs.MkdirAll(rp.BackupDir, ownerRWXPerms); err != nil {
+		if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
 			return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 		}
-		backupDir, err = rfs.MkdirTemp(rp.BackupDir, "")
+		backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
 		logger.DebugContext(ctx, "created backup directory", "path", backupDir)
 		return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 	}
@@ -238,7 +249,7 @@ func (c *Command) commit(ctx context.Context, dryRun bool, rp *templatesource.Ru
 		Hasher:         sha256.New,
 		OutHashes:      map[string]string{},
 		SrcRoot:        scratchDir,
-		RFS:            rp.FS,
+		RFS:            rp.fs,
 		Visitor:        visitor,
 	}
 	if err := common.CopyRecursive(ctx, nil, params); err != nil {

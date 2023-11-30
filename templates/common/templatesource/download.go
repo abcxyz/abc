@@ -88,10 +88,10 @@ type Downloader interface {
 //
 // If error is returned, then the returned directory name may or may not exist,
 // and may or may not be empty.
-func DownloadTemplate(ctx context.Context, rp *RunParams, source, gitProtocol string) (Downloader, string, error) {
+func DownloadTemplate(ctx context.Context, fs common.FS, tempDirBase, source, gitProtocol string) (Downloader, string, error) {
 	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
 
-	templateDir, err := rp.FS.MkdirTemp(rp.TempDirBase, templateDirNamePart)
+	templateDir, err := fs.MkdirTemp(tempDirBase, templateDirNamePart)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
 	}
