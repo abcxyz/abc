@@ -19,7 +19,6 @@ package templatesource
 import (
 	"context"
 	"fmt"
-	"io"
 	"reflect"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -31,17 +30,6 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy-"
 )
-
-type RunParams struct {
-	BackupDir string
-	CWD       string
-	FS        common.FS
-	Stdout    io.Writer
-
-	// The directory under which temp directories will be created. The default
-	// if this is empty is to use the OS temp directory.
-	TempDirBase string
-}
 
 // A Downloader is returned by a sourceParser. It offers the ability to
 // download a template, and provides some metadata.
@@ -88,7 +76,7 @@ type Downloader interface {
 //
 // If error is returned, then the returned directory name may or may not exist,
 // and may or may not be empty.
-func DownloadTemplate(ctx context.Context, fs common.FS, tempDirBase, source, gitProtocol string) (Downloader, string, error) {
+func Download(ctx context.Context, fs common.FS, tempDirBase, source, gitProtocol string) (Downloader, string, error) {
 	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
 
 	templateDir, err := fs.MkdirTemp(tempDirBase, templateDirNamePart)

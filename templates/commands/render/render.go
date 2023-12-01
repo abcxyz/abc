@@ -152,7 +152,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		outErr = errors.Join(outErr, err)
 	}()
 
-	_, templateDir, err := templatesource.DownloadTemplate(ctx, rp.fs, rp.tempDirBase, c.flags.Source, c.flags.GitProtocol)
+	_, templateDir, err := templatesource.Download(ctx, rp.fs, rp.tempDirBase, c.flags.Source, c.flags.GitProtocol)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
