@@ -26,7 +26,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -36,8 +35,8 @@ import (
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 
-	"github.com/abcxyz/abc/templates/commands/render/templatesource"
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model/decode"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
@@ -153,12 +152,12 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		outErr = errors.Join(outErr, err)
 	}()
 
-	_, templateDir, err := c.downloadTemplate(ctx, rp)
+	_, templateDir, err := templatesource.Download(ctx, rp.fs, rp.tempDirBase, c.flags.Source, c.flags.GitProtocol)
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	spec, err := loadSpecFile(ctx, rp.fs, templateDir)
@@ -644,39 +643,6 @@ func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.
 	}
 
 	return spec, nil
-}
-
-// Downloads the template and returns:
-//   - the ParsedSource giving metadata about the template
-//   - the name of the temp directory where the template contents were saved.
-//
-// If error is returned, then the returned directory name may or may not exist,
-// and may or may not be empty.
-func (c *Command) downloadTemplate(ctx context.Context, rp *runParams) (templatesource.Downloader, string, error) {
-	logger := logging.FromContext(ctx).With("logger", "downloadTemplate")
-
-	templateDir, err := rp.fs.MkdirTemp(rp.tempDirBase, templateDirNamePart)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
-	}
-	logger.DebugContext(ctx, "created temporary template directory",
-		"path", templateDir)
-
-	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-		Source:      c.flags.Source,
-		GitProtocol: c.flags.GitProtocol,
-	})
-	if err != nil {
-		return nil, templateDir, err //nolint:wrapcheck
-	}
-	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
-
-	if err := downloader.Download(ctx, templateDir); err != nil {
-		return nil, templateDir, err //nolint:wrapcheck
-	}
-	logger.DebugContext(ctx, "copied source template temporary directory", "source", c.flags.Source, "destination", templateDir)
-
-	return downloader, templateDir, nil
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
