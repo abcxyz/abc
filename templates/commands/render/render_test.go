@@ -62,8 +62,8 @@ func TestRenderFlags_Parse(t *testing.T) {
 			},
 			want: RenderFlags{
 				Source:               "helloworld@v1",
-				GitProtocol:          "https",
 				Dest:                 "my_dir",
+				GitProtocol:          "https",
 				Inputs:               map[string]string{"x": "y"},
 				InputFiles:           []string{"abc-inputs.yaml"},
 				ForceOverwrite:       true,
