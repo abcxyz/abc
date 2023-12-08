@@ -20,17 +20,13 @@ import (
 
 	"github.com/posener/complete/v2/predict"
 
+	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/pkg/cli"
 )
 
 // RenderFlags describes what template to render and how.
 type RenderFlags struct {
-	// Positional arguments:
-
-	// Source is the location of the input template to be rendered.
-	//
-	// Example: github.com/abcxyz/abc/t/rest_server@latest
-	Source string
+	flags.CommonFlags
 
 	// Flag arguments (--foo):
 
@@ -39,7 +35,7 @@ type RenderFlags struct {
 	Dest string
 
 	// GitProtocol is either https or ssh.
-	GitProtocol string
+	// GitProtocol string
 
 	// ForceOverwrite lets existing output files in the Dest directory be overwritten
 	// with the output of the template.
@@ -153,15 +149,15 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Name:    "git-protocol",
 		Example: "https",
 		Default: "https",
-		Target:  &r.GitProtocol,
+		Target:  &r.CommonFlags.GitProtocol,
 		Predict: predict.Set([]string{"https", "ssh"}),
 		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
 	})
 
 	// Default source to the first CLI argument, if given
 	set.AfterParse(func(existingErr error) error {
-		r.Source = strings.TrimSpace(set.Arg(0))
-		if r.Source == "" {
+		r.CommonFlags.Source = strings.TrimSpace(set.Arg(0))
+		if r.CommonFlags.Source == "" {
 			return fmt.Errorf("missing <source> file")
 		}
 
