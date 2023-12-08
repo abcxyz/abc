@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/abcxyz/pkg/cli"
 	"github.com/posener/complete/v2/predict"
+
+	"github.com/abcxyz/pkg/cli"
 )
 
 // DescribeFlags describes what template to describe.

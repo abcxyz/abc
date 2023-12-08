@@ -25,10 +25,9 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/templatesource"
-	"github.com/abcxyz/pkg/cli"
-
 	"github.com/abcxyz/abc/templates/model/decode"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	"github.com/abcxyz/pkg/cli"
 )
 
 type Command struct {
