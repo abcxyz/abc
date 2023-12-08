@@ -38,7 +38,7 @@ type RenderFlags struct {
 	// It's OK for it to already exist or not.
 	Dest string
 
-	// GitProtocol is not yet used.
+	// GitProtocol is either https or ssh.
 	GitProtocol string
 
 	// ForceOverwrite lets existing output files in the Dest directory be overwritten

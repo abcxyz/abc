@@ -75,19 +75,18 @@ Usage: {{ COMMAND }} [options] <source>
 
 The {{ COMMAND }} command renders the given template.
 
-The "<source>" is the location of the template to be instantiated. Many forms
-are accepted:
+The "<source>" is the location of the template to be rendered. This may have a
+few forms:
 
-  - "helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1;
-    this is for a template owned by abcxyz.
-  - "myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision
-    v1; this is for a template not owned by abcxyz but still on GitHub.
-  - "mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git
-    repo but not owned by abcxyz and not on GitHub.
-  - "mylocaltarball.tgz" is for a template not in git but present on the local
-    filesystem.
-  - "http://example.com/myremotetarball.tgz" os for a non-Git template in a
-    remote tarball.`
+  - A remote GitHub or GitLab repo with either a version @tag or with the magic
+    version "@latest". Examples:
+    - github.com/abcxyz/abc/t/rest_server@latest
+    - github.com/abcxyz/abc/t/rest_server@v0.3.1
+  - A local directory, like /home/me/mydir
+  - (Deprecated) A go-getter-style location, with or without ?ref=foo. Examples:
+    - github.com/abcxyz/abc.git//t/react_template?ref=latest
+	- github.com/abcxyz/abc.git//t/react_template
+`
 }
 
 func (c *Command) Flags() *cli.FlagSet {
