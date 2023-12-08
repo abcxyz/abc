@@ -98,7 +98,9 @@ func Download(ctx context.Context, fs common.FS, tempDirBase, source, gitProtoco
 	if err := downloader.Download(ctx, templateDir); err != nil {
 		return nil, templateDir, err //nolint:wrapcheck
 	}
-	logger.DebugContext(ctx, "copied source template temporary directory", "source", source, "destination", templateDir)
+	logger.DebugContext(ctx, "copied source template temporary directory",
+		"source", source,
+		"destination", templateDir)
 
 	return downloader, templateDir, nil
 }

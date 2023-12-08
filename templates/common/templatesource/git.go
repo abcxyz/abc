@@ -141,7 +141,9 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 	if err != nil {
 		return err
 	}
-	logger.DebugContext(ctx, "resolved version from", "input", g.version, "to", version)
+	logger.DebugContext(ctx, "resolved version from",
+		"input", g.version,
+		"to", version)
 
 	// Rather than cloning directly into outDir, we clone into a temp dir. It would
 	// be incorrect to clone the whole repo into outDir if the caller only asked
@@ -168,7 +170,9 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 		return fmt.Errorf("the path %q is not a directory", subdir)
 	}
 
-	logger.DebugContext(ctx, "cloned repo", "remote", g.remote, "version", version)
+	logger.DebugContext(ctx, "cloned repo",
+		"remote", g.remote,
+		"version", version)
 
 	// Copy only the requested subdir to outDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
