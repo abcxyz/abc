@@ -78,10 +78,9 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"helloworld@v1",
 			},
 			want: RenderFlags{
-				Source:      "helloworld@v1",
-				GitProtocol: "https",
-				Dest:        ".",
-				// GitProtocol:    "https",
+				Source:         "helloworld@v1",
+				Dest:           ".",
+				GitProtocol:    "https",
 				Inputs:         map[string]string{},
 				ForceOverwrite: false,
 				KeepTempDirs:   false,

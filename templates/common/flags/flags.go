@@ -16,8 +16,9 @@
 package flags
 
 import (
-	"github.com/abcxyz/pkg/cli"
 	"github.com/posener/complete/v2/predict"
+
+	"github.com/abcxyz/pkg/cli"
 )
 
 func GitProtocol(target *string) *cli.StringVar {
