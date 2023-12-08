@@ -51,7 +51,8 @@ func (l *localSourceParser) sourceParse(ctx context.Context, cwd string, params 
 
 	if _, err := os.Stat(absSource); err != nil {
 		if common.IsStatNotExistErr(err) {
-			logger.DebugContext(ctx, "will not treat template location as a local path because the path does not exist", "src", absSource)
+			logger.DebugContext(ctx, "will not treat template location as a local path because the path does not exist",
+				"src", absSource)
 			return nil, false, nil
 		}
 		return nil, false, fmt.Errorf("Stat(): %w", err)

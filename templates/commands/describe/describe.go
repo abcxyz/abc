@@ -34,8 +34,7 @@ type Command struct {
 	cli.BaseCommand
 	flags DescribeFlags
 
-	testFS   common.FS
-	testSpce *spec.Spec
+	testFS common.FS
 }
 
 const (
@@ -43,7 +42,7 @@ const (
 	specName = "spec.yaml"
 )
 
-// Desc implements cli.Command
+// Desc implements cli.Command.
 func (c *Command) Desc() string {
 	return "describe a template base on it's spec.yaml"
 }
@@ -130,7 +129,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		return fmt.Errorf("internal error: spec file did not decode to spec.Spec")
 	}
 	tw := tabwriter.NewWriter(rp.stdout, 8, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "\nTemplate:\t%s", c.flags.Source)
+	fmt.Fprintf(tw, "\nTemplate:\t%s", filepath.Base(c.flags.Source))
 	fmt.Fprintf(tw, "\nDescription:\t%s", spec.Desc.Val)
 	fmt.Fprintf(tw, "\n")
 	for _, i := range spec.Inputs {
@@ -152,7 +151,6 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		}
 		fmt.Fprintf(tw, "\n")
 		tw.Flush()
-
 	}
 	return nil
 }

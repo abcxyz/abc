@@ -33,7 +33,7 @@ import (
 var (
 	// Split the output into blocks using empty new line.
 	regexStdoutBlockSpliter = regexp.MustCompile(`(\n){2,}`)
-	// Split the output table using ':' or '\n'
+	// Split the output table using ':' or '\n'.
 	regexKeyValuePairSplitter = regexp.MustCompile(`:|\n`)
 )
 
@@ -97,7 +97,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 	}
 }
 
-func TestReadRun(t *testing.T) {
+func TestRealRun(t *testing.T) {
 	t.Parallel()
 	specContents := `
 api_version: 'cli.abcxyz.dev/v1alpha1'
@@ -191,7 +191,6 @@ steps:
 			if diff := cmp.Diff(tc.wantOutputMap, testParseStdoutStringToSpce(t, stdoutBuf.String())); diff != "" {
 				t.Errorf(diff)
 			}
-
 		})
 	}
 }
@@ -223,12 +222,13 @@ steps:
 //			"Rule 1":      "rule bar",
 //		},
 //	}
-func testParseStdoutStringToSpce(t testing.TB, s string) map[string]any {
-	t.Helper()
+func testParseStdoutStringToSpce(tb testing.TB, s string) map[string]any {
+	tb.Helper()
 	// the stdout uses tw to print as a table,
 	// using trimSpace helps trim space at the beginning and the end
 	// to make the parsing more robust.
 	s = strings.TrimSpace(s)
+	fmt.Println(s)
 	blocks := regexStdoutBlockSpliter.Split(s, -1)
 	res := make(map[string]any)
 
@@ -241,6 +241,9 @@ func testParseStdoutStringToSpce(t testing.TB, s string) map[string]any {
 		// This section parses the template's information.
 		if strings.TrimSpace(kv[0]) == "Template" {
 			for i := 2; i < len(kv); i += 2 {
+				if i+1 >= len(kv) {
+					continue
+				}
 				res[strings.TrimSpace(kv[i])] = strings.TrimSpace(kv[i+1])
 			}
 			continue
@@ -250,11 +253,16 @@ func testParseStdoutStringToSpce(t testing.TB, s string) map[string]any {
 		if strings.TrimSpace(kv[0]) == "Input name" {
 			eachInput := make(map[string]string)
 			for i := 0; i < len(kv); i += 2 {
+				if i+1 >= len(kv) {
+					continue
+				}
 				eachInput[strings.TrimSpace(kv[i])] = strings.TrimSpace(kv[i+1])
 			}
 			res[fmt.Sprintf("input %v", count)] = eachInput
 			count += 1
 		}
 	}
+	fmt.Println(res)
+	fmt.Println("===========")
 	return res
 }
