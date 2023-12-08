@@ -15,14 +15,18 @@
 // Package flags contains flags that are commonly used by several commands.
 package flags
 
-type CommonFlags struct {
-	// Positional arguments:
+import (
+	"github.com/abcxyz/pkg/cli"
+	"github.com/posener/complete/v2/predict"
+)
 
-	// Source is the location of the input template to be rendered.
-	//
-	// Example: github.com/abcxyz/abc/t/rest_server@latest
-	Source string
-
-	// GitProtocol is either https or ssh.
-	GitProtocol string
+func GitProtocol(target *string) *cli.StringVar {
+	return &cli.StringVar{
+		Name:    "git-protocol",
+		Example: "https",
+		Default: "https",
+		Predict: predict.Set([]string{"https", "ssh"}),
+		Target:  target,
+		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
+	}
 }

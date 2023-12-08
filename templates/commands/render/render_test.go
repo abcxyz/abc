@@ -31,7 +31,6 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
@@ -62,10 +61,8 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"helloworld@v1",
 			},
 			want: RenderFlags{
-				CommonFlags: flags.CommonFlags{
-					Source:      "helloworld@v1",
-					GitProtocol: "https",
-				},
+				Source:               "helloworld@v1",
+				GitProtocol:          "https",
 				Dest:                 "my_dir",
 				Inputs:               map[string]string{"x": "y"},
 				InputFiles:           []string{"abc-inputs.yaml"},
@@ -81,11 +78,9 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"helloworld@v1",
 			},
 			want: RenderFlags{
-				CommonFlags: flags.CommonFlags{
-					Source:      "helloworld@v1",
-					GitProtocol: "https",
-				},
-				Dest: ".",
+				Source:      "helloworld@v1",
+				GitProtocol: "https",
+				Dest:        ".",
 				// GitProtocol:    "https",
 				Inputs:         map[string]string{},
 				ForceOverwrite: false,
@@ -744,9 +739,7 @@ steps:
 					InputFiles:          inputFilePaths,
 					KeepTempDirs:        tc.flagKeepTempDirs,
 					SkipInputValidation: tc.flagSkipInputValidation,
-					CommonFlags: flags.CommonFlags{
-						Source: sourceDir,
-					},
+					Source:              sourceDir,
 				},
 			}
 

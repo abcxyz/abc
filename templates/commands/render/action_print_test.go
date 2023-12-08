@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/logging"
@@ -63,10 +62,8 @@ func TestActionPrint(t *testing.T) {
 			name: "flags_in_message",
 			in:   "{{._flag_dest}} {{._flag_source}}",
 			flags: RenderFlags{
-				CommonFlags: flags.CommonFlags{
-					Source:      "mysource",
-					GitProtocol: "mygitprotocol",
-				},
+				Source:         "mysource",
+				GitProtocol:    "mygitprotocol",
 				Dest:           "mydest",
 				ForceOverwrite: true,
 				KeepTempDirs:   true,

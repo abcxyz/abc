@@ -26,8 +26,9 @@ import (
 
 // RenderFlags describes what template to render and how.
 type RenderFlags struct {
-	flags.CommonFlags
+	Source string
 
+	GitProtocol string
 	// Flag arguments (--foo):
 
 	// Dest is the local directory where the template output will be written.
@@ -145,19 +146,13 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	g := set.NewSection("GIT OPTIONS")
-	g.StringVar(&cli.StringVar{
-		Name:    "git-protocol",
-		Example: "https",
-		Default: "https",
-		Target:  &r.CommonFlags.GitProtocol,
-		Predict: predict.Set([]string{"https", "ssh"}),
-		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
-	})
+
+	g.StringVar(flags.GitProtocol(&r.GitProtocol))
 
 	// Default source to the first CLI argument, if given
 	set.AfterParse(func(existingErr error) error {
-		r.CommonFlags.Source = strings.TrimSpace(set.Arg(0))
-		if r.CommonFlags.Source == "" {
+		r.Source = strings.TrimSpace(set.Arg(0))
+		if r.Source == "" {
 			return fmt.Errorf("missing <source> file")
 		}
 
