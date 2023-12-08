@@ -26,9 +26,11 @@ import (
 
 // RenderFlags describes what template to render and how.
 type RenderFlags struct {
+	// Source is the location of the input template to be rendered.
+	//
+	// Example: github.com/abcxyz/abc/t/rest_server@latest
 	Source string
 
-	GitProtocol string
 	// Flag arguments (--foo):
 
 	// Dest is the local directory where the template output will be written.
@@ -36,7 +38,7 @@ type RenderFlags struct {
 	Dest string
 
 	// GitProtocol is either https or ssh.
-	// GitProtocol string
+	GitProtocol string
 
 	// ForceOverwrite lets existing output files in the Dest directory be overwritten
 	// with the output of the template.
