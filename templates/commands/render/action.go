@@ -150,7 +150,9 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]
 		if len(globPaths) == 0 {
 			return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
 		}
-		logger.DebugContext(ctx, "glob path expanded:", "glob", p.Val, "matches", globPaths)
+		logger.DebugContext(ctx, "glob path expanded:",
+			"glob", p.Val,
+			"matches", globPaths)
 		for _, globPath := range globPaths {
 			if _, ok := seenPaths[globPath]; !ok {
 				out = append(out, model.String{

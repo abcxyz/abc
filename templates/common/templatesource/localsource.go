@@ -73,7 +73,9 @@ type localDownloader struct {
 func (l *localDownloader) Download(ctx context.Context, outDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "localTemplateSource.Download")
 
-	logger.DebugContext(ctx, "copying local template source", "srcPath", l.srcPath, "outDir", outDir)
+	logger.DebugContext(ctx, "copying local template source",
+		"srcPath", l.srcPath,
+		"outDir", outDir)
 	return common.CopyRecursive(ctx, nil, &common.CopyParams{ //nolint:wrapcheck
 		SrcRoot: l.srcPath,
 		DstRoot: outDir,
@@ -101,12 +103,17 @@ func (l *localDownloader) CanonicalSource(ctx context.Context, cwd, dest string)
 	}
 	if !templateIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
 		logger.DebugContext(ctx, "local template source is not canonical, template dir and dest dir do not share a git workspace",
-			"source", l.srcPath, "dest", absDest, "source_git_workspace", sourceGitWorkspace, "dest_git_workspace", destGitWorkspace)
+			"source", l.srcPath,
+			"dest", absDest,
+			"source_git_workspace", sourceGitWorkspace,
+			"dest_git_workspace", destGitWorkspace)
 		return "", false, nil
 	}
 
 	logger.DebugContext(ctx, "local template source is canonical because template dir and dest dir are both in the same git workspace",
-		"source", l.srcPath, "dest", absDest, "git_workspace", destGitWorkspace)
+		"source", l.srcPath,
+		"dest", absDest,
+		"git_workspace", destGitWorkspace)
 	out, err := filepath.Rel(absDest, l.srcPath)
 	if err != nil {
 		return "", false, fmt.Errorf("filepath.Rel(%q,%q): %w", dest, l.srcPath, err)

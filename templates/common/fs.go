@@ -272,7 +272,9 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 	if _, err := io.Copy(writer, reader); err != nil {
 		return fmt.Errorf("Copy(): %w", err)
 	}
-	logger.DebugContext(ctx, "copied file", "source", src, "destination", dst)
+	logger.DebugContext(ctx, "copied file",
+		"source", src,
+		"destination", dst)
 	return nil
 }
 
@@ -296,7 +298,9 @@ func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) err
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.DebugContext(ctx, "completed backup", "source", fileToBackup, "destination", backupFile)
+	logger.DebugContext(ctx, "completed backup",
+		"source", fileToBackup,
+		"destination", backupFile)
 
 	return nil
 }

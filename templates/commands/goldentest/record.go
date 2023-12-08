@@ -99,7 +99,9 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 
 		visitor := func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
 			if !de.IsDir() {
-				logger.InfoContext(ctx, "recording", "testname", tc.TestName, "testdata", relToAbsSrc)
+				logger.InfoContext(ctx, "recording",
+					"testname", tc.TestName,
+					"testdata", relToAbsSrc)
 			}
 			return common.CopyHint{
 				Overwrite: true,
