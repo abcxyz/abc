@@ -17,6 +17,7 @@ package goldentest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -139,6 +140,23 @@ func clearTestDir(dir string) error {
 		}
 	}
 	return nil
+}
+
+// renderTestCases render all test cases in a temporary directory.
+func renderTestCases(testCases []*TestCase, location string) (string, error) {
+	tempDir, err := os.MkdirTemp("", "abc-test-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+
+	var merr error
+	for _, tc := range testCases {
+		merr = errors.Join(merr, renderTestCase(location, tempDir, tc))
+	}
+	if merr != nil {
+		return "", fmt.Errorf("failed to render golden tests: %w", merr)
+	}
+	return tempDir, nil
 }
 
 // renderTestCase executes the "template render" command based upon test config.
