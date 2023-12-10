@@ -24,11 +24,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/abcxyz/pkg/logging"
+	"github.com/fatih/color"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -70,7 +69,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 
 	testCases, err := parseTestCases(ctx, c.flags.Location, c.flags.TestName)
 	if err != nil {
-		return fmt.Errorf("failed to parse golden test: %w", err)
+		return fmt.Errorf("failed to parse golden tests: %w", err)
 	}
 
 	// Create a temporary directory to render golden tests
@@ -81,7 +80,10 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	var merr error
-	logger := logging.FromContext(ctx)
+	// Highlight error message color, given diff text might be hundreds lines long.
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+	resultReport := "\nTest Report:\n"
 
 	for _, tc := range testCases {
 		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
@@ -93,40 +95,67 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 
 		dmp := diffmatchpatch.New()
 
+		var tcErr error
 		for relPath := range fileSet {
 			goldenFile := filepath.Join(goldenDataDir, relPath)
 			tempFile := filepath.Join(tempDataDir, relPath)
 
 			goldenContent, err := os.ReadFile(goldenFile)
 			if err != nil {
-				fmt.Printf("failed to read (%s):", goldenFile, err)
-				continue
+				if errors.Is(err, os.ErrNotExist) {
+					failureText := red(fmt.Sprintf("-- [%s] generated, however not recoreded in test data", goldenFile))
+					err := fmt.Errorf(failureText)
+					tcErr = errors.Join(tcErr, err)
+					continue
+				} else {
+					return fmt.Errorf("failed to read (%s): %w", goldenFile, err)
+				}
 			}
 
 			tempContent, err := os.ReadFile(tempFile)
 			if err != nil {
-				fmt.Printf("failed to read (%s):", tempFile, err)
-				continue
+				if errors.Is(err, os.ErrNotExist) {
+					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", goldenFile))
+					err := fmt.Errorf(failureText)
+					tcErr = errors.Join(tcErr, err)
+					continue
+				} else {
+					return fmt.Errorf("failed to read (%s): %w", tempFile, err)
+				}
 			}
 
-			diff := dmp.DiffMain(string(goldenContent), string(tempContent), false)
-			diffString := dmp.DiffPrettyText(diff)
+			diffs := dmp.DiffMain(string(tempContent), string(goldenContent), false)
 
-			if strings.TrimSpace(diffString) != "" {
-				merr = errors.Join(merr, fmt.Errorf("golden test failed in %s:\n%s\n", relPath, diffString))
-			} else {
-				logger.InfoContext(ctx, "verified golden test", "testname", tc.TestName)
+			if hasDiff(diffs) {
+				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
+				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
+				tcErr = errors.Join(tcErr, err)
 			}
 		}
-	}
-	if merr != nil {
-		return fmt.Errorf("failed to verify golden test: %w", merr)
+
+		if tcErr != nil {
+			result := red(fmt.Sprintf("[x] golden test %s fails", tc.TestName))
+			tcErr := fmt.Errorf("%s:\n %w", result, tcErr)
+			merr = errors.Join(merr, tcErr)
+			resultReport += result
+		} else {
+			resultReport += green(fmt.Sprintf("[✓] golden test %s succeeds", tc.TestName))
+		}
+
+		resultReport += "\n"
 	}
 
-	logger.InfoContext(ctx, "golden tests verification succeed")
+	// Print test result report.
+	fmt.Println(resultReport)
+
+	if merr != nil {
+		return fmt.Errorf("golden test verification failure:\n %w", merr)
+	}
+
 	return nil
 }
 
+// addTestFile collects file paths generated in a golden test
 func addTestFile(fileSet *map[string]struct{}, testDataDir string) error {
 	fs.WalkDir(&common.RealFS{}, testDataDir, func(path string, de fs.DirEntry, err error) error {
 		if err != nil {
@@ -144,4 +173,14 @@ func addTestFile(fileSet *map[string]struct{}, testDataDir string) error {
 		return nil
 	})
 	return nil
+}
+
+// hasDiff returns whether file content mismatch exits
+func hasDiff(diffs []diffmatchpatch.Diff) bool {
+	for _, diff := range diffs {
+		if diff.Type != diffmatchpatch.DiffEqual {
+			return true
+		}
+	}
+	return false
 }
