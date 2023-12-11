@@ -26,6 +26,12 @@ import (
 const (
 	// The spec file is always located in the template root dir and named spec.yaml.
 	SpacFileName = "spec.yaml"
+
+	// These are the keys for output
+	OutputDescriptionKey       = "Description"
+	OutputInputNameKey         = "Input name"
+	OutputInputDefaultValueKey = "Default"
+	OutputInputRuleKey         = "Rule"
 )
 
 // ParseSpecToList parses a spec.Spec into a list with
@@ -35,7 +41,7 @@ const (
 // ["Description", "example description", "Input Name", "example name"].
 func ParseSpecToList(spec *spec.Spec) []string {
 	l := make([]string, 0)
-	l = append(l, "Description", spec.Desc.Val)
+	l = append(l, OutputDescriptionKey, spec.Desc.Val)
 	for _, v := range spec.Inputs {
 		l = append(l, parseSpecInputVar(v)...)
 	}
@@ -47,7 +53,7 @@ func ParseSpecToList(spec *spec.Spec) []string {
 // list with key and attribute pairs.
 func parseSpecInputVar(input *spec.Input) []string {
 	l := make([]string, 0)
-	l = append(l, "Input name", input.Name.Val, "Description", input.Desc.Val)
+	l = append(l, OutputInputNameKey, input.Name.Val, OutputDescriptionKey, input.Desc.Val)
 	if input.Default != nil {
 		defaultStr := input.Default.Val
 		if defaultStr == "" {
@@ -55,13 +61,13 @@ func parseSpecInputVar(input *spec.Input) []string {
 			// the user can actually see what's happening.
 			defaultStr = `""`
 		}
-		l = append(l, "Default", defaultStr)
+		l = append(l, OutputInputDefaultValueKey, defaultStr)
 	}
 
 	for idx, rule := range input.Rules {
-		l = append(l, fmt.Sprintf("Rule %v", idx), rule.Rule.Val)
+		l = append(l, fmt.Sprintf("%s %v", OutputInputRuleKey, idx), rule.Rule.Val)
 		if rule.Message.Val != "" {
-			l = append(l, fmt.Sprintf("Rule %v msg", idx), rule.Message.Val)
+			l = append(l, fmt.Sprintf("%s %v msg", OutputInputRuleKey, idx), rule.Message.Val)
 		}
 	}
 	return l
@@ -86,7 +92,7 @@ func FormatAttrList(w io.Writer, attrList []string) {
 	tw := tabwriter.NewWriter(w, 8, 0, 2, ' ', 0)
 	for i := 0; i < len(attrList); i += 2 {
 		// print an empty line between inputs
-		if attrList[i] == "Input name" {
+		if attrList[i] == OutputInputNameKey {
 			fmt.Fprintf(tw, "\n")
 		}
 		fmt.Fprintf(tw, "%s:\t%s\n", attrList[i], attrList[i+1])
