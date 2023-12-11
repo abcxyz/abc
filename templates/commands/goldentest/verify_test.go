@@ -78,7 +78,7 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/test.yaml":  testYaml,
 				"testdata/golden/test/data/a.txt": "file A content",
 			},
-			wantErrs: []string{"b.txt] generated, however not recoreded in test data"},
+			wantErrs: []string{"b.txt] generated, however not recorded in test data"},
 		},
 		{
 			name: "missing_file",
@@ -157,7 +157,7 @@ kind: 'GoldenTest'`
 			},
 			wantErrs: []string{
 				"a.txt] file content mismatch",
-				"b.txt] generated, however not recoreded in test data",
+				"b.txt] generated, however not recorded in test data",
 			},
 		},
 		{

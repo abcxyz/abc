@@ -108,7 +108,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			goldenContent, err := os.ReadFile(goldenFile)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] generated, however not recoreded in test data", goldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", goldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					continue
