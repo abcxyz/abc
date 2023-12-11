@@ -150,7 +150,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 				return fmt.Errorf("failed to read (%s): %w", tempFile, err)
 			}
 
-			// Set checklines to false: avoid a a line-level diff which is faster
+			// Set checklines to false: avoid a line-level diff which is faster
 			// however less optimal.
 			diffs := dmp.DiffMain(string(tempContent), string(goldenContent), false)
 
