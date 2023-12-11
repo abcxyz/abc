@@ -34,8 +34,7 @@ type Command struct {
 	cli.BaseCommand
 	flags DescribeFlags
 
-	testFS   common.FS
-	attrList [][]string
+	testFS common.FS
 }
 
 // Desc implements cli.Command.
