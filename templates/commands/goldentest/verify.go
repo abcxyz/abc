@@ -24,8 +24,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -81,9 +83,23 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	var merr error
+
 	// Highlight error message color, given diff text might be hundreds lines long.
-	red := color.New(color.FgRed).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
+	// Only color the text when the result is to displayed at a terminal
+	var red, green func(a ...interface{}) string
+	useColor := c.Stdout() == os.Stdout && isatty.IsTerminal(os.Stdout.Fd())
+	if useColor {
+		red = color.New(color.FgRed).SprintFunc()
+		green = color.New(color.FgGreen).SprintFunc()
+	} else {
+		red = func(a ...interface{}) string {
+			return fmt.Sprint(a...)
+		}
+		green = func(a ...interface{}) string {
+			return fmt.Sprint(a...)
+		}
+	}
+
 	resultReport := "\nTest Report:\n"
 
 	for _, tc := range testCases {
@@ -91,17 +107,24 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
 
 		fileSet := make(map[string]struct{})
-		if err := addTestFile(&fileSet, goldenDataDir); err != nil {
+		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
 			return err
 		}
-		if err := addTestFile(&fileSet, tempDataDir); err != nil {
+		if err := addTestFiles(fileSet, tempDataDir); err != nil {
 			return err
 		}
+
+		// Sort the relPaths in alphebetical order.
+		relPaths := make([]string, 0, len(fileSet))
+		for k := range fileSet {
+			relPaths = append(relPaths, k)
+		}
+		sort.Strings(relPaths)
 
 		dmp := diffmatchpatch.New()
 
 		var tcErr error
-		for relPath := range fileSet {
+		for _, relPath := range relPaths {
 			goldenFile := filepath.Join(goldenDataDir, relPath)
 			tempFile := filepath.Join(tempDataDir, relPath)
 
@@ -129,6 +152,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 				}
 			}
 
+			// Set checklines to false: avoid a a line-level diff which is faster
+			// however less optimal.
 			diffs := dmp.DiffMain(string(tempContent), string(goldenContent), false)
 
 			if hasDiff(diffs) {
@@ -160,8 +185,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-// addTestFile collects file paths generated in a golden test.
-func addTestFile(fileSet *map[string]struct{}, testDataDir string) error {
+// addTestFiles collects file paths generated in a golden test.
+func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 	err := fs.WalkDir(&common.RealFS{}, testDataDir, func(path string, de fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("fs.WalkDir(%s): %w", path, err)
@@ -174,7 +199,7 @@ func addTestFile(fileSet *map[string]struct{}, testDataDir string) error {
 		if err != nil {
 			return fmt.Errorf("filepath.Rel(%s,%s): %w", testDataDir, path, err)
 		}
-		(*fileSet)[relToSrc] = struct{}{}
+		fileSet[relToSrc] = struct{}{}
 		return nil
 	})
 	if err != nil {
