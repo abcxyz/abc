@@ -135,9 +135,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					continue
-				} else {
-					return fmt.Errorf("failed to read (%s): %w", goldenFile, err)
 				}
+				return fmt.Errorf("failed to read (%s): %w", goldenFile, err)
 			}
 
 			tempContent, err := os.ReadFile(tempFile)
@@ -147,9 +146,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					continue
-				} else {
-					return fmt.Errorf("failed to read (%s): %w", tempFile, err)
 				}
+				return fmt.Errorf("failed to read (%s): %w", tempFile, err)
 			}
 
 			// Set checklines to false: avoid a a line-level diff which is faster
