@@ -30,7 +30,7 @@ type DescribeFlags struct {
 	// Example: github.com/abcxyz/abc/t/rest_server@latest
 	Source string
 
-	// GitProtocol is not yet used.
+	// GitProtocol either https or ssh.
 	GitProtocol string
 }
 
