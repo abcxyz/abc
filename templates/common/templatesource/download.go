@@ -93,8 +93,7 @@ func Download(ctx context.Context, fs common.FS, tempDirBase, source, gitProtoco
 	if err != nil {
 		return nil, templateDir, err
 	}
-	logger.DebugContext(ctx, "template location parse successful as",
-		"type", reflect.TypeOf(downloader).String())
+	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
 
 	if err := downloader.Download(ctx, templateDir); err != nil {
 		return nil, templateDir, err //nolint:wrapcheck
