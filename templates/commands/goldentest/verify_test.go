@@ -45,7 +45,7 @@ kind: 'GoldenTest'`
 		name         string
 		testName     string
 		filesContent map[string]string
-		wantErr      string
+		wantErrs     []string
 	}{
 		{
 			name: "simple_test_verify_succeeds",
@@ -78,7 +78,7 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/test.yaml":  testYaml,
 				"testdata/golden/test/data/a.txt": "file A content",
 			},
-			wantErr: "b.txt] generated, however not recoreded in test data",
+			wantErrs: []string{"b.txt] generated, however not recoreded in test data"},
 		},
 		{
 			name: "missing_file",
@@ -89,7 +89,7 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/a.txt": "file A content",
 				"testdata/golden/test/data/b.txt": "file B content",
 			},
-			wantErr: "b.txt] expected, however missing",
+			wantErrs: []string{"b.txt] expected, however missing"},
 		},
 		{
 			name: "insert_file_content",
@@ -99,7 +99,7 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/test.yaml":  testYaml,
 				"testdata/golden/test/data/a.txt": "file A content\n",
 			},
-			wantErr: "a.txt] file content mismatch",
+			wantErrs: []string{"a.txt] file content mismatch"},
 		},
 		{
 			name: "remove_file_content",
@@ -109,7 +109,7 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/test.yaml":  testYaml,
 				"testdata/golden/test/data/a.txt": "file A",
 			},
-			wantErr: "a.txt] file content mismatch",
+			wantErrs: []string{"a.txt] file content mismatch"},
 		},
 		{
 			name: "one_of_the_tests_fails",
@@ -121,7 +121,59 @@ kind: 'GoldenTest'`
 				"testdata/golden/test2/test.yaml":  testYaml,
 				"testdata/golden/test2/data/a.txt": "file A content\n",
 			},
-			wantErr: "golden test verification failure",
+			wantErrs: []string{"golden test verification failure"},
+		},
+		{
+			name:     "test_name_specified",
+			testName: "test1",
+			filesContent: map[string]string{
+				"spec.yaml":                        specYaml,
+				"a.txt":                            "file A content",
+				"testdata/golden/test1/test.yaml":  testYaml,
+				"testdata/golden/test1/data/a.txt": "file A content",
+				"testdata/golden/test2/test.yaml":  testYaml,
+				"testdata/golden/test2/data/a.txt": "file A content\n",
+			},
+		},
+		{
+			name:     "test_data_not_exists",
+			testName: "test1",
+			filesContent: map[string]string{
+				"spec.yaml":                        specYaml,
+				"a.txt":                            "file A content",
+				"testdata/golden/test2/test.yaml":  testYaml,
+				"testdata/golden/test2/data/a.txt": "file A content",
+			},
+			wantErrs: []string{"error opening test config"},
+		},
+		{
+			name: "multiple_mismatch_catched_in_one_test",
+			filesContent: map[string]string{
+				"spec.yaml":                       specYaml,
+				"a.txt":                           "file A content",
+				"b.txt":                           "file A content",
+				"testdata/golden/test/test.yaml":  testYaml,
+				"testdata/golden/test/data/a.txt": "file A content\n",
+			},
+			wantErrs: []string{
+				"a.txt] file content mismatch",
+				"b.txt] generated, however not recoreded in test data",
+			},
+		},
+		{
+			name: "multiple_mismatch_test_cases",
+			filesContent: map[string]string{
+				"spec.yaml":                        specYaml,
+				"a.txt":                            "file A content",
+				"testdata/golden/test1/test.yaml":  testYaml,
+				"testdata/golden/test1/data/a.txt": "file A content\n",
+				"testdata/golden/test2/test.yaml":  testYaml,
+				"testdata/golden/test2/data/b.txt": "file B content",
+			},
+			wantErrs: []string{
+				"golden test test1 fails",
+				"golden test test2 fails",
+			},
 		},
 	}
 
@@ -143,8 +195,10 @@ kind: 'GoldenTest'`
 
 			r := &VerifyCommand{}
 			if err := r.Run(ctx, args); err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
+				for _, wantErr := range tc.wantErrs {
+					if diff := testutil.DiffErrString(err, wantErr); diff != "" {
+						t.Fatal(diff)
+					}
 				}
 			}
 		})
