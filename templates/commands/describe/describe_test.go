@@ -23,6 +23,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/model"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -93,7 +95,7 @@ func TestRealRun(t *testing.T) {
 	specContents := `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
-desc: 'A template for the ages'
+desc: 'Test Description'
 inputs:
   - name: 'name1'
     desc: 'desc1'
@@ -116,7 +118,7 @@ steps:
 	cases := []struct {
 		name             string
 		templateContents map[string]string
-		wantAttrList     []string
+		wantAttrList     [][]string
 		wantErr          string
 	}{
 		{
@@ -124,16 +126,16 @@ steps:
 			templateContents: map[string]string{
 				"spec.yaml": specContents,
 			},
-			wantAttrList: []string{
-				"Description", "A template for the ages",
-				"Input name", "name1",
-				"Description", "desc1",
-				"Default", ".",
-				"Rule 0", "test rule 0",
-				"Rule 0 msg", "test rule 0 message",
-				"Rule 1", "test rule 1",
-				"Input name", "name2",
-				"Description", "desc2",
+			wantAttrList: [][]string{
+				{"Description", "Test Description"},
+				{"Input name", "name1"},
+				{"Description", "desc1"},
+				{"Default", "."},
+				{"Rule 0", "test rule 0"},
+				{"Rule 0 msg", "test rule 0 message"},
+				{"Rule 1", "test rule 1"},
+				{"Input name", "name2"},
+				{"Description", "desc2"},
 			},
 		},
 		{
@@ -142,6 +144,11 @@ steps:
 				"spec.yaml": "invalid yaml",
 			},
 			wantErr: "error reading template spec file",
+		},
+		{
+			name:             "spec file not exist",
+			templateContents: map[string]string{},
+			wantErr:          "isn't a valid template name or doesn't exist",
 		},
 	}
 
@@ -174,8 +181,65 @@ steps:
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
+		})
+	}
+}
 
-			if diff := cmp.Diff(tc.wantAttrList, r.attrList); diff != "" {
+func Test_SpecFieldsForDescribe(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name         string
+		spec         *spec.Spec
+		wantAttrList [][]string
+	}{
+		{
+			name: "success",
+			spec: &spec.Spec{
+				Desc: model.String{Val: "Test Description"},
+				Inputs: []*spec.Input{
+					{
+						Name:    model.String{Val: "name1"},
+						Desc:    model.String{Val: "desc1"},
+						Default: &model.String{Val: "."},
+						Rules: []*spec.InputRule{
+							{
+								Rule:    model.String{Val: "test rule 0"},
+								Message: model.String{Val: "test rule 0 message"},
+							},
+							{
+								Rule: model.String{Val: "test rule 1"},
+							},
+						},
+					},
+					{
+						Name: model.String{Val: "name2"},
+						Desc: model.String{Val: "desc2"},
+					},
+				},
+			},
+			wantAttrList: [][]string{
+				{"Description", "Test Description"},
+				{"Input name", "name1"},
+				{"Description", "desc1"},
+				{"Default", "."},
+				{"Rule 0", "test rule 0"},
+				{"Rule 0 msg", "test rule 0 message"},
+				{"Rule 1", "test rule 1"},
+				{"Input name", "name2"},
+				{"Description", "desc2"},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := &Command{}
+
+			if diff := cmp.Diff(r.specFieldsForDescribe(tc.spec), tc.wantAttrList); diff != "" {
 				t.Errorf(diff)
 			}
 		})

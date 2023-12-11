@@ -626,14 +626,14 @@ func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]s
 }
 
 func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.Spec, error) {
-	specPath := filepath.Join(templateDir, specutil.SpacFileName)
+	specPath := filepath.Join(templateDir, specutil.SpecFileName)
 	f, err := fs.Open(specPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
 	}
 	defer f.Close()
 
-	specI, err := decode.DecodeValidateUpgrade(ctx, f, specutil.SpacFileName, decode.KindTemplate)
+	specI, err := decode.DecodeValidateUpgrade(ctx, f, specutil.SpecFileName, decode.KindTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("error reading template spec file: %w", err)
 	}

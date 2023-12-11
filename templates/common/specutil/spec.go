@@ -25,9 +25,9 @@ import (
 
 const (
 	// The spec file is always located in the template root dir and named spec.yaml.
-	SpacFileName = "spec.yaml"
+	SpecFileName = "spec.yaml"
 
-	// These are the keys for output
+	// Keys for output formatting.
 	OutputDescriptionKey       = "Description"
 	OutputInputNameKey         = "Input name"
 	OutputInputDefaultValueKey = "Default"
@@ -39,21 +39,25 @@ const (
 //
 // Example:
 // ["Description", "example description", "Input Name", "example name"].
-func ParseSpecToList(spec *spec.Spec) []string {
-	l := make([]string, 0)
-	l = append(l, OutputDescriptionKey, spec.Desc.Val)
-	for _, v := range spec.Inputs {
-		l = append(l, parseSpecInputVar(v)...)
-	}
-
+func SpecDescriptionForDescribe(spec *spec.Spec) [][]string {
+	l := make([][]string, 0)
+	l = append(l, []string{OutputDescriptionKey, spec.Desc.Val})
 	return l
 }
 
-// parseSpecInputVar parses spec.Input  into a
-// list with key and attribute pairs.
-func parseSpecInputVar(input *spec.Input) []string {
-	l := make([]string, 0)
-	l = append(l, OutputInputNameKey, input.Name.Val, OutputDescriptionKey, input.Desc.Val)
+// AllSpecInputVarForDescribe parses all spec.Input values in the spec.
+func AllSpecInputVarForDescribe(spec *spec.Spec) [][]string {
+	l := make([][]string, 0)
+	for _, v := range spec.Inputs {
+		l = append(l, SingleSpecInputVarForDescribe(v)...)
+	}
+	return l
+}
+
+// parseSpecInputVar parses a specific spec.Input value.
+func SingleSpecInputVarForDescribe(input *spec.Input) [][]string {
+	l := make([][]string, 0)
+	l = append(l, []string{OutputInputNameKey, input.Name.Val}, []string{OutputDescriptionKey, input.Desc.Val})
 	if input.Default != nil {
 		defaultStr := input.Default.Val
 		if defaultStr == "" {
@@ -61,13 +65,13 @@ func parseSpecInputVar(input *spec.Input) []string {
 			// the user can actually see what's happening.
 			defaultStr = `""`
 		}
-		l = append(l, OutputInputDefaultValueKey, defaultStr)
+		l = append(l, []string{OutputInputDefaultValueKey, defaultStr})
 	}
 
 	for idx, rule := range input.Rules {
-		l = append(l, fmt.Sprintf("%s %v", OutputInputRuleKey, idx), rule.Rule.Val)
+		l = append(l, []string{fmt.Sprintf("%s %v", OutputInputRuleKey, idx), rule.Rule.Val})
 		if rule.Message.Val != "" {
-			l = append(l, fmt.Sprintf("%s %v msg", OutputInputRuleKey, idx), rule.Message.Val)
+			l = append(l, []string{fmt.Sprintf("%s %v msg", OutputInputRuleKey, idx), rule.Message.Val})
 		}
 	}
 	return l
@@ -77,25 +81,24 @@ func parseSpecInputVar(input *spec.Input) []string {
 //
 // Example output:
 //
-// Description:  A template for the ages
-
+// Description: Test Template
+//
 // Input name:   name1
 // Description:  desc1
 // Default:      .
 // Rule 0:       test rule 0
 // Rule 0 msg:   test rule 0 message
 // Rule 1:       test rule 1
-
+//
 // Input name:   name2
 // Description:  desc2.
-func FormatAttrList(w io.Writer, attrList []string) {
+func FormatAttrList(w io.Writer, attrList [][]string) {
 	tw := tabwriter.NewWriter(w, 8, 0, 2, ' ', 0)
-	for i := 0; i < len(attrList); i += 2 {
-		// print an empty line between inputs
-		if attrList[i] == OutputInputNameKey {
+	for _, v := range attrList {
+		if v[0] == OutputInputNameKey {
 			fmt.Fprintf(tw, "\n")
 		}
-		fmt.Fprintf(tw, "%s:\t%s\n", attrList[i], attrList[i+1])
+		fmt.Fprintf(tw, "%s:\t%s\n", v[0], v[1])
 	}
 	tw.Flush()
 }

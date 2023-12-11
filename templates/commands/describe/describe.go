@@ -35,7 +35,7 @@ type Command struct {
 	flags DescribeFlags
 
 	testFS   common.FS
-	attrList []string
+	attrList [][]string
 }
 
 // Desc implements cli.Command.
@@ -107,14 +107,14 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	specPath := filepath.Join(templateDir, specutil.SpacFileName)
+	specPath := filepath.Join(templateDir, specutil.SpecFileName)
 	f, err := rp.fs.Open(specPath)
 	if err != nil {
 		return fmt.Errorf("error opening template spec: ReadFile(): %w", err)
 	}
 	defer f.Close()
 
-	specI, err := decode.DecodeValidateUpgrade(ctx, f, specutil.SpacFileName, decode.KindTemplate)
+	specI, err := decode.DecodeValidateUpgrade(ctx, f, specutil.SpecFileName, decode.KindTemplate)
 	if err != nil {
 		return fmt.Errorf("error reading template spec file: %w", err)
 	}
@@ -124,8 +124,14 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		return fmt.Errorf("internal error: spec file did not decode to spec.Spec")
 	}
 
-	c.attrList = specutil.ParseSpecToList(spec)
-
-	specutil.FormatAttrList(c.Stdout(), c.attrList)
+	specutil.FormatAttrList(c.Stdout(), c.specFieldsForDescribe(spec))
 	return nil
+}
+
+// specFieldsForDescribe get Description and Inputs fields for spec.
+func (c *Command) specFieldsForDescribe(spec *spec.Spec) [][]string {
+	l := make([][]string, 0)
+	l = append(l, specutil.SpecDescriptionForDescribe(spec)...)
+	l = append(l, specutil.AllSpecInputVarForDescribe(spec)...)
+	return l
 }
