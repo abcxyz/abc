@@ -36,6 +36,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model/decode"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
@@ -52,9 +53,6 @@ const (
 
 	// Permission bits: rwx------ .
 	ownerRWXPerms = 0o700
-
-	// The spec file is always located in the template root dir and named spec.yaml.
-	specName = "spec.yaml"
 )
 
 type Command struct {
@@ -628,14 +626,14 @@ func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]s
 }
 
 func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.Spec, error) {
-	specPath := filepath.Join(templateDir, specName)
+	specPath := filepath.Join(templateDir, specutil.SpacFileName)
 	f, err := fs.Open(specPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
 	}
 	defer f.Close()
 
-	specI, err := decode.DecodeValidateUpgrade(ctx, f, specName, decode.KindTemplate)
+	specI, err := decode.DecodeValidateUpgrade(ctx, f, specutil.SpacFileName, decode.KindTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("error reading template spec file: %w", err)
 	}

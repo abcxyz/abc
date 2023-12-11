@@ -16,9 +16,7 @@ package describe
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -30,14 +28,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-var (
-	// Split the output into blocks using empty new line.
-	regexStdoutBlockSpliter = regexp.MustCompile(`(\n){2,}`)
-	// Split the output table using ':' or '\n'.
-	regexKeyValuePairSplitter = regexp.MustCompile(`:|\n`)
-)
-
-func TestRenderFlags_Parse(t *testing.T) {
+func TestDescribeFlags_Parse(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -125,7 +116,7 @@ steps:
 	cases := []struct {
 		name             string
 		templateContents map[string]string
-		wantOutputMap    map[string]any
+		wantAttrList     []string
 		wantErr          string
 	}{
 		{
@@ -133,20 +124,16 @@ steps:
 			templateContents: map[string]string{
 				"spec.yaml": specContents,
 			},
-			wantOutputMap: map[string]any{
-				"Description": "A template for the ages",
-				"input 0": map[string]string{
-					"Input name":  "name1",
-					"Description": "desc1",
-					"Default":     ".",
-					"Rule 0":      "test rule 0",
-					"Rule 0 msg":  "test rule 0 message",
-					"Rule 1":      "test rule 1",
-				},
-				"input 1": map[string]string{
-					"Input name":  "name2",
-					"Description": "desc2",
-				},
+			wantAttrList: []string{
+				"Description", "A template for the ages",
+				"Input name", "name1",
+				"Description", "desc1",
+				"Default", ".",
+				"Rule 0", "test rule 0",
+				"Rule 0 msg", "test rule 0 message",
+				"Rule 1", "test rule 1",
+				"Input name", "name2",
+				"Description", "desc2",
 			},
 		},
 		{
@@ -154,8 +141,7 @@ steps:
 			templateContents: map[string]string{
 				"spec.yaml": "invalid yaml",
 			},
-			wantErr:       "error reading template spec file",
-			wantOutputMap: map[string]any{},
+			wantErr: "error reading template spec file",
 		},
 	}
 
@@ -188,81 +174,10 @@ steps:
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
-			if diff := cmp.Diff(tc.wantOutputMap, testParseStdoutStringToSpce(t, stdoutBuf.String())); diff != "" {
+
+			if diff := cmp.Diff(tc.wantAttrList, r.attrList); diff != "" {
 				t.Errorf(diff)
 			}
 		})
 	}
-}
-
-// testParseStdoutStringToSpce parses the stdout from describe command into a map.
-//
-// For example, if the describe command outputs the following:
-
-// Template:     /foo/bar/spec.yaml
-// Description:  A template for the ages
-//
-// Input name:   wif_service_account
-// Description:  The Google Cloud service account for Service foo
-// Default:      .
-// Rule 0:       rule foo
-// Rule 0 msg:   rule foo message
-// Rule 1:       rule bar
-//
-// The parsing output has the following format:
-//
-//	map[string]any{
-//		"Description": "A template for the ages",
-//		"input 0": map[string]string{
-//			"Input name":  "wif_service_account",
-//			"Description": "The Google Cloud service account for Service foo",
-//			"Default":     ".",
-//			"Rule 0":      "rule foo",
-//			"Rule 0 msg":  "rule foo message",
-//			"Rule 1":      "rule bar",
-//		},
-//	}
-func testParseStdoutStringToSpce(tb testing.TB, s string) map[string]any {
-	tb.Helper()
-	// the stdout uses tw to print as a table,
-	// using trimSpace helps trim space at the beginning and the end
-	// to make the parsing more robust.
-	s = strings.TrimSpace(s)
-	fmt.Println(s)
-	blocks := regexStdoutBlockSpliter.Split(s, -1)
-	res := make(map[string]any)
-
-	count := 0
-
-	for _, b := range blocks {
-		// split the string using : and \n.
-		kv := regexKeyValuePairSplitter.Split(b, -1)
-
-		// This section parses the template's information.
-		if strings.TrimSpace(kv[0]) == "Template" {
-			for i := 2; i < len(kv); i += 2 {
-				if i+1 >= len(kv) {
-					continue
-				}
-				res[strings.TrimSpace(kv[i])] = strings.TrimSpace(kv[i+1])
-			}
-			continue
-		}
-
-		// This section parses template's inputs' information
-		if strings.TrimSpace(kv[0]) == "Input name" {
-			eachInput := make(map[string]string)
-			for i := 0; i < len(kv); i += 2 {
-				if i+1 >= len(kv) {
-					continue
-				}
-				eachInput[strings.TrimSpace(kv[i])] = strings.TrimSpace(kv[i+1])
-			}
-			res[fmt.Sprintf("input %v", count)] = eachInput
-			count += 1
-		}
-	}
-	fmt.Println(res)
-	fmt.Println("===========")
-	return res
 }
