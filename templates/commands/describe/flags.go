@@ -18,8 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/posener/complete/v2/predict"
-
+	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -36,14 +35,7 @@ type DescribeFlags struct {
 
 func (r *DescribeFlags) Register(set *cli.FlagSet) {
 	g := set.NewSection("GIT OPTIONS")
-	g.StringVar(&cli.StringVar{
-		Name:    "git-protocol",
-		Example: "https",
-		Default: "https",
-		Target:  &r.GitProtocol,
-		Predict: predict.Set([]string{"https", "ssh"}),
-		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
-	})
+	g.StringVar(flags.GitProtocol(&r.GitProtocol))
 
 	// Default source to the first CLI argument, if given
 	set.AfterParse(func(existingErr error) error {
