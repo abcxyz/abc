@@ -25,10 +25,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/pkg/cli"
 	"github.com/fatih/color"
 	"github.com/sergi/go-diff/diffmatchpatch"
+
+	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/pkg/cli"
 )
 
 type VerifyCommand struct {
@@ -90,8 +91,12 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
 
 		fileSet := make(map[string]struct{})
-		addTestFile(&fileSet, goldenDataDir)
-		addTestFile(&fileSet, tempDataDir)
+		if err := addTestFile(&fileSet, goldenDataDir); err != nil {
+			return err
+		}
+		if err := addTestFile(&fileSet, tempDataDir); err != nil {
+			return err
+		}
 
 		dmp := diffmatchpatch.New()
 
@@ -155,9 +160,9 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-// addTestFile collects file paths generated in a golden test
+// addTestFile collects file paths generated in a golden test.
 func addTestFile(fileSet *map[string]struct{}, testDataDir string) error {
-	fs.WalkDir(&common.RealFS{}, testDataDir, func(path string, de fs.DirEntry, err error) error {
+	err := fs.WalkDir(&common.RealFS{}, testDataDir, func(path string, de fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("fs.WalkDir(%s): %w", path, err)
 		}
@@ -172,10 +177,13 @@ func addTestFile(fileSet *map[string]struct{}, testDataDir string) error {
 		(*fileSet)[relToSrc] = struct{}{}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("fs.WalkDir: %w", err)
+	}
 	return nil
 }
 
-// hasDiff returns whether file content mismatch exits
+// hasDiff returns whether file content mismatch exits.
 func hasDiff(diffs []diffmatchpatch.Diff) bool {
 	for _, diff := range diffs {
 		if diff.Type != diffmatchpatch.DiffEqual {
