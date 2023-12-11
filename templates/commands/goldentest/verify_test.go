@@ -111,6 +111,18 @@ kind: 'GoldenTest'`
 			},
 			wantErr: "a.txt] file content mismatch",
 		},
+		{
+			name: "one_of_the_tests_fails",
+			filesContent: map[string]string{
+				"spec.yaml":                        specYaml,
+				"a.txt":                            "file A content",
+				"testdata/golden/test1/test.yaml":  testYaml,
+				"testdata/golden/test1/data/a.txt": "file A content",
+				"testdata/golden/test2/test.yaml":  testYaml,
+				"testdata/golden/test2/data/a.txt": "file A content\n",
+			},
+			wantErr: "golden test verification failure",
+		},
 	}
 
 	for _, tc := range cases {
