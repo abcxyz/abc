@@ -22,6 +22,7 @@ import (
 	"syscall"
 
 	"github.com/abcxyz/abc/internal/version"
+	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
 	"github.com/abcxyz/abc/templates/commands/render"
 	"github.com/abcxyz/pkg/cli"
@@ -59,6 +60,9 @@ var rootCmd = func() *cli.RootCommand {
 									},
 								},
 							}
+						},
+						"describe": func() cli.Command {
+							return &describe.Command{}
 						},
 					},
 				}
