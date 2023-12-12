@@ -17,9 +17,10 @@ package specutil
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestSpecDescriptionForDescribe(t *testing.T) {
