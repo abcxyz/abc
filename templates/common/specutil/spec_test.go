@@ -128,6 +128,24 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 				Desc: model.String{Val: "Test Description"},
 				Inputs: []*spec.Input{
 					{
+						Name:    model.String{Val: "name1"},
+						Desc:    model.String{Val: "desc1"},
+						Default: &model.String{Val: ""},
+					},
+				},
+			},
+			want: [][]string{
+				{"Input name", "name1"},
+				{"Description", "desc1"},
+				{"Default", `""`},
+			},
+		},
+		{
+			name: "input_with_no_default_value",
+			spec: &spec.Spec{
+				Desc: model.String{Val: "Test Description"},
+				Inputs: []*spec.Input{
+					{
 						Name: model.String{Val: "name1"},
 						Desc: model.String{Val: "desc1"},
 					},
@@ -136,7 +154,6 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 			want: [][]string{
 				{"Input name", "name1"},
 				{"Description", "desc1"},
-				{"Default", ""},
 			},
 		},
 	}
@@ -145,6 +162,11 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if diff := cmp.Diff(AllSpecInputVarForDescribe(tc.spec), tc.want); diff != "" {
+				t.Errorf("got unexpected spec description (-got +want): %v", diff)
+			}
 		})
 	}
 }
