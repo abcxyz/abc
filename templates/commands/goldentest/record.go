@@ -74,20 +74,13 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	// Create a temporary directory to validate golden tests rendered with no
 	// error. If any test fails, no data should be written to file system
 	// for atomicity purpose.
-	tempDir, err := os.MkdirTemp("", "abc-test-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
-	}
+	tempDir, err := renderTestCases(testCases, c.flags.Location)
 	defer os.RemoveAll(tempDir)
+	if err != nil {
+		return fmt.Errorf("failed to render test cases: %w", err)
+	}
 
 	var merr error
-	for _, tc := range testCases {
-		merr = errors.Join(merr, renderTestCase(c.flags.Location, tempDir, tc))
-	}
-	if merr != nil {
-		return fmt.Errorf("failed to render golden tests: %w", merr)
-	}
-
 	logger := logging.FromContext(ctx)
 
 	// Recursively copy files from tempDir to template golden test directory.
