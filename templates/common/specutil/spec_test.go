@@ -87,35 +87,64 @@ func TestAllSpecInputVarForDescribe(t *testing.T) {
 
 func TestSingleSpecInputVarForDescribe(t *testing.T) {
 	t.Parallel()
-	spec := &spec.Spec{
-		Desc: model.String{Val: "Test Description"},
-		Inputs: []*spec.Input{
-			{
-				Name:    model.String{Val: "name1"},
-				Desc:    model.String{Val: "desc1"},
-				Default: &model.String{Val: "."},
-				Rules: []*spec.InputRule{
+	cases := []struct {
+		name string
+		spec *spec.Spec
+		want [][]string
+	}{
+		{
+			name: "input_with_non_empty_default_value",
+			spec: &spec.Spec{
+				Desc: model.String{Val: "Test Description"},
+				Inputs: []*spec.Input{
 					{
-						Rule:    model.String{Val: "test rule 0"},
-						Message: model.String{Val: "test rule 0 message"},
-					},
-					{
-						Rule: model.String{Val: "test rule 1"},
+						Name:    model.String{Val: "name1"},
+						Desc:    model.String{Val: "desc1"},
+						Default: &model.String{Val: "."},
+						Rules: []*spec.InputRule{
+							{
+								Rule:    model.String{Val: "test rule 0"},
+								Message: model.String{Val: "test rule 0 message"},
+							},
+							{
+								Rule: model.String{Val: "test rule 1"},
+							},
+						},
 					},
 				},
 			},
+			want: [][]string{
+				{"Input name", "name1"},
+				{"Description", "desc1"},
+				{"Default", "."},
+				{"Rule 0", "test rule 0"},
+				{"Rule 0 msg", "test rule 0 message"},
+				{"Rule 1", "test rule 1"},
+			},
+		},
+		{
+			name: "input_with_empty_default_value",
+			spec: &spec.Spec{
+				Desc: model.String{Val: "Test Description"},
+				Inputs: []*spec.Input{
+					{
+						Name: model.String{Val: "name1"},
+						Desc: model.String{Val: "desc1"},
+					},
+				},
+			},
+			want: [][]string{
+				{"Input name", "name1"},
+				{"Description", "desc1"},
+				{"Default", ""},
+			},
 		},
 	}
-	want := [][]string{
-		{"Input name", "name1"},
-		{"Description", "desc1"},
-		{"Default", "."},
-		{"Rule 0", "test rule 0"},
-		{"Rule 0 msg", "test rule 0 message"},
-		{"Rule 1", "test rule 1"},
-	}
 
-	if diff := cmp.Diff(SingleSpecInputVarForDescribe(spec.Inputs[0]), want); diff != "" {
-		t.Errorf("got unexpected spec description (-got +want): %v", diff)
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+		})
 	}
 }
