@@ -92,12 +92,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		red = color.New(color.FgRed).SprintFunc()
 		green = color.New(color.FgGreen).SprintFunc()
 	} else {
-		red = func(a ...interface{}) string {
-			return fmt.Sprint(a...)
-		}
-		green = func(a ...interface{}) string {
-			return fmt.Sprint(a...)
-		}
+		red = fmt.Sprint
+		green = fmt.Sprint
 	}
 
 	resultReport := "\nTest Report:\n"
