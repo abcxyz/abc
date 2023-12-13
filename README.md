@@ -116,8 +116,8 @@ Examples:
 
 The `<location>` parameter gives the location of the template.
 
-The `<testname>` parameter gives the test name to record, if not specified, all
-tests will be recorded.
+The `<testname>` parameter gives the test name to record or verify, if not
+specified, all tests will be run against.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
@@ -822,7 +822,7 @@ inputs:
   value: 'b'
 ```
 
-Then you can use `abc templates golden-test` to record or verify your tests.
+Then you can use `abc templates golden-test` to record or verify the tests.
 
 # Using CEL
 
