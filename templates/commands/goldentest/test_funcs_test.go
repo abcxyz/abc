@@ -292,7 +292,8 @@ steps:
 
 			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
-			err := renderTestCase(tempDir, tempDir, tc.testCase)
+			ctx := context.Background()
+			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)

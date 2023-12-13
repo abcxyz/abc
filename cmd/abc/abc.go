@@ -30,8 +30,8 @@ import (
 )
 
 const (
-	defaultLogLevel = "warn"
-	defaultLogMode  = "text"
+	defaultLogLevel  = logging.LevelWarning
+	defaultLogFormat = logging.FormatText
 )
 
 var rootCmd = func() *cli.RootCommand {
@@ -88,11 +88,11 @@ func main() {
 
 func setLogEnvVars() {
 	if os.Getenv("ABC_LOG_FORMAT") == "" {
-		os.Setenv("ABC_LOG_FORMAT", defaultLogMode)
+		os.Setenv("ABC_LOG_FORMAT", string(defaultLogFormat))
 	}
 
 	if os.Getenv("ABC_LOG_LEVEL") == "" {
-		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel)
+		os.Setenv("ABC_LOG_LEVEL", defaultLogLevel.String())
 	}
 }
 
