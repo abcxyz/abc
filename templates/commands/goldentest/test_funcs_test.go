@@ -149,59 +149,6 @@ kind: 'GoldenTest'`
 	}
 }
 
-func TestClearTestDir(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name         string
-		filesContent map[string]string
-		expected     map[string]string
-	}{
-		{
-			name: "outdated_test_artifacts_removed",
-			filesContent: map[string]string{
-				"test.yaml":    "yaml",
-				"data/a.txt":   "file A content",
-				"data/b/b.txt": "file B content",
-			},
-			expected: map[string]string{
-				"test.yaml": "yaml",
-			},
-		},
-		{
-			name: "test_config_in_sub_dir_removed",
-			filesContent: map[string]string{
-				"test.yaml":      "yaml",
-				"test/test.yaml": "yaml",
-			},
-			expected: map[string]string{
-				"test.yaml": "yaml",
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			tempDir := t.TempDir()
-
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
-
-			if err := clearTestDir(tempDir); err != nil {
-				t.Fatal(err)
-			}
-
-			gotDestContents := common.LoadDirWithoutMode(t, tempDir)
-			if diff := cmp.Diff(gotDestContents, tc.expected); diff != "" {
-				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
-			}
-		})
-	}
-}
-
 func TestRenderTestCase(t *testing.T) {
 	t.Parallel()
 

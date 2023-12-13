@@ -119,27 +119,6 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 	return out, nil
 }
 
-// clearTestDir clears a test directory and only keeps the test config file.
-func clearTestDir(dir string) error {
-	files, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to read test dir: %w", err)
-	}
-
-	for _, file := range files {
-		if file.Name() != configName {
-			filePath := filepath.Join(dir, file.Name())
-			if err := os.RemoveAll(filePath); err != nil {
-				return fmt.Errorf("failed to remove outdated test artifact: %w", err)
-			}
-		}
-	}
-	return nil
-}
-
 // renderTestCases render all test cases in a temporary directory.
 func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (string, error) {
 	tempDir, err := os.MkdirTemp("", "abc-test-*")
@@ -161,7 +140,7 @@ func renderTestCases(ctx context.Context, testCases []*TestCase, location string
 func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *TestCase) error {
 	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName, testDataDir)
 
-	if err := clearTestDir(testDir); err != nil {
+	if err := os.RemoveAll(testDir); err != nil {
 		return fmt.Errorf("failed to clear test directory: %w", err)
 	}
 

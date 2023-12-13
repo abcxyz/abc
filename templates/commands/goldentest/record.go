@@ -87,8 +87,8 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 
 	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
-		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName)
-		if err := clearTestDir(testDir); err != nil {
+		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
+		if err := os.RemoveAll(testDir); err != nil {
 			return fmt.Errorf("failed to clear test directory: %w", err)
 		}
 
@@ -103,7 +103,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 			}, nil
 		}
 		params := &common.CopyParams{
-			DstRoot: filepath.Join(testDir, testDataDir),
+			DstRoot: testDir,
 			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir),
 			RFS:     &common.RealFS{},
 			Visitor: visitor,
