@@ -103,6 +103,24 @@ The valid values for `ABC_LOG_MODE` are:
 The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 `error`, and `emergency`. The default is `warn`.
 
+### For `abc templates golden-test`
+
+Usage: `abc templates golden-test record --location=<template_location> <testname>`
+
+Example:
+`abc templates golden-test record --location=examples/templates/render/hello_jupiter example_test`
+`abc templates golden-test record --location=examples/templates/render/hello_jupiter`
+
+The `<location>` parameter gives the location of the template.
+
+The `<testname>` parameter gives the test name to record, if not specified, all
+tests will be recorded.
+
+For every test case, it is expected that
+  - a testdata/golden/<test_name> folder exists to host test results.
+  - a testdata/golden/<test_name>/test.yaml exists to define
+template input params.`
+
 ## User Guide
 
 Start here if you want want to install ("render") a template using this CLI
