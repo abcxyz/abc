@@ -16,10 +16,15 @@
 package specutil
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"text/tabwriter"
 
+	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/model/decode"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 )
 
@@ -34,28 +39,32 @@ const (
 	OutputInputRuleKey         = "Rule"
 )
 
-// ParseSpecToList parses a spec.Spec into a list with
-// the keys and attribute pairs.
+// Describe returns a list of human-readable attributes describing a spec,
+// as a list where each entry is a list of columns.
 //
 // Example:
-// ["Description", "example description", "Input Name", "example name"].
-func SpecDescriptionForDescribe(spec *spec.Spec) [][]string {
+//
+//	{
+//	  {"Description", "example description"},
+//	  {"Input Name", "example name"},
+//	}
+func Describe(spec *spec.Spec) [][]string {
 	l := make([][]string, 0)
 	l = append(l, []string{OutputDescriptionKey, spec.Desc.Val})
 	return l
 }
 
-// AllSpecInputVarForDescribe parses all spec.Input values in the spec.
-func AllSpecInputVarForDescribe(spec *spec.Spec) [][]string {
+// DescribeAllInputs describes all spec.Input values in the spec.
+func DescribeAllInputs(spec *spec.Spec) [][]string {
 	l := make([][]string, 0)
 	for _, v := range spec.Inputs {
-		l = append(l, SingleSpecInputVarForDescribe(v)...)
+		l = append(l, DescribeOneInput(v)...)
 	}
 	return l
 }
 
-// parseSpecInputVar parses a specific spec.Input value.
-func SingleSpecInputVarForDescribe(input *spec.Input) [][]string {
+// DescribeOneInput describes a specific spec.Input value.
+func DescribeOneInput(input *spec.Input) [][]string {
 	l := make([][]string, 0)
 	l = append(l, []string{OutputInputNameKey, input.Name.Val}, []string{OutputDescriptionKey, input.Desc.Val})
 	if input.Default != nil {
@@ -101,4 +110,29 @@ func FormatAttrList(w io.Writer, attrList [][]string) {
 		fmt.Fprintf(tw, "%s:\t%s\n", v[0], v[1])
 	}
 	tw.Flush()
+}
+
+// Load unmarshals the spec.yaml in the given directory.
+func Load(ctx context.Context, fs common.FS, templateDir, source string) (*spec.Spec, error) {
+	specPath := filepath.Join(templateDir, SpecFileName)
+	f, err := fs.Open(specPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("couldn't find spec.yaml in that directory, the provided template location %q might be incorrect", source)
+		}
+		return nil, fmt.Errorf("error opening template spec: Open(): %w", err)
+	}
+	defer f.Close()
+
+	specI, err := decode.DecodeValidateUpgrade(ctx, f, SpecFileName, decode.KindTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("error reading template spec file: %w", err)
+	}
+
+	spec, ok := specI.(*spec.Spec)
+	if !ok {
+		return nil, fmt.Errorf("internal error: spec file did not decode to spec.Spec")
+	}
+
+	return spec, nil
 }

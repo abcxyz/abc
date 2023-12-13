@@ -38,7 +38,7 @@ func TestSpecDescriptionForDescribe(t *testing.T) {
 		{OutputDescriptionKey, "Test Description"},
 	}
 
-	if diff := cmp.Diff(SpecDescriptionForDescribe(spec), want); diff != "" {
+	if diff := cmp.Diff(Describe(spec), want); diff != "" {
 		t.Errorf("got unexpected spec description (-got +want): %v", diff)
 	}
 }
@@ -80,7 +80,7 @@ func TestAllSpecInputVarForDescribe(t *testing.T) {
 		{"Description", "desc2"},
 	}
 
-	if diff := cmp.Diff(AllSpecInputVarForDescribe(spec), want); diff != "" {
+	if diff := cmp.Diff(DescribeAllInputs(spec), want); diff != "" {
 		t.Errorf("got unexpected spec description (-got +want): %v", diff)
 	}
 }
@@ -164,7 +164,7 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			if diff := cmp.Diff(AllSpecInputVarForDescribe(tc.spec), tc.want); diff != "" {
+			if diff := cmp.Diff(DescribeAllInputs(tc.spec), tc.want); diff != "" {
 				t.Errorf("got unexpected spec description (-got +want): %v", diff)
 			}
 		})

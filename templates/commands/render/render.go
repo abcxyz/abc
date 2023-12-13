@@ -38,7 +38,6 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
-	"github.com/abcxyz/abc/templates/model/decode"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -157,9 +156,9 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	spec, err := loadSpecFile(ctx, rp.fs, templateDir)
+	spec, err := specutil.Load(ctx, rp.fs, templateDir, c.flags.Source)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	resolvedInputs, err := c.resolveInputs(ctx, rp.fs, spec)
@@ -623,27 +622,6 @@ func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]s
 		return nil, fmt.Errorf("error parsing yaml file: %w", err)
 	}
 	return m, nil
-}
-
-func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.Spec, error) {
-	specPath := filepath.Join(templateDir, specutil.SpecFileName)
-	f, err := fs.Open(specPath)
-	if err != nil {
-		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
-	}
-	defer f.Close()
-
-	specI, err := decode.DecodeValidateUpgrade(ctx, f, specutil.SpecFileName, decode.KindTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("error reading template spec file: %w", err)
-	}
-
-	spec, ok := specI.(*spec.Spec)
-	if !ok {
-		return nil, fmt.Errorf("internal error: spec file did not decode to spec.Spec")
-	}
-
-	return spec, nil
 }
 
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
