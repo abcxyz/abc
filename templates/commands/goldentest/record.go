@@ -42,9 +42,11 @@ func (c *RecordCommand) Desc() string {
 
 func (c *RecordCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [options] <test_name>
+Usage: {{ COMMAND }} --location=<location> <test_name>
 
 The {{ COMMAND }} records the template golden tests.
+
+The "<location>" is the location of the template.
 
 The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be recoreded.
