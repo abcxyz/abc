@@ -204,3 +204,14 @@ kind: 'GoldenTest'`
 		})
 	}
 }
+
+func TestVerifyLocationRequired(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	err := (&VerifyCommand{}).Run(ctx, nil)
+	want := "-l/--location is required"
+	if diff := testutil.DiffErrString(err, want); diff != "" {
+		t.Error(diff)
+	}
+}
