@@ -131,7 +131,7 @@ func Load(ctx context.Context, fs common.FS, templateDir, source string) (*spec.
 
 	spec, ok := specI.(*spec.Spec)
 	if !ok {
-		return nil, fmt.Errorf("internal error: spec file did not decode to spec.Spec")
+		return nil, fmt.Errorf("internal error: spec file did not decode to *spec.Spec")
 	}
 
 	return spec, nil

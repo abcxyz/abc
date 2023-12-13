@@ -65,6 +65,7 @@ func (c *Command) Desc() string {
 	return "instantiate a template to setup a new app or add config files"
 }
 
+// Help implements cli.Command.
 func (c *Command) Help() string {
 	return `
 Usage: {{ COMMAND }} [options] <source>
@@ -85,6 +86,7 @@ few forms:
 `
 }
 
+// Flags implements cli.Command.
 func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
