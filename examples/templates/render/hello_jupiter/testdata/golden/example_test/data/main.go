@@ -12,19 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manifest
+package main
 
-import (
-	"context"
+import "fmt"
 
-	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/pkg/logging"
-)
-
-// Upgrade implements model.ValidatorUpgrader.
-func (m *Manifest) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
-	logger := logging.FromContext(ctx).With("logger", "Upgrade")
-	logger.DebugContext(ctx, "finished upgrading manifest model, this is the most recent version")
-
-	return nil, model.ErrLatestVersion
+func main() {
+	fmt.Println("Hello, jupiter!")
 }

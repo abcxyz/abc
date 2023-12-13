@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Render hello_jupiter example",
             "type": "go",
@@ -14,6 +15,22 @@
                 "templates",
                 "render",
                 "${workspaceFolder}/examples/templates/render/hello_jupiter"
+            ]
+        },
+
+        {
+            "name": "Debug goldentest logging",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "cmd/abc/abc.go",
+            "args": [
+                "templates",
+                "golden-test",
+                "record",
+                "-l",
+                "${workspaceFolder}/examples/templates/render/hello_jupiter",
+                "example_test"
             ]
         }
     ]

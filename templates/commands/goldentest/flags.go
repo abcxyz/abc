@@ -16,6 +16,7 @@
 package goldentest
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/abcxyz/pkg/cli"
@@ -53,6 +54,10 @@ func (r *Flags) Register(set *cli.FlagSet) {
 	// Default test name to the first CLI argument, if given.
 	set.AfterParse(func(existingErr error) error {
 		r.TestName = strings.TrimSpace(set.Arg(0))
+
+		if r.Location == "" {
+			return fmt.Errorf("-l/--location is required")
+		}
 		return nil
 	})
 }

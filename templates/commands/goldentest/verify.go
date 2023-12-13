@@ -46,16 +46,18 @@ func (c *VerifyCommand) Desc() string {
 
 func (c *VerifyCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [options] <test_name>
+Usage: {{ COMMAND }} --location=<location> <test_name>
 
 The {{ COMMAND }} verify the template golden test.
+
+The "<location>" is the location of the template.
 
 The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be run against.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
-  - a testdata/golden/<test_name>/inputs.yaml exists to define
+  - a testdata/golden/<test_name>/test.yaml exists to define
 template input params.`
 }
 
@@ -76,7 +78,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	// Create a temporary directory to render golden tests
-	tempDir, err := renderTestCases(testCases, c.flags.Location)
+	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
 	defer os.RemoveAll(tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)

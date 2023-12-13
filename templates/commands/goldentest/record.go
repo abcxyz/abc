@@ -42,9 +42,11 @@ func (c *RecordCommand) Desc() string {
 
 func (c *RecordCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [options] <test_name>
+Usage: {{ COMMAND }} --location=<location> <test_name>
 
 The {{ COMMAND }} records the template golden tests.
+
+The "<location>" is the location of the template.
 
 The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be recoreded.
@@ -74,7 +76,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	// Create a temporary directory to validate golden tests rendered with no
 	// error. If any test fails, no data should be written to file system
 	// for atomicity purpose.
-	tempDir, err := renderTestCases(testCases, c.flags.Location)
+	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
 	defer os.RemoveAll(tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
@@ -85,8 +87,8 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 
 	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
-		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName)
-		if err := clearTestDir(testDir); err != nil {
+		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
+		if err := os.RemoveAll(testDir); err != nil {
 			return fmt.Errorf("failed to clear test directory: %w", err)
 		}
 
@@ -101,7 +103,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 			}, nil
 		}
 		params := &common.CopyParams{
-			DstRoot: filepath.Join(testDir, testDataDir),
+			DstRoot: testDir,
 			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir),
 			RFS:     &common.RealFS{},
 			Visitor: visitor,

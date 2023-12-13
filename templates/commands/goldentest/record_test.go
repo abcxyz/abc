@@ -112,7 +112,7 @@ kind: 'GoldenTest'`
 				"spec.yaml":                      specYaml,
 				"a.txt":                          "file A content",
 				"testdata/golden/test/test.yaml": testYaml,
-				"testdata/golden/test/unexpected_file.txt": "oh",
+				"testdata/golden/test/data/unexpected_file.txt": "oh",
 			},
 			expectedGoldenContent: map[string]string{
 				"test/test.yaml":  testYaml,
