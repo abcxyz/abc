@@ -158,8 +158,7 @@ func newManifestFilename(p *writeManifestParams, canonicalSource string) (string
 
 	baseName := strings.Join(
 		[]string{"manifest", namePart, timeStr},
-		"_")
-	baseName += ".lock.yaml"
+		"_") + ".lock.yaml"
 
 	return filepath.Join(manifestDir, baseName), nil
 }
