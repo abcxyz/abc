@@ -20,12 +20,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
-	"github.com/abcxyz/abc/templates/model/decode"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 )
@@ -106,31 +104,19 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	specPath := filepath.Join(templateDir, specutil.SpecFileName)
-	f, err := rp.fs.Open(specPath)
+	spec, err := specutil.Load(ctx, rp.fs, templateDir, c.flags.Source)
 	if err != nil {
-		return fmt.Errorf("error opening template spec: ReadFile(): %w", err)
-	}
-	defer f.Close()
-
-	specI, err := decode.DecodeValidateUpgrade(ctx, f, specutil.SpecFileName, decode.KindTemplate)
-	if err != nil {
-		return fmt.Errorf("error reading template spec file: %w", err)
+		return err //nolint:wrapcheck
 	}
 
-	spec, ok := specI.(*spec.Spec)
-	if !ok {
-		return fmt.Errorf("internal error: spec file did not decode to spec.Spec")
-	}
-
-	specutil.FormatAttrList(c.Stdout(), c.specFieldsForDescribe(spec))
+	specutil.FormatAttrs(c.Stdout(), c.specFieldsForDescribe(spec))
 	return nil
 }
 
 // specFieldsForDescribe get Description and Inputs fields for spec.
 func (c *Command) specFieldsForDescribe(spec *spec.Spec) [][]string {
 	l := make([][]string, 0)
-	l = append(l, specutil.SpecDescriptionForDescribe(spec)...)
-	l = append(l, specutil.AllSpecInputVarForDescribe(spec)...)
+	l = append(l, specutil.Attrs(spec)...)
+	l = append(l, specutil.AllInputAttrs(spec)...)
 	return l
 }
