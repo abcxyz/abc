@@ -325,12 +325,34 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "skip_multiple_files_globbing",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*.txt"}),
+						Skip:  modelStrings([]string{"file1.txt", "file2.txt", "file4.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
+				"file2.txt":                 {Mode: 0o600, Contents: "file 2 contents"},
+				"file3.txt":                 {Mode: 0o600, Contents: "file 3 contents"},
+				"file4.txt":                 {Mode: 0o600, Contents: "file 4 contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
+			},
+		},
+		{
 			name: "skip_file_in_subfolder",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"subfolder"}),
-						Skip:  modelStrings([]string{"file2.txt"}),
+						Skip:  modelStrings([]string{"subfolder/file2.txt"}),
 					},
 				},
 			},
@@ -351,7 +373,7 @@ func TestActionInclude(t *testing.T) {
 				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"folder1"}),
-						Skip:  modelStrings([]string{"folder2"}),
+						Skip:  modelStrings([]string{"folder1/folder2"}),
 					},
 				},
 			},

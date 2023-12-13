@@ -54,7 +54,21 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	}
 	skip := make(map[string]struct{}, len(inc.Skip))
 	for _, s := range skipPaths {
-		skip[s.Val] = struct{}{}
+		relSkipPath, err := filepath.Rel(fromDir, s.Val)
+		if err != nil {
+			return err
+		}
+		skip[relSkipPath] = struct{}{}
+	}
+
+	skipNow := maps.Clone(skip)
+	if fromDir == sp.templateDir {
+		// If we're copying the template root directory, automatically skip
+		// 1. spec.yaml file, because it's very unlikely that the user actually
+		// wants the spec file in the template output.
+		// 2. testdata/golden directory, this is reserved for golden test usage.
+		skipNow["spec.yaml"] = struct{}{}
+		skipNow[filepath.Join("testdata", "golden")] = struct{}{}
 	}
 
 	asPaths, err := processPaths(inc.As, sp.scope)
@@ -76,47 +90,42 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		for _, matchedPath := range matchedPaths {
 			// During validation in spec.go, we've already enforced that either:
 			// len(asPaths) is either == 0 or == len(incPaths).
-			as := matchedPath.Val
+			relMatchedPath, err := filepath.Rel(fromDir, matchedPath.Val)
+			if err != nil {
+				return err
+			}
+
+			as := relMatchedPath
 			if len(asPaths) > 0 { // As provided
+				/*
+					if len(matchedPaths) != 1 || matchedPath.Val != filepath.Join(fromDir, p.Val) {
+						// path is a glob, treat As val as a directory.
+						absDst = filepath.Join(absDst, as)
+					} else {
+						// otherwise treat As val as a file name.
+						as = asPaths[i].Val
+					}
+				*/
 				as = asPaths[i].Val
 			}
-
-			asDir := ""
-			if len(matchedPaths) != 1 || matchedPath.Val != p.Val {
-				// path is a glob, treat As val as a directory.
-				// otherwise treat As val as a file name.
-				asDir = as
-			}
-
-			absSrc := filepath.Join(fromDir, matchedPath.Val)
-			absDst := filepath.Join(sp.scratchDir, asDir, as)
-
-			skipNow := maps.Clone(skip)
-			if absSrc == sp.templateDir {
-				// If we're copying the template root directory, automatically skip
-				// 1. spec.yaml file, because it's very unlikely that the user actually
-				// wants the spec file in the template output.
-				// 2. testdata/golden directory, this is reserved for golden test usage.
-				skipNow["spec.yaml"] = struct{}{}
-				skipNow[filepath.Join("testdata", "golden")] = struct{}{}
-			}
+			absDst := filepath.Join(sp.scratchDir, as)
 
 			params := &common.CopyParams{
 				DryRun:  false,
 				DstRoot: absDst,
 				RFS:     sp.fs,
-				SrcRoot: absSrc,
-				Visitor: func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
-					if _, ok := skipNow[relToAbsSrc]; ok {
+				SrcRoot: matchedPath.Val,
+				Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
+					if _, ok := skipNow[filepath.Join(relMatchedPath, relToSrcRoot)]; ok {
 						return common.CopyHint{
 							Skip: true,
 						}, nil
 					}
 
-					abs := filepath.Join(absSrc, relToAbsSrc)
+					abs := filepath.Join(matchedPath.Val, relToSrcRoot)
 					relToFromDir, err := filepath.Rel(fromDir, abs)
 					if err != nil {
-						return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
+						return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, matchedPath.Val, err)
 					}
 					if !de.IsDir() && inc.From.Val == "destination" {
 						sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
