@@ -124,6 +124,17 @@ For every test case, it is expected that
   - a testdata/golden/<test_name>/test.yaml exists to define
 template input params.`
 
+### For `abc templates describe`
+
+Usages:
+- `abc templates describe <template_location>`
+
+Examples:
+- `abc templates describe github.com/abcxyz/gcp-org-terraform-template@latest`
+- `abc templates describe /my/template/dir`
+
+The `<template_location>` takes the same value as the [render](#for-abc-templates-render) command.
+
 ## User Guide
 
 Start here if you want want to install ("render") a template using this CLI
