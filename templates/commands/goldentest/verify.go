@@ -78,7 +78,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	// Create a temporary directory to render golden tests
-	tempDir, err := renderTestCases(testCases, c.flags.Location)
+	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
 	defer os.RemoveAll(tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)

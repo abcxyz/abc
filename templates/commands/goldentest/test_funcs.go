@@ -20,9 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 
 	"github.com/abcxyz/abc/templates/commands/render"
 	"github.com/abcxyz/abc/templates/model/decode"
@@ -143,7 +141,7 @@ func clearTestDir(dir string) error {
 }
 
 // renderTestCases render all test cases in a temporary directory.
-func renderTestCases(testCases []*TestCase, location string) (string, error) {
+func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (string, error) {
 	tempDir, err := os.MkdirTemp("", "abc-test-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary directory: %w", err)
@@ -151,7 +149,7 @@ func renderTestCases(testCases []*TestCase, location string) (string, error) {
 
 	var merr error
 	for _, tc := range testCases {
-		merr = errors.Join(merr, renderTestCase(location, tempDir, tc))
+		merr = errors.Join(merr, renderTestCase(ctx, location, tempDir, tc))
 	}
 	if merr != nil {
 		return "", fmt.Errorf("failed to render golden tests: %w", merr)
@@ -160,7 +158,7 @@ func renderTestCases(testCases []*TestCase, location string) (string, error) {
 }
 
 // renderTestCase executes the "template render" command based upon test config.
-func renderTestCase(templateDir, outputDir string, tc *TestCase) error {
+func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *TestCase) error {
 	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName, testDataDir)
 
 	if err := clearTestDir(testDir); err != nil {
@@ -177,10 +175,6 @@ func renderTestCase(templateDir, outputDir string, tc *TestCase) error {
 	r := &render.Command{}
 	// Mute stdout from command runs.
 	r.Pipe()
-
-	ctx, done := signal.NotifyContext(context.Background(),
-		syscall.SIGINT, syscall.SIGTERM)
-	defer done()
 
 	// TODO(chloechien): Use rendering library instead of calling cmd directly.
 	if err := r.Run(ctx, args); err != nil {
