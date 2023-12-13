@@ -132,15 +132,17 @@ and describes the inputs that it accepts.
 Usages:
 - `abc templates describe <template_location>`
 
-Examples:
-- `abc templates describe github.com/abcxyz/gcp-org-terraform-template@latest`
-- `abc templates describe /my/template/dir`
 
 The `<template_location>` takes the same value as the [render](#for-abc-templates-render) command.
 
-Output Example:
+Example:
 
-For template at github.com/abcxyz/guardian/abc.templates/default-workflows@v0.1.0-alpha12:
+Command:
+```
+abc templates describe github.com/abcxyz/guardian/abc.templates/default-workflows@v0.1.0-alpha12
+```
+
+Output:
 
 ```
 Description:  Generate the Guardian workflows for the Google Cloud organization Terraform intrastructure repo.
