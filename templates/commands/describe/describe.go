@@ -109,14 +109,14 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	specutil.FormatAttrList(c.Stdout(), c.specFieldsForDescribe(spec))
+	specutil.FormatAttrs(c.Stdout(), c.specFieldsForDescribe(spec))
 	return nil
 }
 
 // specFieldsForDescribe get Description and Inputs fields for spec.
 func (c *Command) specFieldsForDescribe(spec *spec.Spec) [][]string {
 	l := make([][]string, 0)
-	l = append(l, specutil.Describe(spec)...)
-	l = append(l, specutil.DescribeAllInputs(spec)...)
+	l = append(l, specutil.Attrs(spec)...)
+	l = append(l, specutil.AllInputAttrs(spec)...)
 	return l
 }

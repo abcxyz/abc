@@ -39,7 +39,7 @@ const (
 	OutputInputRuleKey         = "Rule"
 )
 
-// Describe returns a list of human-readable attributes describing a spec,
+// Attrs returns a list of human-readable attributes describing a spec,
 // as a list where each entry is a list of columns.
 //
 // Example:
@@ -48,23 +48,23 @@ const (
 //	  {"Description", "example description"},
 //	  {"Input Name", "example name"},
 //	}
-func Describe(spec *spec.Spec) [][]string {
+func Attrs(spec *spec.Spec) [][]string {
 	l := make([][]string, 0)
 	l = append(l, []string{OutputDescriptionKey, spec.Desc.Val})
 	return l
 }
 
-// DescribeAllInputs describes all spec.Input values in the spec.
-func DescribeAllInputs(spec *spec.Spec) [][]string {
+// AllInputAttrs describes all spec.Input values in the spec.
+func AllInputAttrs(spec *spec.Spec) [][]string {
 	l := make([][]string, 0)
 	for _, v := range spec.Inputs {
-		l = append(l, DescribeOneInput(v)...)
+		l = append(l, OneInputAttrs(v)...)
 	}
 	return l
 }
 
-// DescribeOneInput describes a specific spec.Input value.
-func DescribeOneInput(input *spec.Input) [][]string {
+// OneInputAttrs describes a specific spec.Input value.
+func OneInputAttrs(input *spec.Input) [][]string {
 	l := make([][]string, 0)
 	l = append(l, []string{OutputInputNameKey, input.Name.Val}, []string{OutputDescriptionKey, input.Desc.Val})
 	if input.Default != nil {
@@ -86,7 +86,7 @@ func DescribeOneInput(input *spec.Input) [][]string {
 	return l
 }
 
-// FormatAttrList formats the attribute list for output
+// FormatAttrs formats the attribute list for output
 //
 // Example output:
 //
@@ -101,7 +101,7 @@ func DescribeOneInput(input *spec.Input) [][]string {
 //
 // Input name:   name2
 // Description:  desc2.
-func FormatAttrList(w io.Writer, attrList [][]string) {
+func FormatAttrs(w io.Writer, attrList [][]string) {
 	tw := tabwriter.NewWriter(w, 8, 0, 2, ' ', 0)
 	for _, v := range attrList {
 		if v[0] == OutputInputNameKey {
