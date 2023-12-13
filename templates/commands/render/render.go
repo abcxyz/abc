@@ -148,7 +148,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		outErr = errors.Join(outErr, err)
 	}()
 
-	downloader, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
+	dlMeta, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
 		FS:          rp.fs,
 		TempDirBase: rp.tempDirBase,
 		Source:      c.flags.Source,
@@ -210,8 +210,8 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			if err := writeManifest(ctx, &writeManifestParams{
 				clock:        rp.clock,
 				cwd:          rp.cwd,
+				dlMeta:       dlMeta,
 				destDir:      c.flags.Dest,
-				cs:           downloader,
 				dryRun:       dryRun,
 				fs:           rp.fs,
 				inputs:       resolvedInputs,

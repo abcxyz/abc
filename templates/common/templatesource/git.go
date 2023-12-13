@@ -113,12 +113,12 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, _ string, params *Par
 // gitDownloader implements templateSource for templates hosted in a remote git
 // repo, regardless of which git hosting service it uses.
 type gitDownloader struct {
-	// An HTTPS or SSH connection string understood by "git clone"
+	// An HTTPS or SSH connection string understood by "git clone".
 	remote string
-	// An optional subdirectory within the git repo that we want
+	// An optional subdirectory within the git repo that we want.
 	subdir string
 
-	// either a semver-formatted tag, or the magic value "latest"
+	// A tag, branch, SHA, or the magic value "latest".
 	version string
 
 	canonicalSource string
@@ -128,62 +128,67 @@ type gitDownloader struct {
 }
 
 // Download implements Downloader.
-func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
+func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
 	logger := logging.FromContext(ctx).With("logger", "gitDownloader.Download")
 
 	// Validate first before doing expensive work
 	subdir, err := common.SafeRelPath(nil, g.subdir) // protect against ".." traversal attacks
 	if err != nil {
-		return fmt.Errorf("invalid subdirectory: %w", err)
+		return nil, fmt.Errorf("invalid subdirectory: %w", err)
 	}
 
 	version, err := resolveVersion(ctx, g.tagser, g.remote, g.version)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	logger.DebugContext(ctx, "resolved version from",
 		"input", g.version,
 		"to", version)
 
-	// Rather than cloning directly into outDir, we clone into a temp dir. It would
-	// be incorrect to clone the whole repo into outDir if the caller only asked
+	// Rather than cloning directly into destDir, we clone into a temp dir. It would
+	// be incorrect to clone the whole repo into destDir if the caller only asked
 	// for a subdirectory, e.g. "github.com/my-org/my-repo/my-subdir@v1.2.3".
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "git-clone-")
 	if err != nil {
-		return fmt.Errorf("MkdirTemp: %w", err)
+		return nil, fmt.Errorf("MkdirTemp: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 	subdirToCopy := filepath.Join(tmpDir, filepath.FromSlash(subdir))
 
 	if err := g.cloner.Clone(ctx, g.remote, version, tmpDir); err != nil {
-		return fmt.Errorf("Clone(): %w", err)
+		return nil, fmt.Errorf("Clone(): %w", err)
 	}
 
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
 		if common.IsStatNotExistErr(err) {
-			return fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, version, subdir, version)
+			return nil, fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, version, subdir, version)
 		}
-		return err //nolint:wrapcheck // Stat() returns a decently informative error
+		return nil, err //nolint:wrapcheck // Stat() returns a decently informative error
 	}
 	if !fi.IsDir() {
-		return fmt.Errorf("the path %q is not a directory", subdir)
+		return nil, fmt.Errorf("the path %q is not a directory", subdir)
 	}
 
 	logger.DebugContext(ctx, "cloned repo",
 		"remote", g.remote,
 		"version", version)
 
-	// Copy only the requested subdir to outDir.
+	// Copy only the requested subdir to destDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
-		DstRoot: outDir,
+		DstRoot: destDir,
 		SrcRoot: subdirToCopy,
 		RFS:     &common.RealFS{},
 	}); err != nil {
-		return err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
-	return nil
+	dlMeta := &DownloadMetadata{
+		IsCanonical:     true, // Remote git sources are always canonical.
+		CanonicalSource: g.canonicalSource,
+	}
+
+	return dlMeta, nil
 }
 
 func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string, bool, error) {
@@ -252,13 +257,13 @@ func resolveLatest(ctx context.Context, t tagser, remote, version string) (strin
 
 // A fakeable interface around the lower-level git Clone function, for testing.
 type cloner interface {
-	Clone(ctx context.Context, remote, version, outDir string) error
+	Clone(ctx context.Context, remote, version, destDir string) error
 }
 
 type realCloner struct{}
 
-func (r *realCloner) Clone(ctx context.Context, remote, version, outDir string) error {
-	return git.Clone(ctx, remote, version, outDir) //nolint:wrapcheck
+func (r *realCloner) Clone(ctx context.Context, remote, version, destDir string) error {
+	return git.Clone(ctx, remote, version, destDir) //nolint:wrapcheck
 }
 
 // A fakeable interface around the lower-level git Tags function, for testing.
