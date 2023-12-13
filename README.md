@@ -126,6 +126,9 @@ template input params.`
 
 ### For `abc templates describe`
 
+The describe command downloads the template and prints out its description,
+and describes the inputs that it accepts.
+
 Usages:
 - `abc templates describe <template_location>`
 
@@ -134,6 +137,32 @@ Examples:
 - `abc templates describe /my/template/dir`
 
 The `<template_location>` takes the same value as the [render](#for-abc-templates-render) command.
+
+Output Example:
+
+For template at github.com/abcxyz/guardian/abc.templates/default-workflows@v0.1.0-alpha12:
+
+```
+Description:  Generate the Guardian workflows for the Google Cloud organization Terraform intrastructure repo.
+
+Input name:   terraform_directory
+Description:  A sub-directory for all Terraform files
+Default:      .
+
+Input name:   terraform_version
+Description:  The terraform version to use with Guardian
+Default:      1.5.4
+
+Input name:   guardian_wif_provider
+Description:  The Google Cloud workload identity federation provider for Guardian
+
+Input name:   guardian_service_account
+Description:  The Google Cloud service account for Guardian
+Rule 0:       gcp_matches_service_account(guardian_service_account)
+
+Input name:   guardian_state_bucket
+Description:  The Google Cloud storage bucket for Guardian state
+```
 
 ## User Guide
 
