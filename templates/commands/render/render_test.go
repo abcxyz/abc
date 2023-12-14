@@ -550,6 +550,49 @@ steps:
 				"file_a.txt": "purple is my favorite color",
 			},
 		},
+		// @debug@
+		/*
+					{
+						name: "glob_include",
+						templateContents: map[string]string{
+							"file1.txt":                  "file1 contents",
+							"file2.txt":                  "file2 contents",
+							"file3.txt":                  "file3 contents",
+							"something.md":               "md contents",
+							"something.json":             "json contents",
+							"python_files/skip_1.py":     "skip 1 contents",
+							"python_files/skip_2.py":     "skip 2 contents",
+							"python_files/include_me.py": "include_me contents",
+							"spec.yaml": `
+			api_version: 'cli.abcxyz.dev/v1alpha1'
+			kind: 'Template'
+			desc: 'my template'
+			steps:
+			  - desc: 'Include glob'
+			    action: 'include'
+			    params:
+			        paths:
+			            - paths: ['*.txt']
+			            - paths: ['*.md', '*.json']
+			            - paths: ['python_files']
+			`,
+							// skip: ['skip*']
+							// as: ['dir1', 'dir2']
+						},
+						existingDestContents: map[string]string{
+							"already_exists.pdf": "already existing file contents",
+						},
+						wantDestContents: map[string]string{
+							"already_exists.pdf":         "already existing file contents",
+							"file1.txt":                  "file1 contents",
+							"file2.txt":                  "file2 contents",
+							"file3.txt":                  "file3 contents",
+							"dir1/something.md":          "md contents",
+							"dir2/something.json":        "json contents",
+							"python_files/include_me.py": "include_me contents",
+						},
+					},
+		*/
 		{
 			name: "for_each",
 			templateContents: map[string]string{

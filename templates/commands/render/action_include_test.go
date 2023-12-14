@@ -543,6 +543,27 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "skip_glob_in_directory",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"subfolder"}),
+						Skip:  modelStrings([]string{"subfolder/*.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"subfolder/skip1.txt":       {Mode: 0o600, Contents: "skip 1 contents"},
+				"subfolder/skip2.txt":       {Mode: 0o600, Contents: "skip 2 contents"},
+				"subfolder/include.md":      {Mode: 0o600, Contents: "include contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"subfolder/include.md": {Mode: 0o600, Contents: "include contents"},
+			},
+		},
+		{
 			name: "skip_directory",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{

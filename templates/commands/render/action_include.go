@@ -98,7 +98,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			as := relMatchedPath
 			if len(asPaths) > 0 { // As provided
 				if len(matchedPaths) != 1 || matchedPath.Val != filepath.Join(fromDir, p.Val) {
-					// path is a glob, keep original filename and put inside directory named by the provided As val.
+					// path is a glob, keep original filename and put inside directory named as the provided As val.
 					as = filepath.Join(asPaths[i].Val, relMatchedPath)
 				} else {
 					// otherwise use provided As val as new filename.
