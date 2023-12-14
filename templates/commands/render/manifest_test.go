@@ -68,6 +68,7 @@ func TestWriteManifest(t *testing.T) {
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -106,6 +107,7 @@ output_hashes:
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: github.com/foo/bar
+template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -165,6 +167,7 @@ output_hashes:
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs: []
 output_hashes:
@@ -193,6 +196,7 @@ output_hashes:
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple

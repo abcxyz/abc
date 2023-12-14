@@ -65,6 +65,13 @@ type DownloadMetadata struct {
 	// IsCanonical is true if and only if CanonicalSource is non-empty.
 	IsCanonical     bool
 	CanonicalSource string
+
+	// Depending on where the template was taken from, there might be a version
+	// string associated with it (e.g. a git tag or a git SHA).
+	//
+	// HasVersion is true if and only if Version is non-empty.
+	HasVersion bool
+	Version    string
 }
 
 // The parameters to Download, wrapped in a struct because there are so many.

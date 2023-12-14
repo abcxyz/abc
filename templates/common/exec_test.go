@@ -86,7 +86,7 @@ func TestExec(t *testing.T) {
 				ctx, cancel = context.WithTimeout(ctx, tc.timeout)
 				defer cancel()
 			}
-			stdout, stderr, err := Run(ctx, tc.args...)
+			stdout, stderr, _, err := Run(ctx, tc.args...)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

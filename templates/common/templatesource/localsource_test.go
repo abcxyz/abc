@@ -64,14 +64,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_dir_in_same_git_workspace",
 			srcDir:  "src",
 			destDir: "dst",
-			initialContents: map[string]string{
-				// A minimal .git directory
-				".git/refs/_":    "",
-				".git/objects/_": "",
-				".git/HEAD":      "ref: refs/heads/main",
-				"src/spec.yaml":  "file1 contents",
-				"src/file1.txt":  "file1 contents",
-			},
+			initialContents: common.WithGitRepoAt("",
+				map[string]string{
+					"src/spec.yaml": "file1 contents",
+					"src/file1.txt": "file1 contents",
+				}),
 			wantNewFiles: map[string]string{
 				"dst/spec.yaml": "file1 contents",
 				"dst/file1.txt": "file1 contents",
@@ -79,23 +76,70 @@ func TestLocalDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "../src",
+				HasVersion:      true,
+				Version:         common.MinimalGitHeadSHA,
+			},
+		},
+		{
+			name:    "dest_dir_in_same_git_workspace_with_tag",
+			srcDir:  "src",
+			destDir: "dst",
+			initialContents: common.WithGitRepoAt("",
+				map[string]string{
+					"src/spec.yaml": "file1 contents",
+					"src/file1.txt": "file1 contents",
+
+					// This assumes that we're using the git repo created by
+					// common.WithGitRepoAt(). We're tweaking the repo structure
+					// to add a tag. The named SHA already exists in the repo.
+					".git/refs/tags/mytag": common.MinimalGitHeadSHA,
+				}),
+			wantNewFiles: map[string]string{
+				"dst/spec.yaml": "file1 contents",
+				"dst/file1.txt": "file1 contents",
+			},
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "../src",
+				HasVersion:      true,
+				Version:         "mytag",
+			},
+		},
+		{
+			name:    "dest_dir_in_same_git_workspace_with_detached_head",
+			srcDir:  "src",
+			destDir: "dst",
+			initialContents: common.WithGitRepoAt("",
+				map[string]string{
+					"src/spec.yaml": "file1 contents",
+					"src/file1.txt": "file1 contents",
+
+					// This assumes that we're using the git repo created by
+					// common.WithGitRepoAt(). We're putting the repo in a
+					// detached HEAD state so we're not on a branch.
+					".git/HEAD": common.MinimalGitHeadSHA,
+				}),
+			wantNewFiles: map[string]string{
+				"dst/spec.yaml": "file1 contents",
+				"dst/file1.txt": "file1 contents",
+			},
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "../src",
+				HasVersion:      true,
+				Version:         common.MinimalGitHeadSHA,
 			},
 		},
 		{
 			name:    "dest_dir_in_different_git_workspace",
 			srcDir:  "src/dir1",
 			destDir: "dst/dir1",
-			initialContents: map[string]string{
-				"src/.git/refs/_":    "",
-				"src/.git/objects/_": "",
-				"src/.git/HEAD":      "ref: refs/heads/main",
-				"src/dir1/spec.yaml": "file1 contents",
-				"src/dir1/file1.txt": "file1 contents",
-
-				"dst/.git/refs/_":    "",
-				"dst/.git/objects/_": "",
-				"dst/.git/HEAD":      "ref: refs/heads/main",
-			},
+			initialContents: common.WithGitRepoAt("src/",
+				common.WithGitRepoAt("dst/",
+					map[string]string{
+						"src/dir1/spec.yaml": "file1 contents",
+						"src/dir1/file1.txt": "file1 contents",
+					})),
 			wantNewFiles: map[string]string{
 				"dst/dir1/spec.yaml": "file1 contents",
 				"dst/dir1/file1.txt": "file1 contents",
@@ -108,13 +152,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "source_in_git_but_dest_is_not",
 			srcDir:  "src/dir1",
 			destDir: "dst",
-			initialContents: map[string]string{
-				"src/.git/refs/_":    "",
-				"src/.git/objects/_": "",
-				"src/.git/HEAD":      "ref: refs/heads/main",
-				"src/dir1/spec.yaml": "file1 contents",
-				"src/dir1/file1.txt": "file1 contents",
-			},
+			initialContents: common.WithGitRepoAt("src/",
+				map[string]string{
+					"src/dir1/spec.yaml": "file1 contents",
+					"src/dir1/file1.txt": "file1 contents",
+				}),
 			wantNewFiles: map[string]string{
 				"dst/spec.yaml": "file1 contents",
 				"dst/file1.txt": "file1 contents",
@@ -127,14 +169,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_in_git_but_src_is_not",
 			srcDir:  "src",
 			destDir: "dst",
-			initialContents: map[string]string{
-				"src/spec.yaml": "file1 contents",
-				"src/file1.txt": "file1 contents",
-
-				"dst/.git/refs/_":    "",
-				"dst/.git/objects/_": "",
-				"dst/.git/HEAD":      "ref: refs/heads/main",
-			},
+			initialContents: common.WithGitRepoAt("dst/",
+				map[string]string{
+					"src/spec.yaml": "file1 contents",
+					"src/file1.txt": "file1 contents",
+				}),
 			wantNewFiles: map[string]string{
 				"dst/spec.yaml": "file1 contents",
 				"dst/file1.txt": "file1 contents",
@@ -155,7 +194,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 			tmp := t.TempDir()
 			common.WriteAllDefaultMode(t, tmp, tc.initialContents)
 			dl := &localDownloader{
-				srcPath: filepath.Join(tmp, filepath.FromSlash(tc.srcDir)),
+				srcPath:    filepath.Join(tmp, filepath.FromSlash(tc.srcDir)),
+				allowDirty: true,
 			}
 			dest := filepath.Join(tmp, filepath.FromSlash(tc.destDir))
 			gotMeta, err := dl.Download(ctx, tmp, dest)
@@ -166,7 +206,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			got := common.LoadDirWithoutMode(t, tmp)
 			want := sets.UnionMapKeys(tc.initialContents, tc.wantNewFiles)
 			if diff := cmp.Diff(got, want); diff != "" {
-				t.Errorf("output directory contents were not as expected: %s", diff)
+				t.Errorf("output directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			if diff := cmp.Diff(gotMeta, tc.wantDLMeta, cmpopts.EquateEmpty()); diff != "" {

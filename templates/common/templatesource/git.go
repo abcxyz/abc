@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/exp/slices"
@@ -126,6 +125,10 @@ type gitDownloader struct {
 
 	cloner cloner
 	tagser tagser
+
+	// It's too hard in tests to generate a clean git repo, so we provide
+	// this option to just ignore the fact that the git repo is dirty.
+	allowDirty bool
 }
 
 // Download implements Downloader.
@@ -138,13 +141,13 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 		return nil, fmt.Errorf("invalid subdirectory: %w", err)
 	}
 
-	version, err := resolveVersion(ctx, g.tagser, g.remote, g.version)
+	versionToDownload, err := resolveVersion(ctx, g.tagser, g.remote, g.version)
 	if err != nil {
 		return nil, err
 	}
 	logger.DebugContext(ctx, "resolved version from",
 		"input", g.version,
-		"to", version)
+		"to", versionToDownload)
 
 	// Rather than cloning directly into destDir, we clone into a temp dir. It would
 	// be incorrect to clone the whole repo into destDir if the caller only asked
@@ -156,14 +159,14 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 	defer os.RemoveAll(tmpDir)
 	subdirToCopy := filepath.Join(tmpDir, filepath.FromSlash(subdir))
 
-	if err := g.cloner.Clone(ctx, g.remote, version, tmpDir); err != nil {
+	if err := g.cloner.Clone(ctx, g.remote, versionToDownload, tmpDir); err != nil {
 		return nil, fmt.Errorf("Clone(): %w", err)
 	}
 
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
 		if common.IsStatNotExistErr(err) {
-			return nil, fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, version, subdir, version)
+			return nil, fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, versionToDownload, subdir, versionToDownload)
 		}
 		return nil, err //nolint:wrapcheck // Stat() returns a decently informative error
 	}
@@ -173,7 +176,7 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 
 	logger.DebugContext(ctx, "cloned repo",
 		"remote", g.remote,
-		"version", version)
+		"version", versionToDownload)
 
 	// Copy only the requested subdir to destDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
@@ -189,9 +192,27 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 		return nil, err //nolint:wrapcheck
 	}
 
+	// You might wonder: why don't we just use the downloaded branch/tag/SHA as
+	// the template version for the manifest? Multiple reasons:
+	//   - There might be a "better" name. E.g. the user specified a SHA
+	//     but there exists a semver tag pointing to the same SHA, which is
+	//     "better."
+	//   - The user may have specified a branch name, but we don't allow branches
+	//     to be used as template versions in manifests because they change
+	//     frequently.
+	manifestVersion, ok, err := git.VersionForManifest(ctx, tmpDir, g.allowDirty)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+	if !ok {
+		return nil, fmt.Errorf("internal error: no version number was available after git clone")
+	}
+
 	dlMeta := &DownloadMetadata{
 		IsCanonical:     true, // Remote git sources are always canonical.
 		CanonicalSource: g.canonicalSource,
+		HasVersion:      true, // Remote git sources always have a tag or SHA.
+		Version:         manifestVersion,
 	}
 
 	return dlMeta, nil
@@ -230,11 +251,7 @@ func resolveLatest(ctx context.Context, t tagser, remote, version string) (strin
 	}
 	versions := make([]*semver.Version, 0, len(tags))
 	for _, t := range tags {
-		if !strings.HasPrefix(t, "v") {
-			logger.DebugContext(ctx, "ignoring tag that doesn't start with 'v'", "tag", t)
-			continue
-		}
-		sv, err := semver.StrictNewVersion(t[1:])
+		sv, err := git.ParseSemverTag(t)
 		if err != nil {
 			logger.DebugContext(ctx, "ignoring non-semver-formatted tag", "tag", t)
 			continue // This is not a semver release tag
