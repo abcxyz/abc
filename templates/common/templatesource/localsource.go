@@ -136,7 +136,7 @@ func canonicalize(ctx context.Context, cwd, src, dest string) (string, bool, err
 	if err != nil {
 		return "", false, fmt.Errorf("filepath.Rel(%q,%q): %w", dest, src, err)
 	}
-	return out, true, nil
+	return filepath.ToSlash(out), true, nil
 }
 
 // gitWorkspace looks for the presence of a .git directory in parent directories

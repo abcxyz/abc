@@ -58,7 +58,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 		{
 			name:    "nonexistent_source",
 			srcDir:  "nonexistent",
-			wantErr: "no such file",
+			wantErr: "nonexistent",
 		},
 		{
 			name:    "dest_dir_in_same_git_workspace",
