@@ -86,6 +86,17 @@ func TestActionInclude(t *testing.T) {
 			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../file.txt")),
 		},
 		{
+			name: "reject_dot_dot_glob",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"../*.txt"}),
+					},
+				},
+			},
+			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../*.txt")),
+		},
+		{
 			name: "templated_filename_success",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
@@ -164,7 +175,7 @@ func TestActionInclude(t *testing.T) {
 			templateContents: map[string]common.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantErr: `include path doesn't exist: "nonexistent"`,
+			wantErr: `glob "nonexistent" did not match any files`,
 		},
 		{
 			// Note: we don't exhaustively test every possible FS error here. That's
@@ -184,6 +195,109 @@ func TestActionInclude(t *testing.T) {
 			wantErr: "fake error",
 		},
 		{
+			name: "simple_glob_path",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+				"file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+				"file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+			},
+		},
+		{
+			name: "glob_dir",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"dir*"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+		},
+		{
+			name: "glob_dir_and_files",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"dir*"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"directive.txt":  {Mode: 0o600, Contents: "directive file contents"},
+				"director.txt":   {Mode: 0o600, Contents: "director file contents"},
+				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"directive.txt":  {Mode: 0o600, Contents: "directive file contents"},
+				"director.txt":   {Mode: 0o600, Contents: "director file contents"},
+				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+		},
+		{
+			name: "glob_in_subdir",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"dir/*.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"dont_include.txt":  {Mode: 0o600, Contents: "dont_include contents"},
+				"dont/include2.txt": {Mode: 0o600, Contents: "dont_include2 contents"},
+				"dir/file1.txt":     {Mode: 0o600, Contents: "file1 contents"},
+				"dir/file2.txt":     {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"dir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"dir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+		},
+		{
+			name: "go_template_to_glob",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"{{.filename}}.*"}),
+					},
+				},
+			},
+			inputs: map[string]string{
+				"filename": "file",
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file.txt":  {Mode: 0o600, Contents: "txt file contents"},
+				"file.md":   {Mode: 0o600, Contents: "md file contents"},
+				"file.json": {Mode: 0o600, Contents: "json file contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file.txt":  {Mode: 0o600, Contents: "txt file contents"},
+				"file.md":   {Mode: 0o600, Contents: "md file contents"},
+				"file.json": {Mode: 0o600, Contents: "json file contents"},
+			},
+		},
+		{
 			name: "as_with_single_path",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
@@ -198,6 +312,67 @@ func TestActionInclude(t *testing.T) {
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"dir2/file2.txt": {Mode: 0o600, Contents: "my file contents"},
+			},
+		},
+		{
+			name: "as_with_glob_paths",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*.txt"}),
+						As:    modelStrings([]string{"dir"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"dir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"dir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+		},
+		{
+			name: "multiple_as_with_glob_paths",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*.txt", "*.md"}),
+						As:    modelStrings([]string{"txtdir", "mddir"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+				"file3.md":  {Mode: 0o600, Contents: "file3 contents"},
+				"file4.md":  {Mode: 0o600, Contents: "file4 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"txtdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"txtdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+				"mddir/file3.md":   {Mode: 0o600, Contents: "file3 contents"},
+				"mddir/file4.md":   {Mode: 0o600, Contents: "file4 contents"},
+			},
+		},
+		{
+			name: "as_with_glob_dir",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"dir*"}),
+						As:    modelStrings([]string{"topdir"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"topdir/dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"topdir/dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 		},
 		{
@@ -433,6 +608,34 @@ func TestActionInclude(t *testing.T) {
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 			wantIncludedFromDest: []string{"subdir/file2.txt"},
+		},
+		{
+			name: "include_glob_from_destination",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*.txt"}),
+						From:  model.String{Val: "destination"},
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
+			},
+			destDirContents: map[string]common.ModeAndContents{
+				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt":        {Mode: 0o600, Contents: "file1 contents"},
+				"subdir/file3.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantIncludedFromDest: []string{
+				"file1.txt",
+				"file2.txt",
+			},
 		},
 		{
 			name: "include_individual_files_from_destination",
