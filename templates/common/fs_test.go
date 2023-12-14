@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"io/fs"
@@ -55,7 +56,7 @@ func TestCopyRecursive(t *testing.T) {
 		statErr               error
 		writeFileErr          error
 		wantErr               string
-		wantHashes            map[string]string
+		wantHashesHex         map[string]string
 	}{
 		{
 			name: "simple_success",
@@ -127,7 +128,7 @@ func TestCopyRecursive(t *testing.T) {
 			},
 			hasher: sha256.New,
 			dryRun: true,
-			wantHashes: map[string]string{
+			wantHashesHex: map[string]string{
 				"file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
 			},
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
@@ -332,7 +333,7 @@ func TestCopyRecursive(t *testing.T) {
 			want: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantHashes: map[string]string{
+			wantHashesHex: map[string]string{
 				"file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
 			},
 		},
@@ -345,7 +346,7 @@ func TestCopyRecursive(t *testing.T) {
 			want: map[string]ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantHashes: map[string]string{
+			wantHashesHex: map[string]string{
 				"file1.txt": "a4b1d14ff0861c692abb6789d38c92d118a5febd000248d3b1002357ce0633d23ab12034bb1efd8d884058cec99da31cf646fb6179979b2fb231ba80e0bbc495",
 			},
 		},
@@ -360,7 +361,7 @@ func TestCopyRecursive(t *testing.T) {
 				"subdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantHashes: map[string]string{
+			wantHashesHex: map[string]string{
 				"subdir/file1.txt": "226e7cfa701fb8ba542d42e0f8bd3090cbbcc9f54d834f361c0ab8c3f4846b72",
 				"subdir/file2.txt": "0140c0c66a644ab2dd27ac5536f20cc373d6fd1896f9838ecb4595675dda01fa",
 			},
@@ -433,9 +434,9 @@ func TestCopyRecursive(t *testing.T) {
 			const unixTime = 1688609125
 			clk.Set(time.Unix(unixTime, 0)) // Arbitrary timestamp
 
-			var hashes map[string]string
+			var hashes map[string][]byte
 			if tc.hasher != nil {
-				hashes = make(map[string]string)
+				hashes = make(map[string][]byte)
 			}
 
 			err := CopyRecursive(ctx, &model.ConfigPos{}, &CopyParams{
@@ -462,7 +463,15 @@ func TestCopyRecursive(t *testing.T) {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
 			}
 
-			if diff := cmp.Diff(hashes, tc.wantHashes); diff != "" {
+			wantHashes := map[string][]byte{}
+			for filename, hexHash := range tc.wantHashesHex {
+				buf, err := hex.DecodeString(hexHash)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantHashes[filename] = buf
+			}
+			if diff := cmp.Diff(hashes, wantHashes, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("hashes were not as expected: (-got,+want): %s", diff)
 			}
 		})

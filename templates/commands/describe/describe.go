@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
@@ -96,7 +97,17 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		}
 	}()
 
-	_, templateDir, err := templatesource.Download(ctx, rp.fs, rp.describeTempDirBase, c.flags.Source, c.flags.GitProtocol)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("os.Getwd(): %w", err)
+	}
+	_, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
+		FS:          rp.fs,
+		TempDirBase: rp.describeTempDirBase,
+		Source:      c.flags.Source,
+		GitProtocol: c.flags.GitProtocol,
+		CWD:         cwd,
+	})
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}

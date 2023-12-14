@@ -101,7 +101,7 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 
 			// The permissions in the following WriteFile call will be ignored
 			// because the file already exists.
-			if err := sp.fs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
+			if err := sp.fs.WriteFile(path, newBuf, common.OwnerRWXPerms); err != nil {
 				return absPath.Pos.Errorf("Writefile(): %w", err)
 			}
 			logger.DebugContext(ctx, "wrote modification", "path", path)

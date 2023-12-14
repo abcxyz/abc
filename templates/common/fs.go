@@ -16,7 +16,6 @@ package common
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash"
@@ -31,9 +30,9 @@ import (
 
 const (
 	// Permission bits: rwx------ .
-	ownerRWXPerms = 0o700
+	OwnerRWXPerms = 0o700
 	// Permission bits: rw------- .
-	ownerRWPerms = 0o600
+	OwnerRWPerms = 0o600
 )
 
 // Abstracts filesystem operations.
@@ -119,7 +118,7 @@ type CopyParams struct {
 	// mode, the hash will be computed normally. OutHashes always uses forward
 	// slashes as path separator, regardless of OS.
 	Hasher    func() hash.Hash
-	OutHashes map[string]string
+	OutHashes map[string][]byte
 }
 
 // CopyVisitor is the type for callback functions that are called by
@@ -233,7 +232,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			return err
 		}
 		if hash != nil && p.OutHashes != nil {
-			p.OutHashes[filepath.ToSlash(relToSrc)] = hex.EncodeToString(hash.Sum(nil))
+			p.OutHashes[filepath.ToSlash(relToSrc)] = hash.Sum(nil)
 		}
 		return nil
 	})
@@ -286,13 +285,13 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) error {
 	backupFile := filepath.Join(backupDir, relPath)
 	parent := filepath.Dir(backupFile)
-	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
+	if err := os.MkdirAll(parent, OwnerRWXPerms); err != nil {
 		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
 	}
 
 	fileToBackup := filepath.Join(srcRoot, relPath)
 
-	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, ownerRWPerms, false, nil); err != nil {
+	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, OwnerRWPerms, false, nil); err != nil {
 		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
 			fileToBackup, backupFile, err)
 	}
@@ -324,7 +323,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs FS, path string, dryRun bool) err
 		return nil
 	}
 
-	if err := rfs.MkdirAll(path, ownerRWXPerms); err != nil {
+	if err := rfs.MkdirAll(path, OwnerRWXPerms); err != nil {
 		return pos.Errorf("MkdirAll(): %w", err)
 	}
 
