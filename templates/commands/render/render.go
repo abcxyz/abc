@@ -471,7 +471,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			if err != nil {
 				return err
 			}
-			logger.DebugContext(ctx, contents)
+			logger.WarnContext(ctx, contents)
 		}
 	}
 	return nil
