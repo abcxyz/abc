@@ -71,6 +71,8 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		skipNow[filepath.Join("testdata", "golden")] = struct{}{}
 	}
 
+	// During validation in spec.go, we've already enforced that either:
+	// len(asPaths) is either == 0 or == len(incPaths).
 	asPaths, err := processPaths(inc.As, sp.scope)
 	if err != nil {
 		return err
@@ -88,8 +90,6 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 
 		for _, matchedPath := range matchedPaths {
-			// During validation in spec.go, we've already enforced that either:
-			// len(asPaths) is either == 0 or == len(incPaths).
 			relMatchedPath, err := filepath.Rel(fromDir, matchedPath.Val)
 			if err != nil {
 				return err
