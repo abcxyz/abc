@@ -29,6 +29,7 @@ import (
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	specv1beta2 "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -262,15 +263,15 @@ steps:
     if: 'true'
     params:
       paths: ['.']`,
-			want: &specv1beta1.Spec{
+			want: &specv1beta2.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta1.Step{
+				Steps: []*specv1beta2.Step{
 					{
 						Action: model.String{Val: "include"},
 						If:     model.String{Val: "true"},
 						Desc:   model.String{Val: "include all files"},
-						Include: &specv1beta1.Include{
-							Paths: []*specv1beta1.IncludePath{
+						Include: &specv1beta2.Include{
+							Paths: []*specv1beta2.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
@@ -281,7 +282,7 @@ steps:
 					},
 				},
 			},
-			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version to "cli.abcxyz.dev/v1beta1".`,
+			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version`,
 		},
 	}
 
@@ -329,14 +330,14 @@ steps:
     desc: 'step desc'
     params:
       paths: ['.']`,
-			want: &specv1beta1.Spec{
+			want: &specv1beta2.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta1.Step{
+				Steps: []*specv1beta2.Step{
 					{
 						Action: model.String{Val: "include"},
 						Desc:   model.String{Val: "step desc"},
-						Include: &specv1beta1.Include{
-							Paths: []*specv1beta1.IncludePath{
+						Include: &specv1beta2.Include{
+							Paths: []*specv1beta2.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
