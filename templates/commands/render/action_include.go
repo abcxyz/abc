@@ -57,7 +57,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	for _, s := range skipPaths {
 		relSkipPath, err := filepath.Rel(fromDir, s.Val)
 		if err != nil {
-			return err
+			return fmt.Errorf("error making relative skip path: %w", err)
 		}
 		skip[relSkipPath] = struct{}{}
 	}
@@ -93,7 +93,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		for _, matchedPath := range matchedPaths {
 			relMatchedPath, err := filepath.Rel(fromDir, matchedPath.Val)
 			if err != nil {
-				return err
+				return fmt.Errorf("error making relative patern matched path: %w", err)
 			}
 
 			as := relMatchedPath
