@@ -80,6 +80,43 @@ func getRelDst(asPaths []model.String, i int, p model.String, matchedPaths []mod
 	return relSrc
 }
 
+func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
+	params := &common.CopyParams{
+		DryRun:  false,
+		DstRoot: absDst,
+		RFS:     sp.fs,
+		SrcRoot: absSrc,
+		Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
+			if _, ok := skip[filepath.Join(relSrc, relToSrcRoot)]; ok {
+				return common.CopyHint{
+					Skip: true,
+				}, nil
+			}
+
+			abs := filepath.Join(absSrc, relToSrcRoot)
+			relToFromDir, err := filepath.Rel(fromDir, abs)
+			if err != nil {
+				return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, absSrc, err)
+			}
+			if !de.IsDir() && fromVal == "destination" {
+				sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
+			}
+
+			return common.CopyHint{
+				// Allow later includes to replace earlier includes in the
+				// scratch directory. This doesn't affect whether files in
+				// the final *destination* directory will be overwritten;
+				// that comes later.
+				Overwrite: true,
+			}, nil
+		},
+	}
+	if err := common.CopyRecursive(ctx, pos, params); err != nil {
+		return pos.Errorf("copying failed: %w", err)
+	}
+	return nil
+}
+
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
 	// By default, we copy from the template directory. We also support
 	// grabbing files from the destination directory, so we can modify files
@@ -121,38 +158,8 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			relDst := getRelDst(asPaths, i, p, matchedPaths, relSrc, absSrc, fromDir)
 			absDst := filepath.Join(sp.scratchDir, relDst)
 
-			params := &common.CopyParams{
-				DryRun:  false,
-				DstRoot: absDst,
-				RFS:     sp.fs,
-				SrcRoot: absSrc,
-				Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
-					if _, ok := skip[filepath.Join(relSrc, relToSrcRoot)]; ok {
-						return common.CopyHint{
-							Skip: true,
-						}, nil
-					}
-
-					abs := filepath.Join(absSrc, relToSrcRoot)
-					relToFromDir, err := filepath.Rel(fromDir, abs)
-					if err != nil {
-						return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, absSrc, err)
-					}
-					if !de.IsDir() && inc.From.Val == "destination" {
-						sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
-					}
-
-					return common.CopyHint{
-						// Allow later includes to replace earlier includes in the
-						// scratch directory. This doesn't affect whether files in
-						// the final *destination* directory will be overwritten;
-						// that comes later.
-						Overwrite: true,
-					}, nil
-				},
-			}
-			if err := common.CopyRecursive(ctx, p.Pos, params); err != nil {
-				return p.Pos.Errorf("copying failed: %w", err)
+			if err := copyToDst(ctx, sp, skip, matchedPath.Pos, absDst, absSrc, relSrc, inc.From.Val, fromDir); err != nil {
+				return err
 			}
 		}
 	}
