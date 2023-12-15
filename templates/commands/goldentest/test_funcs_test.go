@@ -39,14 +39,14 @@ kind: 'GoldenTest'`
 
 	cases := []struct {
 		name         string
-		testName     string
+		testNames    []string
 		filesContent map[string]string
 		want         []*TestCase
 		wantErr      string
 	}{
 		{
-			name:     "specified_test_name_succeed",
-			testName: "test_case_1",
+			name:      "specified_test_name_succeed",
+			testNames: []string{"test_case_1"},
 			filesContent: map[string]string{
 				"testdata/golden/test_case_1/test.yaml": validYaml,
 			},
@@ -58,8 +58,26 @@ kind: 'GoldenTest'`
 			},
 		},
 		{
-			name:     "all_tests_succeed",
-			testName: "",
+			name:      "specified_multiple_test_names_succeed",
+			testNames: []string{"test_case_1", "test_case_2"},
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/test.yaml": validYaml,
+				"testdata/golden/test_case_2/test.yaml": validYaml,
+				"testdata/golden/test_case_3/test.yaml": validYaml,
+			},
+			want: []*TestCase{
+				{
+					TestName:   "test_case_1",
+					TestConfig: validTestCase,
+				},
+				{
+					TestName:   "test_case_2",
+					TestConfig: validTestCase,
+				},
+			},
+		},
+		{
+			name: "all_tests_succeed",
 			filesContent: map[string]string{
 				"testdata/golden/test_case_1/test.yaml": validYaml,
 				"testdata/golden/test_case_2/test.yaml": validYaml,
@@ -76,8 +94,7 @@ kind: 'GoldenTest'`
 			},
 		},
 		{
-			name:     "golden_test_dir_not_exist",
-			testName: "",
+			name: "golden_test_dir_not_exist",
 			filesContent: map[string]string{
 				"myfile": invalidYaml,
 			},
@@ -85,8 +102,7 @@ kind: 'GoldenTest'`
 			wantErr: "error reading golden test directory",
 		},
 		{
-			name:     "unexpected_file_in_golden_test_dir",
-			testName: "",
+			name: "unexpected_file_in_golden_test_dir",
 			filesContent: map[string]string{
 				"testdata/golden/hello.txt": invalidYaml,
 			},
@@ -94,8 +110,7 @@ kind: 'GoldenTest'`
 			wantErr: "unexpected file entry under golden test directory",
 		},
 		{
-			name:     "test_does_not_have_config",
-			testName: "",
+			name: "test_does_not_have_config",
 			filesContent: map[string]string{
 				"testdata/golden/test_case_1/hello.txt": invalidYaml,
 			},
@@ -103,8 +118,7 @@ kind: 'GoldenTest'`
 			wantErr: "error opening test config",
 		},
 		{
-			name:     "test_bad_config",
-			testName: "",
+			name: "test_bad_config",
 			filesContent: map[string]string{
 				"testdata/golden/test_case_1/test.yaml": invalidYaml,
 			},
@@ -112,8 +126,8 @@ kind: 'GoldenTest'`
 			wantErr: "error reading golden test config file",
 		},
 		{
-			name:     "specified_test_name_not_found",
-			testName: "test_case_2",
+			name:      "specified_test_name_not_found",
+			testNames: []string{"test_case_2"},
 			filesContent: map[string]string{
 				"testdata/golden/test_case_1/test.yaml": validYaml,
 			},
@@ -133,7 +147,7 @@ kind: 'GoldenTest'`
 			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
-			got, err := parseTestCases(ctx, tempDir, tc.testName)
+			got, err := parseTestCases(ctx, tempDir, tc.testNames)
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
