@@ -65,7 +65,7 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 	return skip, nil
 }
 
-func getRelDst(asPaths []model.String, i int, p model.String, matchedPaths []model.String, relSrc string, absSrc string, fromDir string) string {
+func getRelDst(asPaths []model.String, i int, p model.String, matchedPaths []model.String, relSrc, absSrc, fromDir string) string {
 	// As val provided
 	if len(asPaths) > 0 {
 		if len(matchedPaths) != 1 || absSrc != filepath.Join(fromDir, p.Val) {
