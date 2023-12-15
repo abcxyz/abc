@@ -25,7 +25,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model/decode"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 )
 
 const (

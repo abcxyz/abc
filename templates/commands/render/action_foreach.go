@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/abcxyz/abc/templates/common"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 )
 
 func actionForEach(ctx context.Context, fe *spec.ForEach, sp *stepParams) error {
