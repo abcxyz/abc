@@ -20,8 +20,6 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
@@ -62,14 +60,13 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		skip[relSkipPath] = struct{}{}
 	}
 
-	skipNow := maps.Clone(skip)
 	if fromDir == sp.templateDir {
 		// If we're copying the template root directory, automatically skip
 		// 1. spec.yaml file, because it's very unlikely that the user actually
 		// wants the spec file in the template output.
 		// 2. testdata/golden directory, this is reserved for golden test usage.
-		skipNow["spec.yaml"] = struct{}{}
-		skipNow[filepath.Join("testdata", "golden")] = struct{}{}
+		skip["spec.yaml"] = struct{}{}
+		skip[filepath.Join("testdata", "golden")] = struct{}{}
 	}
 
 	// During validation in spec.go, we've already enforced that either:
@@ -114,7 +111,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 				RFS:     sp.fs,
 				SrcRoot: matchedPath.Val,
 				Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
-					if _, ok := skipNow[filepath.Join(relMatchedPath, relToSrcRoot)]; ok {
+					if _, ok := skip[filepath.Join(relMatchedPath, relToSrcRoot)]; ok {
 						return common.CopyHint{
 							Skip: true,
 						}, nil
