@@ -65,6 +65,21 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 	return skip, nil
 }
 
+func getRelDst(asPaths []model.String, i int, p model.String, matchedPaths []model.String, relSrc string, absSrc string, fromDir string) string {
+	// As val provided
+	if len(asPaths) > 0 {
+		if len(matchedPaths) != 1 || absSrc != filepath.Join(fromDir, p.Val) {
+			// path is a glob, keep original filename and put inside directory named as the provided As val.
+			return filepath.Join(asPaths[i].Val, relSrc)
+		} else {
+			// otherwise use provided As val as new filename.
+			return asPaths[i].Val
+		}
+	}
+	// no As val was provided, use the original file or directory name.
+	return relSrc
+}
+
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
 	// By default, we copy from the template directory. We also support
 	// grabbing files from the destination directory, so we can modify files
@@ -98,39 +113,30 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 
 		for _, matchedPath := range matchedPaths {
-			relMatchedPath, err := filepath.Rel(fromDir, matchedPath.Val)
+			absSrc := matchedPath.Val
+			relSrc, err := filepath.Rel(fromDir, absSrc)
 			if err != nil {
 				return fmt.Errorf("internal error making relative glob matched path: %w", err)
 			}
-
-			as := relMatchedPath
-			if len(asPaths) > 0 { // As provided
-				if len(matchedPaths) != 1 || matchedPath.Val != filepath.Join(fromDir, p.Val) {
-					// path is a glob, keep original filename and put inside directory named as the provided As val.
-					as = filepath.Join(asPaths[i].Val, relMatchedPath)
-				} else {
-					// otherwise use provided As val as new filename.
-					as = asPaths[i].Val
-				}
-			}
-			absDst := filepath.Join(sp.scratchDir, as)
+			relDst := getRelDst(asPaths, i, p, matchedPaths, relSrc, absSrc, fromDir)
+			absDst := filepath.Join(sp.scratchDir, relDst)
 
 			params := &common.CopyParams{
 				DryRun:  false,
 				DstRoot: absDst,
 				RFS:     sp.fs,
-				SrcRoot: matchedPath.Val,
+				SrcRoot: absSrc,
 				Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
-					if _, ok := skip[filepath.Join(relMatchedPath, relToSrcRoot)]; ok {
+					if _, ok := skip[filepath.Join(relSrc, relToSrcRoot)]; ok {
 						return common.CopyHint{
 							Skip: true,
 						}, nil
 					}
 
-					abs := filepath.Join(matchedPath.Val, relToSrcRoot)
+					abs := filepath.Join(absSrc, relToSrcRoot)
 					relToFromDir, err := filepath.Rel(fromDir, abs)
 					if err != nil {
-						return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, matchedPath.Val, err)
+						return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, absSrc, err)
 					}
 					if !de.IsDir() && inc.From.Val == "destination" {
 						sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
