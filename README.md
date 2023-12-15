@@ -483,11 +483,15 @@ Params:
   each path must be given an output location. These may use template expressions
   or file globs (e.g. `{{.my_input}}`, `*.txt`). If file globs are used in
   `paths`, the corresponding `as` inputs will be treated as directories:
-  ```
+
+  ```yaml
   - paths: ["*.txt", "*.md", "nonglob.json"]
     as: ["dir1", "dir2", "newname.json"]
+  ```
 
+  ```
   output:
+
   /dir1/file1.txt
   /dir1/file2.txt
   /dir2/file3.md
