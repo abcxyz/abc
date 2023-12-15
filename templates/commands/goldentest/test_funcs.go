@@ -63,15 +63,12 @@ func parseTestCases(ctx context.Context, location string, testNames []string) ([
 
 	if len(testNames) > 0 {
 		for _, testName := range testNames {
-			testConfig := filepath.Join(testDir, testName, configName)
-			test, err := parseTestConfig(ctx, testConfig)
+			testCase, err := buildTestCase(ctx, testDir, testName)
 			if err != nil {
 				return nil, err
 			}
-			testCases = append(testCases, &TestCase{
-				TestName:   testName,
-				TestConfig: test,
-			})
+
+			testCases = append(testCases, testCase)
 		}
 		return testCases, nil
 	}
@@ -86,19 +83,29 @@ func parseTestCases(ctx context.Context, location string, testNames []string) ([
 			return nil, fmt.Errorf("unexpected file entry under golden test directory: %s", entry.Name())
 		}
 
-		testConfig := filepath.Join(testDir, entry.Name(), configName)
-		test, err := parseTestConfig(ctx, testConfig)
+		testCase, err := buildTestCase(ctx, testDir, entry.Name())
 		if err != nil {
 			return nil, err
 		}
 
-		testCases = append(testCases, &TestCase{
-			TestName:   entry.Name(),
-			TestConfig: test,
-		})
+		testCases = append(testCases, testCase)
 	}
 
 	return testCases, nil
+}
+
+// buildtestCases builds the name and config of a test case.
+func buildTestCase(ctx context.Context, testDir, testName string) (*TestCase, error) {
+	testConfig := filepath.Join(testDir, testName, configName)
+	test, err := parseTestConfig(ctx, testConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TestCase{
+		TestName:   testName,
+		TestConfig: test,
+	}, nil
 }
 
 // parseTestConfig reads a configuration yaml and returns the result.

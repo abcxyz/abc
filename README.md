@@ -106,8 +106,8 @@ The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 ### For `abc templates golden-test`
 
 Usages:
-- `abc templates golden-test record --test-name=<test_name> <location>`
-- `abc templates golden-test verify --test-name=<test_name> <location>`
+- `abc templates golden-test record [--test-name=<test_name>] <location>`
+- `abc templates golden-test verify [--test-name=<test_name>] <location>`
 
 Examples:
 - `abc templates golden-test record --test-name=example_test examples/templates/render/hello_jupiter`
