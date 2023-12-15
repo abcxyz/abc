@@ -34,28 +34,21 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 	return nil
 }
 
-func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
-	// By default, we copy from the template directory. We also support
-	// grabbing files from the destination directory, so we can modify files
-	// that already exist in the destination.
-	fromDir := sp.templateDir
-	if inc.From.Val == "destination" {
-		fromDir = sp.flags.Dest
-	}
+func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, fromDir string) (map[string]struct{}, error) {
+	skip := make(map[string]struct{}, len(inc.Skip))
 
 	unglobbedSkipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	skipPaths, err := processGlobs(ctx, unglobbedSkipPaths, fromDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	skip := make(map[string]struct{}, len(inc.Skip))
 	for _, s := range skipPaths {
 		relSkipPath, err := filepath.Rel(fromDir, s.Val)
 		if err != nil {
-			return fmt.Errorf("internal error making relative skip path: %w", err)
+			return nil, fmt.Errorf("internal error making relative skip path: %w", err)
 		}
 		skip[relSkipPath] = struct{}{}
 	}
@@ -67,6 +60,23 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		// 2. testdata/golden directory, this is reserved for golden test usage.
 		skip["spec.yaml"] = struct{}{}
 		skip[filepath.Join("testdata", "golden")] = struct{}{}
+	}
+
+	return skip, nil
+}
+
+func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
+	// By default, we copy from the template directory. We also support
+	// grabbing files from the destination directory, so we can modify files
+	// that already exist in the destination.
+	fromDir := sp.templateDir
+	if inc.From.Val == "destination" {
+		fromDir = sp.flags.Dest
+	}
+
+	skip, err := createSkipMap(ctx, inc, sp, fromDir)
+	if err != nil {
+		return err
 	}
 
 	// During validation in spec.go, we've already enforced that either:
