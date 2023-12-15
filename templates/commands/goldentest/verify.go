@@ -48,10 +48,10 @@ func (c *VerifyCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} --test-name=<test-name-1>,<test-name-2> <location>
 
-The {{ COMMAND }} records the template golden tests.
+The {{ COMMAND }} verifies the template golden tests.
 
 The "<test_name>" is the name of the test. If no <test_name> is specified,
-all tests will be recoreded.
+all tests will be run against.
 
 The "<location>" is the location of the template.
 
