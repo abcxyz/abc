@@ -473,15 +473,16 @@ directory. It's similar to the `COPY` command in a Dockerfile.
 Params:
 
 - `paths`: a list of files and/or directories to copy. These may use template
-  expressions or simple file globs (e.g. `{{.my_input}}`, `*.txt`). Directories will be crawled recursively
-  and every file underneath will be processed. By default, the output location
-  of each file is the same as its location in the template directory.
+  expressions or simple file globs (e.g. `{{.my_input}}`, `*.txt`). Directories
+  will be crawled recursively and every file underneath will be processed. By
+  default, the output location of each file is the same as its location in the
+  template directory.
 - `as`: as list of output locations relative to the output directory. This can
   be used to make the output location(s) different than the input locations. If
   `as` is present, its length must be equal to the length of `paths`; that is,
-  each path must be given an output location. 
-  These may use template expressions or simple file globs (e.g. `{{.my_input}}`, `*.txt`).
-  If file globs are used in `paths`, the corresponding `as` inputs will be treated as directories:
+  each path must be given an output location. These may use template expressions
+  or simple file globs (e.g. `{{.my_input}}`, `*.txt`). If file globs are used
+  in `paths`, the corresponding `as` inputs will be treated as directories:
   ```
   - paths: ["*.txt", "*.md", "nonglob.json"]
     as: ["dir1", "dir2", "newname.json"]
@@ -507,7 +508,8 @@ Params:
   We assume that when template authors say "copy everything in the template into
   the output," they mean "everything except the spec file."
 
-  These may use template expressions or simple file globs (e.g. `{{.my_input}}`, `*.txt`).
+  These may use template expressions or simple file globs (e.g. `{{.my_input}}`,
+  `*.txt`).
 
 - `from`: rarely used. The only currently valid value is `'destination'`. This
   allows the template to modify a file that is already present on the user's
