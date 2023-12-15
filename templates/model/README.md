@@ -52,6 +52,12 @@ something isn't right.
   `\tspec "github.com/abcxyz/abc/templates/model/spec/v10"`, in all Go files.
   You only need to do this for the `kind`s you changed (if you only changed the
   template spec then you don't need to do this for goldentests and manifests).
+- Change the tests named `oldest_template_upgrades_to_newest` and
+  `speculative_upgrade` to change references from the formerly-newest schema to
+  the schema you just created. (e.g. `specv9` -> `specv10`)
+- Submit your work so far as a PR. This will allow the binary to understand your
+  new work-in-progress api_version, but since we didn't announce it yet, users
+  shouldn't start using it yet.
 - Modify the new version directory to make whatever struct changes you want to
   make (e.g. add a new field/feature), including tests.
 - Update the "list of api_versions" section in `/README.md`.

@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 )
 
 func actionGoTemplate(ctx context.Context, p *spec.GoTemplate, sp *stepParams) error {
