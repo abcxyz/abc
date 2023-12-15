@@ -26,10 +26,11 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
-	"golang.org/x/exp/maps"
 )
 
 // Called with the contents of a file, and returns the new contents of the file
@@ -100,7 +101,7 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 
 			// The permissions in the following WriteFile call will be ignored
 			// because the file already exists.
-			if err := sp.fs.WriteFile(path, newBuf, ownerRWXPerms); err != nil {
+			if err := sp.fs.WriteFile(path, newBuf, common.OwnerRWXPerms); err != nil {
 				return absPath.Pos.Errorf("Writefile(): %w", err)
 			}
 			logger.DebugContext(ctx, "wrote modification", "path", path)
@@ -149,7 +150,9 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]
 		if len(globPaths) == 0 {
 			return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
 		}
-		logger.DebugContext(ctx, "glob path expanded:", "glob", p.Val, "matches", globPaths)
+		logger.DebugContext(ctx, "glob path expanded:",
+			"glob", p.Val,
+			"matches", globPaths)
 		for _, globPath := range globPaths {
 			if _, ok := seenPaths[globPath]; !ok {
 				out = append(out, model.String{

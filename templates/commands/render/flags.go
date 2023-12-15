@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/abcxyz/pkg/cli"
 	"github.com/posener/complete/v2/predict"
+
+	"github.com/abcxyz/abc/templates/common/flags"
+	"github.com/abcxyz/pkg/cli"
 )
 
 // RenderFlags describes what template to render and how.
@@ -37,7 +39,7 @@ type RenderFlags struct {
 	// It's OK for it to already exist or not.
 	Dest string
 
-	// GitProtocol is not yet used.
+	// GitProtocol is either https or ssh.
 	GitProtocol string
 
 	// ForceOverwrite lets existing output files in the Dest directory be overwritten
@@ -69,6 +71,10 @@ type RenderFlags struct {
 	// SkipInputValidation skips the execution of the input validation rules as
 	// configured in the template's spec.yaml file.
 	SkipInputValidation bool
+
+	// Manifest enables the writing of manifest files, which are an experimental
+	// feature related to template upgrades.
+	Manifest bool
 }
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
@@ -139,6 +145,13 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Usage:   "Skip running the validation expressions for inputs that were configured in spec.yaml.",
 	})
 
+	f.BoolVar(&cli.BoolVar{
+		Name:    "manifest",
+		Target:  &r.Manifest,
+		Default: false,
+		Usage:   "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
+	})
+
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(&cli.BoolVar{
 		Name:    "debug-scratch-contents",
@@ -148,14 +161,8 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	g := set.NewSection("GIT OPTIONS")
-	g.StringVar(&cli.StringVar{
-		Name:    "git-protocol",
-		Example: "https",
-		Default: "https",
-		Target:  &r.GitProtocol,
-		Predict: predict.Set([]string{"https", "ssh"}),
-		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
-	})
+
+	g.StringVar(flags.GitProtocol(&r.GitProtocol))
 
 	// Default source to the first CLI argument, if given
 	set.AfterParse(func(existingErr error) error {

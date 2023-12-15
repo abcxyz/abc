@@ -19,11 +19,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestActionStringReplace(t *testing.T) {
@@ -236,9 +237,9 @@ func TestActionStringReplace(t *testing.T) {
 				Replacements: tc.replacements,
 			}
 			sp := &stepParams{
-				fs: &errorFS{
+				fs: &common.ErrorFS{
 					FS:          &common.RealFS{},
-					readFileErr: tc.readFileErr,
+					ReadFileErr: tc.readFileErr,
 				},
 				scratchDir: scratchDir,
 				scope:      common.NewScope(tc.inputs),

@@ -24,7 +24,7 @@ import (
 // Upgrade implements model.ValidatorUpgrader.
 func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	logger := logging.FromContext(ctx).With("logger", "Upgrade")
-	logger.DebugContext(ctx, "finished upgrading, this is the most recent version")
+	logger.DebugContext(ctx, "finished upgrading spec model, this is the most recent version")
 
 	return nil, model.ErrLatestVersion
 }

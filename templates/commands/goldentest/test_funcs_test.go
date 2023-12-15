@@ -20,12 +20,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestParseTestCases(t *testing.T) {
@@ -148,59 +149,6 @@ kind: 'GoldenTest'`
 	}
 }
 
-func TestClearTestDir(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name         string
-		filesContent map[string]string
-		expected     map[string]string
-	}{
-		{
-			name: "outdated_test_artifacts_removed",
-			filesContent: map[string]string{
-				"test.yaml":    "yaml",
-				"data/a.txt":   "file A content",
-				"data/b/b.txt": "file B content",
-			},
-			expected: map[string]string{
-				"test.yaml": "yaml",
-			},
-		},
-		{
-			name: "test_config_in_sub_dir_removed",
-			filesContent: map[string]string{
-				"test.yaml":      "yaml",
-				"test/test.yaml": "yaml",
-			},
-			expected: map[string]string{
-				"test.yaml": "yaml",
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			tempDir := t.TempDir()
-
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
-
-			if err := clearTestDir(tempDir); err != nil {
-				t.Fatal(err)
-			}
-
-			gotDestContents := common.LoadDirWithoutMode(t, tempDir)
-			if diff := cmp.Diff(gotDestContents, tc.expected); diff != "" {
-				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
-			}
-		})
-	}
-}
-
 func TestRenderTestCase(t *testing.T) {
 	t.Parallel()
 
@@ -291,7 +239,8 @@ steps:
 
 			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
-			err := renderTestCase(tempDir, tempDir, tc.testCase)
+			ctx := context.Background()
+			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
 			if err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)

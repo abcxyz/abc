@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"os"
@@ -29,9 +30,9 @@ import (
 
 const (
 	// Permission bits: rwx------ .
-	ownerRWXPerms = 0o700
+	OwnerRWXPerms = 0o700
 	// Permission bits: rw------- .
-	ownerRWPerms = 0o600
+	OwnerRWPerms = 0o600
 )
 
 // Abstracts filesystem operations.
@@ -100,15 +101,24 @@ type CopyParams struct {
 	// dryRun skips actually copy anything, just checks whether the copy would
 	// be likely to succeed.
 	DryRun bool
-	// dstRoot is the output directory.
+	// dstRoot is the output directory. May be absolute or relative.
 	DstRoot string
-	// srcRoot is the file or directory from which to copy.
+	// srcRoot is the file or directory from which to copy. May be absolute or
+	// relative.
 	SrcRoot string
 	// RFS is the filesytem to use.
 	RFS FS
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
+
+	// If Hasher and OutHashes are not nil, then each copied file will be hashed
+	// and the hex hash will be saved in OutHashes. If a file is "skipped"
+	// (CopyHint.Skip==true) then the hash will not be computed. In dry run
+	// mode, the hash will be computed normally. OutHashes always uses forward
+	// slashes as path separator, regardless of OS.
+	Hasher    func() hash.Hash
+	OutHashes map[string][]byte
 }
 
 // CopyVisitor is the type for callback functions that are called by
@@ -203,7 +213,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 					return err
 				}
 			}
-		} else if !os.IsNotExist(err) {
+		} else if !IsStatNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
 		srcInfo, err := p.RFS.Stat(path)
@@ -214,11 +224,25 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		// The permission bits on the output file are copied from the input file;
 		// this preserves the execute bit on executable files.
 		mode := srcInfo.Mode().Perm()
-		return copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun)
+		var hash hash.Hash
+		if p.Hasher != nil {
+			hash = p.Hasher()
+		}
+		if err := copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun, hash); err != nil {
+			return err
+		}
+		if hash != nil && p.OutHashes != nil {
+			p.OutHashes[filepath.ToSlash(relToSrc)] = hash.Sum(nil)
+		}
+		return nil
 	})
 }
 
-func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, mode fs.FileMode, dryRun bool) (outErr error) {
+// copyFile copies the contents of src to dst.
+//
+// hash is nil-able. If not nil, it will be written to with the file contents.
+// The caller should call hash.Sum() to get the hash output.
+func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, mode fs.FileMode, dryRun bool, hash hash.Hash) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "copyFile")
 
 	readFile, err := rfs.Open(src)
@@ -226,21 +250,30 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 		return pos.Errorf("Open(): %w", err)
 	}
 	defer func() { outErr = errors.Join(outErr, readFile.Close()) }()
+	var reader io.Reader = readFile
 
+	var writer io.Writer
 	if dryRun {
-		return nil
+		writer = io.Discard
+	} else {
+		writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+		if err != nil {
+			return pos.Errorf("OpenFile(): %w", err)
+		}
+		defer func() { outErr = errors.Join(outErr, writeFile.Close()) }()
+		writer = writeFile
 	}
 
-	writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
-	if err != nil {
-		return pos.Errorf("OpenFile(): %w", err)
+	if hash != nil {
+		reader = io.TeeReader(readFile, hash)
 	}
-	defer func() { outErr = errors.Join(outErr, writeFile.Close()) }()
 
-	if _, err := io.Copy(writeFile, readFile); err != nil {
+	if _, err := io.Copy(writer, reader); err != nil {
 		return fmt.Errorf("Copy(): %w", err)
 	}
-	logger.DebugContext(ctx, "copied file", "source", src, "destination", dst)
+	logger.DebugContext(ctx, "copied file",
+		"source", src,
+		"destination", dst)
 	return nil
 }
 
@@ -252,19 +285,21 @@ func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) error {
 	backupFile := filepath.Join(backupDir, relPath)
 	parent := filepath.Dir(backupFile)
-	if err := os.MkdirAll(parent, ownerRWXPerms); err != nil {
+	if err := os.MkdirAll(parent, OwnerRWXPerms); err != nil {
 		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
 	}
 
 	fileToBackup := filepath.Join(srcRoot, relPath)
 
-	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, ownerRWPerms, false); err != nil {
+	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, OwnerRWPerms, false, nil); err != nil {
 		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
 			fileToBackup, backupFile, err)
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.DebugContext(ctx, "completed backup", "source", fileToBackup, "destination", backupFile)
+	logger.DebugContext(ctx, "completed backup",
+		"source", fileToBackup,
+		"destination", backupFile)
 
 	return nil
 }
@@ -276,7 +311,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs FS, path string, dryRun bool) err
 	create := false
 	info, err := rfs.Stat(path)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !IsStatNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
 		create = true
@@ -288,9 +323,81 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs FS, path string, dryRun bool) err
 		return nil
 	}
 
-	if err := rfs.MkdirAll(path, ownerRWXPerms); err != nil {
+	if err := rfs.MkdirAll(path, OwnerRWXPerms); err != nil {
 		return pos.Errorf("MkdirAll(): %w", err)
 	}
 
 	return nil
+}
+
+// A renderFS implementation that can inject errors for testing.
+type ErrorFS struct {
+	FS
+
+	MkdirAllErr  error
+	OpenErr      error
+	OpenFileErr  error
+	ReadFileErr  error
+	RemoveAllErr error
+	StatErr      error
+	WriteFileErr error
+}
+
+func (e *ErrorFS) MkdirAll(name string, mode fs.FileMode) error {
+	if e.MkdirAllErr != nil {
+		return e.MkdirAllErr
+	}
+	return e.FS.MkdirAll(name, mode) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) Open(name string) (fs.File, error) {
+	if e.OpenErr != nil {
+		return nil, e.OpenErr
+	}
+	return e.FS.Open(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) OpenFile(name string, flag int, mode os.FileMode) (*os.File, error) {
+	if e.OpenFileErr != nil {
+		return nil, e.OpenFileErr
+	}
+	return e.FS.OpenFile(name, flag, mode) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) ReadFile(name string) ([]byte, error) {
+	if e.ReadFileErr != nil {
+		return nil, e.ReadFileErr
+	}
+	return e.FS.ReadFile(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) RemoveAll(name string) error {
+	if e.RemoveAllErr != nil {
+		return e.RemoveAllErr
+	}
+	return e.FS.RemoveAll(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) Stat(name string) (fs.FileInfo, error) {
+	if e.StatErr != nil {
+		return nil, e.StatErr
+	}
+	return e.FS.Stat(name) //nolint:wrapcheck
+}
+
+func (e *ErrorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	if e.WriteFileErr != nil {
+		return e.WriteFileErr
+	}
+	return e.FS.WriteFile(name, data, perm) //nolint:wrapcheck
+}
+
+// IsStatNotExistErr takes an error returned by os.Stat() and returns true if
+// the error means "the path you stat'ed doesn't exist." It otherwise returns
+// false. This exists because on Windows there are a variety of possible errors
+// depending on what exactly is wrong with the path.
+func IsStatNotExistErr(err error) bool {
+	return errors.Is(err, fs.ErrNotExist) ||
+		errors.Is(err, fs.ErrInvalid) ||
+		errors.As(err, new(*fs.PathError))
 }

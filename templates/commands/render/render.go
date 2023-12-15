@@ -19,28 +19,30 @@ package render
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
 
-	"github.com/abcxyz/abc/templates/commands/render/templatesource"
+	"github.com/benbjohnson/clock"
+	"github.com/mattn/go-isatty"
+	"golang.org/x/exp/maps"
+	"gopkg.in/yaml.v3"
+
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model/decode"
+	"github.com/abcxyz/abc/templates/common/specutil"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
-	"github.com/mattn/go-isatty"
-	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -48,12 +50,6 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy-"
 	scratchDirNamePart  = "scratch-"
-
-	// Permission bits: rwx------ .
-	ownerRWXPerms = 0o700
-
-	// The spec file is always located in the template root dir and named spec.yaml.
-	specName = "spec.yaml"
 )
 
 type Command struct {
@@ -74,19 +70,18 @@ Usage: {{ COMMAND }} [options] <source>
 
 The {{ COMMAND }} command renders the given template.
 
-The "<source>" is the location of the template to be instantiated. Many forms
-are accepted:
+The "<source>" is the location of the template to be rendered. This may have a
+few forms:
 
-  - "helloworld@v1" means "github.com/abcxyz/helloworld repo at revision v1;
-    this is for a template owned by abcxyz.
-  - "myorg/helloworld@v1" means github.com/myorg/helloworld repo at revision
-    v1; this is for a template not owned by abcxyz but still on GitHub.
-  - "mygithost.com/mygitrepo/helloworld@v1" is for a template in a remote git
-    repo but not owned by abcxyz and not on GitHub.
-  - "mylocaltarball.tgz" is for a template not in git but present on the local
-    filesystem.
-  - "http://example.com/myremotetarball.tgz" os for a non-Git template in a
-    remote tarball.`
+  - A remote GitHub or GitLab repo with either a version @tag or with the magic
+    version "@latest". Examples:
+    - github.com/abcxyz/abc/t/rest_server@latest
+    - github.com/abcxyz/abc/t/rest_server@v0.3.1
+  - A local directory, like /home/me/mydir
+  - (Deprecated) A go-getter-style location, with or without ?ref=foo. Examples:
+    - github.com/abcxyz/abc.git//t/react_template?ref=latest
+	- github.com/abcxyz/abc.git//t/react_template
+`
 }
 
 func (c *Command) Flags() *cli.FlagSet {
@@ -126,6 +121,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 	return c.realRun(ctx, &runParams{
 		backupDir: backupDir,
+		clock:     clock.New(),
 		cwd:       wd,
 		fs:        fSys,
 		stdout:    c.Stdout(),
@@ -134,6 +130,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 type runParams struct {
 	backupDir string
+	clock     clock.Clock
 	cwd       string
 	fs        common.FS
 	stdout    io.Writer
@@ -151,17 +148,23 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		outErr = errors.Join(outErr, err)
 	}()
 
-	templateDir, err := c.copyTemplate(ctx, rp)
+	downloader, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
+		FS:          rp.fs,
+		TempDirBase: rp.tempDirBase,
+		Source:      c.flags.Source,
+		Dest:        c.flags.Dest,
+		GitProtocol: c.flags.GitProtocol,
+	})
 	if templateDir != "" { // templateDir might be set even if there's an error
 		tempDirs = append(tempDirs, templateDir)
 	}
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	spec, err := loadSpecFile(ctx, rp.fs, templateDir)
+	spec, err := specutil.Load(ctx, rp.fs, templateDir, c.flags.Source)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	resolvedInputs, err := c.resolveInputs(ctx, rp.fs, spec)
@@ -173,7 +176,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
-	if err := rp.fs.MkdirAll(scratchDir, ownerRWXPerms); err != nil {
+	if err := rp.fs.MkdirAll(scratchDir, common.OwnerRWXPerms); err != nil {
 		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
@@ -193,61 +196,99 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	}
 
 	includedFromDest := sliceToSet(sp.includedFromDest)
+	var outputHashes map[string][]byte
 
 	// Commit the contents of the scratch directory to the output directory. We
 	// first do a dry-run to check that the copy is likely to succeed, so we
 	// don't leave a half-done mess in the user's dest directory.
 	for _, dryRun := range []bool{true, false} {
-		visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
-			_, ok := includedFromDest[relPath]
-			return common.CopyHint{
-				BackupIfExists: true,
-
-				// Special case: files that were "include"d from the
-				// *destination* directory (rather than the template directory),
-				// are always allowed to be overwritten. For example, if we grab
-				// file_to_modify.txt from the --dest dir, then we always allow
-				// ourself to write back to that file, even when
-				// --force-overwrite=false. When the template uses this feature,
-				// we know that the intent is to modify the files in place.
-				Overwrite: ok || c.flags.ForceOverwrite,
-			}, nil
+		if outputHashes, err = c.commit(ctx, dryRun, rp, scratchDir, includedFromDest); err != nil {
+			return err
 		}
 
-		// We only want to call MkdirTemp once, and use the resulting backup
-		// directory for every step in this rendering operation.
-		var backupDir string
-		backupDirMaker := func(rfs common.FS) (string, error) {
-			if backupDir != "" {
-				return backupDir, nil
+		if c.flags.Manifest {
+			if err := writeManifest(ctx, &writeManifestParams{
+				clock:        rp.clock,
+				cwd:          rp.cwd,
+				destDir:      c.flags.Dest,
+				cs:           downloader,
+				dryRun:       dryRun,
+				fs:           rp.fs,
+				inputs:       resolvedInputs,
+				outputHashes: outputHashes,
+				src:          c.flags.Source,
+				templateDir:  templateDir,
+			}); err != nil {
+				return err
 			}
-			if err := rfs.MkdirAll(rp.backupDir, ownerRWXPerms); err != nil {
-				return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
-			}
-			backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
-			logger.DebugContext(ctx, "created backup directory", "path", backupDir)
-			return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
-		}
-
-		params := &common.CopyParams{
-			BackupDirMaker: backupDirMaker,
-			DryRun:         dryRun,
-			DstRoot:        c.flags.Dest,
-			SrcRoot:        scratchDir,
-			RFS:            rp.fs,
-			Visitor:        visitor,
-		}
-		if err := common.CopyRecursive(ctx, nil, params); err != nil {
-			return fmt.Errorf("failed writing to --dest directory: %w", err)
-		}
-		if dryRun {
-			logger.DebugContext(ctx, "template render (dry run) succeeded")
-		} else {
-			logger.DebugContext(ctx, "template render succeeded")
 		}
 	}
 
 	return nil
+}
+
+// commit copies the contents of scratchDir to rp.Dest. If dryRun==true, then
+// files are read but nothing is written to the destination. includedFromDest is
+// a set of files that were the subject of an "include" action that set "from:
+// destination".
+//
+// The return value is a map containing a SHA256 hash of each file in
+// scratchDir. The keys are paths relative to scratchDir, using forward slashes
+// regardless of the OS.
+func (c *Command) commit(ctx context.Context, dryRun bool, rp *runParams, scratchDir string, includedFromDest map[string]struct{}) (map[string][]byte, error) {
+	logger := logging.FromContext(ctx).With("logger", "commit")
+
+	visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
+		_, ok := includedFromDest[relPath]
+		return common.CopyHint{
+			BackupIfExists: true,
+
+			// Special case: files that were "include"d from the
+			// *destination* directory (rather than the template directory),
+			// are always allowed to be overwritten. For example, if we grab
+			// file_to_modify.txt from the --dest dir, then we always allow
+			// ourself to write back to that file, even when
+			// --force-overwrite=false. When the template uses this feature,
+			// we know that the intent is to modify the files in place.
+			Overwrite: ok || c.flags.ForceOverwrite,
+		}, nil
+	}
+
+	// We only want to call MkdirTemp once, and use the resulting backup
+	// directory for every step in this rendering operation.
+	var backupDir string
+	var err error
+	backupDirMaker := func(rfs common.FS) (string, error) {
+		if backupDir != "" {
+			return backupDir, nil
+		}
+		if err := rfs.MkdirAll(rp.backupDir, common.OwnerRWXPerms); err != nil {
+			return "", err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+		}
+		backupDir, err = rfs.MkdirTemp(rp.backupDir, "")
+		logger.DebugContext(ctx, "created backup directory", "path", backupDir)
+		return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
+	}
+
+	params := &common.CopyParams{
+		BackupDirMaker: backupDirMaker,
+		DryRun:         dryRun,
+		DstRoot:        c.flags.Dest,
+		Hasher:         sha256.New,
+		OutHashes:      map[string][]byte{},
+		SrcRoot:        scratchDir,
+		RFS:            rp.fs,
+		Visitor:        visitor,
+	}
+	if err := common.CopyRecursive(ctx, nil, params); err != nil {
+		return nil, fmt.Errorf("failed writing to --dest directory: %w", err)
+	}
+	if dryRun {
+		logger.DebugContext(ctx, "template render (dry run) succeeded")
+	} else {
+		logger.InfoContext(ctx, "template render succeeded")
+	}
+	return params.OutHashes, nil
 }
 
 func sliceToSet[T comparable](vals []T) map[T]struct{} {
@@ -271,20 +312,30 @@ func checkUnknownInputs(spec *spec.Spec, inputs map[string]string) []string {
 	return unknownInputs
 }
 
+func filterUnknownInputs(spec *spec.Spec, inputs map[string]string) map[string]string {
+	specInputs := make(map[string]string)
+	for _, v := range spec.Inputs {
+		specInputs[v.Name.Val] = ""
+	}
+	return sets.IntersectMapKeys(inputs, specInputs)
+}
+
 // resolveInputs combines flags, user prompts, and defaults to get the full set
 // of template inputs.
 func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Spec) (map[string]string, error) {
+	if unknownInputs := checkUnknownInputs(spec, c.flags.Inputs); len(unknownInputs) > 0 {
+		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+	}
+
 	fileInputs, err := loadInputFiles(ctx, fs, c.flags.InputFiles)
 	if err != nil {
 		return nil, err
 	}
+	// Effectively ignore inputs in file that are not in spec inputs, thereby ignoring them
+	knownFileInputs := filterUnknownInputs(spec, fileInputs)
 
 	// Order matters: values from --input take precedence over --input-file.
-	inputs := sets.UnionMapKeys(c.flags.Inputs, fileInputs)
-
-	if unknownInputs := checkUnknownInputs(spec, inputs); len(unknownInputs) > 0 {
-		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
-	}
+	inputs := sets.UnionMapKeys(c.flags.Inputs, knownFileInputs)
 
 	if c.flags.Prompt {
 		isATTY := (c.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
@@ -292,7 +343,7 @@ func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Sp
 			return nil, fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
 		}
 
-		if err := c.promptForInputs(ctx, spec); err != nil {
+		if err := c.promptForInputs(ctx, spec, inputs); err != nil {
 			return nil, err
 		}
 	} else {
@@ -306,20 +357,20 @@ func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Sp
 		return inputs, nil
 	}
 
-	if err := c.validateInputs(ctx, spec.Inputs); err != nil {
+	if err := c.validateInputs(ctx, spec.Inputs, inputs); err != nil {
 		return nil, err
 	}
 
 	return inputs, nil
 }
 
-func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) error {
-	scope := common.NewScope(c.flags.Inputs)
+func (c *Command) validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map[string]string) error {
+	scope := common.NewScope(inputVals)
 
 	sb := &strings.Builder{}
 	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
 
-	for _, input := range inputs {
+	for _, input := range specInputs {
 		for _, rule := range input.Rules {
 			var ok bool
 			err := common.CelCompileAndEval(ctx, scope, rule.Rule, &ok)
@@ -328,7 +379,7 @@ func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) erro
 			}
 
 			fmt.Fprintf(tw, "\nInput name:\t%s", input.Name.Val)
-			fmt.Fprintf(tw, "\nInput value:\t%s", c.flags.Inputs[input.Name.Val])
+			fmt.Fprintf(tw, "\nInput value:\t%s", inputVals[input.Name.Val])
 			writeRule(tw, rule, false, 0)
 			if err != nil {
 				fmt.Fprintf(tw, "\nCEL error:\t%s", err.Error())
@@ -345,14 +396,14 @@ func (c *Command) validateInputs(ctx context.Context, inputs []*spec.Input) erro
 }
 
 // promptForInputs looks for template inputs that were not provided on the
-// command line and prompts the user for them. This mutates c.flags.Inputs.
+// command line and prompts the user for them. This mutates "inputs".
 //
 // This must only be called when the user specified --prompt and the input is a
 // terminal (or in a test).
-func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec) error {
+func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec, inputs map[string]string) error {
 	for _, i := range spec.Inputs {
-		if _, ok := c.flags.Inputs[i.Name.Val]; ok {
-			// Don't prompt if the cmdline had an --input for this key.
+		if _, ok := inputs[i.Name.Val]; ok {
+			// Don't prompt if we already have a value for this input.
 			continue
 		}
 		sb := &strings.Builder{}
@@ -391,7 +442,7 @@ func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec) error {
 			inputVal = i.Default.Val
 		}
 
-		c.flags.Inputs[i.Name.Val] = inputVal
+		inputs[i.Name.Val] = inputVal
 	}
 	return nil
 }
@@ -452,7 +503,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			if err != nil {
 				return err
 			}
-			logger.DebugContext(ctx, contents)
+			logger.WarnContext(ctx, contents)
 		}
 	}
 	return nil
@@ -535,11 +586,15 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 		}
 		if !celResult {
 			logger.DebugContext(ctx, `skipping step because "if" expression evaluated to false`,
-				"step_index_from_0", stepIdx, "action", step.Action.Val, "cel_expr", step.If.Val)
+				"step_index_from_0", stepIdx,
+				"action", step.Action.Val,
+				"cel_expr", step.If.Val)
 			return nil
 		}
 		logger.DebugContext(ctx, `proceeding to execute step because "if" expression evaluated to true`,
-			"step_index_from_0", stepIdx, "action", step.Action.Val, "cel_expr", step.If.Val)
+			"step_index_from_0", stepIdx,
+			"action", step.Action.Val,
+			"cel_expr", step.If.Val)
 	}
 
 	switch {
@@ -601,55 +656,9 @@ func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]s
 	return m, nil
 }
 
-func loadSpecFile(ctx context.Context, fs common.FS, templateDir string) (*spec.Spec, error) {
-	specPath := filepath.Join(templateDir, specName)
-	f, err := fs.Open(specPath)
-	if err != nil {
-		return nil, fmt.Errorf("error opening template spec: ReadFile(): %w", err)
-	}
-	defer f.Close()
-
-	specI, err := decode.DecodeValidateUpgrade(ctx, f, specName, decode.KindTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("error reading template spec file: %w", err)
-	}
-
-	spec, ok := specI.(*spec.Spec)
-	if !ok {
-		return nil, fmt.Errorf("internal error: spec file did not decode to spec.Spec")
-	}
-
-	return spec, nil
-}
-
-// Downloads the template and returns the name of the temp directory where it
-// was saved. If error is returned, then the returned directory name may or may
-// not exist, and may or may not be empty.
-func (c *Command) copyTemplate(ctx context.Context, rp *runParams) (string, error) {
-	logger := logging.FromContext(ctx).With("logger", "copyTemplate")
-
-	templateDir, err := rp.fs.MkdirTemp(rp.tempDirBase, templateDirNamePart)
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
-	}
-	logger.DebugContext(ctx, "created temporary template directory",
-		"path", templateDir)
-
-	downloader, err := templatesource.ParseSource(ctx, c.flags.Source, c.flags.GitProtocol)
-	if err != nil {
-		return templateDir, err //nolint:wrapcheck
-	}
-	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
-
-	if err := downloader.Download(ctx, templateDir); err != nil {
-		return templateDir, err //nolint:wrapcheck
-	}
-	logger.DebugContext(ctx, "copied source template temporary directory", "source", c.flags.Source, "destination", templateDir)
-
-	return templateDir, nil
-}
-
-// Calls RemoveAll on each temp directory. A nonexistent directory is not an error.
+// Calls RemoveAll on each temp directory. A nonexistent directory is not an
+// error. The "maybe" in the function name just means that we're not strict
+// about the directories existing or about tempDirs being non-empty.
 func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDirs ...string) error {
 	logger := logging.FromContext(ctx)
 	if c.flags.KeepTempDirs {
@@ -670,7 +679,7 @@ func (c *Command) maybeRemoveTempDirs(ctx context.Context, fs common.FS, tempDir
 func destOK(fs fs.StatFS, dest string) error {
 	fi, err := fs.Stat(dest)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if common.IsStatNotExistErr(err) {
 			return nil
 		}
 		return fmt.Errorf("os.Stat(%s): %w", dest, err)

@@ -19,9 +19,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/abcxyz/abc/templates/model"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
+
+	"github.com/abcxyz/abc/templates/model"
 )
 
 // Spec represents a parsed spec.yaml file describing a template.
@@ -126,7 +127,7 @@ type Step struct {
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Step) UnmarshalYAML(n *yaml.Node) error {
 	if err := model.UnmarshalPlain(n, s, &s.Pos, "params"); err != nil {
-		return nil
+		return err
 	}
 
 	// The rest of this function just unmarshals the "params" field into the correct struct type depending

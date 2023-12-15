@@ -17,11 +17,10 @@ package goldentest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 
 	"github.com/abcxyz/abc/templates/commands/render"
 	"github.com/abcxyz/abc/templates/model/decode"
@@ -120,32 +119,28 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 	return out, nil
 }
 
-// clearTestDir clears a test directory and only keeps the test config file.
-func clearTestDir(dir string) error {
-	files, err := os.ReadDir(dir)
+// renderTestCases render all test cases in a temporary directory.
+func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (string, error) {
+	tempDir, err := os.MkdirTemp("", "abc-test-*")
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to read test dir: %w", err)
+		return "", fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 
-	for _, file := range files {
-		if file.Name() != configName {
-			filePath := filepath.Join(dir, file.Name())
-			if err := os.RemoveAll(filePath); err != nil {
-				return fmt.Errorf("failed to remove outdated test artifact: %w", err)
-			}
-		}
+	var merr error
+	for _, tc := range testCases {
+		merr = errors.Join(merr, renderTestCase(ctx, location, tempDir, tc))
 	}
-	return nil
+	if merr != nil {
+		return "", fmt.Errorf("failed to render golden tests: %w", merr)
+	}
+	return tempDir, nil
 }
 
 // renderTestCase executes the "template render" command based upon test config.
-func renderTestCase(templateDir, outputDir string, tc *TestCase) error {
+func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *TestCase) error {
 	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName, testDataDir)
 
-	if err := clearTestDir(testDir); err != nil {
+	if err := os.RemoveAll(testDir); err != nil {
 		return fmt.Errorf("failed to clear test directory: %w", err)
 	}
 
@@ -159,10 +154,6 @@ func renderTestCase(templateDir, outputDir string, tc *TestCase) error {
 	r := &render.Command{}
 	// Mute stdout from command runs.
 	r.Pipe()
-
-	ctx, done := signal.NotifyContext(context.Background(),
-		syscall.SIGINT, syscall.SIGTERM)
-	defer done()
 
 	// TODO(chloechien): Use rendering library instead of calling cmd directly.
 	if err := r.Run(ctx, args); err != nil {

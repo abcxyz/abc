@@ -20,12 +20,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestActionInclude(t *testing.T) {
@@ -709,9 +710,9 @@ func TestActionInclude(t *testing.T) {
 				flags: &RenderFlags{
 					Dest: destDir,
 				},
-				fs: &errorFS{
+				fs: &common.ErrorFS{
 					FS:      &common.RealFS{},
-					statErr: tc.statErr,
+					StatErr: tc.statErr,
 				},
 				scratchDir:  scratchDir,
 				templateDir: templateDir,

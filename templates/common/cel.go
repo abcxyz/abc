@@ -23,11 +23,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/pkg/logging"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/logging"
 )
 
 var celRegistry = types.NewEmptyRegistry()

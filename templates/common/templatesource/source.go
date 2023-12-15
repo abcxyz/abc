@@ -17,6 +17,7 @@ package templatesource
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 )
 
@@ -25,15 +26,9 @@ import (
 type sourceParser interface {
 	// sourceParse attempts to parse the given src. If the src is recognized as
 	// being downloadable by this sourceParser, then it returns true, along with
-	// a downloader that can download that template.
-	sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error)
-}
-
-// A Downloader is returned by a sourceParser, and offers the ability to
-// download a template.
-type Downloader interface {
-	// Download downloads this template into the given directory.
-	Download(ctx context.Context, outDir string) error
+	// a downloader that can download that template, and other metadata. See
+	// ParsedSource.
+	sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, bool, error)
 }
 
 // realSourceParsers contains the non-test sourceParsers.
@@ -86,17 +81,32 @@ var realSourceParsers = []sourceParser{
 	},
 }
 
-// ParseSource maps the input template source to a particular kind of source
-// (e.g. git) and returns a downloader that will download that source.
+// ParseSourceParams contains the arguments to ParseSource.
+type ParseSourceParams struct {
+	// Source could be any of the template source types we accept. Examples:
+	//  - github.com/foo/bar@latest
+	//  - /a/local/path
+	//  - a/relative/path
+	//
+	// In the case where the source is a local filesystem path, it uses native
+	// filesystem separators.
+	Source string
+
+	// The value of --git-protocol.
+	GitProtocol string
+}
+
+// parseSourceWithCwd maps the input template source to a particular kind of
+// source (e.g. git) and returns a downloader that will download that source.
 //
-// source is a template location, like "github.com/foo/bar@v1.2.3". protocol
-// is the value of the --protocol flag, like "https".
+// source is a template location, like "github.com/foo/bar@v1.2.3". protocol is
+// the value of the --protocol flag, like "https".
 //
 // A list of sourceParsers is accepted as input for the purpose of testing,
 // rather than hardcoding the real list of sourceParsers.
-func ParseSource(ctx context.Context, source, protocol string) (Downloader, error) {
+func parseSourceWithCwd(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, error) {
 	for _, sp := range realSourceParsers {
-		downloader, ok, err := sp.sourceParse(ctx, source, protocol)
+		downloader, ok, err := sp.sourceParse(ctx, cwd, params)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}
@@ -104,5 +114,15 @@ func ParseSource(ctx context.Context, source, protocol string) (Downloader, erro
 			return downloader, nil
 		}
 	}
-	return nil, fmt.Errorf(`template source %q isn't a valid template name or doesn't exist; examples of valid names are: "github.com/myorg/myrepo/subdir@v1.2.3", "github.com/myorg/myrepo/subdir@latest", "./my-local-directory"`, source)
+	return nil, fmt.Errorf(`template source %q isn't a valid template name or doesn't exist; examples of valid names are: "github.com/myorg/myrepo/subdir@v1.2.3", "github.com/myorg/myrepo/subdir@latest", "./my-local-directory"`, params.Source)
+}
+
+// ParseSource is the same as [ParseSourceWithWorkingDir], but it uses the
+// current working directory [os.Getwd] as the base path.
+func ParseSource(ctx context.Context, params *ParseSourceParams) (Downloader, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current working directory: %w", err)
+	}
+	return parseSourceWithCwd(ctx, cwd, params)
 }

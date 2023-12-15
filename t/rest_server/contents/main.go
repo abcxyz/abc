@@ -25,10 +25,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/serving"
-	"github.com/go-chi/chi/v5"
 )
 
 const defaultPort = "8080"

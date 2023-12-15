@@ -20,10 +20,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestRecordCommand(t *testing.T) {
@@ -111,7 +112,7 @@ kind: 'GoldenTest'`
 				"spec.yaml":                      specYaml,
 				"a.txt":                          "file A content",
 				"testdata/golden/test/test.yaml": testYaml,
-				"testdata/golden/test/unexpected_file.txt": "oh",
+				"testdata/golden/test/data/unexpected_file.txt": "oh",
 			},
 			expectedGoldenContent: map[string]string{
 				"test/test.yaml":  testYaml,

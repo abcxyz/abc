@@ -17,11 +17,12 @@ package goldentest
 import (
 	"testing"
 
-	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gopkg.in/yaml.v3"
+
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestTestUnmarshal(t *testing.T) {
@@ -35,8 +36,7 @@ func TestTestUnmarshal(t *testing.T) {
 	}{
 		{
 			name: "simple_test_should_succeed",
-			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
-inputs:
+			in: `inputs:
 - name: 'person_name'
   value: 'iron_man'
 - name: 'dog_name'
@@ -56,24 +56,22 @@ inputs:
 		},
 		{
 			name: "no_inputs_should_succeed",
-			in:   `api_version: 'cli.abcxyz.dev/v1alpha1'`,
+			in:   "",
 			want: &Test{},
 		},
 		{
 			name: "missing_field_should_fail",
-			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
-inputs:
+			in: `inputs:
 - name: 'person_name'`,
-			wantErr: `at line 3 column 3: field "value" is required`,
+			wantErr: `at line 2 column 3: field "value" is required`,
 		},
 		{
 			name: "unknown_field_should_fail",
-			in: `api_version: 'cli.abcxyz.dev/v1alpha1'
-inputs:
+			in: `inputs:
 - name: 'person_name'
   value: 'iron_man'
   pet: 'iron_dog'`,
-			wantErr: `at line 5 column 3: unknown field name "pet"; valid choices are [name value]`,
+			wantErr: `at line 4 column 3: unknown field name "pet"; valid choices are [name value]`,
 		},
 	}
 

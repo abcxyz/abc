@@ -21,13 +21,14 @@ import (
 	"io"
 	"reflect"
 
+	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
+
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
 )
 
 var (

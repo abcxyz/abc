@@ -29,13 +29,17 @@ The `<template_location>` parameter is one of these two things:
 
 - A remote git repository. The subdirectory is optional, defaulting to the root
   of the repo. This directory must contain a `spec.yaml`. The version suffix
-  must be either `@latest` or a semantic version with a leading 'v' like
-  `@v1.2.3`. Examples:
+  must be either `@latest`, long commit SHA, branch name or tag. Short commit
+  SHA's are not supported and if provided, they will be tried as a
+  branch or tag name. Examples:
 
   - `github.com/abcxyz/gcp-org-terraform-template@latest` (no subdirectory)
   - `github.com/abcxyz/abc/t/rest_server@latest` (with subdirectory)
-  - `github.com/abcxyz/abc/t/rest_server@v0.2.1` (uses semver instead of
+  - `github.com/abcxyz/abc/t/rest_server@v0.2.1` (uses tag instead of
     "latest")
+  - `github.com/abcxyz/abc/t/rest_server@main` (use branch name instead of "latest")
+  - `github.com/abcxyz/abc/t/rest_server@0402ed8413f02e1069c2aec368eca208895918b1`
+    (use ref to long commit SHA)
 
 - A local directory as an absolute or relative path. This directory must contain
   a `spec.yaml`. Examples:
@@ -98,6 +102,69 @@ The valid values for `ABC_LOG_MODE` are:
 
 The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 `error`, and `emergency`. The default is `warn`.
+
+### For `abc templates golden-test`
+
+Usages:
+- `abc templates golden-test record --location=<template_location> <testname>`
+- `abc templates golden-test verify --location=<template_location> <testname>`
+
+Examples:
+- `abc templates golden-test record --location=examples/templates/render/hello_jupiter example_test`
+- `abc templates golden-test record --location=examples/templates/render/hello_jupiter`
+- `abc templates golden-test verify --location=examples/templates/render/hello_jupiter`
+
+The `<location>` parameter gives the location of the template.
+
+The `<testname>` parameter gives the test name to record or verify, if not
+specified, all tests will be run against.
+
+For every test case, it is expected that
+  - a testdata/golden/<test_name> folder exists to host test results.
+  - a testdata/golden/<test_name>/test.yaml exists to define
+template input params.`
+
+### For `abc templates describe`
+
+The describe command downloads the template and prints out its description,
+and describes the inputs that it accepts.
+
+Usages:
+- `abc templates describe <template_location>`
+
+
+The `<template_location>` takes the same value as the [render](#for-abc-templates-render) command.
+
+Example:
+
+Command:
+```
+abc templates describe github.com/abcxyz/guardian/abc.templates/default-workflows@v0.1.0-alpha12
+```
+
+Output:
+
+```
+Description:  Generate the Guardian workflows for the Google Cloud organization Terraform intrastructure repo.
+
+Input name:   terraform_directory
+Description:  A sub-directory for all Terraform files
+Default:      .
+
+Input name:   terraform_version
+Description:  The terraform version to use with Guardian
+Default:      1.5.4
+
+Input name:   guardian_wif_provider
+Description:  The Google Cloud workload identity federation provider for Guardian
+
+Input name:   guardian_service_account
+Description:  The Google Cloud service account for Guardian
+Rule 0:       gcp_matches_service_account(guardian_service_account)
+
+Input name:   guardian_state_bucket
+Description:  The Google Cloud storage bucket for Guardian state
+```
 
 ## User Guide
 
@@ -398,7 +465,7 @@ params:
   foo: bar # The params differ depending on the action
 ```
 
-### Action: `include`
+#### Action: `include`
 
 Copies files or directories from the template directory to the scratch
 directory. It's similar to the `COPY` command in a Dockerfile.
@@ -491,7 +558,7 @@ Examples:
       with: "I'm a new line at the end of the file"
   ```
 
-### Action: `print`
+#### Action: `print`
 
 Prints a message to standard output. This can be used to suggest actions to the
 user.
@@ -521,7 +588,7 @@ Example:
       thing'
 ```
 
-### Action: `append`
+#### Action: `append`
 
 Appends a string on the end of a given file. File must already exist. If no
 newline at end of `with` parameter, one will be added unless
@@ -550,7 +617,7 @@ Example:
     skip_ensure_newline: false
 ```
 
-### Action: `string_replace`
+#### Action: `string_replace`
 
 Within a given list of files and/or directories, replaces all occurrences of a
 given string with a given replacement string.
@@ -579,7 +646,7 @@ Example:
         with: '{{.receiver_name}}'
 ```
 
-### Action: `regex_replace`
+#### Action: `regex_replace`
 
 Within a given list of files and/or directories, replace a regular expression
 (or a subgroup thereof) with a given string.
@@ -669,7 +736,7 @@ Examples:
           with: '${input_name}={{ .${input_name} }}'
   ```
 
-### Action: `regex_name_lookup`
+#### Action: `regex_name_lookup`
 
 `regex_name_lookup` is similar to `regex_replace`, but simpler to use, at the
 cost of generality. It matches a regular expression and replaces each named
@@ -697,7 +764,7 @@ Example: replace all appearances of `template_me` with the input variable named
       - regex: '(?P<myinput>template_me)'
 ```
 
-### Action: `go_template`
+#### Action: `go_template`
 
 Executes a file as a Go template, replacing the file with the template output.
 
@@ -709,7 +776,7 @@ Params:
   will be rendered with Go's
   [text/template templating language](https://pkg.go.dev/text/template).
 
-#### Example:
+Example:
 
 Suppose you have a file named `hello.html` that looks like this, with a
 `{{.foo}}` template expression:
@@ -733,7 +800,7 @@ with the corresponding inputs:
     paths: ['hello.html']
 ```
 
-### Action: `for_each`
+#### Action: `for_each`
 
 The `for_each` action lets you execute a sequence of steps repeatedly for each
 element of a list. For example, you might want your template to create several
@@ -786,6 +853,30 @@ Params:
   - `values_from`: a CEL expression that outputs a list of strings.
 - `steps`: a list of steps/actions to execute in the scope of the for_each loop.
   It's analogous to the `steps` field at the top level of the spec file.
+
+### Post-rendering validation test (golden test)
+
+We use post-rendering validaton test to record and verify template rendering
+results.
+
+To add golden tests to your template, all you need is to create a
+`testdata/golden` folder under your template, and a 
+`testdata/golden/<test_name>/test.yaml` for each of your tests to define test
+metadata and input parameters.
+
+The test.yaml for a post-rendering validation test may look like,
+```yaml
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'GoldenTest'
+
+inputs:
+- name: 'input_a'
+  value: 'a'
+- name: 'input_b'
+  value: 'b'
+```
+
+Then you can use `abc templates golden-test` to record or verify the tests.
 
 # Using CEL
 

@@ -16,7 +16,6 @@ package templatesource
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,11 +23,14 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"golang.org/x/exp/slices"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/git"
 	"github.com/abcxyz/pkg/logging"
-	"golang.org/x/exp/slices"
 )
+
+var _ sourceParser = (*gitSourceParser)(nil)
 
 // gitSourceParser implements sourceParser for downloading templates from a
 // remote git repo.
@@ -60,10 +62,10 @@ type gitSourceParser struct {
 	warning string
 }
 
-func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string) (Downloader, bool, error) {
+func (g *gitSourceParser) sourceParse(ctx context.Context, _ string, params *ParseSourceParams) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "gitSourceParser.sourceParse")
 
-	match := g.re.FindStringSubmatchIndex(src)
+	match := g.re.FindStringSubmatchIndex(params.Source)
 	if match == nil {
 		// It's not an error if this regex match fails, it just means that src
 		// isn't formatted as the kind of template source that we're looking
@@ -73,31 +75,39 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, src, protocol string)
 	}
 
 	var remote string
-	switch protocol {
+	switch params.GitProtocol {
 	case "https", "":
-		remote = string(g.re.ExpandString(nil, g.httpsRemoteExpansion, src, match))
+		remote = string(g.re.ExpandString(nil, g.httpsRemoteExpansion, params.Source, match))
 	case "ssh":
-		remote = string(g.re.ExpandString(nil, g.sshRemoteExpansion, src, match))
+		remote = string(g.re.ExpandString(nil, g.sshRemoteExpansion, params.Source, match))
 	default:
-		return nil, false, fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", protocol)
+		return nil, false, fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", params.GitProtocol)
 	}
 
 	if g.warning != "" {
 		logger.WarnContext(ctx, g.warning)
 	}
 
-	version := string(g.re.ExpandString(nil, g.versionExpansion, src, match))
+	version := string(g.re.ExpandString(nil, g.versionExpansion, params.Source, match))
 	if version == "" {
 		version = g.defaultVersion
 	}
 
-	return &gitDownloader{
-		remote:  remote,
-		subdir:  string(g.re.ExpandString(nil, g.subdirExpansion, src, match)),
-		version: version,
-		cloner:  &realCloner{},
-		tagser:  &realTagser{},
-	}, true, nil
+	canonicalSource := string(g.re.ExpandString(nil, "${host}/${org}/${repo}", params.Source, match))
+	if subdir := string(g.re.ExpandString(nil, "${subdir}", params.Source, match)); subdir != "" {
+		canonicalSource += "/" + subdir
+	}
+
+	out := &gitDownloader{
+		remote:          remote,
+		subdir:          string(g.re.ExpandString(nil, g.subdirExpansion, params.Source, match)),
+		version:         version,
+		cloner:          &realCloner{},
+		tagser:          &realTagser{},
+		canonicalSource: canonicalSource,
+	}
+
+	return out, true, nil
 }
 
 // gitDownloader implements templateSource for templates hosted in a remote git
@@ -110,6 +120,8 @@ type gitDownloader struct {
 
 	// either a semver-formatted tag, or the magic value "latest"
 	version string
+
+	canonicalSource string
 
 	cloner cloner
 	tagser tagser
@@ -125,11 +137,13 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 		return fmt.Errorf("invalid subdirectory: %w", err)
 	}
 
-	branchOrTag, err := resolveBranchOrTag(ctx, g.tagser, g.remote, g.version)
+	version, err := resolveVersion(ctx, g.tagser, g.remote, g.version)
 	if err != nil {
 		return err
 	}
-	logger.DebugContext(ctx, "resolved version to branchOrTag", "version", g.version, "branchOrTag", branchOrTag)
+	logger.DebugContext(ctx, "resolved version from",
+		"input", g.version,
+		"to", version)
 
 	// Rather than cloning directly into outDir, we clone into a temp dir. It would
 	// be incorrect to clone the whole repo into outDir if the caller only asked
@@ -141,14 +155,14 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 	defer os.RemoveAll(tmpDir)
 	subdirToCopy := filepath.Join(tmpDir, filepath.FromSlash(subdir))
 
-	if err := g.cloner.Clone(ctx, g.remote, branchOrTag, tmpDir); err != nil {
+	if err := g.cloner.Clone(ctx, g.remote, version, tmpDir); err != nil {
 		return fmt.Errorf("Clone(): %w", err)
 	}
 
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, branchOrTag, subdir, branchOrTag)
+		if common.IsStatNotExistErr(err) {
+			return fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, version, subdir, version)
 		}
 		return err //nolint:wrapcheck // Stat() returns a decently informative error
 	}
@@ -156,7 +170,9 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 		return fmt.Errorf("the path %q is not a directory", subdir)
 	}
 
-	logger.DebugContext(ctx, "cloned repo", "remote", g.remote, "branchOrTag", branchOrTag)
+	logger.DebugContext(ctx, "cloned repo",
+		"remote", g.remote,
+		"version", version)
 
 	// Copy only the requested subdir to outDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
@@ -170,26 +186,32 @@ func (g *gitDownloader) Download(ctx context.Context, outDir string) error {
 	return nil
 }
 
-// resolveBranchOrTag returns the latest release tag if branchOrTag is "latest", and otherwise
-// just returns the input branchOrTag after validating it. The return value always begins
-// with "v" (unless there's an error).
-func resolveBranchOrTag(ctx context.Context, t tagser, remote, branchOrTag string) (string, error) {
-	logger := logging.FromContext(ctx).With("logger", "resolveBranchOrTag")
+func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string, bool, error) {
+	return g.canonicalSource, true, nil
+}
 
-	if branchOrTag != "latest" {
-		if !strings.HasPrefix(branchOrTag, "v") {
-			return "", fmt.Errorf(`the template source version %q must start with "v", like "v1.2.3"`, branchOrTag)
-		}
-		version := branchOrTag[1:] // trim off "v" prefix
-		if _, err := semver.StrictNewVersion(version); err != nil {
-			return "", fmt.Errorf("the template source requested git tag %q, which is not a valid format for a semver.org version", branchOrTag)
-		}
-		logger.DebugContext(ctx, `using user provided branchOrTag, no need to look up remote tags`, "branchOrTag", branchOrTag)
-		return branchOrTag, nil
+// resolveVersion returns the latest release tag if version is "latest", and otherwise
+// just returns the input version. The return value is either a branch, tag, or
+// a long commit SHA (unless there's an error).
+func resolveVersion(ctx context.Context, t tagser, remote, version string) (string, error) {
+	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
+
+	switch version {
+	case "":
+		return "", fmt.Errorf("the template source version cannot be empty")
+	case "latest":
+		return resolveLatest(ctx, t, remote, version)
+	default:
+		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)
+		return version, nil
 	}
+}
 
-	// If we're here, then the user requested version "latest", so we need to
-	// look up the latest version.
+// resolveLatest retrieves the tags from the remote repository and returns the
+// highest semver tag. An error is thrown if no semver tags are found.
+func resolveLatest(ctx context.Context, t tagser, remote, version string) (string, error) {
+	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
+
 	logger.DebugContext(ctx, `looking up semver tags to resolve "latest"`, "git_remote", remote)
 	tags, err := t.Tags(ctx, remote)
 	if err != nil {
@@ -230,13 +252,13 @@ func resolveBranchOrTag(ctx context.Context, t tagser, remote, branchOrTag strin
 
 // A fakeable interface around the lower-level git Clone function, for testing.
 type cloner interface {
-	Clone(ctx context.Context, remote, branchOrTag, outDir string) error
+	Clone(ctx context.Context, remote, version, outDir string) error
 }
 
 type realCloner struct{}
 
-func (r *realCloner) Clone(ctx context.Context, remote, branchOrTag, outDir string) error {
-	return git.Clone(ctx, remote, branchOrTag, outDir) //nolint:wrapcheck
+func (r *realCloner) Clone(ctx context.Context, remote, version, outDir string) error {
+	return git.Clone(ctx, remote, version, outDir) //nolint:wrapcheck
 }
 
 // A fakeable interface around the lower-level git Tags function, for testing.

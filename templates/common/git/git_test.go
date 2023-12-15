@@ -16,13 +16,14 @@ package git
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/abcxyz/pkg/testutil"
 	"golang.org/x/exp/slices"
+
+	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 // To actually run the tests in this file, you'll need to set this environment
@@ -62,44 +63,49 @@ func TestClone(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name        string
-		remote      string
-		branchOrTag string
-		wantErr     string
+		name    string
+		remote  string
+		version string
+		wantErr string
 	}{
 		{
-			name:        "clone_tag",
-			remote:      "https://github.com/abcxyz/abc.git",
-			branchOrTag: "v0.2.0",
+			name:    "clone_tag",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "v0.2.0",
 		},
 		{
-			name:        "alternative_tag_format_fails",
-			remote:      "https://github.com/abcxyz/abc.git",
-			branchOrTag: "refs/tags/v0.2.0",
-			wantErr:     "refs/tags/v0.2.0 not found",
+			name:    "alternative_tag_format_fails",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "refs/tags/v0.2.0",
+			wantErr: "refs/tags/v0.2.0 not found",
 		},
 		{
-			name:        "clone_branch",
-			remote:      "https://github.com/abcxyz/abc.git",
-			branchOrTag: "main",
+			name:    "clone_branch",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "main",
 		},
 		{
-			name:        "alternative_branch_format_fails",
-			remote:      "https://github.com/abcxyz/abc.git",
-			branchOrTag: "refs/heads/v0.2.0",
-			wantErr:     "refs/heads/v0.2.0 not found",
+			name:    "alternative_branch_format_fails",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "refs/heads/v0.2.0",
+			wantErr: "refs/heads/v0.2.0 not found",
 		},
 		{
-			name:        "long_commit_not_supported",
-			remote:      "https://github.com/abcxyz/abc.git",
-			branchOrTag: "b6687471f424efd125f9a3e156c68ed78b9d3b47",
-			wantErr:     "Could not find remote branch b6687471f424efd125f9a3e156c68ed78b9d3b47 to clone",
+			name:    "long_commit_supported",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "b6687471f424efd125f9a3e156c68ed78b9d3b47",
 		},
 		{
-			name:        "short_commit_not_supported",
-			remote:      "https://github.com/abcxyz/abc.git",
-			branchOrTag: "b668747",
-			wantErr:     "Could not find remote branch b668747 to clone",
+			name:    "non_hexadecimal_long_commit",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "z668747&-424.fd125f9a3e156c68ed78b9d3b47",
+			wantErr: "z668747&-424.fd125f9a3e156c68ed78b9d3b47 not found",
+		},
+		{
+			name:    "short_commit_not_supported",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "b668747",
+			wantErr: "Could not find remote branch b668747 to clone",
 		},
 		{
 			name:    "nonexistent_remote",
@@ -107,10 +113,10 @@ func TestClone(t *testing.T) {
 			wantErr: "repository 'https://example.com/foo/bar/' not found",
 		},
 		{
-			name:        "symlinks_forbidden",
-			remote:      "https://github.com/abcxyz/abc.git",
-			branchOrTag: "drevell/forbidden-symlink-for-test",
-			wantErr:     `one or more symlinks were found in \"https://github.com/abcxyz/abc.git\" at [example-symlink]`,
+			name:    "symlinks_forbidden",
+			remote:  "https://github.com/abcxyz/abc.git",
+			version: "drevell/forbidden-symlink-for-test",
+			wantErr: `one or more symlinks were found in "https://github.com/abcxyz/abc.git" at [example-symlink]`,
 		},
 	}
 
@@ -122,7 +128,7 @@ func TestClone(t *testing.T) {
 
 			ctx := context.Background()
 			outDir := t.TempDir()
-			err := Clone(ctx, tc.remote, tc.branchOrTag, outDir)
+			err := Clone(ctx, tc.remote, tc.version, outDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -134,7 +140,7 @@ func TestClone(t *testing.T) {
 			wantFile := "README.md"
 			_, err = os.Stat(filepath.Join(outDir, wantFile))
 			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
+				if common.IsStatNotExistErr(err) {
 					t.Fatalf("git clone seemed to work but the output didn't contain %q, something weird happened", wantFile)
 				}
 				t.Error(err)
