@@ -17,7 +17,8 @@ released.
 ## Steps
 
 Beware, these steps may be not quite right. Please fix them or file a bug if
-something isn't right.
+something isn't right. You can use
+[this PR](https://github.com/abcxyz/abc/pull/319) as an example.
 
 - Announce in the abc CLI developer chat that you're bumping the api_version and
   binary version, so nobody else tries to make a conflicting simultaneous
@@ -58,6 +59,7 @@ something isn't right.
 - Submit your work so far as a PR. This will allow the binary to understand your
   new work-in-progress api_version, but since we didn't announce it yet, users
   shouldn't start using it yet.
+  [Example PR](https://github.com/abcxyz/abc/pull/319).
 - Modify the new version directory to make whatever struct changes you want to
   make (e.g. add a new field/feature), including tests.
 - Update the "list of api_versions" section in `/README.md`.
