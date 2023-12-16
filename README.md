@@ -106,18 +106,19 @@ The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 ### For `abc templates golden-test`
 
 Usages:
-- `abc templates golden-test record --location=<template_location> <testname>`
-- `abc templates golden-test verify --location=<template_location> <testname>`
+- `abc templates golden-test record [--test-name=<test_name>] <location>`
+- `abc templates golden-test verify [--test-name=<test_name>] <location>`
 
 Examples:
-- `abc templates golden-test record --location=examples/templates/render/hello_jupiter example_test`
-- `abc templates golden-test record --location=examples/templates/render/hello_jupiter`
-- `abc templates golden-test verify --location=examples/templates/render/hello_jupiter`
+- `abc templates golden-test record --test-name=example_test examples/templates/render/hello_jupiter`
+- `abc templates golden-test record examples/templates/render/hello_jupiter`
+- `abc templates golden-test verify examples/templates/render/hello_jupiter`
+
+The `<test_name>` parameter gives the test names to record or verify, if not
+specified, all tests will be run against. This flag may be repeated, like 
+-`-test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
 The `<location>` parameter gives the location of the template.
-
-The `<testname>` parameter gives the test name to record or verify, if not
-specified, all tests will be run against.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.

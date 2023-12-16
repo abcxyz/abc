@@ -42,14 +42,14 @@ func (c *RecordCommand) Desc() string {
 
 func (c *RecordCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} --location=<location> <test_name>
+Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] <location>
 
 The {{ COMMAND }} records the template golden tests.
 
-The "<location>" is the location of the template.
-
 The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be recoreded.
+
+The "<location>" is the location of the template.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
@@ -68,7 +68,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	testCases, err := parseTestCases(ctx, c.flags.Location, c.flags.TestName)
+	testCases, err := parseTestCases(ctx, c.flags.Location, c.flags.TestNames)
 	if err != nil {
 		return fmt.Errorf("failed to parse golden test: %w", err)
 	}

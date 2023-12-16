@@ -52,25 +52,25 @@ const (
 )
 
 // parseTestCases returns a list of test cases to record or verify.
-func parseTestCases(ctx context.Context, location, testName string) ([]*TestCase, error) {
+func parseTestCases(ctx context.Context, location string, testNames []string) ([]*TestCase, error) {
 	if _, err := os.Stat(location); err != nil {
 		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)
 	}
 
 	testDir := filepath.Join(location, goldenTestDir)
 
-	if testName != "" {
-		testConfig := filepath.Join(testDir, testName, configName)
-		test, err := parseTestConfig(ctx, testConfig)
-		if err != nil {
-			return nil, err
+	testCases := []*TestCase{}
+
+	if len(testNames) > 0 {
+		for _, testName := range testNames {
+			testCase, err := buildTestCase(ctx, testDir, testName)
+			if err != nil {
+				return nil, err
+			}
+
+			testCases = append(testCases, testCase)
 		}
-		return []*TestCase{
-			{
-				TestName:   testName,
-				TestConfig: test,
-			},
-		}, nil
+		return testCases, nil
 	}
 
 	entries, err := os.ReadDir(testDir)
@@ -78,25 +78,34 @@ func parseTestCases(ctx context.Context, location, testName string) ([]*TestCase
 		return nil, fmt.Errorf("error reading golden test directory (%s): %w", testDir, err)
 	}
 
-	testCases := []*TestCase{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			return nil, fmt.Errorf("unexpected file entry under golden test directory: %s", entry.Name())
 		}
 
-		testConfig := filepath.Join(testDir, entry.Name(), configName)
-		test, err := parseTestConfig(ctx, testConfig)
+		testCase, err := buildTestCase(ctx, testDir, entry.Name())
 		if err != nil {
 			return nil, err
 		}
 
-		testCases = append(testCases, &TestCase{
-			TestName:   entry.Name(),
-			TestConfig: test,
-		})
+		testCases = append(testCases, testCase)
 	}
 
 	return testCases, nil
+}
+
+// buildtestCases builds the name and config of a test case.
+func buildTestCase(ctx context.Context, testDir, testName string) (*TestCase, error) {
+	testConfig := filepath.Join(testDir, testName, configName)
+	test, err := parseTestConfig(ctx, testConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TestCase{
+		TestName:   testName,
+		TestConfig: test,
+	}, nil
 }
 
 // parseTestConfig reads a configuration yaml and returns the result.
