@@ -31,6 +31,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 )
@@ -53,11 +54,12 @@ type writeManifestParams struct {
 	// written under the .abc directory.
 	destDir string
 
+	// Information from the downloader. Includes info about the canonical
+	// template location.
+	dlMeta *templatesource.DownloadMetadata
+
 	// dryRun creates the manifest in memory but doesn't write it to a file.
 	dryRun bool
-
-	// Used to determine the canonical source of the rendered template.
-	cs canonicalSourcer
 
 	// A fakeable filesystem for testing errors.
 	fs common.FS
@@ -77,21 +79,10 @@ type writeManifestParams struct {
 	templateDir string
 }
 
-// canonicalSourcer is the subset of the Downloader interface that is needed by
-// the manifest code.
-type canonicalSourcer interface {
-	CanonicalSource(_ context.Context, cwd, destDir string) (string, bool, error)
-}
-
 // writeManifest creates a manifest struct, marshals it as YAML, and writes it
 // to destDir/.abc/ .
 func writeManifest(ctx context.Context, p *writeManifestParams) (rErr error) {
-	canonicalSource, _, err := p.cs.CanonicalSource(ctx, p.cwd, p.destDir)
-	if err != nil {
-		return err //nolint:wrapcheck
-	}
-
-	m, err := buildManifest(ctx, p, canonicalSource)
+	m, err := buildManifest(ctx, p, p.dlMeta)
 	if err != nil {
 		return err
 	}
@@ -101,7 +92,7 @@ func writeManifest(ctx context.Context, p *writeManifestParams) (rErr error) {
 		return fmt.Errorf("failed marshaling Manifest when writing: %w", err)
 	}
 
-	filename, err := newManifestFilename(p, canonicalSource)
+	filename, err := newManifestFilename(p, p.dlMeta)
 	if err != nil {
 		return err
 	}
@@ -137,15 +128,15 @@ func writeManifest(ctx context.Context, p *writeManifestParams) (rErr error) {
 // newManifestFilename outputs the filename that will be used for a newly rendered
 // template (not an upgrade to an already-installed manifest). This includes the
 // ".abc/" prefix.
-func newManifestFilename(p *writeManifestParams, canonicalSource string) (string, error) {
+func newManifestFilename(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (string, error) {
 	manifestDir := filepath.Join(p.destDir, manifestDirName)
 	if err := p.fs.MkdirAll(manifestDir, common.OwnerRWXPerms); err != nil {
 		return "", fmt.Errorf("failed creating %s directory to contain manifest: %w", manifestDir, err)
 	}
 
 	namePart := "nolocation"
-	if canonicalSource != "" {
-		namePart = url.PathEscape(canonicalSource)
+	if dlMeta.IsCanonical {
+		namePart = url.PathEscape(dlMeta.CanonicalSource)
 	}
 
 	// We include the creation time in the filename to disambiguate between
@@ -166,7 +157,7 @@ func newManifestFilename(p *writeManifestParams, canonicalSource string) (string
 // buildManifest constructs the manifest struct for the given parameters.
 // canonicalSource is optional, it will be empty in the case where the template
 // location is non-canonical (i.e. installing from ~/mytemplate).
-func buildManifest(ctx context.Context, p *writeManifestParams, canonicalSource string) (*manifest.Manifest, error) {
+func buildManifest(ctx context.Context, p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.Manifest, error) {
 	templateDirhash, err := dirhash.HashDir(p.templateDir, "", dirhash.Hash1)
 	if err != nil {
 		return nil, fmt.Errorf("dirhash.HashDir: %w", err)
@@ -203,7 +194,7 @@ func buildManifest(ctx context.Context, p *writeManifestParams, canonicalSource 
 	now := p.clock.Now().UTC()
 
 	return &manifest.Manifest{
-		TemplateLocation: model.String{Val: canonicalSource}, // may be empty string if location isn't canonical
+		TemplateLocation: model.String{Val: p.dlMeta.CanonicalSource}, // may be empty string if location isn't canonical
 		TemplateDirhash:  model.String{Val: templateDirhash},
 		CreationTime:     now,
 		ModificationTime: now,
