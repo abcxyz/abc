@@ -645,7 +645,7 @@ steps:
 		{
 			name: "with_custom_ignore",
 			templateContents: map[string]string{
-				"sub_dir/file_b.txt":                   "red is my favorite color",
+				"sub_dir/file_b.txt": "red is my favorite color",
 				"spec.yaml": `
 api_version: 'cli.abcxyz.dev/v1beta2'
 kind: 'Template'

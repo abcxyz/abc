@@ -36,7 +36,7 @@ type Spec struct {
 
 	// Optional ignore section, adopting gitignore-like path matching.
 	// Please be ware that there are some patterns that are always ignored such
-	// as: '.DS_Store, '.bin', '*.ssh'.
+	// as: '.DS_Store, '.bin', '.ssh'.
 	Ignore []model.String `yaml:"ignore"`
 }
 

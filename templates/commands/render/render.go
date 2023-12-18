@@ -33,6 +33,7 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/mattn/go-isatty"
+	ign "github.com/monochromegane/go-gitignore"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 
@@ -44,7 +45,6 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
-	ign "github.com/monochromegane/go-gitignore"
 )
 
 const (
