@@ -106,10 +106,10 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 				}
 
 				if sp.ignoreMatcher != nil {
-					// Convert path to include parent, which is the current include path.
-					pathIncludeParent := filepath.Join(p.Val, relToAbsSrc)
+					// Convert path to include source.
+					pathIncludeParent := filepath.Join(absSrc, relToAbsSrc)
 					if relToAbsSrc == "." {
-						pathIncludeParent = p.Val
+						pathIncludeParent = filepath.Join(absSrc, p.Val)
 					}
 					if inc.From.Val != "destination" {
 						// Skip files and directories that are matched by the ignoreMatcher.

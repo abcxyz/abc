@@ -40,7 +40,7 @@ func TestActionInclude(t *testing.T) {
 		templateContents     map[string]common.ModeAndContents
 		destDirContents      map[string]common.ModeAndContents
 		inputs               map[string]string
-		ignoreMatcher        ign.IgnoreMatcher
+		ignorePatterns       []string
 		wantScratchContents  map[string]common.ModeAndContents
 		wantIncludedFromDest []string
 		statErr              error
@@ -453,10 +453,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			ignoreMatcher: ign.NewGitIgnoreFromReader(
-				".",
-				strings.NewReader("folder2"),
-			),
+			ignorePatterns: []string{"folder2"},
 			templateContents: map[string]common.ModeAndContents{
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
 				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
@@ -497,6 +494,14 @@ func TestActionInclude(t *testing.T) {
 			// For testing "include from destination"
 			common.WriteAll(t, destDir, tc.destDirContents)
 
+			var ignoreMatcher ign.IgnoreMatcher
+			if tc.ignorePatterns != nil {
+				ignoreMatcher = ign.NewGitIgnoreFromReader(
+					templateDir,
+					strings.NewReader(strings.Join(tc.ignorePatterns, "/n")),
+				)
+			}
+
 			sp := &stepParams{
 				flags: &RenderFlags{
 					Dest: destDir,
@@ -508,7 +513,7 @@ func TestActionInclude(t *testing.T) {
 				scratchDir:    scratchDir,
 				templateDir:   templateDir,
 				scope:         common.NewScope(tc.inputs),
-				ignoreMatcher: tc.ignoreMatcher,
+				ignoreMatcher: ignoreMatcher,
 			}
 
 			err := actionInclude(ctx, tc.include, sp)

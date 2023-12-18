@@ -188,7 +188,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	logger := logging.FromContext(ctx)
 	logger.DebugContext(ctx, "created temporary scratch directory", "path", scratchDir)
 
-	matcher := ignoreMatcher(spec.Ignore)
+	matcher := ignoreMatcher(spec.Ignore, templateDir)
 
 	sp := &stepParams{
 		flags:         &c.flags,
@@ -704,11 +704,11 @@ func destOK(fs fs.StatFS, dest string) error {
 	return nil
 }
 
-func ignoreMatcher(pats []model.String) ign.IgnoreMatcher {
+func ignoreMatcher(pats []model.String, base string) ign.IgnoreMatcher {
 	allIgn := make([]string, 0, len(alwaysIgnorePatterns)+len(pats))
 	allIgn = append(allIgn, alwaysIgnorePatterns...)
 	for _, p := range pats {
 		allIgn = append(allIgn, p.Val)
 	}
-	return ign.NewGitIgnoreFromReader(".", strings.NewReader(strings.Join(allIgn, "\n")))
+	return ign.NewGitIgnoreFromReader(base, strings.NewReader(strings.Join(allIgn, "\n")))
 }
