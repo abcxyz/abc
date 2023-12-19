@@ -115,7 +115,7 @@ Examples:
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`
 
 The `<test_name>` parameter gives the test names to record or verify, if not
-specified, all tests will be run against. This flag may be repeated, like 
+specified, all tests will be run against. This flag may be repeated, like
 -`-test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
 The `<location>` parameter gives the location of the template.
@@ -843,13 +843,35 @@ Params:
 - `steps`: a list of steps/actions to execute in the scope of the for_each loop.
   It's analogous to the `steps` field at the top level of the spec file.
 
+### Ignore (Optional)
+
+We use gitignore-like path matching to match the file and directory paths that
+should be ignored when being included from template directory to destination
+directory. This `ignore` feature is similiar to `skip` in `include` action, the
+difference here is ignore is global and it applies to every `include` action.
+
+This section is optional, but there are some patterns will always be ignored
+such as `.DS_Store`, `.bin`, and `.ssh`.
+
+An example of ignoring all script files in `my_dir` and its subdirectories:
+
+```yaml
+ignore:
+  - '**/*.ssh'
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['my_dir1', 'my_dir2']
+```
+
 ### Post-rendering validation test (golden test)
 
 We use post-rendering validaton test to record and verify template rendering
 results.
 
 To add golden tests to your template, all you need is to create a
-`testdata/golden` folder under your template, and a 
+`testdata/golden` folder under your template, and a
 `testdata/golden/<test_name>/test.yaml` for each of your tests to define test
 metadata and input parameters.
 
