@@ -316,7 +316,24 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name: "as_with_glob_paths",
+			name: "as_with_single_glob_path",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"*.txt"}),
+						As:    modelStrings([]string{"dir"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"dir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+		},
+		{
+			name: "as_with_multiple_glob_paths",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
