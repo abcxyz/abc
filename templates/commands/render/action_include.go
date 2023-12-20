@@ -159,7 +159,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 func checkIgnore(patterns []model.String, path string) (bool, error) {
 	if len(patterns) > 0 {
 		for _, p := range patterns {
-			matched, err := filepath.Match(p.Val, path)
+			matched, err := filepath.Match(filepath.FromSlash(p.Val), path)
 			if err != nil {
 				return false,
 					p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)
@@ -170,7 +170,7 @@ func checkIgnore(patterns []model.String, path string) (bool, error) {
 		}
 	} else {
 		for _, p := range defaultIgnorePatterns {
-			matched, err := filepath.Match(p, path)
+			matched, err := filepath.Match(filepath.FromSlash(p), path)
 			if err != nil {
 				return false,
 					fmt.Errorf("failed to match path (%q) with pattern (%q): %w", path, p, err)
