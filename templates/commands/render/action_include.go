@@ -158,10 +158,6 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			relDst := getRelDst(asPaths, i, p, matchedPaths, relSrc, absSrc, fromDir)
 			absDst := filepath.Join(sp.scratchDir, relDst)
 
-			if err := copyToDst(ctx, sp, skip, matchedPath.Pos, absDst, absSrc, relSrc, inc.From.Val, fromDir); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+			return copyToDst(ctx, sp, skip, matchedPath.Pos, absDst,
+			  absSrc, relSrc, inc.From.Val, fromDir)
 }
