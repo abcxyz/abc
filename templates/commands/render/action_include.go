@@ -27,6 +27,9 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
+// defaultIgnorePatterns to be used if ignore is not provided.
+var defaultIgnorePatterns = []string{".DS_Store", ".bin", ".ssh"}
+
 func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error {
 	for _, path := range inc.Paths {
 		if err := includePath(ctx, path, sp); err != nil {
@@ -39,6 +42,14 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
+	// By default, we copy from the template directory. We also support
+	// grabbing files from the destination directory, so we can modify files
+	// that already exist in the destination.
+	fromDir := sp.templateDir
+	if inc.From.Val == "destination" {
+		fromDir = sp.flags.Dest
+	}
+
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
 		return err
@@ -46,6 +57,11 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	skip := make(map[string]struct{}, len(inc.Skip))
 	for _, s := range skipPaths {
 		skip[s.Val] = struct{}{}
+	}
+
+	ignore, err := ignorePaths(ctx, sp, fromDir)
+	if err != nil {
+		return err
 	}
 
 	incPaths, err := processPaths(inc.Paths, sp.scope)
@@ -66,13 +82,6 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			as = asPaths[i].Val
 		}
 
-		// By default, we copy from the template directory. We also support
-		// grabbing files from the destination directory, so we can modify files
-		// that already exist in the destination.
-		fromDir := sp.templateDir
-		if inc.From.Val == "destination" {
-			fromDir = sp.flags.Dest
-		}
 		absSrc := filepath.Join(fromDir, p.Val)
 		absDst := filepath.Join(sp.scratchDir, as)
 
@@ -105,21 +114,16 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 					}, nil
 				}
 
-				if sp.ignoreMatcher != nil {
-					// Convert path to include source.
-					pathIncludeParent := filepath.Join(absSrc, relToAbsSrc)
-					if relToAbsSrc == "." {
-						pathIncludeParent = filepath.Join(absSrc, p.Val)
-					}
-					if inc.From.Val != "destination" {
-						// Skip files and directories that are matched by the ignoreMatcher.
-						if sp.ignoreMatcher.Match(pathIncludeParent, de.IsDir()) {
-							logger.InfoContext(ctx, "skip ignored path", "path", pathIncludeParent)
-							return common.CopyHint{
-								Skip: true,
-							}, nil
-						}
-					}
+				pathIncParent := filepath.Join(p.Val, relToAbsSrc)
+				if relToAbsSrc == "." {
+					pathIncParent = p.Val
+				}
+				pathIncSrc := filepath.Join(fromDir, pathIncParent)
+				if _, ok := ignore[pathIncSrc]; ok {
+					logger.DebugContext(ctx, "path ignored", "path", pathIncParent)
+					return common.CopyHint{
+						Skip: true,
+					}, nil
 				}
 
 				abs := filepath.Join(absSrc, relToAbsSrc)
@@ -145,4 +149,33 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 	}
 	return nil
+}
+
+// TODO(#158): add support for ignoring file name. For example, "/foo" ignores
+// a single file named foo in the root, but "foo" ignores all files named foo
+// anywhere.
+func ignorePaths(ctx context.Context, sp *stepParams, fromDir string) (map[string]struct{}, error) {
+	ignore := make(map[string]struct{})
+	var patterns []string
+
+	if sp.ignorePatterns != nil && len(sp.ignorePatterns) > 0 {
+		processedPaths, err := processPaths(sp.ignorePatterns, sp.scope)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range processedPaths {
+			patterns = append(patterns, p.Val)
+		}
+	} else {
+		patterns = defaultIgnorePatterns
+	}
+
+	paths, err := processGlobsString(ctx, patterns, fromDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range paths {
+		ignore[s] = struct{}{}
+	}
+	return ignore, nil
 }

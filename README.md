@@ -845,24 +845,34 @@ Params:
 
 ### Ignore (Optional)
 
-We use gitignore-like path matching to match the file and directory paths that
-should be ignored when being included from template directory to destination
-directory. This `ignore` feature is similiar to `skip` in `include` action, the
-difference here is ignore is global and it applies to every `include` action.
+We use [filepath Glob](https://pkg.go.dev/path/filepath#Glob) to match the file
+and directory paths that should be ignored if included/copied from template
+directory to destination directory, and should not be overwritten if included
+from destination. This `ignore` feature is similiar to `skip` in `include`
+action, the difference here is that ignore is global and it applies to every
+`include` action.
 
-This section is optional, but there are some patterns will always be ignored
-such as `.DS_Store`, `.bin`, and `.ssh`.
+This section is optional, if not provided, a default ignore list is used:
+`.DS_Store`, `.bin`, and `.ssh`. To set your custom ignore list, please check
+accepted patterns [here](https://pkg.go.dev/path/filepath#Match).
 
-An example of ignoring all script files in `my_dir` and its subdirectories:
+Example:
 
 ```yaml
 ignore:
-  - '**/*.ssh'
+  - '*/*.ssh'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['my_dir1', 'my_dir2']
+      # ignore script files in `src_dir` but not its sub-directories.
+      paths: ['src_dir']
+  - desc: 'Include some files and directories from destination'
+    action: 'include'
+    params:
+      # skip overwriting script files in `dest_dir` but not its sub-directories.
+      paths: ['dest_dir']
+      from: 'destination'
 ```
 
 ### Post-rendering validation test (golden test)

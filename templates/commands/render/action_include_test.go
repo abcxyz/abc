@@ -18,11 +18,9 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	ign "github.com/monochromegane/go-gitignore"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
@@ -40,7 +38,7 @@ func TestActionInclude(t *testing.T) {
 		templateContents     map[string]common.ModeAndContents
 		destDirContents      map[string]common.ModeAndContents
 		inputs               map[string]string
-		ignorePatterns       []string
+		ignorePatterns       []model.String
 		wantScratchContents  map[string]common.ModeAndContents
 		wantIncludedFromDest []string
 		statErr              error
@@ -441,7 +439,7 @@ func TestActionInclude(t *testing.T) {
 			wantIncludedFromDest: []string{"file1.txt", "subdir/file2.txt"},
 		},
 		{
-			name: "skip_paths_with_ignore",
+			name: "skip_paths_with_custom_ignore",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
@@ -453,21 +451,47 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			ignorePatterns: []string{"folder2"},
+			ignorePatterns: modelStrings([]string{"folder1/folder2", "file2.txt"}),
 			templateContents: map[string]common.ModeAndContents{
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
 				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
-				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
-				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
-				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
+				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 			destDirContents: map[string]common.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
-				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 				"file1.txt":                 {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantIncludedFromDest: []string{"file1.txt"},
+		},
+		{
+			name: "skip_paths_with_default_ignore",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"."}),
+					},
+					{
+						Paths: modelStrings([]string{"."}),
+						From:  model.String{Val: "destination"},
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"folder1/file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
+				".bin/file2.txt":    {Mode: 0o600, Contents: "file 2 contents"},
+			},
+			destDirContents: map[string]common.ModeAndContents{
+				"file1.txt":      {Mode: 0o600, Contents: "file1 contents"},
+				".bin/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"folder1/file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
+				"file1.txt":         {Mode: 0o600, Contents: "file1 contents"},
 			},
 			wantIncludedFromDest: []string{"file1.txt"},
 		},
@@ -494,14 +518,6 @@ func TestActionInclude(t *testing.T) {
 			// For testing "include from destination"
 			common.WriteAll(t, destDir, tc.destDirContents)
 
-			var ignoreMatcher ign.IgnoreMatcher
-			if tc.ignorePatterns != nil {
-				ignoreMatcher = ign.NewGitIgnoreFromReader(
-					templateDir,
-					strings.NewReader(strings.Join(tc.ignorePatterns, "/n")),
-				)
-			}
-
 			sp := &stepParams{
 				flags: &RenderFlags{
 					Dest: destDir,
@@ -510,10 +526,10 @@ func TestActionInclude(t *testing.T) {
 					FS:      &common.RealFS{},
 					StatErr: tc.statErr,
 				},
-				scratchDir:    scratchDir,
-				templateDir:   templateDir,
-				scope:         common.NewScope(tc.inputs),
-				ignoreMatcher: ignoreMatcher,
+				scratchDir:     scratchDir,
+				templateDir:    templateDir,
+				scope:          common.NewScope(tc.inputs),
+				ignorePatterns: tc.ignorePatterns,
 			}
 
 			err := actionInclude(ctx, tc.include, sp)

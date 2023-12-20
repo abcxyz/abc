@@ -11,7 +11,6 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/mattn/go-isatty v0.0.20
-	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00
 	github.com/posener/complete/v2 v2.1.0
 	github.com/sergi/go-diff v1.3.1
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63

@@ -167,6 +167,34 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]
 	return out, nil
 }
 
+// TODO (#158): There could be some refactor we can do to combine processGlobs
+// and processGlobsString.
+// processGlobsString processes a list of input String paths for simple file
+// globbing. Return emtpy list if zero matching paths.
+func processGlobsString(ctx context.Context, paths []string, fromDir string) ([]string, error) {
+	logger := logging.FromContext(ctx).With("logger", "processGlobs")
+	seenPaths := map[string]struct{}{}
+	out := make([]string, 0, len(paths))
+
+	for _, p := range paths {
+		globPaths, err := filepath.Glob(filepath.Join(fromDir, p))
+		if err != nil {
+			return nil, fmt.Errorf("file globbing error: %w", err)
+		}
+		logger.DebugContext(ctx, "glob path expanded:",
+			"glob", p,
+			"matches", globPaths)
+		for _, globPath := range globPaths {
+			if _, ok := seenPaths[globPath]; !ok {
+				out = append(out, globPath)
+				seenPaths[globPath] = struct{}{}
+			}
+		}
+	}
+
+	return out, nil
+}
+
 // processPaths processes a list of input String paths for go templating, relative paths,
 // and OS-specific slashes.
 func processPaths(paths []model.String, scope *common.Scope) ([]model.String, error) {

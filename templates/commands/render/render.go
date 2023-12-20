@@ -33,7 +33,6 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/mattn/go-isatty"
-	ign "github.com/monochromegane/go-gitignore"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 
@@ -53,9 +52,6 @@ const (
 	templateDirNamePart = "template-copy-"
 	scratchDirNamePart  = "scratch-"
 )
-
-// Patterns that are always ignored no matter ignore is provided or not in spec.
-var alwaysIgnorePatterns = []string{".DS_Store", ".bin", ".ssh"}
 
 type Command struct {
 	cli.BaseCommand
@@ -188,16 +184,14 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	logger := logging.FromContext(ctx)
 	logger.DebugContext(ctx, "created temporary scratch directory", "path", scratchDir)
 
-	matcher := ignoreMatcher(spec.Ignore, templateDir)
-
 	sp := &stepParams{
-		flags:         &c.flags,
-		fs:            rp.fs,
-		scope:         common.NewScope(resolvedInputs),
-		scratchDir:    scratchDir,
-		stdout:        rp.stdout,
-		templateDir:   templateDir,
-		ignoreMatcher: matcher,
+		flags:          &c.flags,
+		fs:             rp.fs,
+		scope:          common.NewScope(resolvedInputs),
+		scratchDir:     scratchDir,
+		stdout:         rp.stdout,
+		templateDir:    templateDir,
+		ignorePatterns: spec.Ignore,
 	}
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
 		return err
@@ -558,9 +552,9 @@ type stepParams struct {
 	stdout      io.Writer
 	templateDir string
 
-	// File/Dir paths in template directory that are matched by this matcher will
-	// be ignored while being copied to destination directory.
-	ignoreMatcher ign.IgnoreMatcher
+	// Files and directories included in spec that match ignorePatterns will be
+	// ignored while being copied to destination directory.
+	ignorePatterns []model.String
 
 	// Mutable fields that are updated by action* functions go below this line.
 
@@ -702,13 +696,4 @@ func destOK(fs fs.StatFS, dest string) error {
 	}
 
 	return nil
-}
-
-func ignoreMatcher(pats []model.String, base string) ign.IgnoreMatcher {
-	allIgn := make([]string, 0, len(alwaysIgnorePatterns)+len(pats))
-	allIgn = append(allIgn, alwaysIgnorePatterns...)
-	for _, p := range pats {
-		allIgn = append(allIgn, p.Val)
-	}
-	return ign.NewGitIgnoreFromReader(base, strings.NewReader(strings.Join(allIgn, "\n")))
 }
