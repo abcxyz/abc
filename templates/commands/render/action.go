@@ -170,7 +170,7 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]
 // TODO (#158): There could be some refactor we can do to combine processGlobs
 // and processGlobsString.
 // processGlobsString processes a list of input String paths for simple file
-// globbing. Return emtpy list if zero matching paths.
+// globbing. Return empty list if zero matching paths.
 func processGlobsString(ctx context.Context, paths []string, fromDir string) ([]string, error) {
 	logger := logging.FromContext(ctx).With("logger", "processGlobs")
 	seenPaths := map[string]struct{}{}
