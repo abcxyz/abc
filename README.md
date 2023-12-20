@@ -845,10 +845,9 @@ Params:
 
 ### Ignore (Optional)
 
-We use [filepath Glob](https://pkg.go.dev/path/filepath#Glob) to match the file
-and directory paths that should be ignored if included/copied from template
-directory to destination directory, and should not be overwritten if included
-from destination. This `ignore` feature is similiar to `skip` in `include`
+We use [filepath Match](https://pkg.go.dev/path/filepath#Match) to match the
+file and directory paths that should be ignored if included/copied to
+destination directory. This `ignore` feature is similiar to `skip` in `include`
 action, the difference here is that ignore is global and it applies to every
 `include` action.
 
@@ -860,17 +859,17 @@ Example:
 
 ```yaml
 ignore:
-  - '*/*.ssh'
+  - '*/*.txt'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      # ignore script files in `src_dir` but not its sub-directories.
+      # ignore txt files in `src_dir` but not its sub-directories.
       paths: ['src_dir']
   - desc: 'Include some files and directories from destination'
     action: 'include'
     params:
-      # skip overwriting script files in `dest_dir` but not its sub-directories.
+      # ignore txt files in `dest_dir` but not its sub-directories.
       paths: ['dest_dir']
       from: 'destination'
 ```

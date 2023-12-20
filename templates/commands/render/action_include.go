@@ -23,6 +23,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -57,11 +58,6 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	skip := make(map[string]struct{}, len(inc.Skip))
 	for _, s := range skipPaths {
 		skip[s.Val] = struct{}{}
-	}
-
-	ignore, err := ignorePaths(ctx, sp, fromDir)
-	if err != nil {
-		return err
 	}
 
 	incPaths, err := processPaths(inc.Paths, sp.scope)
@@ -118,8 +114,12 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 				if relToAbsSrc == "." {
 					pathIncParent = p.Val
 				}
-				pathIncSrc := filepath.Join(fromDir, pathIncParent)
-				if _, ok := ignore[pathIncSrc]; ok {
+				matched, err := checkIgnore(sp.ignorePatterns, pathIncParent)
+				if err != nil {
+					return common.CopyHint{},
+						fmt.Errorf("failed to match path(%q) with ignore patterns: %w", pathIncParent, err)
+				}
+				if matched {
 					logger.DebugContext(ctx, "path ignored", "path", pathIncParent)
 					return common.CopyHint{
 						Skip: true,
@@ -154,28 +154,31 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 // TODO(#158): add support for ignoring file name. For example, "/foo" ignores
 // a single file named foo in the root, but "foo" ignores all files named foo
 // anywhere.
-func ignorePaths(ctx context.Context, sp *stepParams, fromDir string) (map[string]struct{}, error) {
-	ignore := make(map[string]struct{})
-	var patterns []string
-
-	if sp.ignorePatterns != nil && len(sp.ignorePatterns) > 0 {
-		processedPaths, err := processPaths(sp.ignorePatterns, sp.scope)
-		if err != nil {
-			return nil, err
-		}
-		for _, p := range processedPaths {
-			patterns = append(patterns, p.Val)
+// checkIgnore checks the given path against the given patterns, if given
+// patterns is not provided, a default list of patterns is used.
+func checkIgnore(patterns []model.String, path string) (bool, error) {
+	if len(patterns) > 0 {
+		for _, p := range patterns {
+			matched, err := filepath.Match(p.Val, path)
+			if err != nil {
+				return false,
+					p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)
+			}
+			if matched {
+				return matched, nil
+			}
 		}
 	} else {
-		patterns = defaultIgnorePatterns
+		for _, p := range defaultIgnorePatterns {
+			matched, err := filepath.Match(p, path)
+			if err != nil {
+				return false,
+					fmt.Errorf("failed to match path (%q) with pattern (%q): %w", path, p, err)
+			}
+			if matched {
+				return matched, nil
+			}
+		}
 	}
-
-	paths, err := processGlobsString(ctx, patterns, fromDir)
-	if err != nil {
-		return nil, err
-	}
-	for _, s := range paths {
-		ignore[s] = struct{}{}
-	}
-	return ignore, nil
+	return false, nil
 }
