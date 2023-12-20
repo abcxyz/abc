@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -27,6 +28,7 @@ import (
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
+	ign "github.com/monochromegane/go-gitignore"
 )
 
 func TestActionInclude(t *testing.T) {
@@ -38,6 +40,7 @@ func TestActionInclude(t *testing.T) {
 		templateContents     map[string]common.ModeAndContents
 		destDirContents      map[string]common.ModeAndContents
 		inputs               map[string]string
+		ignoreMatcher        ign.IgnoreMatcher
 		wantScratchContents  map[string]common.ModeAndContents
 		wantIncludedFromDest []string
 		statErr              error
@@ -437,6 +440,40 @@ func TestActionInclude(t *testing.T) {
 			},
 			wantIncludedFromDest: []string{"file1.txt", "subdir/file2.txt"},
 		},
+		{
+			name: "skip_paths_with_ignore",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"folder1"}),
+					},
+					{
+						Paths: modelStrings([]string{"."}),
+						From:  model.String{Val: "destination"},
+					},
+				},
+			},
+			ignoreMatcher: ign.NewGitIgnoreFromReader(
+				".",
+				strings.NewReader("folder2"),
+			),
+			templateContents: map[string]common.ModeAndContents{
+				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
+				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
+				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
+			},
+			destDirContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantScratchContents: map[string]common.ModeAndContents{
+				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
+				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
+				"file1.txt":                 {Mode: 0o600, Contents: "file1 contents"},
+			},
+			wantIncludedFromDest: []string{"file1.txt"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -468,9 +505,10 @@ func TestActionInclude(t *testing.T) {
 					FS:      &common.RealFS{},
 					StatErr: tc.statErr,
 				},
-				scratchDir:  scratchDir,
-				templateDir: templateDir,
-				scope:       common.NewScope(tc.inputs),
+				scratchDir:    scratchDir,
+				templateDir:   templateDir,
+				scope:         common.NewScope(tc.inputs),
+				ignoreMatcher: tc.ignoreMatcher,
 			}
 
 			err := actionInclude(ctx, tc.include, sp)

@@ -24,6 +24,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	"github.com/abcxyz/pkg/logging"
 )
 
 func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error {
@@ -36,6 +37,8 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
+	logger := logging.FromContext(ctx).With("logger", "includePath")
+
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
 		return err
@@ -100,6 +103,23 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 					return common.CopyHint{
 						Skip: true,
 					}, nil
+				}
+
+				if sp.ignoreMatcher != nil {
+					// Convert path to include parent, which is the current include path.
+					pathIncludeParent := filepath.Join(p.Val, relToAbsSrc)
+					if relToAbsSrc == "." {
+						pathIncludeParent = p.Val
+					}
+					if inc.From.Val != "destination" {
+						// Skip files and directories that are matched by the ignoreMatcher.
+						if sp.ignoreMatcher.Match(pathIncludeParent, de.IsDir()) {
+							logger.InfoContext(ctx, "skip ignored path", "path", pathIncludeParent)
+							return common.CopyHint{
+								Skip: true,
+							}, nil
+						}
+					}
 				}
 
 				abs := filepath.Join(absSrc, relToAbsSrc)
