@@ -65,21 +65,6 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 	return skip, nil
 }
 
-func getRelDst(asPaths []model.String, i int, p model.String, matchedPaths []model.String, relSrc, absSrc, fromDir string) string {
-	// As val provided
-	if len(asPaths) > 0 {
-		if len(matchedPaths) != 1 || absSrc != filepath.Join(fromDir, p.Val) {
-			// path is a glob, keep original filename and put inside directory named as the provided As val.
-			return filepath.Join(asPaths[i].Val, relSrc)
-		} else {
-			// otherwise use provided As val as new filename.
-			return asPaths[i].Val
-		}
-	}
-	// no As val was provided, use the original file or directory name.
-	return relSrc
-}
-
 func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
 	params := &common.CopyParams{
 		DryRun:  false,
@@ -117,6 +102,18 @@ func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, po
 	return nil
 }
 
+func isGlob(matchedPaths []model.String, originalPath, matchedPath string) bool {
+	// originalPath pattern matched more than one path, pattern is a glob
+	if len(matchedPaths) != 1 {
+		return true
+	}
+	// originalPath pattern changed (expanded to matchedPath), pattern is a glob
+	if originalPath != matchedPath {
+		return true
+	}
+	return false
+}
+
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
 	// By default, we copy from the template directory. We also support
 	// grabbing files from the destination directory, so we can modify files
@@ -149,16 +146,27 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			return err
 		}
 
-		for _, matchedPath := range matchedPaths {
-			absSrc := matchedPath.Val
-			relSrc, err := filepath.Rel(fromDir, absSrc)
+		for _, absSrc := range matchedPaths {
+			relSrc, err := filepath.Rel(fromDir, absSrc.Val)
 			if err != nil {
 				return fmt.Errorf("internal error making relative glob matched path: %w", err)
 			}
-			relDst := getRelDst(asPaths, i, p, matchedPaths, relSrc, absSrc, fromDir)
+
+			// if no As val was provided, use the original file or directory name.
+			relDst := relSrc
+			// As val provided, check if pattern has file globbing
+			if len(asPaths) > 0 {
+				if isGlob(matchedPaths, filepath.Join(fromDir, p.Val), absSrc.Val) {
+					// path is a glob, keep original filename and put inside directory named as the provided As val.
+					relDst = filepath.Join(asPaths[i].Val, relSrc)
+				} else {
+					// otherwise use provided As val as new filename.
+					relDst = asPaths[i].Val
+				}
+			}
 			absDst := filepath.Join(sp.scratchDir, relDst)
 
-			if err := copyToDst(ctx, sp, skip, matchedPath.Pos, absDst, absSrc, relSrc, inc.From.Val, fromDir); err != nil {
+			if err := copyToDst(ctx, sp, skip, absSrc.Pos, absDst, absSrc.Val, relSrc, inc.From.Val, fromDir); err != nil {
 				return err
 			}
 		}
