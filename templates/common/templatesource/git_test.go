@@ -344,6 +344,10 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, version, outDir string) 
 	}
 
 	common.WriteAllDefaultMode(f.t, outDir, f.out)
+
+	common.WriteAllDefaultMode(f.t, outDir, map[string]string{
+		".git/refs/heads/main": "abcdef",
+	})
 	return nil
 }
 
