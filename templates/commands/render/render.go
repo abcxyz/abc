@@ -39,6 +39,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
+	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -184,12 +185,13 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	logger.DebugContext(ctx, "created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
-		flags:       &c.flags,
-		fs:          rp.fs,
-		scope:       common.NewScope(resolvedInputs),
-		scratchDir:  scratchDir,
-		stdout:      rp.stdout,
-		templateDir: templateDir,
+		flags:          &c.flags,
+		fs:             rp.fs,
+		scope:          common.NewScope(resolvedInputs),
+		scratchDir:     scratchDir,
+		stdout:         rp.stdout,
+		templateDir:    templateDir,
+		ignorePatterns: spec.Ignore,
 	}
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
 		return err
@@ -549,6 +551,10 @@ type stepParams struct {
 	scratchDir  string
 	stdout      io.Writer
 	templateDir string
+
+	// Files and directories included in spec that match ignorePatterns will be
+	// ignored while being copied to destination directory.
+	ignorePatterns []model.String
 
 	// Mutable fields that are updated by action* functions go below this line.
 

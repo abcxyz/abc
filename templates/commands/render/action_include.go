@@ -23,8 +23,17 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	"github.com/abcxyz/pkg/logging"
 )
+
+// defaultIgnorePatterns to be used if ignore is not provided.
+var defaultIgnorePatterns = []model.String{
+	{Val: ".DS_Store"},
+	{Val: ".bin"},
+	{Val: ".ssh"},
+}
 
 func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error {
 	for _, path := range inc.Paths {
@@ -36,6 +45,16 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
+	logger := logging.FromContext(ctx).With("logger", "includePath")
+
+	// By default, we copy from the template directory. We also support
+	// grabbing files from the destination directory, so we can modify files
+	// that already exist in the destination.
+	fromDir := sp.templateDir
+	if inc.From.Val == "destination" {
+		fromDir = sp.flags.Dest
+	}
+
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
 		return err
@@ -63,13 +82,6 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			as = asPaths[i].Val
 		}
 
-		// By default, we copy from the template directory. We also support
-		// grabbing files from the destination directory, so we can modify files
-		// that already exist in the destination.
-		fromDir := sp.templateDir
-		if inc.From.Val == "destination" {
-			fromDir = sp.flags.Dest
-		}
 		absSrc := filepath.Join(fromDir, p.Val)
 		absDst := filepath.Join(sp.scratchDir, as)
 
@@ -107,6 +119,18 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 				if err != nil {
 					return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
 				}
+				matched, err := checkIgnore(sp.ignorePatterns, relToFromDir)
+				if err != nil {
+					return common.CopyHint{},
+						fmt.Errorf("failed to match path(%q) with ignore patterns: %w", relToFromDir, err)
+				}
+				if matched {
+					logger.DebugContext(ctx, "path ignored", "path", relToFromDir)
+					return common.CopyHint{
+						Skip: true,
+					}, nil
+				}
+
 				if !de.IsDir() && inc.From.Val == "destination" {
 					sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
 				}
@@ -125,4 +149,26 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 	}
 	return nil
+}
+
+// TODO(#158): add support for ignoring file name. For example, "/foo" ignores
+// a single file named foo in the root, but "foo" ignores all files named foo
+// anywhere.
+// checkIgnore checks the given path against the given patterns, if given
+// patterns is not provided, a default list of patterns is used.
+func checkIgnore(patterns []model.String, path string) (bool, error) {
+	if len(patterns) == 0 {
+		patterns = defaultIgnorePatterns
+	}
+	for _, p := range patterns {
+		matched, err := filepath.Match(filepath.FromSlash(p.Val), path)
+		if err != nil {
+			return false,
+				p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+	return false, nil
 }

@@ -603,6 +603,90 @@ steps:
 			},
 		},
 		{
+			name: "with_default_ignore",
+			templateContents: map[string]string{
+				"dir/file_b.txt":          "red is my favorite color",
+				".bin/file_to_ignore.txt": "src: file to ignore",
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['.']
+              from: 'destination'
+  - desc: 'Include from template'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['.']
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"file_a.txt":              "purple is my favorite color",
+				".bin/file_to_ignore.txt": "dest: purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"file_a.txt":              "red is my favorite color",
+				"dir/file_b.txt":          "red is my favorite color",
+				".bin/file_to_ignore.txt": "dest: purple is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
+		},
+		{
+			name: "with_custom_ignore",
+			templateContents: map[string]string{
+				"sub_dir/file_b.txt": "src: file to ignore",
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'Template'
+desc: 'my template'
+ignore:
+  - 'sub_dir/file_b.txt'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['.']
+              from: 'destination'
+  - desc: 'Include from template'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['sub_dir']
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"file_a.txt":         "purple is my favorite color",
+				"sub_dir/file_b.txt": "dest: purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"file_a.txt":         "red is my favorite color",
+				"sub_dir/file_b.txt": "dest: purple is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
+		},
+		{
 			name: "for_each",
 			templateContents: map[string]string{
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'

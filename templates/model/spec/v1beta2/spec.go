@@ -34,7 +34,10 @@ type Spec struct {
 	Inputs []*Input     `yaml:"inputs"`
 	Steps  []*Step      `yaml:"steps"`
 
-	// TODO(sqin2019): add your new field here
+	// Optional ignore section, adopting gitignore-like path matching.
+	// Please be ware that there are some patterns that are always ignored such
+	// as: '.DS_Store, '.bin', '.ssh'.
+	Ignore []model.String `yaml:"ignore"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

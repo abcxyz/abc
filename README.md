@@ -115,7 +115,7 @@ Examples:
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`
 
 The `<test_name>` parameter gives the test names to record or verify, if not
-specified, all tests will be run against. This flag may be repeated, like 
+specified, all tests will be run against. This flag may be repeated, like
 -`-test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
 The `<location>` parameter gives the location of the template.
@@ -843,13 +843,44 @@ Params:
 - `steps`: a list of steps/actions to execute in the scope of the for_each loop.
   It's analogous to the `steps` field at the top level of the spec file.
 
+### Ignore (Optional)
+
+We use [filepath Match](https://pkg.go.dev/path/filepath#Match) to match the
+file and directory paths that should be ignored if included/copied to
+destination directory. This `ignore` feature is similiar to `skip` in `include`
+action, the difference here is that ignore is global and it applies to every
+`include` action.
+
+This section is optional, if not provided, a default ignore list is used:
+`.DS_Store`, `.bin`, and `.ssh`. To set your custom ignore list, please check
+accepted patterns [here](https://pkg.go.dev/path/filepath#Match).
+
+Example:
+
+```yaml
+ignore:
+  - '*/*.txt'
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      # ignore txt files in `src_dir` but not its sub-directories.
+      paths: ['src_dir']
+  - desc: 'Include some files and directories from destination'
+    action: 'include'
+    params:
+      # ignore txt files in `dest_dir` but not its sub-directories.
+      paths: ['dest_dir']
+      from: 'destination'
+```
+
 ### Post-rendering validation test (golden test)
 
 We use post-rendering validaton test to record and verify template rendering
 results.
 
 To add golden tests to your template, all you need is to create a
-`testdata/golden` folder under your template, and a 
+`testdata/golden` folder under your template, and a
 `testdata/golden/<test_name>/test.yaml` for each of your tests to define test
 metadata and input parameters.
 
