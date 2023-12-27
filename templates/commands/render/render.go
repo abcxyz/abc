@@ -25,6 +25,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -51,6 +52,7 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy-"
 	scratchDirNamePart  = "scratch-"
+	debugDirNamePart    = "debug-"
 )
 
 type Command struct {
@@ -147,6 +149,7 @@ type runParams struct {
 func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	var tempDirs []string
 	defer func() {
+		// This does not remove debugDir if there is one.
 		err := c.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
 		outErr = errors.Join(outErr, err)
 	}()
@@ -192,6 +195,18 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		templateDir:    templateDir,
 		ignorePatterns: spec.Ignore,
 	}
+
+	if c.flags.DebugStepDiffs {
+		debugDir, err := rp.fs.MkdirTemp(rp.tempDirBase, debugDirNamePart)
+		if err != nil {
+			return fmt.Errorf("failed to create temp directory for debug directory: %w", err)
+		}
+		if err := rp.fs.MkdirAll(debugDir, common.OwnerRWXPerms); err != nil {
+			return fmt.Errorf("failed to create debug directory: MkdirAll(): %w", err)
+		}
+		sp.debugDir = debugDir
+	}
+
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
 		return err
 	}
@@ -494,10 +509,37 @@ func checkInputsMissing(spec *spec.Spec, inputs map[string]string) []string {
 func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error {
 	logger := logging.FromContext(ctx).With("logger", "executeSteps")
 
+	if sp.flags.DebugStepDiffs {
+		// Make debug dir a git repository with a detached work tree in scratch dir,
+		// meaning it will track the file changes in scratch dir without affecting
+		// the scratch dir.
+		args := strings.Fields(fmt.Sprintf(
+			"--git-dir=%s --work-tree=%s init", sp.debugDir, sp.scratchDir))
+		cmd := exec.Command("git", args...)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to run command %q, error %w", cmd.String(), err)
+		}
+	}
+
 	for i, step := range steps {
 		if err := executeOneStep(ctx, i, step, sp); err != nil {
 			return err
 		}
+
+		if sp.flags.DebugStepDiffs {
+			// Commit the diffs after each step.
+			m := fmt.Sprintf("'Step %d, action %s at line %d'", i, step.Action.Val, step.Pos.Line)
+			commit := exec.Command(
+				"git", "commit", "-a",
+				"-m", m,
+				"--allow-empty",
+			)
+			commit.Dir = sp.debugDir
+			if output, err := commit.CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to run command %q, error %w, output %q", commit.String(), err, string(output))
+			}
+		}
+
 		logger.DebugContext(ctx, "completed template action", "action", step.Action.Val)
 		if sp.flags.DebugScratchContents {
 			contents, err := scratchContents(ctx, i, step, sp)
@@ -506,6 +548,17 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			}
 			logger.WarnContext(ctx, contents)
 		}
+	}
+
+	if sp.flags.DebugStepDiffs {
+		// Use default log level.
+		logger.WarnContext(
+			ctx,
+			fmt.Sprintf(
+				`Please navigate to %q or use "git --git-dir=%s <command>" to see commits/diffs for each step`,
+				sp.debugDir, sp.debugDir,
+			),
+		)
 	}
 	return nil
 }
@@ -550,6 +603,8 @@ type stepParams struct {
 	scratchDir  string
 	stdout      io.Writer
 	templateDir string
+	// Temporary directory to hold debug information when debug is enabled.
+	debugDir string
 
 	// Files and directories included in spec that match ignorePatterns will be
 	// ignored while being copied to destination directory.

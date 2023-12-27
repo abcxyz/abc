@@ -49,12 +49,19 @@ The `<template_location>` parameter is one of these two things:
 
 #### Flags
 
+- `--debug-step-diffs`: for template authors, not regular users. This will log
+  the diffs made by each step as git commits in a tmp git repository. If you
+  want to see the git logs and diffs with your usual git commands, please
+  navigate to the tmp folder, otherwise you will need to use a git flag
+  `--git-dir=path/to/tmp/debug/folder` for each of your command. A warn log will
+  show you where the tmp repository is.
+
+  Note that you must have git installed to use this flag.
+
 - `--debug-scratch-contents`: for template authors, not regular users. This will
   print the filename of every file in the scratch directory after executing each
   step of the spec.yaml. Useful for debugging errors like
-  `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`
-  You'll want to set the environment variable `ABC_LOG_LEVEL=debug` when you use
-  this.
+  `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`.
 - `--dest <output_dir>`: the directory on the local filesystem to write output
   to. Defaults to the current directory. If it doesn't exist, it will be
   created.

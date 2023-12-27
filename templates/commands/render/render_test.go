@@ -59,6 +59,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"--keep-temp-dirs",
 				"--skip-input-validation",
 				"--debug-scratch-contents",
+				"--debug-step-diffs",
 				"helloworld@v1",
 			},
 			want: RenderFlags{
@@ -71,6 +72,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				KeepTempDirs:         true,
 				SkipInputValidation:  true,
 				DebugScratchContents: true,
+				DebugStepDiffs:       true,
 			},
 		},
 		{
@@ -217,6 +219,7 @@ steps:
 		flagForceOverwrite      bool
 		flagSkipInputValidation bool
 		flagManifest            bool
+		flagDebugStepDiffs      bool
 		removeAllErr            error
 		wantScratchContents     map[string]string
 		wantTemplateContents    map[string]string
@@ -233,6 +236,28 @@ steps:
 				"emoji_suffix":       "🐈",
 				"ending_punctuation": "!",
 			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Bob🐈!\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
+		{
+			name: "simple_success_with_debug_flag",
+			flagInputs: map[string]string{
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			flagDebugStepDiffs: true,
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -877,6 +902,7 @@ steps:
 					KeepTempDirs:        tc.flagKeepTempDirs,
 					Manifest:            tc.flagManifest,
 					SkipInputValidation: tc.flagSkipInputValidation,
+					DebugStepDiffs:      tc.flagDebugStepDiffs,
 					Source:              sourceDir,
 				},
 			}
@@ -927,6 +953,15 @@ steps:
 			}
 			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
+			}
+
+			var gotDebugContents map[string]string
+			debugDir, ok := testMustGlob(t, filepath.Join(tempDir, debugDirNamePart+"*"))
+			if ok {
+				gotDebugContents = common.LoadDirWithoutMode(t, debugDir)
+			}
+			if tc.flagDebugStepDiffs != (len(gotDebugContents) > 0) {
+				t.Errorf("debug directory should be empty: %t, but not as expected", !tc.flagDebugStepDiffs)
 			}
 		})
 	}
