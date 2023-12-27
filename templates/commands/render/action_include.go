@@ -29,7 +29,11 @@ import (
 )
 
 // defaultIgnorePatterns to be used if ignore is not provided.
-var defaultIgnorePatterns = []string{".DS_Store", ".bin", ".ssh"}
+var defaultIgnorePatterns = []model.String{
+	{Val: ".DS_Store"},
+	{Val: ".bin"},
+	{Val: ".ssh"},
+}
 
 func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error {
 	for _, path := range inc.Paths {
@@ -110,27 +114,23 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 					}, nil
 				}
 
-				pathIncParent := filepath.Join(p.Val, relToAbsSrc)
-				if relToAbsSrc == "." {
-					pathIncParent = p.Val
-				}
-				matched, err := checkIgnore(sp.ignorePatterns, pathIncParent)
-				if err != nil {
-					return common.CopyHint{},
-						fmt.Errorf("failed to match path(%q) with ignore patterns: %w", pathIncParent, err)
-				}
-				if matched {
-					logger.DebugContext(ctx, "path ignored", "path", pathIncParent)
-					return common.CopyHint{
-						Skip: true,
-					}, nil
-				}
-
 				abs := filepath.Join(absSrc, relToAbsSrc)
 				relToFromDir, err := filepath.Rel(fromDir, abs)
 				if err != nil {
 					return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
 				}
+				matched, err := checkIgnore(sp.ignorePatterns, relToFromDir)
+				if err != nil {
+					return common.CopyHint{},
+						fmt.Errorf("failed to match path(%q) with ignore patterns: %w", relToFromDir, err)
+				}
+				if matched {
+					logger.DebugContext(ctx, "path ignored", "path", relToFromDir)
+					return common.CopyHint{
+						Skip: true,
+					}, nil
+				}
+
 				if !de.IsDir() && inc.From.Val == "destination" {
 					sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
 				}
@@ -157,27 +157,17 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 // checkIgnore checks the given path against the given patterns, if given
 // patterns is not provided, a default list of patterns is used.
 func checkIgnore(patterns []model.String, path string) (bool, error) {
-	if len(patterns) > 0 {
-		for _, p := range patterns {
-			matched, err := filepath.Match(filepath.FromSlash(p.Val), path)
-			if err != nil {
-				return false,
-					p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)
-			}
-			if matched {
-				return matched, nil
-			}
+	if len(patterns) == 0 {
+		patterns = defaultIgnorePatterns
+	}
+	for _, p := range patterns {
+		matched, err := filepath.Match(filepath.FromSlash(p.Val), path)
+		if err != nil {
+			return false,
+				p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)
 		}
-	} else {
-		for _, p := range defaultIgnorePatterns {
-			matched, err := filepath.Match(filepath.FromSlash(p), path)
-			if err != nil {
-				return false,
-					fmt.Errorf("failed to match path (%q) with pattern (%q): %w", path, p, err)
-			}
-			if matched {
-				return matched, nil
-			}
+		if matched {
+			return true, nil
 		}
 	}
 	return false, nil
