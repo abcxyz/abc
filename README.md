@@ -110,7 +110,7 @@ Usages:
 - `abc templates golden-test verify [--test-name=<test_name>] <location>`
 
 Examples:
-- `abc templates golden-test record --test-name=example_test examples/templates/render/hello_jupiter`
+- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
 - `abc templates golden-test record examples/templates/render/hello_jupiter`
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`
 
