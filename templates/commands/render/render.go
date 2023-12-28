@@ -510,14 +510,19 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 	logger := logging.FromContext(ctx).With("logger", "executeSteps")
 
 	if sp.flags.DebugStepDiffs {
-		// Make debug dir a git repository with a detached work tree in scratch dir,
-		// meaning it will track the file changes in scratch dir without affecting
-		// the scratch dir.
-		args := strings.Fields(fmt.Sprintf(
-			"--git-dir=%s --work-tree=%s init", sp.debugDir, sp.scratchDir))
-		cmd := exec.Command("git", args...)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to run command %q, error %w", cmd.String(), err)
+		argsList := [][]string{
+			// Make debug dir a git repository with a detached work tree in scratch
+			// dir, meaning it will track the file changes in scratch dir without
+			// affecting the scratch dir.
+			strings.Fields(fmt.Sprintf(
+				"--git-dir=%s --work-tree=%s init", sp.debugDir, sp.scratchDir)),
+
+			// Set git user name and email, required for ubuntu and windows os.
+			{"config", "user.name", "abc cli"},
+			{"config", "user.email", "abc@abcxyz.com"},
+		}
+		if err := runGitCmds(argsList, sp.debugDir); err != nil {
+			return err
 		}
 	}
 
@@ -528,15 +533,13 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 
 		if sp.flags.DebugStepDiffs {
 			// Commit the diffs after each step.
-			m := fmt.Sprintf("'Step %d, action %s at line %d'", i, step.Action.Val, step.Pos.Line)
-			commit := exec.Command(
-				"git", "commit", "-a",
-				"-m", m,
-				"--allow-empty",
-			)
-			commit.Dir = sp.debugDir
-			if output, err := commit.CombinedOutput(); err != nil {
-				return fmt.Errorf("failed to run command %q, error %w, output %q", commit.String(), err, string(output))
+			m := fmt.Sprintf("Step %d, action %s at line %d", i, step.Action.Val, step.Pos.Line)
+			argsList := [][]string{
+				{"add", "-A"},
+				{"commit", "-a", "-m", m, "--allow-empty"},
+			}
+			if err := runGitCmds(argsList, sp.debugDir); err != nil {
+				return err
 			}
 		}
 
@@ -555,7 +558,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 		logger.WarnContext(
 			ctx,
 			fmt.Sprintf(
-				`Please navigate to %q or use "git --git-dir=%s <command>" to see commits/diffs for each step`,
+				"Please navigate to '%s' or use 'git --git-dir=%s <command>' to see commits/diffs for each step",
 				sp.debugDir, sp.debugDir,
 			),
 		)
@@ -749,5 +752,18 @@ func destOK(fs fs.StatFS, dest string) error {
 		return fmt.Errorf("the destination %q exists but isn't a directory", dest)
 	}
 
+	return nil
+}
+
+func runGitCmds(argsList [][]string, workingDir string) error {
+	for _, args := range argsList {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = workingDir
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf(
+				"failed to run command %q, error %w, output %q",
+				cmd.String(), err, string(output))
+		}
+	}
 	return nil
 }
