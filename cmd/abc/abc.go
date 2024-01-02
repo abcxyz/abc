@@ -25,6 +25,7 @@ import (
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
 	"github.com/abcxyz/abc/templates/commands/render"
+	"github.com/abcxyz/abc/templates/commands/upgrade"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -44,8 +45,8 @@ var rootCmd = func() *cli.RootCommand {
 					Name:        "templates",
 					Description: "subcommands for rendering templates and related things",
 					Commands: map[string]cli.CommandFactory{
-						"render": func() cli.Command {
-							return &render.Command{}
+						"describe": func() cli.Command {
+							return &describe.Command{}
 						},
 						"golden-test": func() cli.Command {
 							return &cli.RootCommand{
@@ -61,8 +62,11 @@ var rootCmd = func() *cli.RootCommand {
 								},
 							}
 						},
-						"describe": func() cli.Command {
-							return &describe.Command{}
+						"render": func() cli.Command {
+							return &render.Command{}
+						},
+						"upgrade": func() cli.Command {
+							return &upgrade.Command{}
 						},
 					},
 				}
