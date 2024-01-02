@@ -39,11 +39,9 @@ const DefaultRunTimeout = time.Minute
 // If the incoming context doesn't already have a timeout, then a default
 // timeout will be added (see DefaultRunTimeout).
 //
-// exitCode is -1 if the command could not be executed.
-//
 // If the command fails, the error message will include the contents of stdout
 // and stderr. This saves boilerplate in the caller.
-func Run(ctx context.Context, args ...string) (stdout, stderr string, exitCode int, _ error) {
+func Run(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, DefaultRunTimeout)
@@ -58,24 +56,8 @@ func Run(ctx context.Context, args ...string) (stdout, stderr string, exitCode i
 
 	err := cmd.Run()
 	stdout, stderr = stdoutBuf.String(), stderrBuf.String()
-	exitCode = cmd.ProcessState.ExitCode()
 	if err != nil {
-		err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w", exitCode was %d\nstdout: %s\nstderr: %s`, args, err, ctx.Err(), exitCode, cmd.Stdout, cmd.Stderr)
+		err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w"\nstdout: %s\nstderr: %s`, args, err, ctx.Err(), cmd.Stdout, cmd.Stderr)
 	}
-	return stdout, stderr, exitCode, err
-}
-
-// RunAllowNonZero is like Run(), except that if the command runs to completion
-// with a nonzero exit code, that's not treated as an error. This is a
-// workaround for the fact that some commands routinely use nonzero exit codes
-// to communicate information, and we don't want to have to do complex error
-// processing to handle this.
-func RunAllowNonZero(ctx context.Context, args ...string) (stdout, stderr string, exitCode int, err error) {
-	stdout, stderr, exitCode, err = Run(ctx, args...)
-	// exitCode will be -1 for "real" errors, and will be >=0 for causes where
-	// the command ran successfully but returned a nonzero exit code.
-	if err != nil && exitCode > 0 {
-		return stdout, stderr, exitCode, nil
-	}
-	return stdout, stderr, exitCode, err
+	return stdout, stderr, err
 }

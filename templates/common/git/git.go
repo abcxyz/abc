@@ -42,17 +42,17 @@ var sha = regexp.MustCompile("^[0-9a-f]{40}$")
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Clone(ctx context.Context, remote, version, outDir string) error {
 	if sha.MatchString(version) {
-		_, _, _, err := common.Run(ctx, "git", "clone", remote, outDir)
+		_, _, err := common.Run(ctx, "git", "clone", remote, outDir)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
 
-		_, _, _, err = common.Run(ctx, "git", "-C", outDir, "reset", "--hard", version)
+		_, _, err = common.Run(ctx, "git", "-C", outDir, "reset", "--hard", version)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
 	} else {
-		_, _, _, err := common.Run(ctx, "git", "clone", "--depth", "1", "--branch", version, remote, outDir)
+		_, _, err := common.Run(ctx, "git", "clone", "--depth", "1", "--branch", version, remote, outDir)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
@@ -105,7 +105,7 @@ func findSymlinks(dir string) ([]string, error) {
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Tags(ctx context.Context, remote string) ([]string, error) {
-	stdout, _, _, err := common.Run(ctx, "git", "ls-remote", "--tags", remote)
+	stdout, _, err := common.Run(ctx, "git", "ls-remote", "--tags", remote)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -175,7 +175,7 @@ func isClean(ctx context.Context, dir string) (bool, error) {
 	// promises stable output, so it's good enough.
 	// https://stackoverflow.com/a/2658301
 	args := []string{"git", "-C", dir, "status", "--porcelain"}
-	stdout, _, _, err := common.Run(ctx, args...)
+	stdout, _, err := common.Run(ctx, args...)
 	if err != nil {
 		return false, err //nolint:wrapcheck
 	}
@@ -190,7 +190,7 @@ func isClean(ctx context.Context, dir string) (bool, error) {
 // Returns false if there are no tags pointing to HEAD.
 func bestTag(ctx context.Context, dir string) (string, bool, error) {
 	args := []string{"git", "-C", dir, "for-each-ref", "--points-at", "HEAD", "refs/tags/*"}
-	stdout, _, _, err := common.Run(ctx, args...)
+	stdout, _, err := common.Run(ctx, args...)
 	if err != nil {
 		return "", false, err //nolint:wrapcheck
 	}
@@ -237,7 +237,7 @@ func bestTag(ctx context.Context, dir string) (string, bool, error) {
 // workspace.
 func currentSHA(ctx context.Context, dir string) (string, error) {
 	args := []string{"git", "-C", dir, "rev-parse", "HEAD"}
-	stdout, _, _, err := common.Run(ctx, args...)
+	stdout, _, err := common.Run(ctx, args...)
 	if err != nil {
 		return "", err //nolint:wrapcheck
 	}
