@@ -44,6 +44,9 @@ type Manifest struct {
 	// The template source address as passed to `abc templates render`.
 	TemplateLocation model.String `yaml:"template_location"`
 
+	// The tag, branch, SHA, or other version information.
+	TemplateVersion model.String `yaml:"template_version"`
+
 	// The dirhash (https://pkg.go.dev/golang.org/x/mod/sumdb/dirhash) of the
 	// template source tree (not the output). This shows exactly what version of
 	// the template was installed.
