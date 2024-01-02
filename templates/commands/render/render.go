@@ -195,15 +195,15 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		ignorePatterns: spec.Ignore,
 	}
 
+	var debugDir string
 	if c.flags.DebugStepDiffs {
-		debugDir, err := rp.fs.MkdirTemp(rp.tempDirBase, debugDirNamePart)
+		debugDir, err = rp.fs.MkdirTemp(rp.tempDirBase, debugDirNamePart)
 		if err != nil {
 			return fmt.Errorf("failed to create temp directory for debug directory: %w", err)
 		}
-		sp.debugDir = debugDir
 	}
 
-	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
+	if err := executeSteps(ctx, spec.Steps, sp, debugDir); err != nil {
 		return err
 	}
 
@@ -502,19 +502,19 @@ func checkInputsMissing(spec *spec.Spec, inputs map[string]string) []string {
 	return missing
 }
 
-func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error {
+func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams, debugDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "executeSteps")
 
-	if sp.flags.DebugStepDiffs {
+	if sp.flags.DebugStepDiffs && debugDir != "" {
 		argsList := [][]string{
 			// Make debug dir a git repository with a detached work tree in scratch
 			// dir, meaning it will track the file changes in scratch dir without
 			// affecting the scratch dir.
-			{"git", "--git-dir", sp.debugDir, "--work-tree", sp.scratchDir, "init"},
+			{"git", "--git-dir", debugDir, "--work-tree", sp.scratchDir, "init"},
 
 			// Set git user name and email, required for ubuntu and windows os.
-			{"git", "--git-dir", sp.debugDir, "config", "user.name", "abc cli"},
-			{"git", "--git-dir", sp.debugDir, "config", "user.email", "abc@abcxyz.com"},
+			{"git", "--git-dir", debugDir, "config", "user.name", "abc cli"},
+			{"git", "--git-dir", debugDir, "config", "user.email", "abc@abcxyz.com"},
 		}
 		if err := runCmds(ctx, argsList); err != nil {
 			return err
@@ -526,12 +526,12 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			return err
 		}
 
-		if sp.flags.DebugStepDiffs {
+		if sp.flags.DebugStepDiffs && debugDir != "" {
 			// Commit the diffs after each step.
 			m := fmt.Sprintf("Step %d, action %s at line %d", i, step.Action.Val, step.Pos.Line)
 			argsList := [][]string{
-				{"git", "--git-dir", sp.debugDir, "add", "-A"},
-				{"git", "--git-dir", sp.debugDir, "commit", "-a", "-m", m, "--allow-empty"},
+				{"git", "--git-dir", debugDir, "add", "-A"},
+				{"git", "--git-dir", debugDir, "commit", "-a", "-m", m, "--allow-empty"},
 			}
 			if err := runCmds(ctx, argsList); err != nil {
 				return err
@@ -553,8 +553,8 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 		logger.WarnContext(
 			ctx,
 			fmt.Sprintf(
-				"Please navigate to '%s' or use 'git --git-dir=%s <command>' to see commits/diffs for each step",
-				sp.debugDir, sp.debugDir,
+				"Please navigate to '%s' or use 'git --git-dir=%s log' to see commits/diffs for each step",
+				debugDir, debugDir,
 			),
 		)
 	}
@@ -601,8 +601,6 @@ type stepParams struct {
 	scratchDir  string
 	stdout      io.Writer
 	templateDir string
-	// Temporary directory to hold debug information when debug is enabled.
-	debugDir string
 
 	// Files and directories included in spec that match ignorePatterns will be
 	// ignored while being copied to destination directory.

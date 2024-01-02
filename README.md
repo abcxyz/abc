@@ -53,8 +53,9 @@ The `<template_location>` parameter is one of these two things:
   the diffs made by each step as git commits in a tmp git repository. If you
   want to see the git logs and diffs with your usual git commands, please
   navigate to the tmp folder, otherwise you will need to use a git flag
-  `--git-dir=path/to/tmp/debug/folder` for your commands. A warn log will show
-  you where the tmp repository is.
+  `--git-dir=path/to/tmp/debug/folder` for your commands, e.g.:
+  `git --git-dir=path/to/tmp/debug/folder log`. A warn log will show you where
+  the tmp repository is.
 
   Note: you must have git installed to use this flag.
 
