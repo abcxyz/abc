@@ -201,6 +201,19 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		if err != nil {
 			return fmt.Errorf("failed to create temp directory for debug directory: %w", err)
 		}
+		argsList := [][]string{
+			// Make debug dir a git repository with a detached work tree in scratch
+			// dir, meaning it will track the file changes in scratch dir without
+			// affecting the scratch dir.
+			{"git", "--git-dir", debugDir, "--work-tree", sp.scratchDir, "init"},
+
+			// Set git user name and email, required for ubuntu and windows os.
+			{"git", "--git-dir", debugDir, "config", "user.name", "abc cli"},
+			{"git", "--git-dir", debugDir, "config", "user.email", "abc@abcxyz.com"},
+		}
+		if err := runCmds(ctx, argsList); err != nil {
+			return err
+		}
 	}
 
 	if err := executeSteps(ctx, spec.Steps, sp, debugDir); err != nil {
@@ -504,22 +517,6 @@ func checkInputsMissing(spec *spec.Spec, inputs map[string]string) []string {
 
 func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams, debugDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "executeSteps")
-
-	if sp.flags.DebugStepDiffs && debugDir != "" {
-		argsList := [][]string{
-			// Make debug dir a git repository with a detached work tree in scratch
-			// dir, meaning it will track the file changes in scratch dir without
-			// affecting the scratch dir.
-			{"git", "--git-dir", debugDir, "--work-tree", sp.scratchDir, "init"},
-
-			// Set git user name and email, required for ubuntu and windows os.
-			{"git", "--git-dir", debugDir, "config", "user.name", "abc cli"},
-			{"git", "--git-dir", debugDir, "config", "user.email", "abc@abcxyz.com"},
-		}
-		if err := runCmds(ctx, argsList); err != nil {
-			return err
-		}
-	}
 
 	for i, step := range steps {
 		if err := executeOneStep(ctx, i, step, sp); err != nil {
