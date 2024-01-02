@@ -177,9 +177,6 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
-	if err := rp.fs.MkdirAll(scratchDir, common.OwnerRWXPerms); err != nil {
-		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
-	}
 	tempDirs = append(tempDirs, scratchDir)
 	logger := logging.FromContext(ctx)
 	logger.DebugContext(ctx, "created temporary scratch directory", "path", scratchDir)
