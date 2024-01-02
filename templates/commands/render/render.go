@@ -25,7 +25,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -200,9 +199,6 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		debugDir, err := rp.fs.MkdirTemp(rp.tempDirBase, debugDirNamePart)
 		if err != nil {
 			return fmt.Errorf("failed to create temp directory for debug directory: %w", err)
-		}
-		if err := rp.fs.MkdirAll(debugDir, common.OwnerRWXPerms); err != nil {
-			return fmt.Errorf("failed to create debug directory: MkdirAll(): %w", err)
 		}
 		sp.debugDir = debugDir
 	}
@@ -514,14 +510,13 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			// Make debug dir a git repository with a detached work tree in scratch
 			// dir, meaning it will track the file changes in scratch dir without
 			// affecting the scratch dir.
-			strings.Fields(fmt.Sprintf(
-				"--git-dir=%s --work-tree=%s init", sp.debugDir, sp.scratchDir)),
+			{"git", "--git-dir", sp.debugDir, "--work-tree", sp.scratchDir, "init"},
 
 			// Set git user name and email, required for ubuntu and windows os.
-			{"config", "user.name", "abc cli"},
-			{"config", "user.email", "abc@abcxyz.com"},
+			{"git", "--git-dir", sp.debugDir, "config", "user.name", "abc cli"},
+			{"git", "--git-dir", sp.debugDir, "config", "user.email", "abc@abcxyz.com"},
 		}
-		if err := runGitCmds(argsList, sp.debugDir); err != nil {
+		if err := runCmds(ctx, argsList); err != nil {
 			return err
 		}
 	}
@@ -535,10 +530,10 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			// Commit the diffs after each step.
 			m := fmt.Sprintf("Step %d, action %s at line %d", i, step.Action.Val, step.Pos.Line)
 			argsList := [][]string{
-				{"add", "-A"},
-				{"commit", "-a", "-m", m, "--allow-empty"},
+				{"git", "--git-dir", sp.debugDir, "add", "-A"},
+				{"git", "--git-dir", sp.debugDir, "commit", "-a", "-m", m, "--allow-empty"},
 			}
-			if err := runGitCmds(argsList, sp.debugDir); err != nil {
+			if err := runCmds(ctx, argsList); err != nil {
 				return err
 			}
 		}
@@ -755,14 +750,11 @@ func destOK(fs fs.StatFS, dest string) error {
 	return nil
 }
 
-func runGitCmds(argsList [][]string, workingDir string) error {
+func runCmds(ctx context.Context, argsList [][]string) error {
 	for _, args := range argsList {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = workingDir
-		if output, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf(
-				"failed to run command %q, error %w, output %q",
-				cmd.String(), err, string(output))
+		_, _, err := common.Run(ctx, args...)
+		if err != nil {
+			return err //nolint:wrapcheck
 		}
 	}
 	return nil
