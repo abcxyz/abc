@@ -42,7 +42,7 @@ func actionForEach(ctx context.Context, fe *spec.ForEach, sp *stepParams) error 
 
 	for _, keyVal := range values {
 		subStepParams := sp.WithScope(map[string]string{key: keyVal})
-		if err := executeSteps(ctx, fe.Steps, subStepParams, ""); err != nil {
+		if err := executeSteps(ctx, fe.Steps, subStepParams); err != nil {
 			return err
 		}
 	}

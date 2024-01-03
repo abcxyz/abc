@@ -92,3 +92,13 @@ func DebugScratchContents(d *bool) *cli.BoolVar {
 		Usage:   "Print the contents of the scratch directory after each step; for debugging spec.yaml files.",
 	}
 }
+
+// DebugStepDiffs causes the diffs between steps to be logged as git commits.
+func DebugStepDiffs(d *bool) *cli.BoolVar {
+	return &cli.BoolVar{
+		Name:    "debug-step-diffs",
+		Target:  d,
+		Default: false,
+		Usage:   "Commit the diffs between steps for debugging.",
+	}
+}

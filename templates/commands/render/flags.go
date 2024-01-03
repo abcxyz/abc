@@ -126,13 +126,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(flags.DebugScratchContents(&r.DebugScratchContents))
-
-	t.BoolVar(&cli.BoolVar{
-		Name:    "debug-step-diffs",
-		Target:  &r.DebugStepDiffs,
-		Default: false,
-		Usage:   "Commit the diffs between steps for debugging.",
-	})
+	t.BoolVar(flags.DebugStepDiffs(&r.DebugStepDiffs))
 
 	g := set.NewSection("GIT OPTIONS")
 
