@@ -26,6 +26,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -223,8 +224,9 @@ func TestWalkAndModify(t *testing.T) {
 					ReadFileErr:  tc.readFileErr,
 					WriteFileErr: tc.writeFileErr,
 				},
-				scratchDir: scratchDir,
-				scope:      common.NewScope(nil),
+				scratchDir:      scratchDir,
+				scope:           common.NewScope(nil),
+				upgradeFeatures: &spec.UpgradeFeatures{},
 			}
 
 			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
@@ -672,7 +674,8 @@ func TestProcessGlobs(t *testing.T) {
 			common.WriteAll(t, tempDir, tc.dirContents)
 
 			ctx := context.Background()
-			gotPaths, err := processGlobs(ctx, tc.paths, tempDir)
+			// TODO: add tests for both skipGlobs == true and false
+			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

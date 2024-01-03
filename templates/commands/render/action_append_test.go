@@ -183,8 +183,9 @@ func TestActionAppend(t *testing.T) {
 					FS:          &common.RealFS{},
 					ReadFileErr: tc.readFileErr,
 				},
-				scratchDir: scratchDir,
-				scope:      common.NewScope(tc.inputs),
+				scratchDir:      scratchDir,
+				scope:           common.NewScope(tc.inputs),
+				upgradeFeatures: &spec.UpgradeFeatures{},
 			}
 			err := actionAppend(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

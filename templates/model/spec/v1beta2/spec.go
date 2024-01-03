@@ -35,6 +35,14 @@ type Spec struct {
 	Steps  []*Step      `yaml:"steps"`
 
 	// TODO(sqin2019): add your new field here
+
+	// TODO: doc
+	UpgradeFeatures *UpgradeFeatures
+}
+
+// TODO: doc
+type UpgradeFeatures struct {
+	SkipGlobs bool
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

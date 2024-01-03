@@ -41,7 +41,7 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 	if err != nil {
 		return nil, err
 	}
-	skipPaths, err := processGlobs(ctx, unglobbedSkipPaths, fromDir)
+	skipPaths, err := processGlobs(ctx, unglobbedSkipPaths, fromDir, sp.upgradeFeatures.SkipGlobs)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	}
 
 	for i, p := range incPaths {
-		matchedPaths, err := processGlobs(ctx, []model.String{p}, fromDir)
+		matchedPaths, err := processGlobs(ctx, []model.String{p}, fromDir, sp.upgradeFeatures.SkipGlobs)
 		if err != nil {
 			return err
 		}

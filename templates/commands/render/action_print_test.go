@@ -80,9 +80,10 @@ func TestActionPrint(t *testing.T) {
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			var outBuf bytes.Buffer
 			sp := &stepParams{
-				stdout: &outBuf,
-				scope:  common.NewScope(tc.inputs),
-				flags:  &tc.flags,
+				stdout:          &outBuf,
+				scope:           common.NewScope(tc.inputs),
+				flags:           &tc.flags,
+				upgradeFeatures: &spec.UpgradeFeatures{},
 			}
 			pr := &spec.Print{
 				Message: model.String{

@@ -402,9 +402,10 @@ gamma`,
 
 			ctx := context.Background()
 			sp := &stepParams{
-				fs:         &common.RealFS{},
-				scope:      common.NewScope(tc.inputs),
-				scratchDir: scratchDir,
+				fs:              &common.RealFS{},
+				scope:           common.NewScope(tc.inputs),
+				scratchDir:      scratchDir,
+				upgradeFeatures: &spec.UpgradeFeatures{},
 			}
 			err := actionRegexReplace(ctx, tc.rr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

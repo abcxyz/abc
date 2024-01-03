@@ -731,9 +731,10 @@ func TestActionInclude(t *testing.T) {
 					FS:      &common.RealFS{},
 					StatErr: tc.statErr,
 				},
-				scratchDir:  scratchDir,
-				templateDir: templateDir,
-				scope:       common.NewScope(tc.inputs),
+				scratchDir:      scratchDir,
+				templateDir:     templateDir,
+				scope:           common.NewScope(tc.inputs),
+				upgradeFeatures: &spec.UpgradeFeatures{},
 			}
 
 			err := actionInclude(ctx, tc.include, sp)
