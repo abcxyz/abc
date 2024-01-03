@@ -89,8 +89,6 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) error {
 	}
 	_ = manifest
 
-	// TODO(#191): implement the upgrade feature
-
 	return nil
 }
 
