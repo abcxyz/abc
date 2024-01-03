@@ -13,7 +13,7 @@
 // limitations under the License.
 
 //nolint:wrapcheck // We don't want to excessively wrap errors, like "yaml error: yaml error: ..."
-package v1beta2
+package v1beta3
 
 import (
 	"errors"
@@ -69,6 +69,8 @@ type Input struct {
 	Desc    model.String  `yaml:"desc"`
 	Default *model.String `yaml:"default,omitempty"`
 	Rules   []*InputRule  `yaml:"rules"`
+
+	// TODO(tyroneclay): add your new field here
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
