@@ -58,6 +58,9 @@ type RenderFlags struct {
 	// Whether to prompt the user for template inputs.
 	Prompt bool
 
+	// See common/flags.DebugStepDiffs().
+	DebugStepDiffs bool
+
 	// See common/flags.DebugScratchContents().
 	DebugScratchContents bool
 
@@ -123,6 +126,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(flags.DebugScratchContents(&r.DebugScratchContents))
+	t.BoolVar(flags.DebugStepDiffs(&r.DebugStepDiffs))
 
 	g := set.NewSection("GIT OPTIONS")
 
