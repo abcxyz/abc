@@ -18,7 +18,7 @@ import (
 	"context"
 	"strings"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 )
 
 func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {

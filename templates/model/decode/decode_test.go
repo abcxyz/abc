@@ -29,7 +29,7 @@ import (
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-	specv1beta2 "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -263,15 +263,15 @@ steps:
     if: 'true'
     params:
       paths: ['.']`,
-			want: &specv1beta2.Spec{
+			want: &specv1beta3.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta2.Step{
+				Steps: []*specv1beta3.Step{
 					{
 						Action: model.String{Val: "include"},
 						If:     model.String{Val: "true"},
 						Desc:   model.String{Val: "include all files"},
-						Include: &specv1beta2.Include{
-							Paths: []*specv1beta2.IncludePath{
+						Include: &specv1beta3.Include{
+							Paths: []*specv1beta3.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
@@ -330,14 +330,14 @@ steps:
     desc: 'step desc'
     params:
       paths: ['.']`,
-			want: &specv1beta2.Spec{
+			want: &specv1beta3.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta2.Step{
+				Steps: []*specv1beta3.Step{
 					{
 						Action: model.String{Val: "include"},
 						Desc:   model.String{Val: "step desc"},
-						Include: &specv1beta2.Include{
-							Paths: []*specv1beta2.IncludePath{
+						Include: &specv1beta3.Include{
+							Paths: []*specv1beta3.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
