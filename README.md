@@ -49,12 +49,20 @@ The `<template_location>` parameter is one of these two things:
 
 #### Flags
 
+- `--debug-step-diffs`: for template authors, not regular users. This will log
+  the diffs made by each step as git commits in a tmp git repository. If you
+  want to see the git logs and diffs with your usual git commands, please
+  navigate to the tmp folder, otherwise you will need to use a git flag
+  `--git-dir=path/to/tmp/debug/folder` for your commands, e.g.:
+  `git --git-dir=path/to/tmp/debug/folder log`. A warn log will show you where
+  the tmp repository is.
+
+  Note: you must have git installed to use this flag.
+
 - `--debug-scratch-contents`: for template authors, not regular users. This will
   print the filename of every file in the scratch directory after executing each
   step of the spec.yaml. Useful for debugging errors like
-  `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`
-  You'll want to set the environment variable `ABC_LOG_LEVEL=debug` when you use
-  this.
+  `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`.
 - `--dest <output_dir>`: the directory on the local filesystem to write output
   to. Defaults to the current directory. If it doesn't exist, it will be
   created.
@@ -106,18 +114,19 @@ The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 ### For `abc templates golden-test`
 
 Usages:
-- `abc templates golden-test record --location=<template_location> <testname>`
-- `abc templates golden-test verify --location=<template_location> <testname>`
+- `abc templates golden-test record [--test-name=<test_name>] <location>`
+- `abc templates golden-test verify [--test-name=<test_name>] <location>`
 
 Examples:
-- `abc templates golden-test record --location=examples/templates/render/hello_jupiter example_test`
-- `abc templates golden-test record --location=examples/templates/render/hello_jupiter`
-- `abc templates golden-test verify --location=examples/templates/render/hello_jupiter`
+- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
+- `abc templates golden-test record examples/templates/render/hello_jupiter`
+- `abc templates golden-test verify examples/templates/render/hello_jupiter`
+
+The `<test_name>` parameter gives the test names to record or verify, if not
+specified, all tests will be run against. This flag may be repeated, like
+-`-test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
 The `<location>` parameter gives the location of the template.
-
-The `<testname>` parameter gives the test name to record or verify, if not
-specified, all tests will be run against.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
@@ -860,13 +869,44 @@ Params:
 - `steps`: a list of steps/actions to execute in the scope of the for_each loop.
   It's analogous to the `steps` field at the top level of the spec file.
 
+### Ignore (Optional)
+
+We use [filepath Match](https://pkg.go.dev/path/filepath#Match) to match the
+file and directory paths that should be ignored if included/copied to
+destination directory. This `ignore` feature is similiar to `skip` in `include`
+action, the difference here is that ignore is global and it applies to every
+`include` action.
+
+This section is optional, if not provided, a default ignore list is used:
+`.DS_Store`, `.bin`, and `.ssh`. To set your custom ignore list, please check
+accepted patterns [here](https://pkg.go.dev/path/filepath#Match).
+
+Example:
+
+```yaml
+ignore:
+  - '*/*.txt'
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      # ignore txt files in `src_dir` but not its sub-directories.
+      paths: ['src_dir']
+  - desc: 'Include some files and directories from destination'
+    action: 'include'
+    params:
+      # ignore txt files in `dest_dir` but not its sub-directories.
+      paths: ['dest_dir']
+      from: 'destination'
+```
+
 ### Post-rendering validation test (golden test)
 
 We use post-rendering validaton test to record and verify template rendering
 results.
 
 To add golden tests to your template, all you need is to create a
-`testdata/golden` folder under your template, and a 
+`testdata/golden` folder under your template, and a
 `testdata/golden/<test_name>/test.yaml` for each of your tests to define test
 metadata and input parameters.
 

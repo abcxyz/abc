@@ -26,23 +26,19 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/benbjohnson/clock"
-	"github.com/mattn/go-isatty"
-	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	"github.com/abcxyz/abc/templates/model"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/sets"
 )
 
 const (
@@ -50,6 +46,7 @@ const (
 	// make them identifiable.
 	templateDirNamePart = "template-copy-"
 	scratchDirNamePart  = "scratch-"
+	debugDirNamePart    = "debug-"
 )
 
 type Command struct {
@@ -64,6 +61,7 @@ func (c *Command) Desc() string {
 	return "instantiate a template to setup a new app or add config files"
 }
 
+// Help implements cli.Command.
 func (c *Command) Help() string {
 	return `
 Usage: {{ COMMAND }} [options] <source>
@@ -84,6 +82,7 @@ few forms:
 `
 }
 
+// Flags implements cli.Command.
 func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
@@ -144,11 +143,12 @@ type runParams struct {
 func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	var tempDirs []string
 	defer func() {
+		// This does not remove debugDir if there is one.
 		err := c.maybeRemoveTempDirs(ctx, rp.fs, tempDirs...)
 		outErr = errors.Join(outErr, err)
 	}()
 
-	downloader, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
+	dlMeta, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
 		FS:          rp.fs,
 		TempDirBase: rp.tempDirBase,
 		Source:      c.flags.Source,
@@ -167,17 +167,23 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	resolvedInputs, err := c.resolveInputs(ctx, rp.fs, spec)
+	resolvedInputs, err := input.Resolve(ctx, &input.ResolveParams{
+		FS:                  rp.fs,
+		InputFiles:          c.flags.InputFiles,
+		Inputs:              c.flags.Inputs,
+		Prompt:              c.flags.Prompt,
+		Prompter:            c,
+		SkipInputValidation: c.flags.SkipInputValidation,
+		Stdin:               c.Stdin(),
+		Spec:                spec,
+	})
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	scratchDir, err := rp.fs.MkdirTemp(rp.tempDirBase, scratchDirNamePart)
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
-	}
-	if err := rp.fs.MkdirAll(scratchDir, common.OwnerRWXPerms); err != nil {
-		return fmt.Errorf("failed to create scratch directory: MkdirAll(): %w", err)
 	}
 	tempDirs = append(tempDirs, scratchDir)
 	logger := logging.FromContext(ctx)
@@ -190,8 +196,33 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		scratchDir:      scratchDir,
 		stdout:          rp.stdout,
 		templateDir:     templateDir,
+		ignorePatterns:  spec.Ignore,
 		upgradeFeatures: spec.UpgradeFeatures,
 	}
+
+	var debugDir string
+	if c.flags.DebugStepDiffs {
+		debugDir, err = rp.fs.MkdirTemp(rp.tempDirBase, debugDirNamePart)
+		if err != nil {
+			return fmt.Errorf("failed to create temp directory for debug directory: %w", err)
+		}
+		sp.debugDir = debugDir
+
+		argsList := [][]string{
+			// Make debug dir a git repository with a detached work tree in scratch
+			// dir, meaning it will track the file changes in scratch dir without
+			// affecting the scratch dir.
+			{"git", "--git-dir", debugDir, "--work-tree", sp.scratchDir, "init"},
+
+			// Set git user name and email, required for ubuntu and windows os.
+			{"git", "--git-dir", debugDir, "config", "user.name", "abc cli"},
+			{"git", "--git-dir", debugDir, "config", "user.email", "abc@abcxyz.com"},
+		}
+		if err := runCmds(ctx, argsList); err != nil {
+			return err
+		}
+	}
+
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
 		return err
 	}
@@ -211,8 +242,8 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 			if err := writeManifest(ctx, &writeManifestParams{
 				clock:        rp.clock,
 				cwd:          rp.cwd,
+				dlMeta:       dlMeta,
 				destDir:      c.flags.Dest,
-				cs:           downloader,
 				dryRun:       dryRun,
 				fs:           rp.fs,
 				inputs:       resolvedInputs,
@@ -223,6 +254,17 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 				return err
 			}
 		}
+	}
+
+	if sp.flags.DebugStepDiffs {
+		// Use default log level.
+		logger.WarnContext(
+			ctx,
+			fmt.Sprintf(
+				"Please navigate to '%s' or use 'git --git-dir=%s log' to see commits/diffs for each step",
+				debugDir, debugDir,
+			),
+		)
 	}
 
 	return nil
@@ -300,197 +342,6 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 	return out
 }
 
-// checkUnknownInputs checks for any unknown input flags and returns them in a slice.
-func checkUnknownInputs(spec *spec.Spec, inputs map[string]string) []string {
-	specInputs := make([]string, 0, len(spec.Inputs))
-	for _, v := range spec.Inputs {
-		specInputs = append(specInputs, v.Name.Val)
-	}
-
-	seenInputs := maps.Keys(inputs)
-	unknownInputs := sets.Subtract(seenInputs, specInputs)
-	sort.Strings(unknownInputs)
-	return unknownInputs
-}
-
-func filterUnknownInputs(spec *spec.Spec, inputs map[string]string) map[string]string {
-	specInputs := make(map[string]string)
-	for _, v := range spec.Inputs {
-		specInputs[v.Name.Val] = ""
-	}
-	return sets.IntersectMapKeys(inputs, specInputs)
-}
-
-// resolveInputs combines flags, user prompts, and defaults to get the full set
-// of template inputs.
-func (c *Command) resolveInputs(ctx context.Context, fs common.FS, spec *spec.Spec) (map[string]string, error) {
-	if unknownInputs := checkUnknownInputs(spec, c.flags.Inputs); len(unknownInputs) > 0 {
-		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
-	}
-
-	fileInputs, err := loadInputFiles(ctx, fs, c.flags.InputFiles)
-	if err != nil {
-		return nil, err
-	}
-	// Effectively ignore inputs in file that are not in spec inputs, thereby ignoring them
-	knownFileInputs := filterUnknownInputs(spec, fileInputs)
-
-	// Order matters: values from --input take precedence over --input-file.
-	inputs := sets.UnionMapKeys(c.flags.Inputs, knownFileInputs)
-
-	if c.flags.Prompt {
-		isATTY := (c.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
-		if !isATTY {
-			return nil, fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
-		}
-
-		if err := c.promptForInputs(ctx, spec, inputs); err != nil {
-			return nil, err
-		}
-	} else {
-		insertDefaultInputs(spec, inputs)
-		if missing := checkInputsMissing(spec, inputs); len(missing) > 0 {
-			return nil, fmt.Errorf("missing input(s): %s", strings.Join(missing, ", "))
-		}
-	}
-
-	if c.flags.SkipInputValidation {
-		return inputs, nil
-	}
-
-	if err := c.validateInputs(ctx, spec.Inputs, inputs); err != nil {
-		return nil, err
-	}
-
-	return inputs, nil
-}
-
-func (c *Command) validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map[string]string) error {
-	scope := common.NewScope(inputVals)
-
-	sb := &strings.Builder{}
-	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
-
-	for _, input := range specInputs {
-		for _, rule := range input.Rules {
-			var ok bool
-			err := common.CelCompileAndEval(ctx, scope, rule.Rule, &ok)
-			if ok && err == nil {
-				continue
-			}
-
-			fmt.Fprintf(tw, "\nInput name:\t%s", input.Name.Val)
-			fmt.Fprintf(tw, "\nInput value:\t%s", inputVals[input.Name.Val])
-			writeRule(tw, rule, false, 0)
-			if err != nil {
-				fmt.Fprintf(tw, "\nCEL error:\t%s", err.Error())
-			}
-			fmt.Fprintf(tw, "\n") // Add vertical relief between validation messages
-		}
-	}
-
-	tw.Flush()
-	if sb.Len() > 0 {
-		return fmt.Errorf("input validation failed:\n%s", sb.String())
-	}
-	return nil
-}
-
-// promptForInputs looks for template inputs that were not provided on the
-// command line and prompts the user for them. This mutates "inputs".
-//
-// This must only be called when the user specified --prompt and the input is a
-// terminal (or in a test).
-func (c *Command) promptForInputs(ctx context.Context, spec *spec.Spec, inputs map[string]string) error {
-	for _, i := range spec.Inputs {
-		if _, ok := inputs[i.Name.Val]; ok {
-			// Don't prompt if we already have a value for this input.
-			continue
-		}
-		sb := &strings.Builder{}
-		tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
-		fmt.Fprintf(tw, "\nInput name:\t%s", i.Name.Val)
-		fmt.Fprintf(tw, "\nDescription:\t%s", i.Desc.Val)
-		for idx, rule := range i.Rules {
-			printRuleIndex := len(i.Rules) > 1
-			writeRule(tw, rule, printRuleIndex, idx)
-		}
-
-		if i.Default != nil {
-			defaultStr := i.Default.Val
-			if defaultStr == "" {
-				// When empty string is the default, print it differently so
-				// the user can actually see what's happening.
-				defaultStr = `""`
-			}
-			fmt.Fprintf(tw, "\nDefault:\t%s", defaultStr)
-		}
-
-		tw.Flush()
-
-		if i.Default != nil {
-			fmt.Fprintf(sb, "\n\nEnter value, or leave empty to accept default: ")
-		} else {
-			fmt.Fprintf(sb, "\n\nEnter value: ")
-		}
-
-		inputVal, err := c.Prompt(ctx, sb.String())
-		if err != nil {
-			return fmt.Errorf("failed to prompt for user input: %w", err)
-		}
-
-		if inputVal == "" && i.Default != nil {
-			inputVal = i.Default.Val
-		}
-
-		inputs[i.Name.Val] = inputVal
-	}
-	return nil
-}
-
-// writeRule writes a human-readable description of the given rule to the given
-// tabwriter in a 2-column format.
-//
-// Sometimes we run this in a context where we want to include the index of the
-// rule in the list of rules; in that case, pass includeIndex=true and the index
-// value. If includeIndex is false, then index is ignored.
-func writeRule(tw *tabwriter.Writer, rule *spec.InputRule, includeIndex bool, index int) {
-	indexStr := ""
-	if includeIndex {
-		indexStr = fmt.Sprintf(" %d", index)
-	}
-
-	fmt.Fprintf(tw, "\nRule%s:\t%s", indexStr, rule.Rule.Val)
-	if rule.Message.Val != "" {
-		fmt.Fprintf(tw, "\nRule%s msg:\t%s", indexStr, rule.Message.Val)
-	}
-}
-
-// insertDefaultInputs defaults any missing inputs for which a default
-// exists. The input map will be mutated by adding new keys.
-func insertDefaultInputs(spec *spec.Spec, inputs map[string]string) {
-	for _, specInput := range spec.Inputs {
-		if _, ok := inputs[specInput.Name.Val]; !ok && specInput.Default != nil {
-			inputs[specInput.Name.Val] = specInput.Default.Val
-		}
-	}
-}
-
-// checkInputsMissing checks for missing inputs and returns them as a slice.
-func checkInputsMissing(spec *spec.Spec, inputs map[string]string) []string {
-	missing := make([]string, 0, len(inputs))
-
-	for _, input := range spec.Inputs {
-		if _, ok := inputs[input.Name.Val]; !ok {
-			missing = append(missing, input.Name.Val)
-		}
-	}
-
-	sort.Strings(missing)
-
-	return missing
-}
-
 func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error {
 	logger := logging.FromContext(ctx).With("logger", "executeSteps")
 
@@ -498,6 +349,19 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 		if err := executeOneStep(ctx, i, step, sp); err != nil {
 			return err
 		}
+
+		if sp.flags.DebugStepDiffs {
+			// Commit the diffs after each step.
+			m := fmt.Sprintf("action %s at line %d", step.Action.Val, step.Pos.Line)
+			argsList := [][]string{
+				{"git", "--git-dir", sp.debugDir, "add", "-A"},
+				{"git", "--git-dir", sp.debugDir, "commit", "-a", "-m", m, "--allow-empty"},
+			}
+			if err := runCmds(ctx, argsList); err != nil {
+				return err
+			}
+		}
+
 		logger.DebugContext(ctx, "completed template action", "action", step.Action.Val)
 		if sp.flags.DebugScratchContents {
 			contents, err := scratchContents(ctx, i, step, sp)
@@ -550,6 +414,14 @@ type stepParams struct {
 	scratchDir  string
 	stdout      io.Writer
 	templateDir string
+
+	// Temporary directory to hold debug information when debug-step-diffs is
+	// enabled, if not enabled, it will be an empty string.
+	debugDir string
+
+	// Files and directories included in spec that match ignorePatterns will be
+	// ignored while being copied to destination directory.
+	ignorePatterns []model.String
 
 	// Mutable fields that are updated by action* functions go below this line.
 
@@ -623,43 +495,6 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 	}
 }
 
-// loadInputFiles iterates over each --input-file and combines them all into a map.
-func loadInputFiles(ctx context.Context, fs common.FS, paths []string) (map[string]string, error) {
-	out := make(map[string]string)
-	sourceFileForInput := make(map[string]string)
-
-	for _, f := range paths {
-		inputsThisFile, err := loadInputFile(ctx, fs, f)
-		if err != nil {
-			return nil, err
-		}
-
-		for key, val := range inputsThisFile {
-			if _, ok := out[key]; ok {
-				return nil, fmt.Errorf("input key %q appears in multiple input files %q and %q; there must not be any overlap between input files",
-					key, f, sourceFileForInput[key])
-			}
-
-			out[key] = val
-			sourceFileForInput[key] = f
-		}
-	}
-	return out, nil
-}
-
-// loadInputFile loads a single --input-file into a map.
-func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("error reading input file: %w", err)
-	}
-	m := make(map[string]string)
-	if err := yaml.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("error parsing yaml file: %w", err)
-	}
-	return m, nil
-}
-
 // Calls RemoveAll on each temp directory. A nonexistent directory is not an
 // error. The "maybe" in the function name just means that we're not strict
 // about the directories existing or about tempDirs being non-empty.
@@ -693,5 +528,15 @@ func destOK(fs fs.StatFS, dest string) error {
 		return fmt.Errorf("the destination %q exists but isn't a directory", dest)
 	}
 
+	return nil
+}
+
+func runCmds(ctx context.Context, argsList [][]string) error {
+	for _, args := range argsList {
+		_, _, err := common.Run(ctx, args...)
+		if err != nil {
+			return err //nolint:wrapcheck
+		}
+	}
 	return nil
 }

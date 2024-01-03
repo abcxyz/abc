@@ -20,7 +20,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 )
 
 func TestSpecDescriptionForDescribe(t *testing.T) {

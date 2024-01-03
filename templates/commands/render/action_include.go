@@ -22,8 +22,16 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	"github.com/abcxyz/pkg/logging"
 )
+
+// defaultIgnorePatterns to be used if ignore is not provided.
+var defaultIgnorePatterns = []model.String{
+	{Val: ".DS_Store"},
+	{Val: ".bin"},
+	{Val: ".ssh"},
+}
 
 func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error {
 	for _, path := range inc.Paths {
@@ -66,6 +74,8 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 }
 
 func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
+	logger := logging.FromContext(ctx).With("logger", "includePath")
+
 	params := &common.CopyParams{
 		DryRun:  false,
 		DstRoot: absDst,
@@ -82,6 +92,17 @@ func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, po
 			relToFromDir, err := filepath.Rel(fromDir, abs)
 			if err != nil {
 				return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, absSrc, err)
+			}
+			matched, err := checkIgnore(sp.ignorePatterns, relToFromDir)
+			if err != nil {
+				return common.CopyHint{},
+					fmt.Errorf("failed to match path(%q) with ignore patterns: %w", relToFromDir, err)
+			}
+			if matched {
+				logger.DebugContext(ctx, "path ignored", "path", relToFromDir)
+				return common.CopyHint{
+					Skip: true,
+				}, nil
 			}
 			if !de.IsDir() && fromVal == "destination" {
 				sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
@@ -172,4 +193,26 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 	}
 	return nil
+}
+
+// TODO(#158): add support for ignoring file name. For example, "/foo" ignores
+// a single file named foo in the root, but "foo" ignores all files named foo
+// anywhere.
+// checkIgnore checks the given path against the given patterns, if given
+// patterns is not provided, a default list of patterns is used.
+func checkIgnore(patterns []model.String, path string) (bool, error) {
+	if len(patterns) == 0 {
+		patterns = defaultIgnorePatterns
+	}
+	for _, p := range patterns {
+		matched, err := filepath.Match(filepath.FromSlash(p.Val), path)
+		if err != nil {
+			return false,
+				p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+	return false, nil
 }

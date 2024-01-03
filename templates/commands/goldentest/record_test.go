@@ -18,6 +18,7 @@ package goldentest
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -46,7 +47,7 @@ kind: 'GoldenTest'`
 
 	cases := []struct {
 		name                  string
-		testName              string
+		testNames             []string
 		filesContent          map[string]string
 		expectedGoldenContent map[string]string
 		wantErr               string
@@ -120,8 +121,8 @@ kind: 'GoldenTest'`
 			},
 		},
 		{
-			name:     "test_name_specified",
-			testName: "test1",
+			name:      "test_name_specified",
+			testNames: []string{"test1"},
 			filesContent: map[string]string{
 				"spec.yaml":                       specYaml,
 				"a.txt":                           "file A content",
@@ -132,6 +133,24 @@ kind: 'GoldenTest'`
 				"test1/test.yaml":  testYaml,
 				"test1/data/a.txt": "file A content",
 				"test2/test.yaml":  testYaml,
+			},
+		},
+		{
+			name:      "multiple_test_names_specified",
+			testNames: []string{"test1", "test2"},
+			filesContent: map[string]string{
+				"spec.yaml":                       specYaml,
+				"a.txt":                           "file A content",
+				"testdata/golden/test1/test.yaml": testYaml,
+				"testdata/golden/test2/test.yaml": testYaml,
+				"testdata/golden/test3/test.yaml": testYaml,
+			},
+			expectedGoldenContent: map[string]string{
+				"test1/test.yaml":  testYaml,
+				"test1/data/a.txt": "file A content",
+				"test2/test.yaml":  testYaml,
+				"test2/data/a.txt": "file A content",
+				"test3/test.yaml":  testYaml,
 			},
 		},
 		{
@@ -161,10 +180,12 @@ kind: 'GoldenTest'`
 			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			args := []string{"--location", tempDir}
-			if tc.testName != "" {
-				args = append(args, tc.testName)
+
+			args := []string{}
+			if len(tc.testNames) > 0 {
+				args = append(args, "--test-name", strings.Join(tc.testNames, ","))
 			}
+			args = append(args, tempDir)
 
 			r := &RecordCommand{}
 			if err := r.Run(ctx, args); err != nil {

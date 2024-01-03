@@ -16,7 +16,6 @@ package render
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -35,7 +35,7 @@ func TestWriteManifest(t *testing.T) {
 	cases := []struct {
 		name             string
 		dryRun           bool
-		canonicalSourcer canonicalSourcer
+		dlMeta           *templatesource.DownloadMetadata
 		templateContents map[string]string
 		destDirContents  map[string]string
 		inputs           map[string]string
@@ -52,7 +52,9 @@ func TestWriteManifest(t *testing.T) {
 			destDirContents: map[string]string{
 				"a.txt": "some other stuff",
 			},
-			canonicalSourcer: fakeCanonicalSourcer{},
+			dlMeta: &templatesource.DownloadMetadata{
+				IsCanonical: false,
+			},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
 				"pineapple": "deal with it",
@@ -66,6 +68,7 @@ func TestWriteManifest(t *testing.T) {
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -87,9 +90,11 @@ output_hashes:
 			destDirContents: map[string]string{
 				"a.txt": "some other stuff",
 			},
-			canonicalSourcer: fakeCanonicalSourcer{
-				isCanonical:     true,
-				canonicalSource: "github.com/foo/bar",
+			dlMeta: &templatesource.DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "github.com/foo/bar",
+				HasVersion:      true,
+				Version:         "v1.2.3",
 			},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
@@ -104,6 +109,7 @@ output_hashes:
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: github.com/foo/bar
+template_version: v1.2.3
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -117,9 +123,12 @@ output_hashes:
 			},
 		},
 		{
-			name:             "dryrun_no_output",
-			canonicalSourcer: &fakeCanonicalSourcer{},
-			dryRun:           true,
+			name: "dryrun_no_output",
+			dlMeta: &templatesource.DownloadMetadata{
+				IsCanonical:     false,
+				CanonicalSource: "github.com/foo/bar",
+			},
+			dryRun: true,
 			templateContents: map[string]string{
 				"spec.yaml": "some stuff",
 				"a.txt":     "some other stuff",
@@ -147,8 +156,10 @@ output_hashes:
 			destDirContents: map[string]string{
 				"a.txt": "some other stuff",
 			},
-			canonicalSourcer: fakeCanonicalSourcer{},
-			inputs:           map[string]string{},
+			dlMeta: &templatesource.DownloadMetadata{
+				IsCanonical: false,
+			},
+			inputs: map[string]string{},
 			outputHashes: map[string][]byte{
 				"a.txt": []byte("fake_output_hash_32_bytes_sha256"),
 			},
@@ -158,6 +169,7 @@ output_hashes:
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs: []
 output_hashes:
@@ -172,8 +184,10 @@ output_hashes:
 				"spec.yaml": "some stuff",
 				"a.txt":     "some other stuff",
 			},
-			destDirContents:  map[string]string{},
-			canonicalSourcer: fakeCanonicalSourcer{},
+			destDirContents: map[string]string{},
+			dlMeta: &templatesource.DownloadMetadata{
+				IsCanonical: false,
+			},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
 				"pineapple": "deal with it",
@@ -184,6 +198,7 @@ output_hashes:
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -193,30 +208,6 @@ inputs:
 output_hashes: []
 `,
 			},
-		},
-		{
-			name: "canonical_sourcer_err",
-			templateContents: map[string]string{
-				"spec.yaml": "some stuff",
-				"a.txt":     "some other stuff",
-			},
-			destDirContents: map[string]string{
-				"a.txt": "some other stuff",
-			},
-			canonicalSourcer: fakeCanonicalSourcer{
-				err: fmt.Errorf("fake error for testing"),
-			},
-			inputs: map[string]string{
-				"pizza":     "hawaiian",
-				"pineapple": "deal with it",
-			},
-			outputHashes: map[string][]byte{
-				"a.txt": []byte("fake_output_hash_32_bytes_sha256"),
-			},
-			want: map[string]string{
-				"a.txt": "some other stuff",
-			},
-			wantErr: "fake error for testing",
 		},
 	}
 
@@ -235,13 +226,13 @@ output_hashes: []
 			ctx := context.Background()
 			err := writeManifest(ctx, &writeManifestParams{
 				clock:        clk,
-				templateDir:  templateDir,
 				destDir:      destDir,
+				dlMeta:       tc.dlMeta,
 				dryRun:       tc.dryRun,
-				cs:           tc.canonicalSourcer,
 				fs:           &common.RealFS{},
 				inputs:       tc.inputs,
 				outputHashes: tc.outputHashes,
+				templateDir:  templateDir,
 			})
 
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
@@ -254,16 +245,6 @@ output_hashes: []
 			}
 		})
 	}
-}
-
-type fakeCanonicalSourcer struct {
-	canonicalSource string
-	isCanonical     bool
-	err             error
-}
-
-func (f fakeCanonicalSourcer) CanonicalSource(_ context.Context, cwd, destDir string) (string, bool, error) {
-	return f.canonicalSource, f.isCanonical, f.err
 }
 
 func mockClock(t *testing.T) *clock.Mock {

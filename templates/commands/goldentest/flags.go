@@ -26,37 +26,37 @@ import (
 type Flags struct {
 	// Positional arguments:
 
-	// Test name is the name of the test case to record or verify. If no test
-	// name is specified, all gold tests will be run against.
-	//
-	// Optional.
-	TestName string
-
-	// Flag arguments (--foo):
-
 	// Location is the file system location of the template to be tested.
 	//
 	// Example: t/rest_server.
 	Location string
+
+	// Flag arguments (--foo):
+
+	// Testnames are the name of the test cases to record or verify. If no
+	// test name is specified, all gold tests will be run against.
+	//
+	// Optional.
+	TestNames []string
 }
 
 func (r *Flags) Register(set *cli.FlagSet) {
 	f := set.NewSection("TEST OPTIONS")
 
-	f.StringVar(&cli.StringVar{
-		Name:    "location",
-		Aliases: []string{"l"},
-		Example: "/my/template/dir",
-		Target:  &r.Location,
-		Usage:   "Required. The file system location of the template to be tested.",
+	f.StringSliceVar(&cli.StringSliceVar{
+		Name:    "test-name",
+		Aliases: []string{"t"},
+		Example: "test_case_1",
+		Target:  &r.TestNames,
+		Usage:   "The name of the test cases to record or verify.",
 	})
 
-	// Default test name to the first CLI argument, if given.
+	// Default template location to the first CLI argument, if given
 	set.AfterParse(func(existingErr error) error {
-		r.TestName = strings.TrimSpace(set.Arg(0))
+		r.Location = strings.TrimSpace(set.Arg(0))
 
 		if r.Location == "" {
-			return fmt.Errorf("-l/--location is required")
+			return fmt.Errorf("missing template <location>")
 		}
 		return nil
 	})

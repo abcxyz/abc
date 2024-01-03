@@ -34,15 +34,10 @@ type Spec struct {
 	Inputs []*Input     `yaml:"inputs"`
 	Steps  []*Step      `yaml:"steps"`
 
-	// TODO(sqin2019): add your new field here
-
-	// TODO: doc
-	UpgradeFeatures *UpgradeFeatures
-}
-
-// TODO: doc
-type UpgradeFeatures struct {
-	SkipGlobs bool
+	// Optional ignore section, adopting gitignore-like path matching.
+	// Please be ware that there are some patterns that are always ignored such
+	// as: '.DS_Store, '.bin', '.ssh'.
+	Ignore []model.String `yaml:"ignore"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -74,8 +69,6 @@ type Input struct {
 	Desc    model.String  `yaml:"desc"`
 	Default *model.String `yaml:"default,omitempty"`
 	Rules   []*InputRule  `yaml:"rules"`
-
-	// TODO(tyroneclay): add your new field here
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

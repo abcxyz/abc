@@ -34,34 +34,47 @@ func TestGitDownloader_Download(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		dl      *gitDownloader
-		want    map[string]string
-		wantErr string
+		name       string
+		dl         *gitDownloader
+		want       map[string]string
+		wantDLMeta *DownloadMetadata
+		wantErr    string
 	}{
 		{
 			name: "no_subdir",
 			dl: &gitDownloader{
-				remote:  "fake-remote",
-				subdir:  "",
-				version: "v1.2.3",
+				allowDirty:      true,
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "",
+				version:         "v1.2.3",
 				cloner: &fakeCloner{
 					t:           t,
+					addTag:      "v1.2.3",
 					out:         basicFiles,
 					wantRemote:  "fake-remote",
 					wantVersion: "v1.2.3",
 				},
 			},
 			want: basicFiles,
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				HasVersion:      true,
+				Version:         "v1.2.3",
+			},
 		},
 		{
 			name: "latest_version_lookup",
 			dl: &gitDownloader{
-				remote:  "fake-remote",
-				subdir:  "",
-				version: "latest",
+				allowDirty:      true,
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "",
+				version:         "latest",
 				cloner: &fakeCloner{
 					t:           t,
+					addTag:      "v1.2.3",
 					out:         basicFiles,
 					wantRemote:  "fake-remote",
 					wantVersion: "v1.2.3",
@@ -76,15 +89,24 @@ func TestGitDownloader_Download(t *testing.T) {
 				},
 			},
 			want: basicFiles,
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				HasVersion:      true,
+				Version:         "v1.2.3",
+			},
 		},
 		{
 			name: "with_subdir",
 			dl: &gitDownloader{
-				remote:  "fake-remote",
-				subdir:  "my-subdir",
-				version: "v1.2.3",
+				allowDirty:      true,
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "my-subdir",
+				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t: t,
+					t:      t,
+					addTag: "v1.2.3",
 					out: map[string]string{
 						"my-subdir/file1.txt": "hello",
 						"file2.txt":           "world",
@@ -96,15 +118,24 @@ func TestGitDownloader_Download(t *testing.T) {
 			want: map[string]string{
 				"file1.txt": "hello",
 			},
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				HasVersion:      true,
+				Version:         "v1.2.3",
+			},
 		},
 		{
 			name: "with_deep_subdir",
 			dl: &gitDownloader{
-				remote:  "fake-remote",
-				subdir:  "my/deep",
-				version: "v1.2.3",
+				allowDirty:      true,
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "my/deep",
+				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t: t,
+					t:      t,
+					addTag: "v1.2.3",
 					out: map[string]string{
 						"my/deep/subdir/file1.txt": "hello",
 						"file2.txt":                "world",
@@ -115,6 +146,12 @@ func TestGitDownloader_Download(t *testing.T) {
 			},
 			want: map[string]string{
 				"subdir/file1.txt": "hello",
+			},
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				HasVersion:      true,
+				Version:         "v1.2.3",
 			},
 		},
 		{
@@ -159,6 +196,53 @@ func TestGitDownloader_Download(t *testing.T) {
 			wantErr: "is not a directory",
 			want:    map[string]string{},
 		},
+		{
+			name: "clone_by_sha",
+			dl: &gitDownloader{
+				allowDirty:      true,
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "",
+				version:         common.MinimalGitHeadSHA,
+				cloner: &fakeCloner{
+					t:           t,
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+					wantVersion: common.MinimalGitHeadSHA,
+				},
+			},
+			want: basicFiles,
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				HasVersion:      true,
+				Version:         common.MinimalGitHeadSHA,
+			},
+		},
+		{
+			name: "clone_by_sha_with_detected_tag",
+			dl: &gitDownloader{
+				allowDirty:      true,
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "",
+				version:         common.MinimalGitHeadSHA,
+				cloner: &fakeCloner{
+					t:           t,
+					addTag:      "v1.2.3",
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+					wantVersion: common.MinimalGitHeadSHA,
+				},
+			},
+			want: basicFiles,
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				HasVersion:      true,
+				Version:         "v1.2.3",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -169,13 +253,16 @@ func TestGitDownloader_Download(t *testing.T) {
 
 			ctx := context.Background()
 			tempDir := t.TempDir()
-			err := tc.dl.Download(ctx, tempDir)
+			gotDLMeta, err := tc.dl.Download(ctx, "", tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 			got := common.LoadDirWithoutMode(t, tempDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output files were not as expected (-got, +want): %s", diff)
+			}
+			if diff := cmp.Diff(gotDLMeta, tc.wantDLMeta); diff != "" {
+				t.Errorf("DownloadMetadata was not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
@@ -307,6 +394,7 @@ func TestResolveVersion(t *testing.T) {
 type fakeCloner struct {
 	t           *testing.T
 	out         map[string]string
+	addTag      string
 	wantRemote  string
 	wantVersion string
 }
@@ -319,7 +407,14 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, version, outDir string) 
 		f.t.Errorf("got version %q, want %q", version, f.wantVersion)
 	}
 
-	common.WriteAllDefaultMode(f.t, outDir, f.out)
+	files := common.WithGitRepoAt("", f.out)
+
+	if f.addTag != "" {
+		// Adding a tag is just creating a file under .git/refs/tags.
+		files[".git/refs/tags/"+f.addTag] = common.MinimalGitHeadSHA
+	}
+
+	common.WriteAllDefaultMode(f.t, outDir, files)
 	return nil
 }
 

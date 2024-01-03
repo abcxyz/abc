@@ -16,7 +16,6 @@ package render
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -29,11 +28,11 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta2"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -59,6 +58,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"--keep-temp-dirs",
 				"--skip-input-validation",
 				"--debug-scratch-contents",
+				"--debug-step-diffs",
 				"helloworld@v1",
 			},
 			want: RenderFlags{
@@ -71,6 +71,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				KeepTempDirs:         true,
 				SkipInputValidation:  true,
 				DebugScratchContents: true,
+				DebugStepDiffs:       true,
 			},
 		},
 		{
@@ -217,6 +218,7 @@ steps:
 		flagForceOverwrite      bool
 		flagSkipInputValidation bool
 		flagManifest            bool
+		flagDebugStepDiffs      bool
 		removeAllErr            error
 		wantScratchContents     map[string]string
 		wantTemplateContents    map[string]string
@@ -233,6 +235,28 @@ steps:
 				"emoji_suffix":       "🐈",
 				"ending_punctuation": "!",
 			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Bob🐈!\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
+		{
+			name: "simple_success_with_debug_flag",
+			flagInputs: map[string]string{
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			flagDebugStepDiffs: true,
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -271,6 +295,7 @@ steps:
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+template_version: ""
 template_dirhash: h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo=
 inputs:
     - name: emoji_suffix
@@ -603,6 +628,90 @@ steps:
 			},
 		},
 		{
+			name: "with_default_ignore",
+			templateContents: map[string]string{
+				"dir/file_b.txt":          "red is my favorite color",
+				".bin/file_to_ignore.txt": "src: file to ignore",
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['.']
+              from: 'destination'
+  - desc: 'Include from template'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['.']
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"file_a.txt":              "purple is my favorite color",
+				".bin/file_to_ignore.txt": "dest: purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"file_a.txt":              "red is my favorite color",
+				"dir/file_b.txt":          "red is my favorite color",
+				".bin/file_to_ignore.txt": "dest: purple is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
+		},
+		{
+			name: "with_custom_ignore",
+			templateContents: map[string]string{
+				"sub_dir/file_b.txt": "src: file to ignore",
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'Template'
+desc: 'my template'
+ignore:
+  - 'sub_dir/file_b.txt'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['.']
+              from: 'destination'
+  - desc: 'Include from template'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['sub_dir']
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			existingDestContents: map[string]string{
+				"file_a.txt":         "purple is my favorite color",
+				"sub_dir/file_b.txt": "dest: purple is my favorite color",
+			},
+			wantDestContents: map[string]string{
+				"file_a.txt":         "red is my favorite color",
+				"sub_dir/file_b.txt": "dest: purple is my favorite color",
+			},
+			wantBackupContents: map[string]string{
+				"file_a.txt": "purple is my favorite color",
+			},
+		},
+		{
 			name: "glob_include",
 			templateContents: map[string]string{
 				"file1.txt":                  "file1 contents",
@@ -832,6 +941,7 @@ steps:
 					KeepTempDirs:        tc.flagKeepTempDirs,
 					Manifest:            tc.flagManifest,
 					SkipInputValidation: tc.flagSkipInputValidation,
+					DebugStepDiffs:      tc.flagDebugStepDiffs,
 					Source:              sourceDir,
 				},
 			}
@@ -883,6 +993,15 @@ steps:
 			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
 			}
+
+			var gotDebugContents map[string]string
+			debugDir, ok := testMustGlob(t, filepath.Join(tempDir, debugDirNamePart+"*"))
+			if ok {
+				gotDebugContents = common.LoadDirWithoutMode(t, debugDir)
+			}
+			if tc.flagDebugStepDiffs != (len(gotDebugContents) > 0) {
+				t.Errorf("debug directory should be empty: %t, but not as expected", !tc.flagDebugStepDiffs)
+			}
 		})
 	}
 }
@@ -904,7 +1023,7 @@ func testMustGlob(t *testing.T, glob string) (string, bool) {
 	panic("unreachable") // silence compiler warning for "missing return"
 }
 
-func TestPromptForInputs(t *testing.T) {
+func TestPromptDialog(t *testing.T) {
 	t.Parallel()
 
 	type dialogStep struct {
@@ -1171,11 +1290,6 @@ Enter value, or leave empty to accept default: `,
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			inputs := map[string]string{}
-			if tc.flagInputVals != nil {
-				inputs = maps.Clone(tc.flagInputVals)
-			}
-
 			cmd := &Command{}
 
 			stdinReader, stdinWriter := io.Pipe()
@@ -1188,11 +1302,21 @@ Enter value, or leave empty to accept default: `,
 
 			ctx := context.Background()
 			errCh := make(chan error)
+			var got map[string]string
 			go func() {
 				defer close(errCh)
-				errCh <- cmd.promptForInputs(ctx, &spec.Spec{
-					Inputs: tc.inputs,
-				}, inputs)
+				params := &input.ResolveParams{
+					Inputs:             tc.flagInputVals,
+					Prompt:             true,
+					Prompter:           cmd,
+					SkipPromptTTYCheck: true,
+					Spec:               &spec.Spec{Inputs: tc.inputs},
+				}
+				var err error
+				fmt.Printf("to input.Resolve\n")
+				got, err = input.Resolve(ctx, params)
+				fmt.Printf("from input.Resolve\n")
+				errCh <- err
 			}()
 
 			for _, ds := range tc.dialog {
@@ -1208,330 +1332,8 @@ Enter value, or leave empty to accept default: `,
 			case <-time.After(time.Second):
 				t.Fatal("timed out waiting for background goroutine to finish")
 			}
-			if diff := cmp.Diff(inputs, tc.want, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("input values were different than expected (-got,+want): %s", diff)
-			}
-		})
-	}
-}
-
-func TestPromptForInputs_CanceledContext(t *testing.T) {
-	t.Parallel()
-
-	cmd := &Command{
-		flags: RenderFlags{
-			Inputs: map[string]string{},
-		},
-	}
-
-	stdinReader, _ := io.Pipe()
-	stdoutReader, stdoutWriter := io.Pipe()
-	_, stderrWriter := io.Pipe()
-
-	cmd.SetStdin(stdinReader)
-	cmd.SetStdout(stdoutWriter)
-	cmd.SetStderr(stderrWriter)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	errCh := make(chan error)
-	go func() {
-		defer close(errCh)
-		spec := &spec.Spec{
-			Inputs: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-				},
-			},
-		}
-		errCh <- cmd.promptForInputs(ctx, spec, map[string]string{})
-	}()
-
-	go func() {
-		for {
-			// Read and discard prompt printed to the user.
-			if _, err := stdoutReader.Read(make([]byte, 1024)); err != nil {
-				return
-			}
-		}
-	}()
-
-	cancel()
-	var err error
-	select {
-	case err = <-errCh:
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for the background goroutine to finish")
-	}
-
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("got an error %v, want context.Canceled", err)
-	}
-
-	stdoutWriter.Close() // terminate the background goroutine blocking on stdoutReader.Read()
-}
-
-func TestValidateInputs(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name        string
-		inputModels []*spec.Input
-		inputVals   map[string]string
-		want        string
-	}{
-		{
-			name: "no-validation-rule",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-		},
-		{
-			name: "single-passing-validation-rule",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule:    model.String{Val: `size(my_input) < 5`},
-							Message: model.String{Val: "Length must be less than 5"},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-		},
-		{
-			name: "single-failing-validation-rule",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule:    model.String{Val: `size(my_input) < 3`},
-							Message: model.String{Val: "Length must be less than 3"},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-			want: `input validation failed:
-
-Input name:   my_input
-Input value:  foo
-Rule:         size(my_input) < 3
-Rule msg:     Length must be less than 3`,
-		},
-		{
-			name: "multiple-passing-validation-rules",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule:    model.String{Val: `size(my_input) < 5`},
-							Message: model.String{Val: "Length must be less than 5"},
-						},
-						{
-							Rule:    model.String{Val: `my_input.startsWith("fo")`},
-							Message: model.String{Val: `Must start with "fo"`},
-						},
-						{
-							Rule:    model.String{Val: `my_input.contains("oo")`},
-							Message: model.String{Val: `Must contain "oo"`},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-		},
-		{
-			name: "multiple-passing-validation-rules-one-failing",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule:    model.String{Val: `size(my_input) < 3`},
-							Message: model.String{Val: "Length must be less than 3"},
-						},
-						{
-							Rule:    model.String{Val: `my_input.startsWith("fo")`},
-							Message: model.String{Val: `Must start with "fo"`},
-						},
-						{
-							Rule:    model.String{Val: `my_input.contains("oo")`},
-							Message: model.String{Val: `Must contain "oo"`},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-			want: `input validation failed:
-
-Input name:   my_input
-Input value:  foo
-Rule:         size(my_input) < 3
-Rule msg:     Length must be less than 3`,
-		},
-		{
-			name: "multiple-failing-validation-rules",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule:    model.String{Val: `size(my_input) < 3`},
-							Message: model.String{Val: "Length must be less than 3"},
-						},
-						{
-							Rule:    model.String{Val: `my_input.startsWith("ham")`},
-							Message: model.String{Val: `Must start with "ham"`},
-						},
-						{
-							Rule:    model.String{Val: `my_input.contains("shoe")`},
-							Message: model.String{Val: `Must contain "shoe"`},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-			want: `input validation failed:
-
-Input name:   my_input
-Input value:  foo
-Rule:         size(my_input) < 3
-Rule msg:     Length must be less than 3
-
-Input name:   my_input
-Input value:  foo
-Rule:         my_input.startsWith("ham")
-Rule msg:     Must start with "ham"
-
-Input name:   my_input
-Input value:  foo
-Rule:         my_input.contains("shoe")
-Rule msg:     Must contain "shoe"`,
-		},
-		{
-			name: "cel-syntax-error",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule: model.String{Val: `(`},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-			want: `input validation failed:
-
-Input name:   my_input
-Input value:  foo
-Rule:         (
-CEL error:    failed compiling CEL expression: ERROR: <input>:1:2: Syntax error:`, // remainder of error omitted
-		},
-		{
-			name: "cel-type-conversion-error",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule: model.String{Val: `bool(42)`},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-			want: `input validation failed:
-
-Input name:   my_input
-Input value:  foo
-Rule:         bool(42)
-CEL error:    failed compiling CEL expression: ERROR: <input>:1:5: found no matching overload for 'bool'`, // remainder of error omitted
-		},
-		{
-			name: "cel-output-type-conversion-error",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule: model.String{Val: `42`},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input": "foo",
-			},
-			want: `input validation failed:
-
-Input name:   my_input
-Input value:  foo
-Rule:         42
-CEL error:    CEL expression result couldn't be converted to bool. The CEL engine error was: unsupported type conversion from 'int' to bool`, // remainder of error omitted
-		},
-		{
-			name: "multi-input-validation",
-			inputModels: []*spec.Input{
-				{
-					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule: model.String{Val: `my_input + my_other_input == "sharknado"`},
-						},
-					},
-				},
-				{
-					Name: model.String{Val: "my_other_input"},
-					Rules: []*spec.InputRule{
-						{
-							Rule: model.String{Val: `"tor" + my_other_input + my_input == "tornadoshark"`},
-						},
-					},
-				},
-			},
-			inputVals: map[string]string{
-				"my_input":       "shark",
-				"my_other_input": "nado",
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			r := &Command{}
-			ctx := context.Background()
-			err := r.validateInputs(ctx, tc.inputModels, tc.inputVals)
-			if diff := testutil.DiffErrString(err, tc.want); diff != "" {
-				t.Error(diff)
 			}
 		})
 	}

@@ -39,37 +39,32 @@ type RenderFlags struct {
 	// It's OK for it to already exist or not.
 	Dest string
 
-	// GitProtocol is either https or ssh.
+	// See common/flags.GitProtocol().
 	GitProtocol string
 
 	// ForceOverwrite lets existing output files in the Dest directory be overwritten
 	// with the output of the template.
 	ForceOverwrite bool
 
-	// Inputs provide values that are substituted into the template. The keys in
-	// this map must match the input names in the Source template's spec.yaml
-	// file.
-	//
-	// This is mutable, even after flag parsing. It may be updated when default
-	// values are added and as the user is prompted for inputs.
-	Inputs map[string]string // these are just the --input values from flags; doesn't include values from env vars
+	// See common/flags.Inputs().
+	Inputs map[string]string
 
-	// InputFiles are the files containing a list of inputs. See Inputs flag for details.
+	// See common/flags.InputFiles().
 	InputFiles []string
 
-	// KeepTempDirs prevents the cleanup of temporary directories after rendering is complete.
-	// This can be useful for debugging a failing template.
+	// See common/flags.KeepTempDirs().
 	KeepTempDirs bool
 
 	// Whether to prompt the user for template inputs.
 	Prompt bool
 
-	// DebugScratchContents causes the contents of the scratch directory to be
-	// logged at level INFO after each step of the spec.yaml.
+	// See common/flags.DebugStepDiffs().
+	DebugStepDiffs bool
+
+	// See common/flags.DebugScratchContents().
 	DebugScratchContents bool
 
-	// SkipInputValidation skips the execution of the input validation rules as
-	// configured in the template's spec.yaml file.
+	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
 
 	// Manifest enables the writing of manifest files, which are an experimental
@@ -79,6 +74,11 @@ type RenderFlags struct {
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
 	f := set.NewSection("RENDER OPTIONS")
+
+	f.StringMapVar(flags.Inputs(&r.Inputs))
+	f.StringSliceVar(flags.InputFiles(&r.InputFiles))
+	f.BoolVar(flags.KeepTempDirs(&r.KeepTempDirs))
+	f.BoolVar(flags.SkipInputValidation(&r.SkipInputValidation))
 
 	f.StringVar(&cli.StringVar{
 		Name:    "dest",
@@ -90,32 +90,11 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Usage:   "Required. The target directory in which to write the output files.",
 	})
 
-	f.StringMapVar(&cli.StringMapVar{
-		Name:    "input",
-		Example: "foo=bar",
-		Target:  &r.Inputs,
-		Usage:   "The key=val pairs of template values; may be repeated.",
-	})
-
-	f.StringSliceVar(&cli.StringSliceVar{
-		Name:    "input-file",
-		Example: "/my/git/abc-inputs.yaml",
-		Target:  &r.InputFiles,
-		Usage:   "The yaml files with key: val pairs of template values; may be repeated.",
-	})
-
 	f.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",
 		Target:  &r.ForceOverwrite,
 		Default: false,
 		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
-	})
-
-	f.BoolVar(&cli.BoolVar{
-		Name:    "keep-temp-dirs",
-		Target:  &r.KeepTempDirs,
-		Default: false,
-		Usage:   "Preserve the temp directories instead of deleting them normally.",
 	})
 
 	f.BoolVar(&cli.BoolVar{
@@ -139,13 +118,6 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "skip-input-validation",
-		Target:  &r.SkipInputValidation,
-		Default: false,
-		Usage:   "Skip running the validation expressions for inputs that were configured in spec.yaml.",
-	})
-
-	f.BoolVar(&cli.BoolVar{
 		Name:    "manifest",
 		Target:  &r.Manifest,
 		Default: false,
@@ -153,12 +125,8 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")
-	t.BoolVar(&cli.BoolVar{
-		Name:    "debug-scratch-contents",
-		Target:  &r.DebugScratchContents,
-		Default: false,
-		Usage:   "Print the contents of the scratch directory after each step; for debugging spec.yaml files.",
-	})
+	t.BoolVar(flags.DebugScratchContents(&r.DebugScratchContents))
+	t.BoolVar(flags.DebugStepDiffs(&r.DebugStepDiffs))
 
 	g := set.NewSection("GIT OPTIONS")
 

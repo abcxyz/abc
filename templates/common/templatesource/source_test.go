@@ -26,7 +26,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-func TestParseSourceWithWorkingDir(t *testing.T) {
+func TestParseSourceWithCwd(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -122,76 +122,6 @@ func TestParseSourceWithWorkingDir(t *testing.T) {
 			},
 			want: &localDownloader{
 				srcPath: filepath.FromSlash("my/dir"),
-			},
-		},
-		{
-			name:   "dest_dir_in_same_git_workspace",
-			source: filepath.FromSlash("dir1/mytemplate"),
-			tempDirContents: map[string]string{
-				"dir1/mytemplate/spec.yaml": "my spec file contents",
-
-				// A minimal .git directory
-				"dir1/.git/refs/_":    "",
-				"dir1/.git/objects/_": "",
-				"dir1/.git/HEAD":      "ref: refs/heads/main",
-			},
-			dest:                "dir1/dest",
-			wantCanonicalSource: filepath.FromSlash("../mytemplate"),
-			want: &localDownloader{
-				srcPath: filepath.FromSlash("dir1/mytemplate"),
-			},
-		},
-		{
-			name:   "dest_dir_in_different_git_workspace",
-			source: filepath.FromSlash("dir1/mytemplate"),
-			tempDirContents: map[string]string{
-				"dir1/mytemplate/spec.yaml": "my spec file contents",
-
-				// A minimal .git directory
-				"dir1/.git/refs/_":    "",
-				"dir1/.git/objects/_": "",
-				"dir1/.git/HEAD":      "ref: refs/heads/main",
-
-				// Another minimal .git directory
-				"dir2/.git/refs/_":    "",
-				"dir2/.git/objects/_": "",
-				"dir2/.git/HEAD":      "ref: refs/heads/main",
-			},
-			dest: "dir2",
-			want: &localDownloader{
-				srcPath: filepath.FromSlash("dir1/mytemplate"),
-			},
-		},
-		{
-			name:   "source_in_git_but_dest_is_not",
-			source: filepath.FromSlash("dir1/mytemplate"),
-			tempDirContents: map[string]string{
-				"dir1/mytemplate/spec.yaml": "my spec file contents",
-
-				// A minimal .git directory
-				"dir1/.git/refs/_":    "",
-				"dir1/.git/objects/_": "",
-				"dir1/.git/HEAD":      "ref: refs/heads/main",
-			},
-			dest: "dir2",
-			want: &localDownloader{
-				srcPath: filepath.FromSlash("dir1/mytemplate"),
-			},
-		},
-		{
-			name:   "dist_in_git_but_src_is_not",
-			source: filepath.FromSlash("dir1/mytemplate"),
-			tempDirContents: map[string]string{
-				"dir1/mytemplate/spec.yaml": "my spec file contents",
-
-				// A minimal .git directory
-				"dir2/.git/refs/_":    "",
-				"dir2/.git/objects/_": "",
-				"dir2/.git/HEAD":      "ref: refs/heads/main",
-			},
-			dest: "dir2",
-			want: &localDownloader{
-				srcPath: filepath.FromSlash("dir1/mytemplate"),
 			},
 		},
 		{
@@ -350,23 +280,6 @@ func TestParseSourceWithWorkingDir(t *testing.T) {
 			}
 			if diff := cmp.Diff(got, tc.want, opts...); diff != "" {
 				t.Errorf("downloader was not as expected (-got,+want): %s", diff)
-			}
-
-			// We can't continue with verifying the canonical source if there's
-			// no Downloader.
-			if got == nil {
-				return
-			}
-
-			gotCanonicalSource, ok, err := got.CanonicalSource(ctx, tempDir, tc.dest)
-			if err != nil {
-				t.Fatalf("CanonicalSource() returned error: %v", err)
-			}
-			if gotCanonicalSource != tc.wantCanonicalSource {
-				t.Errorf("got canonical source %q, want %q", gotCanonicalSource, tc.wantCanonicalSource)
-			}
-			if gotCanonicalSource == "" && ok {
-				t.Errorf("CanonicalSource returned true but with an empty canonical source")
 			}
 		})
 	}

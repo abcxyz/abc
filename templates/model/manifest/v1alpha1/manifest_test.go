@@ -42,6 +42,7 @@ func TestDecode(t *testing.T) {
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
+template_version: 'v1.2.3'
 inputs:
   - name: 'my_input_1'
     value: 'my_value_1'
@@ -55,6 +56,7 @@ output_hashes:
 			want: &Manifest{
 				TemplateLocation: model.String{Val: "github.com/abcxyz/abc/t/rest_server@latest"},
 				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
+				TemplateVersion:  model.String{Val: "v1.2.3"},
 				Inputs: []*Input{
 					{
 						Name:  model.String{Val: "my_input_1"},

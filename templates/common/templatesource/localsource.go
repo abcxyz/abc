@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/git"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -68,93 +69,86 @@ func (l *localSourceParser) sourceParse(ctx context.Context, cwd string, params 
 type localDownloader struct {
 	// This path uses the OS-native file separator and is an absolute path.
 	srcPath string
+
+	// It's too hard in tests to generate a clean git repo, so we provide
+	// this option to just ignore the fact that the git repo is dirty.
+	allowDirty bool
 }
 
-func (l *localDownloader) Download(ctx context.Context, outDir string) error {
+func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
 	logger := logging.FromContext(ctx).With("logger", "localTemplateSource.Download")
 
 	logger.DebugContext(ctx, "copying local template source",
 		"srcPath", l.srcPath,
-		"outDir", outDir)
-	return common.CopyRecursive(ctx, nil, &common.CopyParams{ //nolint:wrapcheck
+		"destDir", destDir)
+
+	canonicalSource, version, err := canonicalize(ctx, cwd, l.srcPath, destDir, l.allowDirty)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		SrcRoot: l.srcPath,
-		DstRoot: outDir,
+		DstRoot: destDir,
 		RFS:     &common.RealFS{},
-	})
+	}); err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	dlMeta := &DownloadMetadata{
+		IsCanonical:     canonicalSource != "",
+		CanonicalSource: canonicalSource,
+
+		HasVersion: version != "",
+		Version:    version,
+	}
+	return dlMeta, nil
 }
 
-func (l *localDownloader) CanonicalSource(ctx context.Context, cwd, dest string) (string, bool, error) {
-	logger := logging.FromContext(ctx).With("logger", "localDownloader.CanonicalSource")
+// canonicalize determines whether the given combination of src and dest
+// directories qualify as a canonical source, and if so, returns the
+// canonicalized version of the source. See the docs on DownloadMetadata for an
+// explanation of canonical sources.
+func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (canonicalSource, version string, _ error) {
+	logger := logging.FromContext(ctx).With("logger", "canonicalize")
 
 	absDest := dest
 	if !filepath.IsAbs(dest) {
 		absDest = filepath.Join(cwd, dest)
 	}
 
-	// See the docs on ParsedSource for an explanation of why we compare the git
+	// See the docs on DownloadMetadata for an explanation of why we compare the git
 	// workspaces to decide if source is canonical.
-	sourceGitWorkspace, templateIsGit, err := gitWorkspace(ctx, l.srcPath)
+	sourceGitWorkspace, templateIsGit, err := git.Workspace(ctx, src)
 	if err != nil {
-		return "", false, err
+		return "", "", err //nolint:wrapcheck
 	}
-	destGitWorkspace, destIsGit, err := gitWorkspace(ctx, absDest)
+	destGitWorkspace, destIsGit, err := git.Workspace(ctx, absDest)
 	if err != nil {
-		return "", false, err
+		return "", "", err //nolint:wrapcheck
 	}
 	if !templateIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
 		logger.DebugContext(ctx, "local template source is not canonical, template dir and dest dir do not share a git workspace",
-			"source", l.srcPath,
+			"source", src,
 			"dest", absDest,
 			"source_git_workspace", sourceGitWorkspace,
 			"dest_git_workspace", destGitWorkspace)
-		return "", false, nil
+		return "", "", nil
 	}
 
 	logger.DebugContext(ctx, "local template source is canonical because template dir and dest dir are both in the same git workspace",
-		"source", l.srcPath,
+		"source", src,
 		"dest", absDest,
 		"git_workspace", destGitWorkspace)
-	out, err := filepath.Rel(absDest, l.srcPath)
+	out, err := filepath.Rel(absDest, src)
 	if err != nil {
-		return "", false, fmt.Errorf("filepath.Rel(%q,%q): %w", dest, l.srcPath, err)
+		return "", "", fmt.Errorf("filepath.Rel(%q,%q): %w", dest, src, err)
 	}
-	return out, true, nil
-}
 
-// gitWorkspace looks for the presence of a .git directory in parent directories
-// to determine the root directory of the git workspace containing "path".
-// Returns false if the given path is not inside a git workspace.
-//
-// The input path need not actually exist yet. For example, suppose "/a/b" is a
-// git workspace, which means that "/a/b/.git" is a directory that exists.
-// Calling gitWorkspace("/a/b/c") will return "/a/b" whether or not "c" actually
-// exists yet. This supports the case where the user is rendering into a
-// directory that doesn't exist yet but will be created by the render operation.
-func gitWorkspace(ctx context.Context, path string) (string, bool, error) {
-	// Alternative considered and rejected: use "git rev-parse --git-dir" to
-	// print the .git dir. We can't use that here because that would require the
-	// directory to already exist in the filesystem, but this function is called
-	// for hypothetical directories that might not exist yet.
-	for {
-		fileInfo, err := os.Stat(filepath.Join(path, ".git"))
-		if err != nil && !common.IsStatNotExistErr(err) {
-			return "", false, err //nolint:wrapcheck
-		}
-		if fileInfo != nil && fileInfo.IsDir() {
-			return path, true, nil
-		}
-		// At this point, we know that one of two things is true:
-		//   - $path/.git doesn't exist
-		//   - $path/.git is a file (not a directory)
-		//
-		// In both cases, we'll continue crawling upward in the directory tree
-		// looking for a .git directory.
-		pathBefore := path
-		path = filepath.Dir(path)
-		if path == pathBefore || len(path) <= 1 {
-			// We crawled to the root of the filesystem without finding a .git
-			// directory.
-			return "", false, nil
-		}
+	version, _, err = git.VersionForManifest(ctx, sourceGitWorkspace, allowDirty)
+	if err != nil {
+		return "", "", err //nolint:wrapcheck
 	}
+
+	return filepath.ToSlash(out), version, nil
 }

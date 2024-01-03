@@ -1,0 +1,6 @@
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'GoldenTest'
+
+inputs:
+  - name: 'environments'
+    value: 'integration,autopush,prod'

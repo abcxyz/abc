@@ -36,11 +36,10 @@ const (
 // download a template, and provides some metadata.
 type Downloader interface {
 	// Download downloads this template into the given directory.
-	Download(ctx context.Context, outDir string) error
+	Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error)
+}
 
-	// CanonicalSource() returns the canonical source location for this
-	// template, if it exists.
-	//
+type DownloadMetadata struct {
 	// A "canonical" location is one that's the same for everybody. When
 	// installing a template source like
 	// "~/my_downloaded_templates/foo_template", that location is not canonical,
@@ -63,12 +62,16 @@ type Downloader interface {
 	// directory are the same for everyone who clones the repo, that means the
 	// relative path counts as a canonical source.
 	//
-	// CanonicalSource should only be called after Download() has returned
-	// successfully. This lets us account for redirects encountered while
-	// downloading.
+	// IsCanonical is true if and only if CanonicalSource is non-empty.
+	IsCanonical     bool
+	CanonicalSource string
+
+	// Depending on where the template was taken from, there might be a version
+	// string associated with it (e.g. a git tag or a git SHA).
 	//
-	// "dest" is the value of --dest. cwd is the current working directory.
-	CanonicalSource(ctx context.Context, cwd, dest string) (string, bool, error)
+	// HasVersion is true if and only if Version is non-empty.
+	HasVersion bool
+	Version    string
 }
 
 // The parameters to Download, wrapped in a struct because there are so many.
@@ -97,7 +100,7 @@ type DownloadParams struct {
 //
 // If error is returned, then the returned directory name may or may not exist,
 // and may or may not be empty.
-func Download(ctx context.Context, p *DownloadParams) (Downloader, string, error) {
+func Download(ctx context.Context, p *DownloadParams) (*DownloadMetadata, string, error) {
 	logger := logging.FromContext(ctx).With("logger", "Download")
 
 	templateDir, err := p.FS.MkdirTemp(p.TempDirBase, templateDirNamePart)
@@ -116,19 +119,18 @@ func Download(ctx context.Context, p *DownloadParams) (Downloader, string, error
 	}
 	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
 
-	if err := downloader.Download(ctx, templateDir); err != nil {
+	dlMeta, err := downloader.Download(ctx, p.CWD, templateDir)
+	if err != nil {
 		return nil, templateDir, err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "downloaded source template temporary directory",
 		"source", p.Source,
 		"destination", templateDir)
 
-	if canonicalSource, _, err := downloader.CanonicalSource(ctx, p.CWD, p.Dest); err != nil {
-		return nil, "", err //nolint:wrapcheck
-	} else if canonicalSource != "" && strings.ContainsAny(canonicalSource, `\`+"\n") { // TODO test
+	if dlMeta.IsCanonical && strings.ContainsAny(dlMeta.CanonicalSource, `\`+"\n") {
 		return nil, "", fmt.Errorf("the template location contains a disallowed character; no backslashes or newlines are allowed in the canonicalized source %q",
-			canonicalSource)
+			dlMeta.CanonicalSource)
 	}
 
-	return downloader, templateDir, nil
+	return dlMeta, templateDir, nil
 }
