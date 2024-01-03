@@ -538,7 +538,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 
 		if sp.flags.DebugStepDiffs {
 			// Commit the diffs after each step.
-			m := fmt.Sprintf("Step %d, action %s at line %d", i, step.Action.Val, step.Pos.Line)
+			m := fmt.Sprintf("action %s at line %d", step.Action.Val, step.Pos.Line)
 			argsList := [][]string{
 				{"git", "--git-dir", sp.debugDir, "add", "-A"},
 				{"git", "--git-dir", sp.debugDir, "commit", "-a", "-m", m, "--allow-empty"},
