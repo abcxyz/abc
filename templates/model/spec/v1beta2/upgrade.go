@@ -32,5 +32,13 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	if err := copier.Copy(&out, s); err != nil {
 		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta2 to v1beta3: %w", err)
 	}
+
+	// if earlier Upgrade() already had Features, preserve them. Otherwise, use defaults.
+	if s.Features == nil {
+		out.Features = &v1beta3.Features{
+			SkipGlobs: false,
+		}
+	}
+
 	return &out, nil
 }
