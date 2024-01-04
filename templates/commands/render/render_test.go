@@ -1310,7 +1310,12 @@ Enter value, or leave empty to accept default: `,
 					Prompt:             true,
 					Prompter:           cmd,
 					SkipPromptTTYCheck: true,
-					Spec:               &spec.Spec{Inputs: tc.inputs},
+					Spec: &spec.Spec{
+						Inputs: tc.inputs,
+						UpgradeFeatures: &spec.UpgradeFeatures{
+							SkipGlobs: false,
+						},
+					},
 				}
 				var err error
 				got, err = input.Resolve(ctx, params)
