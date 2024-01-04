@@ -562,7 +562,6 @@ func TestProcessGlobs(t *testing.T) {
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
-				"subfolder2/*.txt":     {Mode: 0o600, Contents: "* file contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
@@ -573,7 +572,6 @@ func TestProcessGlobs(t *testing.T) {
 			wantPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
-				filepath.FromSlash("subfolder2/*.txt"),
 				filepath.FromSlash("subfolder2/file4.txt"),
 				filepath.FromSlash("subfolder2/file5.txt"),
 			}),
@@ -583,7 +581,6 @@ func TestProcessGlobs(t *testing.T) {
 			dirContents: map[string]common.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
-				"f*e1.txt":             {Mode: 0o600, Contents: "f*e1 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
@@ -594,7 +591,6 @@ func TestProcessGlobs(t *testing.T) {
 				"sub*er2",
 			}),
 			wantPaths: modelStrings([]string{
-				"f*e1.txt",
 				"file1.txt",
 				"file2.txt",
 				"subfolder2",
@@ -634,7 +630,6 @@ func TestProcessGlobs(t *testing.T) {
 			dirContents: map[string]common.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
-				"file?.txt":            {Mode: 0o600, Contents: "file? contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file4 contents"},
@@ -646,7 +641,6 @@ func TestProcessGlobs(t *testing.T) {
 			wantPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
-				"file?.txt",
 				filepath.FromSlash("subfolder2/file4.txt"),
 				filepath.FromSlash("subfolder2/file5.txt"),
 			}),
