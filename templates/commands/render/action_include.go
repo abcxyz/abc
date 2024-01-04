@@ -80,6 +80,13 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
+	if _, err := sp.fs.Stat(absSrc); err != nil {
+		if common.IsStatNotExistErr(err) {
+			return pos.Errorf("include path doesn't exist: %q", absSrc)
+		}
+		return fmt.Errorf("Stat(): %w", err)
+	}
+
 	params := &common.CopyParams{
 		DryRun:  false,
 		DstRoot: absDst,

@@ -224,9 +224,11 @@ func TestWalkAndModify(t *testing.T) {
 					ReadFileErr:  tc.readFileErr,
 					WriteFileErr: tc.writeFileErr,
 				},
-				scratchDir:      scratchDir,
-				scope:           common.NewScope(nil),
-				upgradeFeatures: &spec.UpgradeFeatures{},
+				scratchDir: scratchDir,
+				scope:      common.NewScope(nil),
+				upgradeFeatures: &spec.UpgradeFeatures{
+					SkipGlobs: false,
+				},
 			}
 
 			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
@@ -525,11 +527,13 @@ func TestProcessGlobs(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name        string
-		dirContents map[string]common.ModeAndContents
-		paths       []model.String
-		wantPaths   []model.String
-		wantErr     string
+		name             string
+		dirContents      map[string]common.ModeAndContents
+		paths            []model.String
+		wantGlobPaths    []model.String
+		wantNonGlobPaths []model.String
+		wantGlobErr      string
+		wantNonGlobErr   string
 	}{
 		{
 			name: "non_glob_paths",
@@ -546,7 +550,13 @@ func TestProcessGlobs(t *testing.T) {
 				"subfolder1",
 				"subfolder2/file4.txt",
 			}),
-			wantPaths: modelStrings([]string{
+			wantGlobPaths: modelStrings([]string{
+				"file1.txt",
+				"file2.txt",
+				"subfolder1",
+				filepath.FromSlash("subfolder2/file4.txt"),
+			}),
+			wantNonGlobPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
@@ -559,6 +569,7 @@ func TestProcessGlobs(t *testing.T) {
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
+				"subfolder2/*.txt":     {Mode: 0o600, Contents: "* file contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
@@ -566,18 +577,24 @@ func TestProcessGlobs(t *testing.T) {
 				"*.txt",
 				"subfolder2/*.txt",
 			}),
-			wantPaths: modelStrings([]string{
+			wantGlobPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
+				filepath.FromSlash("subfolder2/*.txt"),
 				filepath.FromSlash("subfolder2/file4.txt"),
 				filepath.FromSlash("subfolder2/file5.txt"),
 			}),
+			wantNonGlobPaths: modelStrings([]string{
+				"*.txt",
+				filepath.FromSlash("subfolder2/*.txt"),
+			}),
 		},
 		{
-			name: "star_in_middle",
+			name: "glob_star_in_middle",
 			dirContents: map[string]common.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
+				"f*e1.txt":             {Mode: 0o600, Contents: "f*e1 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
@@ -587,14 +604,20 @@ func TestProcessGlobs(t *testing.T) {
 				"f*e2.txt",
 				"sub*er2",
 			}),
-			wantPaths: modelStrings([]string{
+			wantGlobPaths: modelStrings([]string{
+				"f*e1.txt",
 				"file1.txt",
 				"file2.txt",
 				"subfolder2",
 			}),
+			wantNonGlobPaths: modelStrings([]string{
+				"f*e1.txt",
+				"f*e2.txt",
+				"sub*er2",
+			}),
 		},
 		{
-			name: "star_all_paths",
+			name: "glob_star_all_paths",
 			dirContents: map[string]common.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
@@ -603,30 +626,33 @@ func TestProcessGlobs(t *testing.T) {
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
 			paths: modelStrings([]string{"*"}),
-			wantPaths: modelStrings([]string{
+			wantGlobPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
 				"subfolder2",
 			}),
+			wantNonGlobPaths: modelStrings([]string{"*"}),
 		},
 		{
-			name: "star_matches_hidden_files",
+			name: "glob_star_matches_hidden_files",
 			dirContents: map[string]common.ModeAndContents{
 				".gitignore": {Mode: 0o600, Contents: ".gitignore contents"},
 				".something": {Mode: 0o600, Contents: ".something contents"},
 			},
 			paths: modelStrings([]string{"*"}),
-			wantPaths: modelStrings([]string{
+			wantGlobPaths: modelStrings([]string{
 				".gitignore",
 				".something",
 			}),
+			wantNonGlobPaths: modelStrings([]string{"*"}),
 		},
 		{
 			name: "question_glob_paths",
 			dirContents: map[string]common.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
+				"file?.txt":            {Mode: 0o600, Contents: "file? contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file4 contents"},
@@ -635,11 +661,16 @@ func TestProcessGlobs(t *testing.T) {
 				"file?.txt",
 				"subfolder2/file?.txt",
 			}),
-			wantPaths: modelStrings([]string{
+			wantGlobPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
+				"file?.txt",
 				filepath.FromSlash("subfolder2/file4.txt"),
 				filepath.FromSlash("subfolder2/file5.txt"),
+			}),
+			wantNonGlobPaths: modelStrings([]string{
+				"file?.txt",
+				"subfolder2/file?.txt",
 			}),
 		},
 		{
@@ -647,7 +678,8 @@ func TestProcessGlobs(t *testing.T) {
 			paths: modelStrings([]string{
 				"file_not_found.txt",
 			}),
-			wantErr: fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
+			wantGlobErr:    fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
+			wantNonGlobErr: fmt.Sprintf(`include path doesn't exist: %q`, "file_not_found.txt"),
 		},
 		{
 			name: "character_range_paths",
@@ -658,8 +690,11 @@ func TestProcessGlobs(t *testing.T) {
 			paths: modelStrings([]string{
 				"[a-c][a-c][a-c].txt",
 			}),
-			wantPaths: modelStrings([]string{
+			wantGlobPaths: modelStrings([]string{
 				"abc.txt",
+			}),
+			wantNonGlobPaths: modelStrings([]string{
+				"[a-c][a-c][a-c].txt",
 			}),
 		},
 	}
@@ -672,29 +707,51 @@ func TestProcessGlobs(t *testing.T) {
 			// pre-populate dir contents
 			tempDir := t.TempDir()
 			common.WriteAll(t, tempDir, tc.dirContents)
-
 			ctx := context.Background()
-			// TODO: add tests for both skipGlobs == true and false
-			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+
+			gotGlobPaths, err := processGlobs(ctx, tc.paths, tempDir, false) // with globbing enabled
+			if diff := testutil.DiffErrString(err, tc.wantGlobErr); diff != "" {
 				t.Error(diff)
 			}
 			if err != nil {
 				return // err was expected as part of the test
 			}
-			relGotPaths := make([]model.String, 0, len(gotPaths))
-			for _, p := range gotPaths {
+
+			gotNonGlobPaths, err := processGlobs(ctx, tc.paths, tempDir, true) // with globbing disabled
+			if diff := testutil.DiffErrString(err, tc.wantNonGlobErr); diff != "" {
+				t.Error(diff)
+			}
+			if err != nil {
+				return // err was expected as part of the test
+			}
+
+			relGotGlobPaths := make([]model.String, 0, len(gotGlobPaths))
+			for _, p := range gotGlobPaths {
 				relPath, err := filepath.Rel(tempDir, p.Val)
 				if err != nil {
 					t.Fatal(err)
 				}
-				relGotPaths = append(relGotPaths, model.String{
+				relGotGlobPaths = append(relGotGlobPaths, model.String{
 					Val: relPath,
 					Pos: p.Pos,
 				})
 			}
-			if diff := cmp.Diff(relGotPaths, tc.wantPaths); diff != "" {
-				t.Errorf("resulting paths should match expected paths from input (-got,+want): %s", diff)
+			if diff := cmp.Diff(relGotGlobPaths, tc.wantGlobPaths); diff != "" {
+				t.Errorf("resulting paths should match expected glob paths from input (-got,+want): %s", diff)
+			}
+
+			relGotNonGlobPaths := make([]model.String, 0, len(gotNonGlobPaths))
+			for _, p := range gotNonGlobPaths {
+				if err != nil {
+					t.Fatal(err)
+				}
+				relGotNonGlobPaths = append(relGotNonGlobPaths, model.String{
+					Val: p.Val,
+					Pos: p.Pos,
+				})
+			}
+			if diff := cmp.Diff(relGotNonGlobPaths, tc.wantNonGlobPaths); diff != "" {
+				t.Errorf("resulting paths should match expected nonglob paths from input (-got,+want): %s", diff)
 			}
 		})
 	}

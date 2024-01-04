@@ -439,7 +439,7 @@ type stepParams struct {
 	// are the same).
 	includedFromDest []string
 
-	// TODO: doc
+	// upgradeFeatures configures which features to use depending on spec version.
 	upgradeFeatures *spec.UpgradeFeatures
 }
 

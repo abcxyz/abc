@@ -39,12 +39,13 @@ type Spec struct {
 	// as: '.DS_Store, '.bin', '.ssh'.
 	Ignore []model.String `yaml:"ignore"`
 
-	// TODO: doc
+	// upgradeFeatures configures which features to use depending on spec version.
 	UpgradeFeatures *UpgradeFeatures `yaml:"-"`
 }
 
-// TODO: doc
+// UpgradeFeatures contains features to enable or disable based on spec version.
 type UpgradeFeatures struct {
+	// SkipGlobs determines whether or not to interpret paths as file globs.
 	SkipGlobs bool
 }
 
