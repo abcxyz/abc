@@ -1312,7 +1312,7 @@ Enter value, or leave empty to accept default: `,
 					SkipPromptTTYCheck: true,
 					Spec: &spec.Spec{
 						Inputs: tc.inputs,
-						UpgradeFeatures: &spec.UpgradeFeatures{
+						Features: &spec.Features{
 							SkipGlobs: false,
 						},
 					},

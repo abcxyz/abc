@@ -26,7 +26,7 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	logger := logging.FromContext(ctx).With("logger", "Upgrade")
 	logger.DebugContext(ctx, "finished upgrading spec model, this is the most recent version")
 
-	s.UpgradeFeatures = &UpgradeFeatures{
+	s.Features = &Features{
 		SkipGlobs: false,
 	}
 

@@ -54,13 +54,13 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	if err != nil {
 		return err
 	}
-	globbedPaths, err := processGlobs(ctx, paths, sp.scratchDir, sp.upgradeFeatures.SkipGlobs)
+	globbedPaths, err := processGlobs(ctx, paths, sp.scratchDir, sp.features.SkipGlobs)
 	if err != nil {
 		return err
 	}
 
 	for _, absPath := range globbedPaths {
-		if sp.upgradeFeatures.SkipGlobs {
+		if sp.features.SkipGlobs {
 			absPath.Val = filepath.Join(sp.scratchDir, absPath.Val)
 		}
 

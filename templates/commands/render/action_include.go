@@ -49,14 +49,14 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 	if err != nil {
 		return nil, err
 	}
-	skipPaths, err := processGlobs(ctx, unglobbedSkipPaths, fromDir, sp.upgradeFeatures.SkipGlobs)
+	skipPaths, err := processGlobs(ctx, unglobbedSkipPaths, fromDir, sp.features.SkipGlobs)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, s := range skipPaths {
 		relSkipPath := s.Val
-		if !sp.upgradeFeatures.SkipGlobs {
+		if !sp.features.SkipGlobs {
 			relSkipPath, err = filepath.Rel(fromDir, s.Val)
 			if err != nil {
 				return nil, fmt.Errorf("internal error making relative skip path: %w", err)
@@ -173,14 +173,14 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	}
 
 	for i, p := range incPaths {
-		matchedPaths, err := processGlobs(ctx, []model.String{p}, fromDir, sp.upgradeFeatures.SkipGlobs)
+		matchedPaths, err := processGlobs(ctx, []model.String{p}, fromDir, sp.features.SkipGlobs)
 		if err != nil {
 			return err
 		}
 
 		for _, absSrc := range matchedPaths {
 			relSrc := absSrc.Val
-			if !sp.upgradeFeatures.SkipGlobs {
+			if !sp.features.SkipGlobs {
 				relSrc, err = filepath.Rel(fromDir, absSrc.Val)
 				if err != nil {
 					return fmt.Errorf("internal error making relative glob matched path: %w", err)

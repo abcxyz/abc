@@ -226,7 +226,7 @@ func TestWalkAndModify(t *testing.T) {
 				},
 				scratchDir: scratchDir,
 				scope:      common.NewScope(nil),
-				upgradeFeatures: &spec.UpgradeFeatures{
+				features: &spec.Features{
 					SkipGlobs: false,
 				},
 			}

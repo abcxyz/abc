@@ -789,11 +789,11 @@ func TestActionInclude(t *testing.T) {
 					FS:      &common.RealFS{},
 					StatErr: tc.statErr,
 				},
-				scratchDir:      scratchDir,
-				templateDir:     templateDir,
-				scope:           common.NewScope(tc.inputs),
-				ignorePatterns:  tc.ignorePatterns,
-				upgradeFeatures: &spec.UpgradeFeatures{},
+				scratchDir:     scratchDir,
+				templateDir:    templateDir,
+				scope:          common.NewScope(tc.inputs),
+				ignorePatterns: tc.ignorePatterns,
+				features:       &spec.Features{},
 			}
 
 			err := actionInclude(ctx, tc.include, sp)

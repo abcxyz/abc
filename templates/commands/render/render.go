@@ -190,14 +190,14 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 	logger.DebugContext(ctx, "created temporary scratch directory", "path", scratchDir)
 
 	sp := &stepParams{
-		flags:           &c.flags,
-		fs:              rp.fs,
-		scope:           common.NewScope(resolvedInputs),
-		scratchDir:      scratchDir,
-		stdout:          rp.stdout,
-		templateDir:     templateDir,
-		ignorePatterns:  spec.Ignore,
-		upgradeFeatures: spec.UpgradeFeatures,
+		flags:          &c.flags,
+		fs:             rp.fs,
+		scope:          common.NewScope(resolvedInputs),
+		scratchDir:     scratchDir,
+		stdout:         rp.stdout,
+		templateDir:    templateDir,
+		ignorePatterns: spec.Ignore,
+		features:       spec.Features,
 	}
 
 	var debugDir string
@@ -439,8 +439,8 @@ type stepParams struct {
 	// are the same).
 	includedFromDest []string
 
-	// upgradeFeatures configures which features to use depending on spec version.
-	upgradeFeatures *spec.UpgradeFeatures
+	// features configures which features to use depending on spec version.
+	features *spec.Features
 }
 
 // WithScope returns a copy of this stepParams with a new inner variable scope
