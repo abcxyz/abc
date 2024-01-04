@@ -30,14 +30,14 @@ The `<template_location>` parameter is one of these two things:
 - A remote git repository. The subdirectory is optional, defaulting to the root
   of the repo. This directory must contain a `spec.yaml`. The version suffix
   must be either `@latest`, long commit SHA, branch name or tag. Short commit
-  SHA's are not supported and if provided, they will be tried as a
-  branch or tag name. Examples:
+  SHA's are not supported and if provided, they will be tried as a branch or tag
+  name. Examples:
 
   - `github.com/abcxyz/gcp-org-terraform-template@latest` (no subdirectory)
   - `github.com/abcxyz/abc/t/rest_server@latest` (with subdirectory)
-  - `github.com/abcxyz/abc/t/rest_server@v0.2.1` (uses tag instead of
+  - `github.com/abcxyz/abc/t/rest_server@v0.2.1` (uses tag instead of "latest")
+  - `github.com/abcxyz/abc/t/rest_server@main` (use branch name instead of
     "latest")
-  - `github.com/abcxyz/abc/t/rest_server@main` (use branch name instead of "latest")
   - `github.com/abcxyz/abc/t/rest_server@0402ed8413f02e1069c2aec368eca208895918b1`
     (use ref to long commit SHA)
 
@@ -114,39 +114,44 @@ The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 ### For `abc templates golden-test`
 
 Usages:
+
 - `abc templates golden-test record [--test-name=<test_name>] <location>`
 - `abc templates golden-test verify [--test-name=<test_name>] <location>`
 
 Examples:
+
 - `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
 - `abc templates golden-test record examples/templates/render/hello_jupiter`
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`
 
 The `<test_name>` parameter gives the test names to record or verify, if not
-specified, all tests will be run against. This flag may be repeated, like
--`-test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
+specified, all tests will be run against. This flag may be repeated,
+like -`-test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
 The `<location>` parameter gives the location of the template.
 
 For every test case, it is expected that
-  - a testdata/golden/<test_name> folder exists to host test results.
-  - a testdata/golden/<test_name>/test.yaml exists to define
-template input params.`
+
+- a testdata/golden/<test_name> folder exists to host test results.
+- a testdata/golden/<test_name>/test.yaml exists to define template input
+  params.`
 
 ### For `abc templates describe`
 
-The describe command downloads the template and prints out its description,
-and describes the inputs that it accepts.
+The describe command downloads the template and prints out its description, and
+describes the inputs that it accepts.
 
 Usages:
+
 - `abc templates describe <template_location>`
 
-
-The `<template_location>` takes the same value as the [render](#for-abc-templates-render) command.
+The `<template_location>` takes the same value as the
+[render](#for-abc-templates-render) command.
 
 Example:
 
 Command:
+
 ```
 abc templates describe github.com/abcxyz/guardian/abc.templates/default-workflows@v0.1.0-alpha12
 ```
@@ -353,10 +358,11 @@ features are only available in more recent versions.
 
 The currently valid versions are:
 
-| api_version             | Supported in abc CLI versions | Notes                                           |
-| ----------------------- | ----------------------------- | ----------------------------------------------- |
-| cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                 |
-| cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step |
+| api_version             | Supported in abc CLI versions | Notes                                                        |
+| ----------------------- | ----------------------------- | ------------------------------------------------------------ |
+| cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                              |
+| cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step in soec.yaml |
+| cli.abcxyz.dev/v1beta2  | 0.4.0 and up                  | Adds support for the top-level `ignore` field in spec.yaml   |
 
 #### Template inputs
 
@@ -911,15 +917,16 @@ To add golden tests to your template, all you need is to create a
 metadata and input parameters.
 
 The test.yaml for a post-rendering validation test may look like,
+
 ```yaml
 api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'GoldenTest'
 
 inputs:
-- name: 'input_a'
-  value: 'a'
-- name: 'input_b'
-  value: 'b'
+  - name: 'input_a'
+    value: 'a'
+  - name: 'input_b'
+    value: 'b'
 ```
 
 Then you can use `abc templates golden-test` to record or verify the tests.
