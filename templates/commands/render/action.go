@@ -142,6 +142,7 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 // processGlobs processes a list of input String paths for simple file globbing.
 // Used after processPaths where applicable.
 func processGlobs(ctx context.Context, paths []model.String, fromDir string, skipGlobs bool) ([]model.String, error) {
+	// This supports older api_versions which didn't have glob support.
 	if skipGlobs {
 		return paths, nil
 	}

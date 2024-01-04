@@ -490,8 +490,8 @@ Params:
   be used to make the output location(s) different than the input locations. If
   `as` is present, its length must be equal to the length of `paths`; that is,
   each path must be given an output location. These may use template expressions
-  or file globs (e.g. `{{.my_input}}`, `*.txt`). If file globs are used in
-  `paths`, the corresponding `as` inputs will be treated as directories:
+  (e.g. `{{.my_input}}`). If file globs are used in `paths`, the corresponding
+  `as` inputs will be treated as directories:
 
   ```yaml
   - paths: ["*.txt", "*.md", "nonglob.json"]
