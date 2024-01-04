@@ -54,16 +54,12 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	if err != nil {
 		return err
 	}
-	globbedPaths, err := processGlobs(ctx, paths, sp.scratchDir, sp.upgradeFeatures.SkipGlobs)
+	globbedPaths, err := processGlobs(ctx, paths, sp.scratchDir)
 	if err != nil {
 		return err
 	}
 
 	for _, absPath := range globbedPaths {
-		if sp.upgradeFeatures.SkipGlobs {
-			absPath.Val = filepath.Join(sp.scratchDir, absPath.Val)
-		}
-
 		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.
@@ -141,11 +137,7 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 
 // processGlobs processes a list of input String paths for simple file globbing.
 // Used after processPaths where applicable.
-func processGlobs(ctx context.Context, paths []model.String, fromDir string, skipGlobs bool) ([]model.String, error) {
-	if skipGlobs {
-		return paths, nil
-	}
-
+func processGlobs(ctx context.Context, paths []model.String, fromDir string) ([]model.String, error) {
 	logger := logging.FromContext(ctx).With("logger", "processGlobs")
 	seenPaths := map[string]struct{}{}
 	out := make([]model.String, 0, len(paths))
