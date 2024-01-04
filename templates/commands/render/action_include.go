@@ -62,9 +62,10 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 				matched := (skipPath.Val == filepath.Join(relSrc, relToSrcRoot))
 				if !sp.features.SkipGlobs {
 					var err error
-					matched, err = filepath.Match(skipPath.Val, filepath.Join(relSrc, relToSrcRoot))
+					path := filepath.Join(relSrc, relToSrcRoot)
+					matched, err = filepath.Match(skipPath.Val, path)
 					if err != nil {
-						return common.CopyHint{}, err
+						return common.CopyHint{}, pos.Errorf("error matching path (%q) with skip pattern (%q): %w", path, skipPath.Val, err)
 					}
 				}
 
