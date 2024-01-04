@@ -347,6 +347,9 @@ steps:
 						},
 					},
 				},
+				UpgradeFeatures: &specv1beta3.UpgradeFeatures{
+					SkipGlobs: true,
+				},
 			},
 		},
 		{

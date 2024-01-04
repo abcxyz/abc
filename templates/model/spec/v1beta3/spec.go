@@ -40,7 +40,7 @@ type Spec struct {
 	Ignore []model.String `yaml:"ignore"`
 
 	// TODO: doc
-	UpgradeFeatures *UpgradeFeatures
+	UpgradeFeatures *UpgradeFeatures `yaml:"-"`
 }
 
 // TODO: doc

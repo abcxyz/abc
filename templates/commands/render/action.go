@@ -60,6 +60,10 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	}
 
 	for _, absPath := range globbedPaths {
+		if sp.upgradeFeatures.SkipGlobs {
+			absPath.Val = filepath.Join(sp.scratchDir, absPath.Val)
+		}
+
 		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.

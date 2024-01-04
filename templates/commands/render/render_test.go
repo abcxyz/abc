@@ -723,7 +723,7 @@ steps:
 				"python_files/skip_2.py":     "skip 2 contents",
 				"python_files/include_me.py": "include_me contents",
 				"spec.yaml": `
-api_version: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'Template'
 desc: 'my template'
 steps:
@@ -1313,9 +1313,7 @@ Enter value, or leave empty to accept default: `,
 					Spec:               &spec.Spec{Inputs: tc.inputs},
 				}
 				var err error
-				fmt.Printf("to input.Resolve\n")
 				got, err = input.Resolve(ctx, params)
-				fmt.Printf("from input.Resolve\n")
 				errCh <- err
 			}()
 

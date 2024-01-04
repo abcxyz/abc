@@ -54,9 +54,13 @@ func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, f
 		return nil, err
 	}
 	for _, s := range skipPaths {
-		relSkipPath, err := filepath.Rel(fromDir, s.Val)
-		if err != nil {
-			return nil, fmt.Errorf("internal error making relative skip path: %w", err)
+
+		relSkipPath := s.Val
+		if !sp.upgradeFeatures.SkipGlobs {
+			relSkipPath, err = filepath.Rel(fromDir, s.Val)
+			if err != nil {
+				return nil, fmt.Errorf("internal error making relative skip path: %w", err)
+			}
 		}
 		skip[relSkipPath] = struct{}{}
 	}
@@ -168,9 +172,15 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 
 		for _, absSrc := range matchedPaths {
-			relSrc, err := filepath.Rel(fromDir, absSrc.Val)
-			if err != nil {
-				return fmt.Errorf("internal error making relative glob matched path: %w", err)
+			relSrc := ""
+			if !sp.upgradeFeatures.SkipGlobs {
+				relSrc, err = filepath.Rel(fromDir, absSrc.Val)
+				if err != nil {
+					return fmt.Errorf("internal error making relative glob matched path: %w", err)
+				}
+			} else {
+				relSrc = absSrc.Val
+				absSrc.Val = filepath.Join(fromDir, absSrc.Val)
 			}
 
 			// if no As val was provided, use the original file or directory name.
