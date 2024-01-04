@@ -42,42 +42,7 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 	return nil
 }
 
-func createSkipMap(ctx context.Context, inc *spec.IncludePath, sp *stepParams, fromDir string) (map[string]struct{}, error) {
-	skip := make(map[string]struct{}, len(inc.Skip))
-
-	unglobbedSkipPaths, err := processPaths(inc.Skip, sp.scope)
-	if err != nil {
-		return nil, err
-	}
-	skipPaths, err := processGlobs(ctx, unglobbedSkipPaths, fromDir, sp.features.SkipGlobs)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, s := range skipPaths {
-		relSkipPath := s.Val
-		if !sp.features.SkipGlobs {
-			relSkipPath, err = filepath.Rel(fromDir, s.Val)
-			if err != nil {
-				return nil, fmt.Errorf("internal error making relative skip path: %w", err)
-			}
-		}
-		skip[relSkipPath] = struct{}{}
-	}
-
-	if fromDir == sp.templateDir {
-		// If we're copying the template root directory, automatically skip
-		// 1. spec.yaml file, because it's very unlikely that the user actually
-		// wants the spec file in the template output.
-		// 2. testdata/golden directory, this is reserved for golden test usage.
-		skip["spec.yaml"] = struct{}{}
-		skip[filepath.Join("testdata", "golden")] = struct{}{}
-	}
-
-	return skip, nil
-}
-
-func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
+func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
 	if _, err := sp.fs.Stat(absSrc); err != nil {
@@ -93,10 +58,19 @@ func copyToDst(ctx context.Context, sp *stepParams, skip map[string]struct{}, po
 		RFS:     sp.fs,
 		SrcRoot: absSrc,
 		Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
-			if _, ok := skip[filepath.Join(relSrc, relToSrcRoot)]; ok {
-				return common.CopyHint{
-					Skip: true,
-				}, nil
+			for _, skipPath := range skipPaths {
+				matched := (skipPath.Val == filepath.Join(relSrc, relToSrcRoot))
+				if !sp.features.SkipGlobs {
+					var err error
+					matched, err = filepath.Match(skipPath.Val, filepath.Join(relSrc, relToSrcRoot))
+					if err != nil {
+						return common.CopyHint{}, err
+					}
+				}
+
+				if matched {
+					return common.CopyHint{Skip: true}, nil
+				}
 			}
 
 			abs := filepath.Join(absSrc, relToSrcRoot)
@@ -155,9 +129,23 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		fromDir = sp.flags.Dest
 	}
 
-	skip, err := createSkipMap(ctx, inc, sp, fromDir)
+	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
 		return err
+	}
+	if fromDir == sp.templateDir {
+		// If we're copying the template root directory, automatically skip
+		// 1. spec.yaml file, because it's very unlikely that the user actually
+		// wants the spec file in the template output.
+		// 2. testdata/golden directory, this is reserved for golden test usage.
+		skipPaths = append(skipPaths,
+			model.String{
+				Val: "spec.yaml",
+			},
+			model.String{
+				Val: filepath.Join("testdata", "golden"),
+			},
+		)
 	}
 
 	// During validation in spec.go, we've already enforced that either:
@@ -203,7 +191,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			}
 			absDst := filepath.Join(sp.scratchDir, relDst)
 
-			if err := copyToDst(ctx, sp, skip, absSrc.Pos, absDst, absSrc.Val, relSrc, inc.From.Val, fromDir); err != nil {
+			if err := copyToDst(ctx, sp, skipPaths, absSrc.Pos, absDst, absSrc.Val, relSrc, inc.From.Val, fromDir); err != nil {
 				return err
 			}
 		}
