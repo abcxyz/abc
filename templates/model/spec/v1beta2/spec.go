@@ -38,6 +38,15 @@ type Spec struct {
 	// Please be ware that there are some patterns that are always ignored such
 	// as: '.DS_Store, '.bin', '.ssh'.
 	Ignore []model.String `yaml:"ignore"`
+
+	// upgradeFeatures configures which features to use depending on spec version.
+	UpgradeFeatures *UpgradeFeatures `yaml:"-"`
+}
+
+// UpgradeFeatures contains features to enable or disable based on spec version.
+type UpgradeFeatures struct {
+	// SkipGlobs determines whether or not to interpret paths as file globs.
+	SkipGlobs bool
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

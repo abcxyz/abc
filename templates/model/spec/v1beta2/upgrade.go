@@ -34,7 +34,7 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	}
 
 	out.UpgradeFeatures = &v1beta3.UpgradeFeatures{
-		SkipGlobs: true,
+		SkipGlobs: false,
 	}
 
 	return &out, nil
