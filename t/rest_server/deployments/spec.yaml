@@ -47,8 +47,8 @@ steps:
   - desc: 'Include workflow, deployment files'
     action: 'include'
     params:
-      paths: ['workflows', 'config', 'contents']
-      as: ['.github/workflows', '.github/config', '.']
+      paths: ['workflows', 'config/[environment]-rest-server.env', 'contents']
+      as: ['.github/workflows', '.github/config/{{.environment}}-rest-server.env', '.']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
     params:
