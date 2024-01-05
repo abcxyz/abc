@@ -168,14 +168,9 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 
 		for _, absSrc := range matchedPaths {
-			relSrc := absSrc.Val
-			if !sp.features.SkipGlobs {
-				relSrc, err = filepath.Rel(fromDir, absSrc.Val)
-				if err != nil {
-					return fmt.Errorf("internal error making relative glob matched path: %w", err)
-				}
-			} else {
-				absSrc.Val = filepath.Join(fromDir, absSrc.Val)
+			relSrc, err := filepath.Rel(fromDir, absSrc.Val)
+			if err != nil {
+				return fmt.Errorf("internal error making relative path: %w", err)
 			}
 
 			// if no As val was provided, use the original file or directory name.

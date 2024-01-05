@@ -60,10 +60,6 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	}
 
 	for _, absPath := range globbedPaths {
-		if sp.features.SkipGlobs {
-			absPath.Val = filepath.Join(sp.scratchDir, absPath.Val)
-		}
-
 		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// There was some filesystem error. Give up.
@@ -139,36 +135,40 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 	return compiled, merr
 }
 
-// processGlobs processes a list of input String paths for simple file globbing.
+// processGlobs processes a list of relative input String paths for simple file globbing.
+// Returned paths are converted from relative to absolute.
 // Used after processPaths where applicable.
 func processGlobs(ctx context.Context, paths []model.String, fromDir string, skipGlobs bool) ([]model.String, error) {
-	// This supports older api_versions which didn't have glob support.
-	if skipGlobs {
-		return paths, nil
-	}
-
 	logger := logging.FromContext(ctx).With("logger", "processGlobs")
 	seenPaths := map[string]struct{}{}
 	out := make([]model.String, 0, len(paths))
 
 	for _, p := range paths {
-		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
-		if err != nil {
-			return nil, p.Pos.Errorf("file globbing error: %w", err)
-		}
-		if len(globPaths) == 0 {
-			return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
-		}
-		logger.DebugContext(ctx, "glob path expanded:",
-			"glob", p.Val,
-			"matches", globPaths)
-		for _, globPath := range globPaths {
-			if _, ok := seenPaths[globPath]; !ok {
-				out = append(out, model.String{
-					Val: globPath,
-					Pos: p.Pos,
-				})
-				seenPaths[globPath] = struct{}{}
+		// This supports older api_versions which didn't have glob support.
+		if skipGlobs {
+			out = append(out, model.String{
+				Val: filepath.Join(fromDir, p.Val),
+				Pos: p.Pos,
+			})
+		} else {
+			globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
+			if err != nil {
+				return nil, p.Pos.Errorf("file globbing error: %w", err)
+			}
+			if len(globPaths) == 0 {
+				return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
+			}
+			logger.DebugContext(ctx, "glob path expanded:",
+				"glob", p.Val,
+				"matches", globPaths)
+			for _, globPath := range globPaths {
+				if _, ok := seenPaths[globPath]; !ok {
+					out = append(out, model.String{
+						Val: globPath,
+						Pos: p.Pos,
+					})
+					seenPaths[globPath] = struct{}{}
+				}
 			}
 		}
 	}
