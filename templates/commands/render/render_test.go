@@ -712,6 +712,25 @@ steps:
 			},
 		},
 		{
+			name: "simple_skip",
+			templateContents: map[string]string{
+				"file1.txt": "file1 contents",
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include with skip'
+    action: 'include'
+    params:
+      paths:
+      - paths: ['file1.txt']
+        skip: ['file1.txt']
+`,
+			},
+			wantDestContents: nil,
+		},
+		{
 			name: "glob_include",
 			templateContents: map[string]string{
 				"file1.txt":                  "file1 contents",

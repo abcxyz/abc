@@ -497,6 +497,21 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
+			name: "skip_single_path_file",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: modelStrings([]string{"file1.txt"}),
+						Skip:  modelStrings([]string{"file1.txt"}),
+					},
+				},
+			},
+			templateContents: map[string]common.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
+			},
+			wantScratchContents: nil,
+		},
+		{
 			name: "skip_multiple_files",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
