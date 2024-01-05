@@ -119,7 +119,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 				if err != nil {
 					return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
 				}
-				matched, err := checkIgnore(sp.ignorePatterns, relToFromDir)
+				matched, err := checkIgnore(sp.ignorePatterns, relToFromDir, fromDir)
 				if err != nil {
 					return common.CopyHint{},
 						fmt.Errorf("failed to match path(%q) with ignore patterns: %w", relToFromDir, err)
@@ -151,23 +151,23 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	return nil
 }
 
-// TODO(#158): add support for ignoring file name. For example, "/foo" ignores
-// a single file named foo in the root, but "foo" ignores all files named foo
-// anywhere.
 // checkIgnore checks the given path against the given patterns, if given
 // patterns is not provided, a default list of patterns is used.
-func checkIgnore(patterns []model.String, path string) (bool, error) {
+func checkIgnore(patterns []model.String, path, fromDir string) (bool, error) {
 	if len(patterns) == 0 {
 		patterns = defaultIgnorePatterns
 	}
 	for _, p := range patterns {
 		var matched bool
 		var err error
-		// Match file name if the pattern value is file name instead of path.
-		// Otherwise match the entire path.
 		if filepath.Base(p.Val) == p.Val {
+			// Match file name if the pattern value is file name instead of path.
 			matched, err = filepath.Match(p.Val, filepath.Base(path))
+		} else if p.Val[0] == '/' {
+			// Match absolute path if the pattern start with a leading slash.
+			matched, err = filepath.Match(filepath.Join(fromDir, filepath.FromSlash(p.Val)), filepath.Join(fromDir, path))
 		} else {
+			// Math pattern using relative path.
 			matched, err = filepath.Match(filepath.FromSlash(p.Val), path)
 		}
 		if err != nil {
