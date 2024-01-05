@@ -198,6 +198,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				fs:         &common.RealFS{},
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
+				features:   &spec.Features{},
 			}
 			err := actionRegexNameLookup(ctx, tc.rr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

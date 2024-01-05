@@ -197,6 +197,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		stdout:         rp.stdout,
 		templateDir:    templateDir,
 		ignorePatterns: spec.Ignore,
+		features:       spec.Features,
 	}
 
 	var debugDir string
@@ -437,6 +438,9 @@ type stepParams struct {
 	// as being relative to the scratch directory, the paths within these dirs
 	// are the same).
 	includedFromDest []string
+
+	// features configures which features to use depending on spec version.
+	features *spec.Features
 }
 
 // WithScope returns a copy of this stepParams with a new inner variable scope

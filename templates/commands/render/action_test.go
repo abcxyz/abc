@@ -26,6 +26,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -225,6 +226,9 @@ func TestWalkAndModify(t *testing.T) {
 				},
 				scratchDir: scratchDir,
 				scope:      common.NewScope(nil),
+				features: &spec.Features{
+					SkipGlobs: false,
+				},
 			}
 
 			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
@@ -523,11 +527,12 @@ func TestProcessGlobs(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name        string
-		dirContents map[string]common.ModeAndContents
-		paths       []model.String
-		wantPaths   []model.String
-		wantErr     string
+		name           string
+		dirContents    map[string]common.ModeAndContents
+		paths          []model.String
+		wantPaths      []model.String
+		wantGlobErr    string
+		wantNonGlobErr string
 	}{
 		{
 			name: "non_glob_paths",
@@ -572,7 +577,7 @@ func TestProcessGlobs(t *testing.T) {
 			}),
 		},
 		{
-			name: "star_in_middle",
+			name: "glob_star_in_middle",
 			dirContents: map[string]common.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
@@ -592,7 +597,7 @@ func TestProcessGlobs(t *testing.T) {
 			}),
 		},
 		{
-			name: "star_all_paths",
+			name: "glob_star_all_paths",
 			dirContents: map[string]common.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
@@ -609,7 +614,7 @@ func TestProcessGlobs(t *testing.T) {
 			}),
 		},
 		{
-			name: "star_matches_hidden_files",
+			name: "glob_star_matches_hidden_files",
 			dirContents: map[string]common.ModeAndContents{
 				".gitignore": {Mode: 0o600, Contents: ".gitignore contents"},
 				".something": {Mode: 0o600, Contents: ".something contents"},
@@ -645,7 +650,8 @@ func TestProcessGlobs(t *testing.T) {
 			paths: modelStrings([]string{
 				"file_not_found.txt",
 			}),
-			wantErr: fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
+			wantGlobErr:    fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
+			wantNonGlobErr: fmt.Sprintf(`include path doesn't exist: %q`, "file_not_found.txt"),
 		},
 		{
 			name: "character_range_paths",
@@ -670,15 +676,22 @@ func TestProcessGlobs(t *testing.T) {
 			// pre-populate dir contents
 			tempDir := t.TempDir()
 			common.WriteAll(t, tempDir, tc.dirContents)
-
 			ctx := context.Background()
-			gotPaths, err := processGlobs(ctx, tc.paths, tempDir)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+
+			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false) // with globbing enabled
+			if diff := testutil.DiffErrString(err, tc.wantGlobErr); diff != "" {
 				t.Error(diff)
 			}
 			if err != nil {
 				return // err was expected as part of the test
 			}
+			if diff := testutil.DiffErrString(err, tc.wantNonGlobErr); diff != "" {
+				t.Error(diff)
+			}
+			if err != nil {
+				return // err was expected as part of the test
+			}
+
 			relGotPaths := make([]model.String, 0, len(gotPaths))
 			for _, p := range gotPaths {
 				relPath, err := filepath.Rel(tempDir, p.Val)
@@ -691,7 +704,7 @@ func TestProcessGlobs(t *testing.T) {
 				})
 			}
 			if diff := cmp.Diff(relGotPaths, tc.wantPaths); diff != "" {
-				t.Errorf("resulting paths should match expected paths from input (-got,+want): %s", diff)
+				t.Errorf("resulting paths should match expected glob paths from input (-got,+want): %s", diff)
 			}
 		})
 	}
