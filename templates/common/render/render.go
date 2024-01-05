@@ -162,13 +162,12 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 	}
 
 	sp := &stepParams{
-		features: spec.Features,
-		// TODO alphabetize and lower case
-		RP:             p,
-		ignorePatterns: spec.Ignore,
 		debugDiffsDir:  debugStepDiffsDir,
-		scratchDir:     scratchDir,
+		ignorePatterns: spec.Ignore,
+		features:       spec.Features,
+		rp:             p,
 		scope:          common.NewScope(resolvedInputs),
+		scratchDir:     scratchDir,
 		templateDir:    templateDir,
 	}
 
@@ -178,9 +177,9 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 
 	if err := commitTentatively(ctx, p, &commitParams{
 		dlMeta:           dlMeta,
-		scratchDir:       scratchDir,
 		includedFromDest: sliceToSet(sp.includedFromDest),
 		inputs:           resolvedInputs,
+		scratchDir:       scratchDir,
 		templateDir:      templateDir,
 	}); err != nil {
 		return err
@@ -231,7 +230,7 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 // stepParams contains all the values provided to the action* functions that
 // are needed to do their job.
 type stepParams struct {
-	RP *Params
+	rp *Params
 
 	// The feature flags controlling how to interpret the spec file.
 	features *spec.Features
@@ -295,7 +294,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 		}
 
 		logger.DebugContext(ctx, "completed template action", "action", step.Action.Val)
-		if sp.RP.DebugScratchContents {
+		if sp.rp.DebugScratchContents {
 			contents, err := scratchContents(ctx, i, step, sp)
 			if err != nil {
 				return err

@@ -45,7 +45,7 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
-	if _, err := sp.RP.FS.Stat(absSrc); err != nil {
+	if _, err := sp.rp.FS.Stat(absSrc); err != nil {
 		if common.IsStatNotExistErr(err) {
 			return pos.Errorf("include path doesn't exist: %q", absSrc)
 		}
@@ -55,7 +55,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 	params := &common.CopyParams{
 		DryRun:  false,
 		DstRoot: absDst,
-		FS:      sp.RP.FS,
+		FS:      sp.rp.FS,
 		SrcRoot: absSrc,
 		Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
 			for _, skipPath := range skipPaths {
@@ -127,7 +127,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	// that already exist in the destination.
 	fromDir := sp.templateDir
 	if inc.From.Val == "destination" {
-		fromDir = sp.RP.DestDir
+		fromDir = sp.rp.DestDir
 	}
 
 	skipPaths, err := processPaths(inc.Skip, sp.scope)

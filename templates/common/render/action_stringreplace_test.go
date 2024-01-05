@@ -240,7 +240,7 @@ func TestActionStringReplace(t *testing.T) {
 				scope:      common.NewScope(tc.inputs),
 				features:   &spec.Features{},
 				scratchDir: scratchDir,
-				RP: &Params{
+				rp: &Params{
 					FS: &common.ErrorFS{
 						FS:          &common.RealFS{},
 						ReadFileErr: tc.readFileErr,

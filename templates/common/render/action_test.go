@@ -221,7 +221,7 @@ func TestWalkAndModify(t *testing.T) {
 			sp := &stepParams{
 				scope:      common.NewScope(nil),
 				scratchDir: scratchDir,
-				RP: &Params{
+				rp: &Params{
 					FS: &common.ErrorFS{
 						FS:           &common.RealFS{},
 						ReadFileErr:  tc.readFileErr,

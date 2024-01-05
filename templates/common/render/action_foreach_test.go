@@ -235,7 +235,7 @@ func TestActionForEach(t *testing.T) {
 			sp := &stepParams{
 				features: &spec.Features{},
 				scope:    common.NewScope(tc.inputs),
-				RP: &Params{
+				rp: &Params{
 					Stdout: buf,
 				},
 			}

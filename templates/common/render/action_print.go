@@ -35,7 +35,7 @@ func actionPrint(ctx context.Context, p *spec.Print, sp *stepParams) error {
 
 	// We can ignore the int returned from Write() because the docs promise that
 	// short writes always return error.
-	if _, err := sp.RP.Stdout.Write([]byte(msg)); err != nil {
+	if _, err := sp.rp.Stdout.Write([]byte(msg)); err != nil {
 		return fmt.Errorf("error writing to stdout: %w", err)
 	}
 
@@ -46,7 +46,7 @@ func flagsForTemplate(sp *stepParams) map[string]string {
 	// We only expose certain fields the print action; these are the ones that
 	// we have beneficial use cases for and that don't encourage bad API use.
 	return map[string]string{
-		"_flag_dest":   sp.RP.DestDir,
-		"_flag_source": sp.RP.Source,
+		"_flag_dest":   sp.rp.DestDir,
+		"_flag_source": sp.rp.Source,
 	}
 }

@@ -170,7 +170,7 @@ func TestActionGoTemplate(t *testing.T) {
 				features:   &spec.Features{},
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
-				RP: &Params{
+				rp: &Params{
 					FS: &common.RealFS{},
 				},
 			}

@@ -908,7 +908,7 @@ func TestActionInclude(t *testing.T) {
 				scope:          common.NewScope(tc.inputs),
 				scratchDir:     scratchDir,
 				templateDir:    templateDir,
-				RP: &Params{
+				rp: &Params{
 					DestDir: destDir,
 
 					FS: &common.ErrorFS{

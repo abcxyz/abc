@@ -74,7 +74,7 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 				logger.DebugContext(ctx, "skipping file as already seen", "path", path)
 				return nil
 			}
-			oldBuf, err := sp.RP.FS.ReadFile(path)
+			oldBuf, err := sp.rp.FS.ReadFile(path)
 			if err != nil {
 				return absPath.Pos.Errorf("Readfile(): %w", err)
 			}
@@ -101,7 +101,7 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 
 			// The permissions in the following WriteFile call will be ignored
 			// because the file already exists.
-			if err := sp.RP.FS.WriteFile(path, newBuf, common.OwnerRWXPerms); err != nil {
+			if err := sp.rp.FS.WriteFile(path, newBuf, common.OwnerRWXPerms); err != nil {
 				return absPath.Pos.Errorf("Writefile(): %w", err)
 			}
 			logger.DebugContext(ctx, "wrote modification", "path", path)
