@@ -50,7 +50,15 @@ jobs:
     uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
 
   golden_tests:
-    runs-on: 'ubuntu-latest'
+    strategy:
+      # allow all os suites to complete, even if one fails
+      fail-fast: false
+      matrix:
+        runner:
+          - 'macos-latest'
+          - 'ubuntu-latest'
+          - 'windows-latest'
+    runs-on: '${{ matrix.runner }}'
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
