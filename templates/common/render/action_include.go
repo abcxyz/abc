@@ -20,8 +20,6 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
@@ -44,9 +42,86 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 	return nil
 }
 
-func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
+func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
+	if _, err := sp.RP.FS.Stat(absSrc); err != nil {
+		if common.IsStatNotExistErr(err) {
+			return pos.Errorf("include path doesn't exist: %q", absSrc)
+		}
+		return fmt.Errorf("Stat(): %w", err)
+	}
+
+	params := &common.CopyParams{
+		DryRun:  false,
+		DstRoot: absDst,
+		FS:      sp.RP.FS,
+		SrcRoot: absSrc,
+		Visitor: func(relToSrcRoot string, de fs.DirEntry) (common.CopyHint, error) {
+			for _, skipPath := range skipPaths {
+				matched := (skipPath.Val == filepath.Join(relSrc, relToSrcRoot))
+				if !sp.features.SkipGlobs {
+					var err error
+					path := filepath.Join(relSrc, relToSrcRoot)
+					matched, err = filepath.Match(skipPath.Val, path)
+					if err != nil {
+						return common.CopyHint{}, pos.Errorf("error matching path (%q) with skip pattern (%q): %w", path, skipPath.Val, err)
+					}
+				}
+
+				if matched {
+					return common.CopyHint{Skip: true}, nil
+				}
+			}
+
+			abs := filepath.Join(absSrc, relToSrcRoot)
+			relToFromDir, err := filepath.Rel(fromDir, abs)
+			if err != nil {
+				return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, absSrc, err)
+			}
+			matched, err := checkIgnore(sp.ignorePatterns, relToFromDir)
+			if err != nil {
+				return common.CopyHint{},
+					fmt.Errorf("failed to match path(%q) with ignore patterns: %w", relToFromDir, err)
+			}
+			if matched {
+				logger.DebugContext(ctx, "path ignored", "path", relToFromDir)
+				return common.CopyHint{
+					Skip: true,
+				}, nil
+			}
+			if !de.IsDir() && fromVal == "destination" {
+				sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
+			}
+
+			return common.CopyHint{
+				// Allow later includes to replace earlier includes in the
+				// scratch directory. This doesn't affect whether files in
+				// the final *destination* directory will be overwritten;
+				// that comes later.
+				Overwrite: true,
+			}, nil
+		},
+	}
+	if err := common.CopyRecursive(ctx, pos, params); err != nil {
+		return pos.Errorf("copying failed: %w", err)
+	}
+	return nil
+}
+
+func isGlob(matchedPaths []model.String, originalPath, matchedPath string) bool {
+	// originalPath pattern matched more than one path, pattern is a glob
+	if len(matchedPaths) != 1 {
+		return true
+	}
+	// originalPath pattern changed (expanded to matchedPath), pattern is a glob
+	if originalPath != matchedPath {
+		return true
+	}
+	return false
+}
+
+func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
 	// By default, we copy from the template directory. We also support
 	// grabbing files from the destination directory, so we can modify files
 	// that already exist in the destination.
@@ -59,9 +134,26 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	if err != nil {
 		return err
 	}
-	skip := make(map[string]struct{}, len(inc.Skip))
-	for _, s := range skipPaths {
-		skip[s.Val] = struct{}{}
+	if fromDir == sp.templateDir {
+		// If we're copying the template root directory, automatically skip
+		// 1. spec.yaml file, because it's very unlikely that the user actually
+		// wants the spec file in the template output.
+		// 2. testdata/golden directory, this is reserved for golden test usage.
+		skipPaths = append(skipPaths,
+			model.String{
+				Val: "spec.yaml",
+			},
+			model.String{
+				Val: filepath.Join("testdata", "golden"),
+			},
+		)
+	}
+
+	// During validation in spec.go, we've already enforced that either:
+	// len(asPaths) is either == 0 or == len(incPaths).
+	asPaths, err := processPaths(inc.As, sp.scope)
+	if err != nil {
+		return err
 	}
 
 	incPaths, err := processPaths(inc.Paths, sp.scope)
@@ -69,83 +161,35 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		return err
 	}
 
-	asPaths, err := processPaths(inc.As, sp.scope)
-	if err != nil {
-		return err
-	}
-
 	for i, p := range incPaths {
-		// During validation in spec.go, we've already enforced that either:
-		// len(asPaths) is either == 0 or == len(incPaths).
-		as := p.Val
-		if len(asPaths) > 0 {
-			as = asPaths[i].Val
+		matchedPaths, err := processGlobs(ctx, []model.String{p}, fromDir, sp.features.SkipGlobs)
+		if err != nil {
+			return err
 		}
 
-		absSrc := filepath.Join(fromDir, p.Val)
-		absDst := filepath.Join(sp.scratchDir, as)
-
-		skipNow := maps.Clone(skip)
-		if absSrc == sp.templateDir {
-			// If we're copying the template root directory, automatically skip
-			// 1. spec.yaml file, because it's very unlikely that the user actually
-			// wants the spec file in the template output.
-			// 2. testdata/golden directory, this is reserved for golden test usage.
-			skipNow["spec.yaml"] = struct{}{}
-			skipNow[filepath.Join("testdata", "golden")] = struct{}{}
-		}
-
-		if _, err := sp.RP.FS.Stat(absSrc); err != nil {
-			if common.IsStatNotExistErr(err) {
-				return p.Pos.Errorf("include path doesn't exist: %q", p.Val)
+		for _, absSrc := range matchedPaths {
+			relSrc, err := filepath.Rel(fromDir, absSrc.Val)
+			if err != nil {
+				return fmt.Errorf("internal error making relative path: %w", err)
 			}
-			return fmt.Errorf("Stat(): %w", err)
-		}
 
-		params := &common.CopyParams{
-			DryRun:  false,
-			DstRoot: absDst,
-			FS:      sp.RP.FS,
-			SrcRoot: absSrc,
-			Visitor: func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
-				if _, ok := skipNow[relToAbsSrc]; ok {
-					return common.CopyHint{
-						Skip: true,
-					}, nil
+			// if no As val was provided, use the original file or directory name.
+			relDst := relSrc
+			// As val provided, check if pattern has file globbing
+			if len(asPaths) > 0 {
+				if isGlob(matchedPaths, filepath.Join(fromDir, p.Val), absSrc.Val) {
+					// path is a glob, keep original filename and put inside directory named as the provided As val.
+					relDst = filepath.Join(asPaths[i].Val, relSrc)
+				} else {
+					// otherwise use provided As val as new filename.
+					relDst = asPaths[i].Val
 				}
+			}
+			absDst := filepath.Join(sp.scratchDir, relDst)
 
-				abs := filepath.Join(absSrc, relToAbsSrc)
-				relToFromDir, err := filepath.Rel(fromDir, abs)
-				if err != nil {
-					return common.CopyHint{}, fmt.Errorf("filepath.Rel(%s,%s)=%w", fromDir, abs, err)
-				}
-				matched, err := checkIgnore(sp.ignorePatterns, relToFromDir)
-				if err != nil {
-					return common.CopyHint{},
-						fmt.Errorf("failed to match path(%q) with ignore patterns: %w", relToFromDir, err)
-				}
-				if matched {
-					logger.DebugContext(ctx, "path ignored", "path", relToFromDir)
-					return common.CopyHint{
-						Skip: true,
-					}, nil
-				}
-
-				if !de.IsDir() && inc.From.Val == "destination" {
-					sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
-				}
-
-				return common.CopyHint{
-					// Allow later includes to replace earlier includes in the
-					// scratch directory. This doesn't affect whether files in
-					// the final *destination* directory will be overwritten;
-					// that comes later.
-					Overwrite: true,
-				}, nil
-			},
-		}
-		if err := common.CopyRecursive(ctx, p.Pos, params); err != nil {
-			return p.Pos.Errorf("copying failed: %w", err)
+			if err := copyToDst(ctx, sp, skipPaths, absSrc.Pos, absDst, absSrc.Val, relSrc, inc.From.Val, fromDir); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

@@ -162,6 +162,8 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 	}
 
 	sp := &stepParams{
+		features: spec.Features,
+		// TODO alphabetize and lower case
 		RP:             p,
 		ignorePatterns: spec.Ignore,
 		debugDiffsDir:  debugStepDiffsDir,
@@ -230,6 +232,9 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 // are needed to do their job.
 type stepParams struct {
 	RP *Params
+
+	// The feature flags controlling how to interpret the spec file.
+	features *spec.Features
 
 	// Files and directories included in spec that match ignorePatterns will be
 	// ignored while being copied to destination directory.

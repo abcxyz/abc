@@ -713,6 +713,65 @@ steps:
 			},
 		},
 		{
+			name: "simple_skip",
+			templateContents: map[string]string{
+				"file1.txt": "file1 contents",
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include with skip'
+    action: 'include'
+    params:
+      paths:
+      - paths: ['file1.txt']
+        skip: ['file1.txt']
+`,
+			},
+			wantDestContents: nil,
+		},
+		{
+			name: "glob_include",
+			templateContents: map[string]string{
+				"file1.txt":                  "file1 contents",
+				"file2.txt":                  "file2 contents",
+				"file3.txt":                  "file3 contents",
+				"something.md":               "md contents",
+				"something.json":             "json contents",
+				"python_files/skip_1.py":     "skip 1 contents",
+				"python_files/skip_2.py":     "skip 2 contents",
+				"python_files/include_me.py": "include_me contents",
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include glob'
+    action: 'include'
+    params:
+      paths:
+      - paths: ['*.txt']
+      - paths: ['*.md', '*.json']
+        as: ['dir1', 'dir2']
+      - paths: ['python_files']
+        skip: ['python_files/skip*']
+`,
+			},
+			existingDestContents: map[string]string{
+				"already_exists.pdf": "already existing file contents",
+			},
+			wantDestContents: map[string]string{
+				"already_exists.pdf":         "already existing file contents",
+				"file1.txt":                  "file1 contents",
+				"file2.txt":                  "file2 contents",
+				"file3.txt":                  "file3 contents",
+				"dir1/something.md":          "md contents",
+				"dir2/something.json":        "json contents",
+				"python_files/include_me.py": "include_me contents",
+			},
+		},
+		{
 			name: "for_each",
 			templateContents: map[string]string{
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
@@ -1272,7 +1331,12 @@ Enter value, or leave empty to accept default: `,
 					Prompt:             true,
 					Prompter:           cmd,
 					SkipPromptTTYCheck: true,
-					Spec:               &spec.Spec{Inputs: tc.inputs},
+					Spec: &spec.Spec{
+						Inputs: tc.inputs,
+						Features: &spec.Features{
+							SkipGlobs: false,
+						},
+					},
 				}
 				var err error
 				got, err = input.Resolve(ctx, params)
