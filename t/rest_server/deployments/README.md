@@ -9,5 +9,6 @@ template.
     -input="ar_location=[ar_location]" \
     -input="cr_service=[cr_service]" \
     -input="region=[region]" \
+    -input="environment=[environment]" \
     -input="project_id=[project_id]" \
     github.com/abcxyz/abc/t/rest_server/deployments@latest
