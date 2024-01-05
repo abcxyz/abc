@@ -36,6 +36,8 @@ inputs:
     desc: 'Cloud Run Service (ex: hello-jupiter-api)'
   - name: 'region'
     desc: 'Cloud Run Region (ex: us-west1)'
+  - name: 'environment'
+    desc: 'Name of environment to set up config and deployment workflow for (e.g. integration)'
   - name: 'project_id'
     desc: 'GCP Project ID'
     rules:
@@ -64,5 +66,7 @@ steps:
           with: 'CR_SERVICE={{.cr_service}}'
         - to_replace: 'REGION=[region]'
           with: 'REGION={{.region}}'
+        - to_replace: '[environment]'
+          with: '{{.environment}}'
         - to_replace: 'PROJECT_ID=[project_id]'
           with: 'PROJECT_ID={{.project_id}}'
