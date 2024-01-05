@@ -859,31 +859,37 @@ Params:
 
 ### Ignore (Optional)
 
+This `ignore` feature is similiar to `skip` in `include` action, the difference
+here is that ignore is global and it applies to every `include` action.
+
 We use [filepath Match](https://pkg.go.dev/path/filepath#Match) to match the
 file and directory paths that should be ignored if included/copied to
-destination directory. This `ignore` feature is similiar to `skip` in `include`
-action, the difference here is that ignore is global and it applies to every
-`include` action.
+destination directory. In addition, we also match file and directory names using
+the same accepted patterns.
 
 This section is optional, if not provided, a default ignore list is used:
-`.DS_Store`, `.bin`, and `.ssh`. To set your custom ignore list, please check
-accepted patterns [here](https://pkg.go.dev/path/filepath#Match).
+`.DS_Store`, `.bin`, and `.ssh`, meaning all file and directory matching these
+names will be ignored. To set your custom ignore list, please check accepted
+patterns [here](https://pkg.go.dev/path/filepath#Match).
 
 Example:
 
 ```yaml
 ignore:
   - '*/*.txt'
+  - '*.cfg'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       # ignore txt files in `src_dir` but not its sub-directories.
+      # ignore all cfg files in `src_dir` recursively.
       paths: ['src_dir']
   - desc: 'Include some files and directories from destination'
     action: 'include'
     params:
       # ignore txt files in `dest_dir` but not its sub-directories.
+      # ignore all cfg files in `src_dir` recursively.
       paths: ['dest_dir']
       from: 'destination'
 ```

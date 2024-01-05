@@ -161,7 +161,15 @@ func checkIgnore(patterns []model.String, path string) (bool, error) {
 		patterns = defaultIgnorePatterns
 	}
 	for _, p := range patterns {
-		matched, err := filepath.Match(filepath.FromSlash(p.Val), path)
+		var matched bool
+		var err error
+		// Match file name if the pattern value is file name instead of path.
+		// Otherwise match the entire path.
+		if filepath.Base(p.Val) == p.Val {
+			matched, err = filepath.Match(p.Val, filepath.Base(path))
+		} else {
+			matched, err = filepath.Match(filepath.FromSlash(p.Val), path)
+		}
 		if err != nil {
 			return false,
 				p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)

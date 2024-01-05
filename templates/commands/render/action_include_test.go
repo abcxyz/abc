@@ -443,7 +443,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"folder1"}),
+						Paths: modelStrings([]string{"."}),
 					},
 					{
 						Paths: modelStrings([]string{"."}),
@@ -451,22 +451,25 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			ignorePatterns: modelStrings([]string{"folder1/folder2", "file2.txt"}),
+			ignorePatterns: modelStrings([]string{"folder1/folder2", "file1.txt", "*.cfg"}),
 			templateContents: map[string]common.ModeAndContents{
+				"cfg1.cfg":                  {Mode: 0o600, Contents: "cfg 1 contents"},
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
+				"folder1/cfg2.cfg":          {Mode: 0o600, Contents: "cfg 2 contents"},
 				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
+				"folder1/folder3/cfg3.cfg":  {Mode: 0o600, Contents: "cfg 3 contents"},
 			},
 			destDirContents: map[string]common.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+				"cfg1.cfg":  {Mode: 0o600, Contents: "cfg1 contents"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
-				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
-				"file1.txt":                 {Mode: 0o600, Contents: "file1 contents"},
+				"file2.txt":                 {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantIncludedFromDest: []string{"file1.txt"},
+			wantIncludedFromDest: []string{"file2.txt"},
 		},
 		{
 			name: "skip_paths_with_default_ignore",
@@ -482,12 +485,14 @@ func TestActionInclude(t *testing.T) {
 				},
 			},
 			templateContents: map[string]common.ModeAndContents{
-				"folder1/file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
-				".bin/file2.txt":    {Mode: 0o600, Contents: "file 2 contents"},
+				"folder1/file1.txt":      {Mode: 0o600, Contents: "file 1 contents"},
+				".bin/file2.txt":         {Mode: 0o600, Contents: "file 2 contents"},
+				"folder1/.bin/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 			destDirContents: map[string]common.ModeAndContents{
-				"file1.txt":      {Mode: 0o600, Contents: "file1 contents"},
-				".bin/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
+				"file1.txt":              {Mode: 0o600, Contents: "file1 contents"},
+				".bin/file2.txt":         {Mode: 0o600, Contents: "file2 contents"},
+				"folder1/.bin/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 			},
 			wantScratchContents: map[string]common.ModeAndContents{
 				"folder1/file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
