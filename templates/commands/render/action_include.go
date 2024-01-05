@@ -200,9 +200,6 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	return nil
 }
 
-// TODO(#158): add support for ignoring file name. For example, "/foo" ignores
-// a single file named foo in the root, but "foo" ignores all files named foo
-// anywhere.
 // checkIgnore checks the given path against the given patterns, if given
 // patterns is not provided, a default list of patterns is used.
 func checkIgnore(patterns []model.String, path string) (bool, error) {
@@ -210,7 +207,18 @@ func checkIgnore(patterns []model.String, path string) (bool, error) {
 		patterns = defaultIgnorePatterns
 	}
 	for _, p := range patterns {
-		matched, err := filepath.Match(filepath.FromSlash(p.Val), path)
+		var matched bool
+		var err error
+		if filepath.Base(p.Val) == p.Val {
+			// Match file name if the pattern value is file name instead of path.
+			matched, err = filepath.Match(p.Val, filepath.Base(path))
+		} else if p.Val[0] == '/' {
+			// Match pattern with a leading slash as it is from the same root as path.
+			matched, err = filepath.Match(filepath.FromSlash(p.Val[1:]), path)
+		} else {
+			// Math pattern using relative path.
+			matched, err = filepath.Match(filepath.FromSlash(p.Val), path)
+		}
 		if err != nil {
 			return false,
 				p.Pos.Errorf("failed to match path (%q) with pattern (%q): %w", path, p.Val, err)
