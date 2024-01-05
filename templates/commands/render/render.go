@@ -354,7 +354,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 			m := fmt.Sprintf("action %s at line %d", step.Action.Val, step.Pos.Line)
 			argsList := [][]string{
 				{"git", "--git-dir", sp.debugDir, "add", "-A"},
-				{"git", "--git-dir", sp.debugDir, "commit", "-a", "-m", m, "--allow-empty"},
+				{"git", "--git-dir", sp.debugDir, "commit", "-a", "-m", m, "--allow-empty", "--no-gpg-sign"},
 			}
 			if err := runCmds(ctx, argsList); err != nil {
 				return err
