@@ -446,7 +446,7 @@ func TestCopyRecursive(t *testing.T) {
 				DryRun:         tc.dryRun,
 				Hasher:         tc.hasher,
 				OutHashes:      hashes,
-				RFS:            fs,
+				FS:             fs,
 				Visitor:        tc.visitor,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

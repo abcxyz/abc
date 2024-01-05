@@ -167,9 +167,11 @@ func TestActionGoTemplate(t *testing.T) {
 
 			ctx := context.Background()
 			sp := &stepParams{
-				fs:         &common.RealFS{},
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
+				RP: &Params{
+					FS: &common.RealFS{},
+				},
 			}
 			err := actionGoTemplate(ctx, tc.gt, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

@@ -35,18 +35,20 @@ func TestActionPrint(t *testing.T) {
 		name    string
 		in      string
 		inputs  map[string]string
-		flags   RenderFlags
+		params  *Params
 		want    string
 		wantErr string
 	}{
 		{
-			name: "simple_success",
-			in:   "hello 🐕",
-			want: "hello 🐕\n",
+			name:   "simple_success",
+			in:     "hello 🐕",
+			params: &Params{},
+			want:   "hello 🐕\n",
 		},
 		{
-			name: "simple_templating",
-			in:   "hello {{.name}}",
+			name:   "simple_templating",
+			in:     "hello {{.name}}",
+			params: &Params{},
 			inputs: map[string]string{
 				"name": "🐕",
 			},
@@ -55,18 +57,16 @@ func TestActionPrint(t *testing.T) {
 		{
 			name:    "template_missing_input",
 			in:      "hello {{.name}}",
+			params:  &Params{},
 			inputs:  map[string]string{},
 			wantErr: `template referenced a nonexistent input variable name "name"`,
 		},
 		{
 			name: "flags_in_message",
 			in:   "{{._flag_dest}} {{._flag_source}}",
-			flags: RenderFlags{
-				Source:         "mysource",
-				Dest:           "mydest",
-				GitProtocol:    "mygitprotocol",
-				ForceOverwrite: true,
-				KeepTempDirs:   true,
+			params: &Params{
+				Source:  "mysource",
+				DestDir: "mydest",
 			},
 			want: "mydest mysource\n",
 		},
@@ -79,10 +79,13 @@ func TestActionPrint(t *testing.T) {
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			var outBuf bytes.Buffer
+
+			params := *tc.params
+			params.Stdout = &outBuf
+
 			sp := &stepParams{
-				stdout: &outBuf,
-				scope:  common.NewScope(tc.inputs),
-				flags:  &tc.flags,
+				RP:    &params,
+				scope: common.NewScope(tc.inputs),
 			}
 			pr := &spec.Print{
 				Message: model.String{

@@ -52,7 +52,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	// that already exist in the destination.
 	fromDir := sp.templateDir
 	if inc.From.Val == "destination" {
-		fromDir = sp.flags.Dest
+		fromDir = sp.RP.DestDir
 	}
 
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
@@ -95,7 +95,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			skipNow[filepath.Join("testdata", "golden")] = struct{}{}
 		}
 
-		if _, err := sp.fs.Stat(absSrc); err != nil {
+		if _, err := sp.RP.FS.Stat(absSrc); err != nil {
 			if common.IsStatNotExistErr(err) {
 				return p.Pos.Errorf("include path doesn't exist: %q", p.Val)
 			}
@@ -105,7 +105,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		params := &common.CopyParams{
 			DryRun:  false,
 			DstRoot: absDst,
-			RFS:     sp.fs,
+			FS:      sp.RP.FS,
 			SrcRoot: absSrc,
 			Visitor: func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
 				if _, ok := skipNow[relToAbsSrc]; ok {

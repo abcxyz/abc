@@ -179,12 +179,14 @@ func TestActionAppend(t *testing.T) {
 				},
 			}
 			sp := &stepParams{
-				fs: &common.ErrorFS{
-					FS:          &common.RealFS{},
-					ReadFileErr: tc.readFileErr,
-				},
-				scratchDir: scratchDir,
 				scope:      common.NewScope(tc.inputs),
+				scratchDir: scratchDir,
+				RP: &Params{
+					FS: &common.ErrorFS{
+						FS:          &common.RealFS{},
+						ReadFileErr: tc.readFileErr,
+					},
+				},
 			}
 			err := actionAppend(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

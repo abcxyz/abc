@@ -90,7 +90,7 @@ func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		SrcRoot: l.srcPath,
 		DstRoot: destDir,
-		RFS:     &common.RealFS{},
+		FS:      &common.RealFS{},
 	}); err != nil {
 		return nil, err //nolint:wrapcheck
 	}

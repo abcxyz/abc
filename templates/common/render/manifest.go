@@ -72,8 +72,8 @@ type writeManifestParams struct {
 	// in the destination directory.
 	outputHashes map[string][]byte
 
-	// The raw template source location, not necessarily canonical.
-	src string
+	// // The raw template source location, not necessarily canonical.
+	// src string
 
 	// The temp directory where the template was downloaded.
 	templateDir string
@@ -109,7 +109,7 @@ func writeManifest(ctx context.Context, p *writeManifestParams) (rErr error) {
 		return fmt.Errorf("dry run failed, the output manifest file %q already exists", filename)
 	}
 
-	// Why O_EXCL? Because we don't want to overwrite an existing file. TODO test
+	// Why O_EXCL? Because we don't want to overwrite an existing file.
 	fh, err := p.fs.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, common.OwnerRWPerms)
 	if err != nil {
 		return fmt.Errorf("OpenFile(%q): %w", filename, err)

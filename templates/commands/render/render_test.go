@@ -31,6 +31,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
+	"github.com/abcxyz/abc/templates/common/paths"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/cli"
@@ -923,7 +924,7 @@ steps:
 			}
 
 			var gotTemplateContents map[string]string
-			templateDir, ok := testMustGlob(t, filepath.Join(tempDir, templateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
+			templateDir, ok := testMustGlob(t, filepath.Join(tempDir, paths.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
 			if ok {
 				gotTemplateContents = common.LoadDirWithoutMode(t, templateDir)
 			}
@@ -932,11 +933,11 @@ steps:
 			}
 
 			var gotScratchContents map[string]string
-			scratchDir, ok := testMustGlob(t, filepath.Join(tempDir, scratchDirNamePart+"*"))
+			scratchDir, ok := testMustGlob(t, filepath.Join(tempDir, paths.ScratchDirNamePart+"*"))
 			if ok {
 				gotScratchContents = common.LoadDirWithoutMode(t, scratchDir)
 			}
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, common.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
@@ -955,12 +956,13 @@ steps:
 			}
 
 			var gotDebugContents map[string]string
-			debugDir, ok := testMustGlob(t, filepath.Join(tempDir, debugDirNamePart+"*"))
+			debugDir, ok := testMustGlob(t, filepath.Join(tempDir, paths.DebugStepDiffsDirNamePart+"*"))
 			if ok {
 				gotDebugContents = common.LoadDirWithoutMode(t, debugDir)
 			}
-			if tc.flagDebugStepDiffs != (len(gotDebugContents) > 0) {
-				t.Errorf("debug directory should be empty: %t, but not as expected", !tc.flagDebugStepDiffs)
+			gotDebugDirExists := len(gotDebugContents) > 0
+			if tc.flagDebugStepDiffs != gotDebugDirExists {
+				t.Errorf("debug directory existence is %t but should be %t", gotDebugDirExists, tc.flagDebugStepDiffs)
 			}
 		})
 	}
@@ -1273,9 +1275,7 @@ Enter value, or leave empty to accept default: `,
 					Spec:               &spec.Spec{Inputs: tc.inputs},
 				}
 				var err error
-				fmt.Printf("to input.Resolve\n")
 				got, err = input.Resolve(ctx, params)
-				fmt.Printf("from input.Resolve\n")
 				errCh <- err
 			}()
 
@@ -1359,27 +1359,5 @@ func writeWithTimeout(tb testing.TB, w io.Writer, msg string) {
 		}
 	case <-time.After(time.Second):
 		tb.Fatalf("timed out waiting to write %q", msg)
-	}
-}
-
-func modelStrings(ss []string) []model.String {
-	out := make([]model.String, len(ss))
-	for i, s := range ss {
-		out[i] = model.String{
-			Pos: &model.ConfigPos{}, // for the purposes of testing, "location unknown" is fine.
-			Val: s,
-		}
-	}
-	return out
-}
-
-// toPlatformPaths converts each element of each input slice from a/b/c style
-// forward slash paths to platform-specific file paths. The slices are modified
-// in place.
-func toPlatformPaths(slices ...[]string) {
-	for _, s := range slices {
-		for i, elem := range s {
-			s[i] = filepath.FromSlash(elem)
-		}
 	}
 }
