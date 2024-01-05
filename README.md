@@ -877,26 +877,24 @@ Example:
 
 ```yaml
 ignore:
+  # Ignore `.ssh` under root, root is the template dir or destination dir if the
+  # included paths are from destination.
   - '/.ssh'
+  # Ignore all txt files with name `tmp.txt` recursively (under root and its
+  # sub-directories).
   - 'tmp.txt'
+  # Ignore all txt files in the sub-directories with folder depth of 2.
   - '*/*.txt'
+  # Ignore all cfg files recursively.
   - '*.cfg'
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      # ignore `.ssh` in the template dir.
-      # ignore all files with name `tmp.txt` recursively.
-      # ignore txt files in `src_dir` but not its sub-directories.
-      # ignore all cfg files in `src_dir` recursively.
       paths: ['.ssh', 'src_dir']
   - desc: 'Include some files and directories from destination'
     action: 'include'
     params:
-      # ignore `.ssh` in the destination dir if there is one.
-      # ignore all files with name `tmp.txt` recursively.
-      # ignore txt files in `dest_dir` but not its sub-directories.
-      # ignore all cfg files in `src_dir` recursively.
       paths: ['dest_dir']
       from: 'destination'
 ```
