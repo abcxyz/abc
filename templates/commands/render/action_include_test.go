@@ -454,6 +454,7 @@ func TestActionInclude(t *testing.T) {
 			ignorePatterns: modelStrings([]string{"folder1/folder2", "file1.txt", "*.cfg"}),
 			templateContents: map[string]common.ModeAndContents{
 				"cfg1.cfg":                  {Mode: 0o600, Contents: "cfg 1 contents"},
+				"file1.txt":                 {Mode: 0o600, Contents: "root file 1 contents"},
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
 				"folder1/cfg2.cfg":          {Mode: 0o600, Contents: "cfg 2 contents"},
 				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
