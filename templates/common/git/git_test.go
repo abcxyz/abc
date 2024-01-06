@@ -31,8 +31,8 @@ import (
 //
 // For example:
 //
-//	$ SKIP_TEST_NON_HERMETIC=true go test ./...
-const envName = "SKIP_TEST_NON_HERMETIC"
+//	$ SKIP_ABC_TEST_NON_HERMETIC=true go test ./...
+const envName = "SKIP_ABC_TEST_NON_HERMETIC"
 
 func skipWhenEnvEnabled(t *testing.T) {
 	t.Helper()
