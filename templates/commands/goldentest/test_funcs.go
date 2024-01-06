@@ -19,10 +19,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/abcxyz/abc/templates/commands/render"
+	"github.com/benbjohnson/clock"
+
+	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/model/decode"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 )
@@ -153,20 +157,27 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		return fmt.Errorf("failed to clear test directory: %w", err)
 	}
 
-	args := []string{"--dest", testDir, "--force-overwrite"}
+	inputs := make(map[string]string, len(tc.TestConfig.Inputs))
 	for _, input := range tc.TestConfig.Inputs {
-		args = append(args, "--input")
-		args = append(args, fmt.Sprintf("%s=%s", input.Name.Val, input.Value.Val))
+		inputs[input.Name.Val] = input.Value.Val
 	}
-	args = append(args, templateDir)
 
-	r := &render.Command{}
-	// Mute stdout from command runs.
-	r.Pipe()
-
-	// TODO(chloechien): Use rendering library instead of calling cmd directly.
-	if err := r.Run(ctx, args); err != nil {
-		return fmt.Errorf("error running `templates render` command: %w", err)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("os.Getwd(): %w", err)
 	}
+	if err := render.Render(ctx, &render.Params{
+		Clock:   clock.New(),
+		Cwd:     cwd,
+		DestDir: testDir,
+		FS:      &common.RealFS{},
+		Inputs:  inputs,
+		Backups: false,
+		Source:  templateDir,
+		Stdout:  io.Discard, // Mute stdout from command runs.
+	}); err != nil {
+		return err //nolint:wrapcheck
+	}
+
 	return nil
 }

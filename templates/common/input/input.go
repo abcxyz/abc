@@ -58,15 +58,13 @@ type ResolveParams struct {
 	// can be set to true to bypass the check and allow stdin to be something
 	// other than a TTY, like an os.Pipe.
 	SkipPromptTTYCheck bool
-
-	// The input stream used for reading prompted values from the user.
-	Stdin io.Reader
 }
 
 // Prompter prints messages to the user asking them to enter a value. This is
 // implemented by *cli.Command.
 type Prompter interface {
 	Prompt(ctx context.Context, msg string, args ...any) (string, error)
+	Stdin() io.Reader
 }
 
 // Resolve combines flags, user prompts, and defaults to get the full set
@@ -88,7 +86,7 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 
 	if rp.Prompt {
 		if !rp.SkipPromptTTYCheck {
-			isATTY := (rp.Stdin == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
+			isATTY := (rp.Prompter.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
 			if !isATTY {
 				return nil, fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
 			}

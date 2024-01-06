@@ -233,10 +233,11 @@ func TestActionForEach(t *testing.T) {
 
 			buf := &bytes.Buffer{}
 			sp := &stepParams{
-				scope:    common.NewScope(tc.inputs),
-				stdout:   buf,
-				flags:    &RenderFlags{},
 				features: &spec.Features{},
+				scope:    common.NewScope(tc.inputs),
+				rp: &Params{
+					Stdout: buf,
+				},
 			}
 			err := actionForEach(ctx, tc.in, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

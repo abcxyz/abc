@@ -182,7 +182,7 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		DstRoot: destDir,
 		SrcRoot: subdirToCopy,
-		RFS:     &common.RealFS{},
+		FS:      &common.RealFS{},
 		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
 			return common.CopyHint{
 				Skip: relPath == ".git",

@@ -106,8 +106,8 @@ type CopyParams struct {
 	// srcRoot is the file or directory from which to copy. May be absolute or
 	// relative.
 	SrcRoot string
-	// RFS is the filesytem to use.
-	RFS FS
+	// FS is the filesytem to use.
+	FS FS
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
@@ -153,7 +153,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 
 	backupDir := "" // will be set once the backup dir is actually created
 
-	return fs.WalkDir(p.RFS, p.SrcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
+	return fs.WalkDir(p.FS, p.SrcRoot, func(path string, de fs.DirEntry, err error) error { //nolint:wrapcheck
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
@@ -192,10 +192,10 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		// parent directory of $path, so we must create the target directory if
 		// it doesn't exist.
 		inDir := filepath.Dir(dst)
-		if err := mkdirAllChecked(pos, p.RFS, inDir, p.DryRun); err != nil {
+		if err := mkdirAllChecked(pos, p.FS, inDir, p.DryRun); err != nil {
 			return err
 		}
-		dstInfo, err := p.RFS.Stat(dst)
+		dstInfo, err := p.FS.Stat(dst)
 		if err == nil {
 			if dstInfo.IsDir() {
 				return pos.Errorf("cannot overwrite a directory with a file of the same name, %q", relToSrc)
@@ -205,18 +205,18 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			}
 			if ch.BackupIfExists && !p.DryRun {
 				if backupDir == "" {
-					if backupDir, err = p.BackupDirMaker(p.RFS); err != nil {
+					if backupDir, err = p.BackupDirMaker(p.FS); err != nil {
 						return fmt.Errorf("failed making backup directory: %w", err)
 					}
 				}
-				if err := backUp(ctx, p.RFS, backupDir, p.DstRoot, relToSrc); err != nil {
+				if err := backUp(ctx, p.FS, backupDir, p.DstRoot, relToSrc); err != nil {
 					return err
 				}
 			}
 		} else if !IsStatNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
-		srcInfo, err := p.RFS.Stat(path)
+		srcInfo, err := p.FS.Stat(path)
 		if err != nil {
 			return fmt.Errorf("Stat(): %w", err)
 		}
@@ -228,7 +228,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		if p.Hasher != nil {
 			hash = p.Hasher()
 		}
-		if err := copyFile(ctx, pos, p.RFS, path, dst, mode, p.DryRun, hash); err != nil {
+		if err := copyFile(ctx, pos, p.FS, path, dst, mode, p.DryRun, hash); err != nil {
 			return err
 		}
 		if hash != nil && p.OutHashes != nil {

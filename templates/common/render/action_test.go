@@ -219,13 +219,15 @@ func TestWalkAndModify(t *testing.T) {
 			common.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
 
 			sp := &stepParams{
-				fs: &common.ErrorFS{
-					FS:           &common.RealFS{},
-					ReadFileErr:  tc.readFileErr,
-					WriteFileErr: tc.writeFileErr,
-				},
-				scratchDir: scratchDir,
 				scope:      common.NewScope(nil),
+				scratchDir: scratchDir,
+				rp: &Params{
+					FS: &common.ErrorFS{
+						FS:           &common.RealFS{},
+						ReadFileErr:  tc.readFileErr,
+						WriteFileErr: tc.writeFileErr,
+					},
+				},
 				features: &spec.Features{
 					SkipGlobs: false,
 				},
@@ -708,4 +710,15 @@ func TestProcessGlobs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func modelStrings(ss []string) []model.String {
+	out := make([]model.String, len(ss))
+	for i, s := range ss {
+		out[i] = model.String{
+			Pos: &model.ConfigPos{}, // for the purposes of testing, "location unknown" is fine.
+			Val: s,
+		}
+	}
+	return out
 }

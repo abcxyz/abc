@@ -61,3 +61,20 @@ func Run(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
 	}
 	return stdout, stderr, err
 }
+
+// RunMany calls [Run] for each command in args. If any command returns error,
+// then no further commands will be run, and that error will be returned. For
+// any commands that were actually executed (not aborted by a previous error),
+// their stdout and stderr will be returned. It's guaranteed that
+// len(stdouts)==len(stderrs).
+func RunMany(ctx context.Context, args ...[]string) (stdouts, stderrs []string, _ error) {
+	for _, cmd := range args {
+		stdout, stderr, err := Run(ctx, cmd...)
+		stdouts = append(stdouts, stdout)
+		stderrs = append(stderrs, stderr)
+		if err != nil {
+			return stdouts, stderrs, err
+		}
+	}
+	return stdouts, stderrs, nil
+}

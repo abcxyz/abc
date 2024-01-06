@@ -237,13 +237,15 @@ func TestActionStringReplace(t *testing.T) {
 				Replacements: tc.replacements,
 			}
 			sp := &stepParams{
-				fs: &common.ErrorFS{
-					FS:          &common.RealFS{},
-					ReadFileErr: tc.readFileErr,
-				},
-				scratchDir: scratchDir,
 				scope:      common.NewScope(tc.inputs),
 				features:   &spec.Features{},
+				scratchDir: scratchDir,
+				rp: &Params{
+					FS: &common.ErrorFS{
+						FS:          &common.RealFS{},
+						ReadFileErr: tc.readFileErr,
+					},
+				},
 			}
 			err := actionStringReplace(context.Background(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

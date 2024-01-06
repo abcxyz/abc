@@ -27,7 +27,6 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-// TODO move to common.
 func TestPromptForInputs_CanceledContext(t *testing.T) {
 	t.Parallel()
 

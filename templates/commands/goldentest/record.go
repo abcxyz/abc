@@ -105,7 +105,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		params := &common.CopyParams{
 			DstRoot: testDir,
 			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir),
-			RFS:     &common.RealFS{},
+			FS:      &common.RealFS{},
 			Visitor: visitor,
 		}
 		merr = errors.Join(merr, common.CopyRecursive(ctx, nil, params))
