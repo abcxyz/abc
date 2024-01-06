@@ -37,7 +37,7 @@ const envName = "SKIP_TEST_NON_HERMETIC"
 func skipWhenEnvEnabled(t *testing.T) {
 	t.Helper()
 	if os.Getenv(envName) == "true" {
-		t.Skipf("skipping test because env var %q is set", envName)
+		t.Skipf("skipping test because env var %q is set to true", envName)
 	}
 }
 
