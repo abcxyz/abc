@@ -26,7 +26,24 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
+// To skip the tests in this file, you'll need to set this environment
+// variable.
+//
+// For example:
+//
+//	$ SKIP_TEST_NON_HERMETIC=true go test ./...
+const envName = "SKIP_TEST_NON_HERMETIC"
+
+func skipWhenEnvEnabled(t *testing.T) {
+	t.Helper()
+	if os.Getenv(envName) == "true" {
+		t.Skipf("skipping test because env var %q is set", envName)
+	}
+}
+
 func TestTags(t *testing.T) {
+	skipWhenEnvEnabled(t)
+
 	t.Parallel()
 
 	ctx := context.Background()
