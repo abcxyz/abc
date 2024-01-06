@@ -72,9 +72,6 @@ type writeManifestParams struct {
 	// in the destination directory.
 	outputHashes map[string][]byte
 
-	// // The raw template source location, not necessarily canonical.
-	// src string
-
 	// The temp directory where the template was downloaded.
 	templateDir string
 }
