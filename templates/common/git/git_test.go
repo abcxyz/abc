@@ -58,6 +58,8 @@ func TestTags(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
+	skipWhenEnvEnabled(t)
+
 	t.Parallel()
 
 	cases := []struct {
