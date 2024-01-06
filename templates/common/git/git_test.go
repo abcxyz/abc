@@ -26,24 +26,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-// To actually run the tests in this file, you'll need to set this environment
-// variable.
-//
-// For example:
-//
-//	$ ABC_TEST_NON_HERMETIC=true go test ./...
-const envName = "ABC_TEST_NON_HERMETIC"
-
-func skipUnlessEnvEnabled(t *testing.T) {
-	t.Helper()
-	if os.Getenv(envName) == "" {
-		t.Skipf("skipping test because env var %q isn't set", envName)
-	}
-}
-
 func TestTags(t *testing.T) {
-	skipUnlessEnvEnabled(t)
-
 	t.Parallel()
 
 	ctx := context.Background()
@@ -58,8 +41,6 @@ func TestTags(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	skipUnlessEnvEnabled(t)
-
 	t.Parallel()
 
 	cases := []struct {

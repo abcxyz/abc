@@ -45,7 +45,6 @@ jobs:
     with:
       go_version: '1.21'
       runs-on: '"${{ matrix.runner }}"'
-      env: '{"ABC_TEST_NON_HERMETIC": "true"}'
 
   yaml_lint:
     uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
