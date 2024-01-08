@@ -140,6 +140,25 @@ func TestParseSourceWithCwd(t *testing.T) {
 			wantErr: "isn't a valid template name",
 		},
 		{
+			name: "spec_yaml_shouldnt_be_in_path",
+			tempDirContents: map[string]string{
+				"my/dir/spec.yaml": "my spec file contents",
+			},
+			source:  "./my/dir/spec.yaml",
+			wantErr: "the template source argument should be the name of a directory",
+		},
+		{
+			name: "filename_rejected_as_location",
+			tempDirContents: map[string]string{
+				"my/dir/spec.yaml":      "my spec file contents",
+				"my/dir/other_file.txt": "my spec file contents",
+			},
+			source: "./my/dir/other_file.txt",
+			// A warning will be logged too, that's not shown here.
+			wantErr: "isn't a valid template name or doesn't exist",
+		},
+
+		{
 			name:   "dot_slash_forces_treating_as_local_dir",
 			source: filepath.FromSlash("./github.com/myorg/myrepo/mysubdir@latest"),
 			tempDirContents: map[string]string{

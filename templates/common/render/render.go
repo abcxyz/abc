@@ -117,6 +117,7 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		outErr = errors.Join(outErr, tempRemover.maybeRemoveAll(ctx))
 	}()
 
+	logger.DebugContext(ctx, "render phase: downloading/copying template")
 	dlMeta, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
 		CWD:         p.Cwd,
 		FS:          p.FS,
@@ -130,11 +131,14 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err //nolint:wrapcheck
 	}
 
+	logger.DebugContext(ctx, "render phase: loading spec file")
+
 	spec, err := specutil.Load(ctx, p.FS, templateDir, p.Source)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
 
+	logger.DebugContext(ctx, "render phase: resolving inputs")
 	resolvedInputs, err := input.Resolve(ctx, &input.ResolveParams{
 		FS:                  p.FS,
 		InputFiles:          p.InputFiles,
@@ -152,9 +156,8 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
+	logger.DebugContext(ctx, "created temporary scratch directory")
 	tempRemover.append(scratchDir)
-
-	logger.DebugContext(ctx, "created temporary scratch directory", "path", scratchDir)
 
 	debugStepDiffsDir, err := initDebugStepDiffsDir(ctx, p, scratchDir)
 	if err != nil {
@@ -171,10 +174,13 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		templateDir:    templateDir,
 	}
 
+	logger.DebugContext(ctx, "render phase: executing template steps")
+
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
 		return err
 	}
 
+	logger.DebugContext(ctx, "render phase: committing rendered output")
 	if err := commitTentatively(ctx, p, &commitParams{
 		dlMeta:           dlMeta,
 		includedFromDest: sliceToSet(sp.includedFromDest),
@@ -194,6 +200,8 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 				debugStepDiffsDir, debugStepDiffsDir),
 		)
 	}
+
+	logger.DebugContext(ctx, "render operation complete", "source", p.Source)
 
 	return nil
 }
@@ -277,6 +285,9 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 	logger := logging.FromContext(ctx).With("logger", "executeSteps")
 
 	for i, step := range steps {
+		logger.DebugContext(ctx, "Starting step %d action %s",
+			"step", i,
+			"action", step.Action.Val)
 		if err := executeOneStep(ctx, i, step, sp); err != nil {
 			return err
 		}
