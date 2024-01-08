@@ -26,23 +26,23 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-// To skip the tests in this file, you'll need to set this environment
+// To actually run the tests in this file, you'll need to set this environment
 // variable.
 //
 // For example:
 //
-//	$ SKIP_ABC_TEST_NON_HERMETIC=true go test ./...
-const envName = "SKIP_ABC_TEST_NON_HERMETIC"
+//	$ ABC_TEST_NON_HERMETIC=true go test ./...
+const envName = "ABC_TEST_NON_HERMETIC"
 
-func skipWhenEnvEnabled(t *testing.T) {
+func skipUnlessEnvEnabled(t *testing.T) {
 	t.Helper()
-	if os.Getenv(envName) == "true" {
-		t.Skipf("skipping test because env var %q is set to true", envName)
+	if os.Getenv(envName) == "" {
+		t.Skipf("skipping test because env var %q isn't set", envName)
 	}
 }
 
 func TestTags(t *testing.T) {
-	skipWhenEnvEnabled(t)
+	skipUnlessEnvEnabled(t)
 
 	t.Parallel()
 
@@ -58,7 +58,7 @@ func TestTags(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	skipWhenEnvEnabled(t)
+	skipUnlessEnvEnabled(t)
 
 	t.Parallel()
 
