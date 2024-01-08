@@ -166,7 +166,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 	if err != nil {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
-	if err := render.Render(ctx, &render.Params{
+	return render.Render(ctx, &render.Params{ //nolint:wrapcheck
 		Clock:   clock.New(),
 		Cwd:     cwd,
 		DestDir: testDir,
@@ -175,9 +175,5 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		Backups: false,
 		Source:  templateDir,
 		Stdout:  io.Discard, // Mute stdout from command runs.
-	}); err != nil {
-		return err //nolint:wrapcheck
-	}
-
-	return nil
+	})
 }

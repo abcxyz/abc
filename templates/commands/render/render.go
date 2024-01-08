@@ -20,7 +20,6 @@ package render
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -36,8 +35,6 @@ import (
 type Command struct {
 	cli.BaseCommand
 	flags RenderFlags
-
-	testFS common.FS
 }
 
 // Desc implements cli.Command.
@@ -78,12 +75,8 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	fSys := c.testFS // allow filesystem interaction to be faked for testing
-	if fSys == nil {
-		fSys = &common.RealFS{}
-	}
-
-	if err := destOK(fSys, c.flags.Dest); err != nil {
+	fs := &common.RealFS{}
+	if err := destOK(fs, c.flags.Dest); err != nil {
 		return err
 	}
 
@@ -102,39 +95,16 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		"backups",
 		fmt.Sprint(time.Now().Unix()))
 
-	return c.realRun(ctx, &runParams{
-		backupDir: backupDir,
-		clock:     clock.New(),
-		cwd:       wd,
-		fs:        fSys,
-		stdout:    c.Stdout(),
-	})
-}
-
-type runParams struct {
-	backupDir string
-	clock     clock.Clock
-	cwd       string
-	fs        common.FS
-	stdout    io.Writer
-
-	// The directory under which temp directories will be created. The default
-	// if this is empty is to use the OS temp directory.
-	tempDirBase string
-}
-
-// realRun is for testability; it's Run() with fakeable interfaces.
-func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
-	if err := render.Render(ctx, &render.Params{
-		BackupDir:            rp.backupDir,
+	return render.Render(ctx, &render.Params{ //nolint:wrapcheck
+		BackupDir:            backupDir,
 		Backups:              true,
-		Clock:                rp.clock,
-		Cwd:                  rp.cwd,
+		Clock:                clock.New(),
+		Cwd:                  wd,
 		DebugScratchContents: c.flags.DebugScratchContents,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
 		DestDir:              c.flags.Dest,
 		ForceOverwrite:       c.flags.ForceOverwrite,
-		FS:                   rp.fs,
+		FS:                   fs,
 		GitProtocol:          c.flags.GitProtocol,
 		KeepTempDirs:         c.flags.KeepTempDirs,
 		Inputs:               c.flags.Inputs,
@@ -144,13 +114,8 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (outErr error) {
 		Prompter:             c,
 		SkipInputValidation:  c.flags.SkipInputValidation,
 		Source:               c.flags.Source,
-		Stdout:               rp.stdout,
-		TempDirBase:          rp.tempDirBase,
-	}); err != nil {
-		return err //nolint:wrapcheck
-	}
-
-	return nil
+		Stdout:               c.Stdout(),
+	})
 }
 
 // destOK makes sure that the output directory looks sane.
