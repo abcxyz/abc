@@ -37,6 +37,9 @@ var (
 	KindTemplate   = "Template"   // the value of the "kind" field in a spec.yaml file
 	KindGoldenTest = "GoldenTest" // ... a test.yaml file
 	KindManifest   = "Manifest"   // ... a manifest.yaml file
+
+	// LatestAPIVersion is the most up-to-date API version.
+	LatestAPIVersion = apiVersions[len(apiVersions)-1].apiVersion
 )
 
 type apiVersionDef struct {
