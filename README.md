@@ -126,7 +126,7 @@ Examples:
 
 The `<test_name>` parameter gives the test names to record or verify, if not
 specified, all tests will be run against. This flag may be repeated,
-like -`-test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
+like `--test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
 The `<location>` parameter gives the location of the template.
 
@@ -919,8 +919,9 @@ steps:
 
 ### Post-rendering validation test (golden test)
 
-We use post-rendering validaton test to record and verify template rendering
-results.
+We use post-rendering validation tests to record (capture the anticipated
+outcome akin to expected output in unit test) and subsequently verify template
+rendering results.
 
 To add golden tests to your template, all you need is to create a
 `testdata/golden` folder under your template, and a
@@ -940,7 +941,8 @@ inputs:
     value: 'b'
 ```
 
-Then you can use `abc templates golden-test` to record or verify the tests.
+Then you can use `abc templates golden-test` to record (capture the anticipated
+outcome akin to expected output in unit test)or verify the tests.
 
 # Using CEL
 

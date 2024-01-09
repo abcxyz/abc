@@ -37,17 +37,19 @@ type RecordCommand struct {
 }
 
 func (c *RecordCommand) Desc() string {
-	return "record the template rendering result to golden tests"
+	return "record the template rendering result to golden tests " +
+		"(capture the anticipated outcome akin to expected output in unit test)"
 }
 
 func (c *RecordCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] <location>
 
-The {{ COMMAND }} records the template golden tests.
+The {{ COMMAND }} records the template golden tests (capture the
+anticipated outcome akin to expected output in unit test).
 
 The "<test_name>" is the name of the test. If no <test_name> is specified,
-all tests will be recoreded.
+all tests will be recorded.
 
 The "<location>" is the location of the template.
 
