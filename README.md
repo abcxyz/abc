@@ -940,7 +940,7 @@ inputs:
     value: 'b'
 ```
 
-Then you can use `abc templates golden-test` to record（capture the anticipated outcome akin to expected output in unit test）or verify the tests.
+Then you can use `abc templates golden-test` to record(capture the anticipated outcome akin to expected output in unit test)or verify the tests.
 
 # Using CEL
 
