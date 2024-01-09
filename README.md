@@ -919,8 +919,9 @@ steps:
 
 ### Post-rendering validation test (golden test)
 
-We leverage post-rendering validation tests to record(capture the anticipated outcome akin to expected output in unit test) and subsequently verify template rendering
-results.
+We use post-rendering validation tests to record (capture the anticipated
+outcome akin to expected output in unit test) and subsequently verify template
+rendering results.
 
 To add golden tests to your template, all you need is to create a
 `testdata/golden` folder under your template, and a
@@ -940,7 +941,7 @@ inputs:
     value: 'b'
 ```
 
-Then you can use `abc templates golden-test` to record(capture the anticipated outcome akin to expected output in unit test)or verify the tests.
+Then you can use `abc templates golden-test` to record (capture the anticipated outcome akin to expected output in unit test)or verify the tests.
 
 # Using CEL
 
