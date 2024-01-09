@@ -117,7 +117,7 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		outErr = errors.Join(outErr, tempRemover.maybeRemoveAll(ctx))
 	}()
 
-	logger.DebugContext(ctx, "render phase: downloading/copying template")
+	logger.DebugContext(ctx, "downloading/copying template")
 	dlMeta, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
 		CWD:         p.Cwd,
 		FS:          p.FS,
@@ -131,14 +131,14 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	logger.DebugContext(ctx, "render phase: loading spec file")
+	logger.DebugContext(ctx, "loading spec file")
 
 	spec, err := specutil.Load(ctx, p.FS, templateDir, p.Source)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
 
-	logger.DebugContext(ctx, "render phase: resolving inputs")
+	logger.DebugContext(ctx, "resolving inputs")
 	resolvedInputs, err := input.Resolve(ctx, &input.ResolveParams{
 		FS:                  p.FS,
 		InputFiles:          p.InputFiles,
@@ -156,7 +156,8 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
-	logger.DebugContext(ctx, "created temporary scratch directory")
+	logger.DebugContext(ctx, "created temporary scratch directory",
+		"path", scratchDir)
 	tempRemover.append(scratchDir)
 
 	debugStepDiffsDir, err := initDebugStepDiffsDir(ctx, p, scratchDir)
@@ -174,13 +175,13 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		templateDir:    templateDir,
 	}
 
-	logger.DebugContext(ctx, "render phase: executing template steps")
+	logger.DebugContext(ctx, "executing template steps")
 
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
 		return err
 	}
 
-	logger.DebugContext(ctx, "render phase: committing rendered output")
+	logger.DebugContext(ctx, "committing rendered output")
 	if err := commitTentatively(ctx, p, &commitParams{
 		dlMeta:           dlMeta,
 		includedFromDest: sliceToSet(sp.includedFromDest),

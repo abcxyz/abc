@@ -157,7 +157,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
-		logger.DebugContext(ctx, "CopyRecursive handling directory entry",
+		logger.DebugContext(ctx, "handling directory entry",
 			"path", path)
 		relToSrc, err := filepath.Rel(p.SrcRoot, path)
 		if err != nil {
