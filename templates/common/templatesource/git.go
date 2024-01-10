@@ -200,7 +200,7 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 	//   - The user may have specified a branch name, but we don't allow branches
 	//     to be used as template versions in manifests because they change
 	//     frequently.
-	manifestVersion, ok, err := git.VersionForManifest(ctx, tmpDir, g.allowDirty)
+	canonicalVersion, ok, err := gitCanonicalVersion(ctx, tmpDir, g.allowDirty)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -208,11 +208,17 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 		return nil, fmt.Errorf("internal error: no version number was available after git clone")
 	}
 
+	vars, err := gitTemplateVars(ctx, tmpDir)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
 	dlMeta := &DownloadMetadata{
 		IsCanonical:     true, // Remote git sources are always canonical.
 		CanonicalSource: g.canonicalSource,
 		HasVersion:      true, // Remote git sources always have a tag or SHA.
-		Version:         manifestVersion,
+		Version:         canonicalVersion,
+		Vars:            *vars,
 	}
 
 	return dlMeta, nil
@@ -220,6 +226,35 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 
 func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string, bool, error) {
 	return g.canonicalSource, true, nil
+}
+
+func gitTemplateVars(ctx context.Context, srcDir string /*, canonicalVersion string*/) (*DownloaderVars, error) {
+	_, ok, err := git.Workspace(ctx, srcDir)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		// The source path isn't a git repo, so leave all the _git_tag, etc
+		// fields as empty string.
+		return &DownloaderVars{}, nil
+	}
+
+	sha, err := git.CurrentSHA(ctx, srcDir)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	// The boolean return is ignored because we want empty string in the case where there's no tag.
+	tag, _, err := bestHeadTag(ctx, srcDir)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	return &DownloaderVars{
+		GitSHA:      sha,
+		GitShortSHA: sha[:7],
+		GitTag:      tag,
+	}, nil
 }
 
 // resolveVersion returns the latest release tag if version is "latest", and otherwise
@@ -297,5 +332,5 @@ type tagser interface {
 type realTagser struct{}
 
 func (r *realTagser) Tags(ctx context.Context, remote string) ([]string, error) {
-	return git.Tags(ctx, remote) //nolint:wrapcheck
+	return git.RemoteTags(ctx, remote) //nolint:wrapcheck
 }

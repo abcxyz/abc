@@ -284,3 +284,123 @@ func TestParseSourceWithCwd(t *testing.T) {
 		})
 	}
 }
+
+func TestGitCanonicalVersion(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		dir        string
+		allowDirty bool
+		files      map[string]string
+		want       string
+		wantErr    string
+	}{
+		{
+			name:  "simple_success_no_tag",
+			dir:   ".",
+			files: common.WithGitRepoAt("", nil),
+			want:  common.MinimalGitHeadSHA,
+		},
+		{
+			name: "simple_success_with_tag",
+			dir:  ".",
+			files: common.WithGitRepoAt("",
+				map[string]string{
+					".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+				}),
+			want: "v1.2.3",
+		},
+		{
+			name: "semver_ordering",
+			dir:  ".",
+			files: common.WithGitRepoAt("",
+				map[string]string{
+					".git/refs/tags/v4.5.6":  common.MinimalGitHeadSHA,
+					".git/refs/tags/v11.0.0": common.MinimalGitHeadSHA,
+					".git/refs/tags/v7.8.9":  common.MinimalGitHeadSHA,
+				}),
+			want: "v11.0.0",
+		},
+		{
+			name: "only_v_prefix_counts_as_semver",
+			dir:  ".",
+			files: common.WithGitRepoAt("",
+				map[string]string{
+					".git/refs/tags/v4.5.6": common.MinimalGitHeadSHA,
+					".git/refs/tags/11.0.0": common.MinimalGitHeadSHA,
+					".git/refs/tags/v7.8.9": common.MinimalGitHeadSHA,
+				}),
+			want: "v7.8.9",
+		},
+		{
+			name: "semver_before_non_semver",
+			dir:  ".",
+			files: common.WithGitRepoAt("",
+				map[string]string{
+					".git/refs/tags/v4.5.6":    common.MinimalGitHeadSHA,
+					".git/refs/tags/zzzzzz":    common.MinimalGitHeadSHA,
+					".git/refs/tags/999999":    common.MinimalGitHeadSHA,
+					".git/refs/tags/v5xxx.0.0": common.MinimalGitHeadSHA,
+				}),
+			want: "v4.5.6",
+		},
+		{
+			name: "non_semver_in_reverse_order",
+			dir:  ".",
+			files: common.WithGitRepoAt("",
+				map[string]string{
+					".git/refs/tags/a": common.MinimalGitHeadSHA,
+					".git/refs/tags/z": common.MinimalGitHeadSHA,
+					".git/refs/tags/j": common.MinimalGitHeadSHA,
+				}),
+			want: "z",
+		},
+		{
+			name:  "not_a_git_repo",
+			dir:   ".",
+			files: nil,
+		},
+		{
+			name:       "dirty_workspace_not_allowed",
+			dir:        ".",
+			allowDirty: false,
+			files: common.WithGitRepoAt("", map[string]string{
+				"my_file.txt": "my contents",
+			}),
+		},
+		{
+			name:       "dirty_workspace_allowed",
+			dir:        ".",
+			allowDirty: true,
+			files: common.WithGitRepoAt("", map[string]string{
+				"my_file.txt": "my contents",
+			}),
+			want: common.MinimalGitHeadSHA,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmp := t.TempDir()
+			common.WriteAllDefaultMode(t, tmp, tc.files)
+			ctx := context.Background()
+			got, gotOK, err := gitCanonicalVersion(ctx, filepath.Join(tmp, tc.dir), tc.allowDirty)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+
+			if (got == "") == gotOK {
+				t.Errorf("ok should be true if and only if the version is non-empty")
+			}
+
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

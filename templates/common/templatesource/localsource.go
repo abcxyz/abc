@@ -95,12 +95,19 @@ func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 		return nil, err //nolint:wrapcheck
 	}
 
+	gitVars, err := gitTemplateVars(ctx, l.srcPath)
+	if err != nil {
+		return nil, err
+	}
+
 	dlMeta := &DownloadMetadata{
 		IsCanonical:     canonicalSource != "",
 		CanonicalSource: canonicalSource,
 
 		HasVersion: version != "",
 		Version:    version,
+
+		Vars: *gitVars,
 	}
 	return dlMeta, nil
 }
@@ -145,7 +152,7 @@ func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (
 		return "", "", fmt.Errorf("filepath.Rel(%q,%q): %w", dest, src, err)
 	}
 
-	version, _, err = git.VersionForManifest(ctx, sourceGitWorkspace, allowDirty)
+	version, _, err = gitCanonicalVersion(ctx, sourceGitWorkspace, allowDirty)
 	if err != nil {
 		return "", "", err //nolint:wrapcheck
 	}

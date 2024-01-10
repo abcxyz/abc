@@ -22,13 +22,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/pkg/logging"
 )
 
 var sha = regexp.MustCompile("^[0-9a-f]{40}$")
@@ -99,12 +97,12 @@ func findSymlinks(dir string) ([]string, error) {
 	return out, nil
 }
 
-// Tags looks up the tags in the given remote repo. The length of each returned
-// string is guaranteed to be >0.
+// RemoteTags looks up the tags in the given remote repo. If there are not tags,
+// that's not an error, and the returned slice is len 0.
 //
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
-func Tags(ctx context.Context, remote string) ([]string, error) {
+func RemoteTags(ctx context.Context, remote string) ([]string, error) {
 	stdout, _, err := common.Run(ctx, "git", "ls-remote", "--tags", remote)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -165,9 +163,9 @@ func Workspace(ctx context.Context, path string) (string, bool, error) {
 	}
 }
 
-// isClean returns false if the given git workspace has any uncommitted changes,
+// IsClean returns false if the given git workspace has any uncommitted changes,
 // and otherwise returns true. Returns error if dir is not in a git workspace.
-func isClean(ctx context.Context, dir string) (bool, error) {
+func IsClean(ctx context.Context, dir string) (bool, error) {
 	// Design decision: use a single "git status" command rather than combine
 	// "git diff-index" and "git ls-files" to detect all the possibilities of
 	// staged/unstaged/untracked changes. "git status" is arguably less stable
@@ -182,120 +180,44 @@ func isClean(ctx context.Context, dir string) (bool, error) {
 	return strings.TrimSpace(stdout) == "", nil
 }
 
-// bestTag returns the tag that points to the current HEAD SHA. If there are
-// multiple such tags or branches, the precedence order is:
-//   - tags in decreasing order of semver (recent releases first)
-//   - other non-semver tags in reverse alphabetical order
-//
-// Returns false if there are no tags pointing to HEAD.
-func bestTag(ctx context.Context, dir string) (string, bool, error) {
+// HeadTags looks at a local git workspace and returns the names of all tags
+// that point to the current HEAD commit. If there are no such tags, returns
+// empty slice, this is not an error.
+func HeadTags(ctx context.Context, dir string) ([]string, error) {
 	args := []string{"git", "-C", dir, "for-each-ref", "--points-at", "HEAD", "refs/tags/*"}
 	stdout, _, err := common.Run(ctx, args...)
 	if err != nil {
-		return "", false, err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 	trimmed := strings.TrimSpace(stdout)
 	if len(trimmed) == 0 {
-		return "", false, nil
+		return nil, nil
 	}
-	var nonSemverTags []string
-	var semverTags []*semver.Version
+	var out []string
 	for _, line := range strings.Split(trimmed, "\n") {
 		tokens := strings.Split(line, "\t")
 		const tagPrefix = "refs/tags/"
 		if len(tokens) != 2 || !strings.HasPrefix(tokens[1], tagPrefix) {
-			return "", false, fmt.Errorf("internal error: unexpected output format from \"git for-each-ref\": %s", trimmed)
+			return nil, fmt.Errorf("internal error: unexpected output format from \"git for-each-ref\": %s", trimmed)
 		}
 
 		tag := tokens[1]
 		tag = tag[len(tagPrefix):]
 		tag = strings.TrimSpace(tag)
-
-		semverTag, err := ParseSemverTag(tag)
-		if err != nil {
-			nonSemverTags = append(nonSemverTags, tag)
-		} else {
-			semverTags = append(semverTags, semverTag)
-		}
+		out = append(out, tag)
 	}
-
-	if len(semverTags) > 0 {
-		sort.Sort(sort.Reverse(semver.Collection(semverTags)))
-		// The "v" was trimmed off during parsing. Add it back.
-		return "v" + semverTags[0].Original(), true, nil
-	}
-
-	if len(nonSemverTags) > 0 {
-		sort.Sort(sort.Reverse(sort.StringSlice(nonSemverTags)))
-		return nonSemverTags[0], true, nil
-	}
-
-	return "", false, nil
+	return out, nil
 }
 
-// currentSHA returns the full SHA of the current HEAD in the given git
+// CurrentSHA returns the full SHA of the current HEAD in the given git
 // workspace.
-func currentSHA(ctx context.Context, dir string) (string, error) {
+func CurrentSHA(ctx context.Context, dir string) (string, error) {
 	args := []string{"git", "-C", dir, "rev-parse", "HEAD"}
 	stdout, _, err := common.Run(ctx, args...)
 	if err != nil {
 		return "", err //nolint:wrapcheck
 	}
 	return strings.TrimSpace(stdout), nil
-}
-
-// VersionForManifest examines a template directory and tries to determine the
-// "best" template version by looking at .git. The "best" template version is
-// defined as (in decreasing order of precedence):
-//
-//   - tags in decreasing order of semver (recent releases first)
-//   - other non-semver tags in reverse alphabetical order
-//   - the HEAD SHA
-//
-// It returns false if:
-//
-//   - the given directory is not in a git workspace
-//   - the git workspace is not clean (uncommitted changes) (for testing, you
-//     can provide allowDirty=true to override this)
-//
-// It returns error only if something weird happened when running git commands.
-// The returned string is always empty if the boolean is false.
-func VersionForManifest(ctx context.Context, dir string, allowDirty bool) (string, bool, error) {
-	logger := logging.FromContext(ctx).With("logger", "VersionForManifest")
-
-	_, ok, err := Workspace(ctx, dir)
-	if err != nil {
-		return "", false, err
-	}
-	if !ok {
-		return "", false, nil
-	}
-
-	if !allowDirty {
-		ok, err = isClean(ctx, dir)
-		if err != nil {
-			return "", false, err
-		}
-		if !ok {
-			logger.WarnContext(ctx, "omitting template git version from manifest because the workspace is dirty",
-				"source_git_workspace", dir)
-			return "", false, nil
-		}
-	}
-
-	tag, ok, err := bestTag(ctx, dir)
-	if err != nil {
-		return "", false, err
-	}
-	if ok {
-		return tag, true, nil
-	}
-
-	sha, err := currentSHA(ctx, dir)
-	if err != nil {
-		return "", false, err
-	}
-	return sha, true, nil
 }
 
 // ParseSemverTag parses a string of the form "v1.2.3" into a semver tag. In abc

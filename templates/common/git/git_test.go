@@ -24,6 +24,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
 )
 
 // To actually run the tests in this file, you'll need to set this environment
@@ -47,7 +48,7 @@ func TestTags(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	tags, err := Tags(ctx, "https://github.com/abcxyz/abc.git")
+	tags, err := RemoteTags(ctx, "https://github.com/abcxyz/abc.git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -235,22 +236,21 @@ func TestFindSymlinks(t *testing.T) {
 	}
 }
 
-func TestVersionForManifest(t *testing.T) {
+func TestHeadTags(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name       string
-		dir        string
-		allowDirty bool
-		files      map[string]string
-		want       string
-		wantErr    string
+		name    string
+		dir     string
+		files   map[string]string
+		want    []string
+		wantErr string
 	}{
 		{
 			name:  "simple_success_no_tag",
 			dir:   ".",
 			files: common.WithGitRepoAt("", nil),
-			want:  common.MinimalGitHeadSHA,
+			want:  nil,
 		},
 		{
 			name: "simple_success_with_tag",
@@ -259,97 +259,60 @@ func TestVersionForManifest(t *testing.T) {
 				map[string]string{
 					".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
 				}),
-			want: "v1.2.3",
+			want: []string{"v1.2.3"},
 		},
 		{
-			name: "semver_ordering",
+			name: "multiple_tags",
 			dir:  ".",
 			files: common.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/v4.5.6":  common.MinimalGitHeadSHA,
-					".git/refs/tags/v11.0.0": common.MinimalGitHeadSHA,
-					".git/refs/tags/v7.8.9":  common.MinimalGitHeadSHA,
+					".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+					".git/refs/tags/v2.3.4": common.MinimalGitHeadSHA,
 				}),
-			want: "v11.0.0",
+			want: []string{
+				"v1.2.3",
+				"v2.3.4",
+			},
 		},
 		{
-			name: "only_v_prefix_counts_as_semver",
-			dir:  ".",
-			files: common.WithGitRepoAt("",
+			name: "git_repo_in_subdir",
+			dir:  "mysubdir",
+			files: common.WithGitRepoAt("mysubdir/",
 				map[string]string{
-					".git/refs/tags/v4.5.6": common.MinimalGitHeadSHA,
-					".git/refs/tags/11.0.0": common.MinimalGitHeadSHA,
-					".git/refs/tags/v7.8.9": common.MinimalGitHeadSHA,
+					"mysubdir/.git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
 				}),
-			want: "v7.8.9",
+			want: []string{"v1.2.3"},
 		},
 		{
-			name: "semver_before_non_semver",
+			name: "not_git_repo_error",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
-				map[string]string{
-					".git/refs/tags/v4.5.6":    common.MinimalGitHeadSHA,
-					".git/refs/tags/zzzzzz":    common.MinimalGitHeadSHA,
-					".git/refs/tags/999999":    common.MinimalGitHeadSHA,
-					".git/refs/tags/v5xxx.0.0": common.MinimalGitHeadSHA,
-				}),
-			want: "v4.5.6",
-		},
-		{
-			name: "non_semver_in_reverse_order",
-			dir:  ".",
-			files: common.WithGitRepoAt("",
-				map[string]string{
-					".git/refs/tags/a": common.MinimalGitHeadSHA,
-					".git/refs/tags/z": common.MinimalGitHeadSHA,
-					".git/refs/tags/j": common.MinimalGitHeadSHA,
-				}),
-			want: "z",
-		},
-		{
-			name:  "not_a_git_repo",
-			dir:   ".",
-			files: nil,
-		},
-		{
-			name:       "dirty_workspace_not_allowed",
-			dir:        ".",
-			allowDirty: false,
-			files: common.WithGitRepoAt("", map[string]string{
-				"my_file.txt": "my contents",
-			}),
-		},
-		{
-			name:       "dirty_workspace_allowed",
-			dir:        ".",
-			allowDirty: true,
-			files: common.WithGitRepoAt("", map[string]string{
-				"my_file.txt": "my contents",
-			}),
-			want: common.MinimalGitHeadSHA,
+			// files:   map[string]string{},
+			wantErr: "not a git repository",
 		},
 	}
-
 	for _, tc := range cases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			tmp := t.TempDir()
-			common.WriteAllDefaultMode(t, tmp, tc.files)
 			ctx := context.Background()
-			got, gotOK, err := VersionForManifest(ctx, filepath.Join(tmp, tc.dir), tc.allowDirty)
+
+			tmpDir := t.TempDir()
+			common.WriteAllDefaultMode(t, tmpDir, tc.files)
+
+			dir := filepath.Join(tmpDir, tc.dir)
+
+			got, err := HeadTags(ctx, dir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Error(diff)
+				t.Errorf(diff)
 			}
+			// if tc.wantErr != "" {
+			// 	return
+			// }
 
-			if (got == "") == gotOK {
-				t.Errorf("ok should be true if and only if the version is non-empty")
-			}
-
-			if got != tc.want {
-				t.Errorf("got %q, want %q", got, tc.want)
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("output tags weren't as expected (-got,+want): %s", diff)
 			}
 		})
 	}

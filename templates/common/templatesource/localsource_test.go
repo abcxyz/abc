@@ -78,6 +78,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 				CanonicalSource: "../src",
 				HasVersion:      true,
 				Version:         common.MinimalGitHeadSHA,
+				Vars: DownloaderVars{
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitTag:      "",
+				},
 			},
 		},
 		{
@@ -103,6 +108,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 				CanonicalSource: "../src",
 				HasVersion:      true,
 				Version:         "mytag",
+				Vars: DownloaderVars{
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitTag:      "mytag",
+				},
 			},
 		},
 		{
@@ -116,7 +126,10 @@ func TestLocalDownloader_Download(t *testing.T) {
 
 					// This assumes that we're using the git repo created by
 					// common.WithGitRepoAt(). We're putting the repo in a
-					// detached HEAD state so we're not on a branch.
+					// detached HEAD state so we're not on a branch. The reason
+					// this creates a detached head state is because .git/HEAD
+					// would normally contain a branch name, but when you put a
+					// SHA in there in means you have a detached head.
 					".git/HEAD": common.MinimalGitHeadSHA,
 				}),
 			wantNewFiles: map[string]string{
@@ -128,6 +141,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 				CanonicalSource: "../src",
 				HasVersion:      true,
 				Version:         common.MinimalGitHeadSHA,
+				Vars: DownloaderVars{
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitTag:      "",
+				},
 			},
 		},
 		{
@@ -146,6 +164,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
+				Vars: DownloaderVars{
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitTag:      "",
+				},
 			},
 		},
 		{
@@ -163,6 +186,11 @@ func TestLocalDownloader_Download(t *testing.T) {
 			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
+				Vars: DownloaderVars{
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitTag:      "",
+				},
 			},
 		},
 		{
