@@ -50,12 +50,20 @@ func (l *localSourceParser) sourceParse(ctx context.Context, cwd string, params 
 		absSource = filepath.Join(cwd, params.Source)
 	}
 
-	if _, err := os.Stat(absSource); err != nil {
+	fi, err := os.Stat(absSource)
+	if err != nil {
 		if common.IsStatNotExistErr(err) {
-			logger.DebugContext(ctx, "will not treat template location as a local path because the path does not exist", "src", absSource)
+			logger.DebugContext(ctx, "will not treat template location as a local path because the path does not exist",
+				"src", absSource)
 			return nil, false, nil
 		}
 		return nil, false, fmt.Errorf("Stat(): %w", err)
+	}
+
+	if !fi.IsDir() {
+		logger.WarnContext(ctx, "the template source won't be treated as a local path; that path exists as a regular file but a template location must be a directory",
+			"src", absSource)
+		return nil, false, nil
 	}
 
 	logger.InfoContext(ctx, "treating src as a local path", "src", absSource)
@@ -81,12 +89,6 @@ func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 	logger.DebugContext(ctx, "copying local template source",
 		"srcPath", l.srcPath,
 		"destDir", destDir)
-
-	canonicalSource, version, err := canonicalize(ctx, cwd, l.srcPath, destDir, l.allowDirty)
-	if err != nil {
-		return nil, err
-	}
-
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		SrcRoot: l.srcPath,
 		DstRoot: destDir,
@@ -96,6 +98,10 @@ func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 	}
 
 	gitVars, err := gitTemplateVars(ctx, l.srcPath)
+	if err != nil {
+		return nil, err
+	}
+	canonicalSource, version, err := canonicalize(ctx, cwd, l.srcPath, destDir, l.allowDirty)
 	if err != nil {
 		return nil, err
 	}

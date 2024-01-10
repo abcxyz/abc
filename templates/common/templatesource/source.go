@@ -20,9 +20,11 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/abcxyz/abc/templates/common/git"
+	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -110,6 +112,11 @@ type ParseSourceParams struct {
 // A list of sourceParsers is accepted as input for the purpose of testing,
 // rather than hardcoding the real list of sourceParsers.
 func parseSourceWithCwd(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, error) {
+	if strings.HasSuffix(params.Source, specutil.SpecFileName) {
+		return nil, fmt.Errorf("the template source argument should be the name of a directory *containing* %s; it should not be the full path to %s",
+			specutil.SpecFileName, specutil.SpecFileName)
+	}
+
 	for _, sp := range realSourceParsers {
 		downloader, ok, err := sp.sourceParse(ctx, cwd, params)
 		if err != nil {
