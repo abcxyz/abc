@@ -97,7 +97,7 @@ func findSymlinks(dir string) ([]string, error) {
 	return out, nil
 }
 
-// RemoteTags looks up the tags in the given remote repo. If there are not tags,
+// RemoteTags looks up the tags in the given remote repo. If there are no tags,
 // that's not an error, and the returned slice is len 0.
 //
 // "remote" may be any format accepted by git, such as

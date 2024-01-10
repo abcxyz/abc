@@ -228,7 +228,7 @@ func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string
 	return g.canonicalSource, true, nil
 }
 
-func gitTemplateVars(ctx context.Context, srcDir string /*, canonicalVersion string*/) (*DownloaderVars, error) {
+func gitTemplateVars(ctx context.Context, srcDir string) (*DownloaderVars, error) {
 	_, ok, err := git.Workspace(ctx, srcDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed determining git workspace for %q: %w", srcDir, err)

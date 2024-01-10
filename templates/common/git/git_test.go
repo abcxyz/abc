@@ -284,9 +284,8 @@ func TestHeadTags(t *testing.T) {
 			want: []string{"v1.2.3"},
 		},
 		{
-			name: "not_git_repo_error",
-			dir:  ".",
-			// files:   map[string]string{},
+			name:    "not_git_repo_error",
+			dir:     ".",
 			wantErr: "not a git repository",
 		},
 	}
@@ -307,9 +306,6 @@ func TestHeadTags(t *testing.T) {
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf(diff)
 			}
-			// if tc.wantErr != "" {
-			// 	return
-			// }
 
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output tags weren't as expected (-got,+want): %s", diff)
