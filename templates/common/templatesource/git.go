@@ -202,7 +202,7 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 	//     frequently.
 	canonicalVersion, ok, err := gitCanonicalVersion(ctx, tmpDir, g.allowDirty)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, err
 	}
 	if !ok {
 		return nil, fmt.Errorf("internal error: no version number was available after git clone")
@@ -210,7 +210,7 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 
 	vars, err := gitTemplateVars(ctx, tmpDir)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, err
 	}
 
 	dlMeta := &DownloadMetadata{
@@ -231,7 +231,7 @@ func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string
 func gitTemplateVars(ctx context.Context, srcDir string /*, canonicalVersion string*/) (*DownloaderVars, error) {
 	_, ok, err := git.Workspace(ctx, srcDir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed determining git workspace for %q: %w", srcDir, err)
 	}
 	if !ok {
 		// The source path isn't a git repo, so leave all the _git_tag, etc
@@ -247,7 +247,7 @@ func gitTemplateVars(ctx context.Context, srcDir string /*, canonicalVersion str
 	// The boolean return is ignored because we want empty string in the case where there's no tag.
 	tag, _, err := bestHeadTag(ctx, srcDir)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, err
 	}
 
 	return &DownloaderVars{

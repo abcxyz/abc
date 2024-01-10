@@ -193,7 +193,7 @@ func HeadTags(ctx context.Context, dir string) ([]string, error) {
 	if len(trimmed) == 0 {
 		return nil, nil
 	}
-	var out []string
+	var out []string //nolint:prealloc
 	for _, line := range strings.Split(trimmed, "\n") {
 		tokens := strings.Split(line, "\t")
 		const tagPrefix = "refs/tags/"

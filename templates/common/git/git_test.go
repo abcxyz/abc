@@ -20,11 +20,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/slices"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 )
 
 // To actually run the tests in this file, you'll need to set this environment
