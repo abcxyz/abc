@@ -157,6 +157,8 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
+		logger.DebugContext(ctx, "handling directory entry",
+			"path", path)
 		relToSrc, err := filepath.Rel(p.SrcRoot, path)
 		if err != nil {
 			return pos.Errorf("filepath.Rel(%s,%s): %w", p.SrcRoot, path, err)
@@ -192,13 +194,14 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		// parent directory of $path, so we must create the target directory if
 		// it doesn't exist.
 		inDir := filepath.Dir(dst)
+
 		if err := mkdirAllChecked(pos, p.FS, inDir, p.DryRun); err != nil {
 			return err
 		}
 		dstInfo, err := p.FS.Stat(dst)
 		if err == nil {
 			if dstInfo.IsDir() {
-				return pos.Errorf("cannot overwrite a directory with a file of the same name, %q", relToSrc)
+				return pos.Errorf("cannot overwrite a directory with a file of the same name; destination is %q, source is %q", dst, path)
 			}
 			if !ch.Overwrite {
 				return pos.Errorf("destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc)
