@@ -72,6 +72,16 @@ type DownloadMetadata struct {
 	// HasVersion is true if and only if Version is non-empty.
 	HasVersion bool
 	Version    string
+
+	// Values for template variables like _git_tag and _git_sha.
+	Vars DownloaderVars
+}
+
+// Values for template variables like _git_tag and _git_sha.
+type DownloaderVars struct {
+	GitTag      string
+	GitSHA      string
+	GitShortSHA string
 }
 
 // The parameters to Download, wrapped in a struct because there are so many.

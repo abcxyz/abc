@@ -62,6 +62,11 @@ func TestGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				HasVersion:      true,
 				Version:         "v1.2.3",
+				Vars: DownloaderVars{
+					GitTag:      "v1.2.3",
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+				},
 			},
 		},
 		{
@@ -94,6 +99,11 @@ func TestGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				HasVersion:      true,
 				Version:         "v1.2.3",
+				Vars: DownloaderVars{
+					GitTag:      "v1.2.3",
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+				},
 			},
 		},
 		{
@@ -123,6 +133,11 @@ func TestGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				HasVersion:      true,
 				Version:         "v1.2.3",
+				Vars: DownloaderVars{
+					GitTag:      "v1.2.3",
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+				},
 			},
 		},
 		{
@@ -152,6 +167,11 @@ func TestGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				HasVersion:      true,
 				Version:         "v1.2.3",
+				Vars: DownloaderVars{
+					GitTag:      "v1.2.3",
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+				},
 			},
 		},
 		{
@@ -217,6 +237,11 @@ func TestGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				HasVersion:      true,
 				Version:         common.MinimalGitHeadSHA,
+				Vars: DownloaderVars{
+					GitTag:      "",
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+				},
 			},
 		},
 		{
@@ -241,6 +266,11 @@ func TestGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				HasVersion:      true,
 				Version:         "v1.2.3",
+				Vars: DownloaderVars{
+					GitTag:      "v1.2.3",
+					GitSHA:      common.MinimalGitHeadSHA,
+					GitShortSHA: common.MinimalGitHeadShortSHA,
+				},
 			},
 		},
 	}

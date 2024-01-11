@@ -43,7 +43,8 @@ var (
 		".git/HEAD": "ref: refs/heads/main",
 	}
 	// This is the SHA of the only commit in the repo above.
-	MinimalGitHeadSHA = "5597fc600ead69ad92c81a22b58c9e551cd86b9a"
+	MinimalGitHeadSHA      = "5597fc600ead69ad92c81a22b58c9e551cd86b9a"
+	MinimalGitHeadShortSHA = MinimalGitHeadSHA[:7]
 )
 
 // CmpFileMode is a cmp option that handles the conflict between Unix and

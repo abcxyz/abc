@@ -57,7 +57,8 @@ func Run(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
 	err := cmd.Run()
 	stdout, stderr = stdoutBuf.String(), stderrBuf.String()
 	if err != nil {
-		err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w"\nstdout: %s\nstderr: %s`, args, err, ctx.Err(), cmd.Stdout, cmd.Stderr)
+		err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w"\nstdout: %s\nstderr: %s`,
+			args, err, ctx.Err(), cmd.Stdout, cmd.Stderr)
 	}
 	return stdout, stderr, err
 }
