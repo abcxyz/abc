@@ -123,7 +123,6 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		FS:          p.FS,
 		TempDirBase: p.TempDirBase,
 		Source:      p.Source,
-		Dest:        p.DestDir,
 		GitProtocol: p.GitProtocol,
 	})
 	tempRemover.append(templateDir) // templateDir might be set even if there's an error
