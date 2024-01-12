@@ -29,8 +29,6 @@ concurrency:
 jobs:
   go_lint:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main' # ratchet:exclude
-    with:
-      go_version: '1.21'
 
   go_test:
     uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main' # ratchet:exclude
@@ -43,7 +41,6 @@ jobs:
           - 'ubuntu-latest'
           - 'windows-latest'
     with:
-      go_version: '1.21'
       runs-on: '"${{ matrix.runner }}"'
       env: '{"ABC_TEST_NON_HERMETIC": true}'
 
@@ -65,7 +62,7 @@ jobs:
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
       - name: 'Setup Go'
-        uses: 'actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe' # ratchet:actions/setup-go@v4
+        uses: 'actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe' # ratchet:actions/setup-go@v5
         with:
           go-version: '1.21'
 
