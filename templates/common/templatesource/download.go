@@ -94,9 +94,6 @@ type DownloadParams struct {
 	// The template source location, e.g. github.com/abcxyz/abc/t/rest_server.
 	Source string
 
-	// The value of --dest.
-	Dest string
-
 	// The value of --git-protocol.
 	GitProtocol string
 

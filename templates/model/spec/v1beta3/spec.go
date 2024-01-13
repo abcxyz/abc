@@ -44,16 +44,6 @@ type Spec struct {
 	Features features.Features `yaml:"-"`
 }
 
-// // Features contains features to enable or disable based on spec version.
-// type Features struct {
-// 	// SkipGlobs determines whether to interpret paths as file globs.
-// 	SkipGlobs bool
-
-// 	// OmitGitVars determines whether to set the built-in_git_* vars (_git_sha, etc)
-// 	// in the spec.yaml. New in
-// 	OmitGitVars bool
-// }
-
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Spec) UnmarshalYAML(n *yaml.Node) error {
 	// The api_version field was mistakenly named apiVersion in the past, so accept both.
