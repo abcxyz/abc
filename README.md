@@ -125,8 +125,8 @@ Examples:
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`
 
 The `<test_name>` parameter gives the test names to record or verify, if not
-specified, all tests will be run against. This flag may be repeated,
-like `--test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
+specified, all tests will be run against. This flag may be repeated, like
+`--test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
 The `<location>` parameter gives the location of the template.
 
@@ -358,11 +358,12 @@ features are only available in more recent versions.
 
 The currently valid versions are:
 
-| api_version             | Supported in abc CLI versions | Notes                                                        |
-| ----------------------- | ----------------------------- | ------------------------------------------------------------ |
-| cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                              |
-| cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step in soec.yaml |
-| cli.abcxyz.dev/v1beta2  | 0.4.0 and up                  | Adds support for the top-level `ignore` field in spec.yaml   |
+| api_version             | Supported in abc CLI versions | Notes                                                                 |
+| ----------------------- | ----------------------------- | --------------------------------------------------------------------- |
+| cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                                       |
+| cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step in soec.yaml          |
+| cli.abcxyz.dev/v1beta2  | 0.4.0 and up                  | Adds: <br>- the top-level `ignore` field in spec.yaml<br>- Path globs |
+| cli.abcxyz.dev/v1beta3  | not released yet              | Adds: <br>- `_git_*` variables                                        |
 
 #### Template inputs
 
@@ -452,6 +453,66 @@ inputs:
         message: "the max can't be less than the min"
 ```
 
+#### Built-in template variables
+
+Besides the template inputs described above, there are built-in template
+variables that are automatically provided. These can be referenced in a
+go-template context as `{{._my_variable}}` and in a CEL context as
+`my_variable`. The built-in variables are:
+
+- `_git_sha`: If the template source is a git repo (local or remote), then this
+  will be set to the hex git SHA of the source. If the template is NOT being
+  rendered from git (for example, it's being rendered from a local directory
+  that's not in a git repo), then this variable will exist but its value will be
+  empty string.
+
+  Available in `api_version`s v1beta3 and later.
+
+  The motivating use case for this is to allow terraform module sources to be
+  pinned to the same SHA of the template that is being rendered.
+
+  Example:
+
+  ```
+  steps:
+    - desc: 'Replace git_sha_goes_here with actual git sha in terraform files'
+      action: 'string_replace'
+      params:
+        paths: ['*.tf']
+        replacements:
+          - to_replace: 'git_sha_goes_here'
+            with: '{{._git_sha}}'
+  ```
+
+- `_git_short_sha`: It's like `_git_sha` above, except it's only the first 7
+  characters rather than the full SHA.
+
+  Available in `api_version`s v1beta3 and later.
+
+- `_git_tag`: If...
+
+  1. the template source is a git repo (local or remote)
+  1. there is a tag corresponding to the template source SHA
+
+  ... then `_git_tag` will be set to the git tag name. Otherwise `_git_tag` will
+  be an empty string.
+
+  There's one rare edge case: if the template source SHA has _multiple_ tags
+  that point to it, we break the tie as follows. We attempt to parse the tags as
+  semantic version and take the latest one. If that doesn't work because the
+  tags are not semver, then we take the lexicographically largest tag name.
+
+  Available in `api_version`s v1beta3 and later.
+
+- `_flag_dest`: this variable is only in scope within the `params` field of a
+  `print` action. It contains the destination directory that the template is
+  being rendered to. It's intended to be used to show instructions to the user,
+  like `message: "cd into {{._flag_dest}} and run the foo command`.
+
+- `_flag_source`: this variable is only in scope within the `params` field of a
+  `print` action. It contains the source directory that the template is being
+  rendered from.
+
 #### Templating
 
 Most fields in the spec file can use template expressions that reference the
@@ -500,8 +561,8 @@ Params:
   `as` inputs will be treated as directories:
 
   ```yaml
-  - paths: ["*.txt", "*.md", "nonglob.json"]
-    as: ["dir1", "dir2", "newname.json"]
+  - paths: ['*.txt', '*.md', 'nonglob.json']
+    as: ['dir1', 'dir2', 'newname.json']
   ```
 
   ```
@@ -513,7 +574,6 @@ Params:
   /dir2/file4.md
   /newname.json
   ```
-
 
 - `skip`: omits some files or directories that might be present in the input
   paths. For each path in `paths`, if `$path/$skip` exists, it won't be included
