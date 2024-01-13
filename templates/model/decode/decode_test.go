@@ -334,7 +334,8 @@ steps:
 			want: &specv1beta3.Spec{
 				Desc: model.String{Val: "mydesc"},
 				Features: features.Features{
-					SkipGlobs: true,
+					SkipGlobs:   true,
+					SkipGitVars: true,
 				},
 				Steps: []*specv1beta3.Step{
 					{

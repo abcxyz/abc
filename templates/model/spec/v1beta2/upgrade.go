@@ -38,7 +38,7 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	out.Features = s.Features
 
 	// Features introduced in v1beta3:
-	s.Features.SkipGitVars = true
+	out.Features.SkipGitVars = true
 
 	return &out, nil
 }
