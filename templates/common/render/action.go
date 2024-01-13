@@ -297,7 +297,7 @@ type unknownTemplateKeyError struct {
 }
 
 func (n *unknownTemplateKeyError) Error() string {
-	return fmt.Sprintf("the template referenced a nonexistent input variable name %q; available variable names are %v",
+	return fmt.Sprintf("the template referenced a nonexistent variable name %q; available variable names are %v",
 		n.key, n.availableKeys)
 }
 

@@ -165,7 +165,7 @@ func TestActionForEach(t *testing.T) {
 					},
 				},
 			},
-			wantErr: `nonexistent input variable name "nonexistent"`,
+			wantErr: `nonexistent variable name "nonexistent"`,
 		},
 		{
 			name: "cel-values-from",
