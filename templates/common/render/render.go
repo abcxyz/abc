@@ -166,7 +166,10 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err
 	}
 
-	vars := sets.UnionMapKeys(resolvedInputs, downloaderVarsToMap(dlMeta.Vars))
+	vars := resolvedInputs
+	if !spec.Features.SkipGitVars {
+		vars = sets.UnionMapKeys(vars, downloaderVarsToMap(dlMeta.Vars))
+	}
 
 	sp := &stepParams{
 		debugDiffsDir:  debugStepDiffsDir,
