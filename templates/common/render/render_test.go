@@ -793,7 +793,7 @@ steps:
 			name: "git_metadata_variables_are_in_scope",
 			templateContents: common.WithGitRepoAt("", map[string]string{
 				".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
-				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta1'
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'Template'
 desc: 'My template'
 steps:
@@ -836,7 +836,7 @@ module "cloud_run" {
 			name: "git_metadata_variables_are_empty_string_when_unavailable",
 			templateContents: map[string]string{
 				"example.txt": `"{{._git_tag}}" "{{._git_sha}}" "{{._git_short_sha}}"`,
-				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta1'
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'Template'
 desc: 'My template'
 steps:
@@ -852,6 +852,21 @@ steps:
 			wantDestContents: map[string]string{
 				"example.txt": `"" "" ""`,
 			},
+		},
+		{
+			name: "git_metadata_variables_not_in_scope_on_old_api_version",
+			templateContents: map[string]string{
+				"example.txt": `"{{._git_tag}}" "{{._git_sha}}" "{{._git_short_sha}}"`,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'Template'
+desc: 'My template'
+steps:
+  - action: 'print'
+    desc: 'should fail'
+    params:
+      message: '{{._git_tag}}'`,
+			},
+			wantErr: `nonexistent input variable name "_git_tag"`,
 		},
 	}
 
