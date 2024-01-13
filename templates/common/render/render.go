@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec/features"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -242,7 +243,7 @@ type stepParams struct {
 	rp *Params
 
 	// The feature flags controlling how to interpret the spec file.
-	features *spec.Features
+	features features.Features
 
 	// Files and directories included in spec that match ignorePatterns will be
 	// ignored while being copied to destination directory.

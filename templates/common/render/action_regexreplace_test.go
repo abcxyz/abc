@@ -404,7 +404,6 @@ gamma`,
 			sp := &stepParams{
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
-				features:   &spec.Features{},
 				rp: &Params{
 					FS: &common.RealFS{},
 				},

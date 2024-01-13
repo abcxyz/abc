@@ -26,7 +26,6 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -227,9 +226,6 @@ func TestWalkAndModify(t *testing.T) {
 						ReadFileErr:  tc.readFileErr,
 						WriteFileErr: tc.writeFileErr,
 					},
-				},
-				features: &spec.Features{
-					SkipGlobs: false,
 				},
 			}
 

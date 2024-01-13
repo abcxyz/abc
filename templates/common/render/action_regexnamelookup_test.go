@@ -197,7 +197,6 @@ func TestActionRegexNameLookup(t *testing.T) {
 			sp := &stepParams{
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
-				features:   &spec.Features{},
 				rp: &Params{
 					FS: &common.RealFS{},
 				},

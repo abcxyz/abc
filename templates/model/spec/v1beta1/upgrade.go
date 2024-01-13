@@ -21,6 +21,7 @@ import (
 	"github.com/jinzhu/copier"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec/features"
 	"github.com/abcxyz/abc/templates/model/spec/v1beta2"
 )
 
@@ -33,7 +34,7 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta1 to v1beta2: %w", err)
 	}
 
-	out.Features = &v1beta2.Features{
+	out.Features = features.Features{
 		SkipGlobs: true,
 	}
 

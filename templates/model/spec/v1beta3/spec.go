@@ -23,6 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/spec/features"
 )
 
 // Spec represents a parsed spec.yaml file describing a template.
@@ -40,14 +41,18 @@ type Spec struct {
 	Ignore []model.String `yaml:"ignore"`
 
 	// Features configures which features to use depending on spec version.
-	Features *Features `yaml:"-"`
+	Features features.Features `yaml:"-"`
 }
 
-// Features contains features to enable or disable based on spec version.
-type Features struct {
-	// SkipGlobs determines whether or not to interpret paths as file globs.
-	SkipGlobs bool
-}
+// // Features contains features to enable or disable based on spec version.
+// type Features struct {
+// 	// SkipGlobs determines whether to interpret paths as file globs.
+// 	SkipGlobs bool
+
+// 	// OmitGitVars determines whether to set the built-in_git_* vars (_git_sha, etc)
+// 	// in the spec.yaml. New in
+// 	OmitGitVars bool
+// }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (s *Spec) UnmarshalYAML(n *yaml.Node) error {

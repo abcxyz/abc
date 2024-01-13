@@ -1194,9 +1194,6 @@ Enter value, or leave empty to accept default: `,
 					SkipPromptTTYCheck: true,
 					Spec: &spec.Spec{
 						Inputs: tc.inputs,
-						Features: &spec.Features{
-							SkipGlobs: false,
-						},
 					},
 				}
 				var err error

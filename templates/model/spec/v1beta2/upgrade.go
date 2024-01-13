@@ -33,12 +33,12 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta2 to v1beta3: %w", err)
 	}
 
-	// if earlier Upgrade() already had Features, preserve them. Otherwise, use defaults.
-	if s.Features == nil {
-		out.Features = &v1beta3.Features{
-			SkipGlobs: false,
-		}
-	}
+	// If this spec was upgraded from an older api_version, disable the features
+	// that weren't supported in its declared api_version.
+	out.Features = s.Features
+
+	// Features introduced in v1beta3:
+	s.Features.SkipGitVars = true
 
 	return &out, nil
 }
