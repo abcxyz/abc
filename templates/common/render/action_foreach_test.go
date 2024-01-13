@@ -233,7 +233,7 @@ func TestActionForEach(t *testing.T) {
 
 			buf := &bytes.Buffer{}
 			sp := &stepParams{
-				scope:    common.NewScope(tc.inputs),
+				scope: common.NewScope(tc.inputs),
 				rp: &Params{
 					Stdout: buf,
 				},
