@@ -23,7 +23,7 @@ steps:
     if: '_git_sha != ""'
     params:
       message: |-
-        This template is rendered from git. The git short SHA is 
+        This template is rendered from git. The git short SHA is
         {{._git_short_sha}} and the full SHA is {{._git_sha}}.
   - desc: 'Print the git tag if there is one'
     action: 'print'
