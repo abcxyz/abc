@@ -84,9 +84,8 @@ func TestActionPrint(t *testing.T) {
 			params.Stdout = &outBuf
 
 			sp := &stepParams{
-				rp:       &params,
-				features: &spec.Features{},
-				scope:    common.NewScope(tc.inputs),
+				rp:    &params,
+				scope: common.NewScope(tc.inputs),
 			}
 			pr := &spec.Print{
 				Message: model.String{

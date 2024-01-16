@@ -167,7 +167,6 @@ func TestActionGoTemplate(t *testing.T) {
 
 			ctx := context.Background()
 			sp := &stepParams{
-				features:   &spec.Features{},
 				scope:      common.NewScope(tc.inputs),
 				scratchDir: scratchDir,
 				rp: &Params{

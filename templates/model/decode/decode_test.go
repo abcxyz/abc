@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
+	"github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
@@ -332,6 +333,10 @@ steps:
       paths: ['.']`,
 			want: &specv1beta3.Spec{
 				Desc: model.String{Val: "mydesc"},
+				Features: features.Features{
+					SkipGlobs:   true,
+					SkipGitVars: true,
+				},
 				Steps: []*specv1beta3.Step{
 					{
 						Action: model.String{Val: "include"},
@@ -346,9 +351,6 @@ steps:
 							},
 						},
 					},
-				},
-				Features: &specv1beta3.Features{
-					SkipGlobs: false,
 				},
 			},
 		},
