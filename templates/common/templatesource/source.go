@@ -106,7 +106,7 @@ type ParseSourceParams struct {
 	GitProtocol string
 }
 
-// ParseSourceWithCwd maps the input template source to a particular kind of
+// ParseSource maps the input template source to a particular kind of
 // source (e.g. git) and returns a downloader that will download that source.
 //
 // source is a template location, like "github.com/foo/bar@v1.2.3". protocol is
@@ -114,7 +114,7 @@ type ParseSourceParams struct {
 //
 // A list of sourceParsers is accepted as input for the purpose of testing,
 // rather than hardcoding the real list of sourceParsers.
-func ParseSourceWithCwd(ctx context.Context, params *ParseSourceParams) (Downloader, error) {
+func ParseSource(ctx context.Context, params *ParseSourceParams) (Downloader, error) {
 	if strings.HasSuffix(params.Source, specutil.SpecFileName) {
 		return nil, fmt.Errorf("the template source argument should be the name of a directory *containing* %s; it should not be the full path to %s",
 			specutil.SpecFileName, specutil.SpecFileName)

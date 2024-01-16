@@ -26,7 +26,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-func TestParseSourceWithCwd(t *testing.T) {
+func TestParseSource(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -281,7 +281,7 @@ func TestParseSourceWithCwd(t *testing.T) {
 				Source:      tc.source,
 				GitProtocol: tc.gitProtocol,
 			}
-			got, err := ParseSourceWithCwd(ctx, params)
+			got, err := ParseSource(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
