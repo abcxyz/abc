@@ -165,7 +165,7 @@ func TestActionStringReplace(t *testing.T) {
 			want: map[string]string{
 				"my_file.txt": "foo",
 			},
-			wantErr: `nonexistent input variable name "myinput"`,
+			wantErr: `nonexistent variable name "myinput"`,
 		},
 		{
 			name:  "templated_toreplace_missing_input_should_fail",
@@ -183,7 +183,7 @@ func TestActionStringReplace(t *testing.T) {
 			want: map[string]string{
 				"my_file.txt": "foo",
 			},
-			wantErr: `nonexistent input variable name "myinput"`,
+			wantErr: `nonexistent variable name "myinput"`,
 		},
 		{
 			name:  "templated_with_missing_input_should_fail",
@@ -201,7 +201,7 @@ func TestActionStringReplace(t *testing.T) {
 			want: map[string]string{
 				"my_file.txt": "foo",
 			},
-			wantErr: `nonexistent input variable name "myinput"`,
+			wantErr: `nonexistent variable name "myinput"`,
 		},
 		{
 			name:  "fs_errors_should_be_returned",

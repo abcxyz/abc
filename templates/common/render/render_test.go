@@ -866,7 +866,7 @@ steps:
     params:
       message: '{{._git_tag}}'`,
 			},
-			wantErr: `nonexistent input variable name "_git_tag"`,
+			wantErr: `nonexistent variable name "_git_tag"`,
 		},
 	}
 

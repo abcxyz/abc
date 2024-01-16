@@ -164,7 +164,7 @@ func TestActionInclude(t *testing.T) {
 				"myfile.txt": {Mode: 0o600, Contents: "file contents"},
 			},
 			inputs:  map[string]string{},
-			wantErr: `nonexistent input variable name "filename"`,
+			wantErr: `nonexistent variable name "filename"`,
 		},
 		{
 			name: "nonexistent_source_should_fail",

@@ -59,7 +59,7 @@ func TestActionPrint(t *testing.T) {
 			in:      "hello {{.name}}",
 			params:  &Params{},
 			inputs:  map[string]string{},
-			wantErr: `template referenced a nonexistent input variable name "name"`,
+			wantErr: `template referenced a nonexistent variable name "name"`,
 		},
 		{
 			name: "flags_in_message",

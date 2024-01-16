@@ -110,7 +110,7 @@ func TestActionGoTemplate(t *testing.T) {
 			want: map[string]string{
 				"a.txt": "Hello, {{.person}}!",
 			},
-			wantErr: `when processing template file "a.txt": failed executing file as Go template: template.Execute() failed: the template referenced a nonexistent input variable name "person"; available variable names are [something_else]`,
+			wantErr: `when processing template file "a.txt": failed executing file as Go template: template.Execute() failed: the template referenced a nonexistent variable name "person"; available variable names are [something_else]`,
 		},
 		{
 			name:   "malformed_template",

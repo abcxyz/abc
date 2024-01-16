@@ -136,7 +136,7 @@ func TestActionAppend(t *testing.T) {
 			initialContents: map[string]string{"uhoh.wmv": "foo"},
 			inputs:          map[string]string{},
 			want:            map[string]string{"uhoh.wmv": "foo"},
-			wantErr:         `nonexistent input variable name "bad_name"`,
+			wantErr:         `nonexistent variable name "bad_name"`,
 		},
 		{
 			name:            "templated_with_missing_input_should_fail",
@@ -145,7 +145,7 @@ func TestActionAppend(t *testing.T) {
 			initialContents: map[string]string{"my_file.txt": "foo"},
 			inputs:          map[string]string{"not": "right"},
 			want:            map[string]string{"my_file.txt": "foo"},
-			wantErr:         `nonexistent input variable name "bad_name"`,
+			wantErr:         `nonexistent variable name "bad_name"`,
 		},
 		{
 			name:            "fs_errors_should_be_returned",
