@@ -117,7 +117,8 @@ func Download(ctx context.Context, p *DownloadParams) (*DownloadMetadata, string
 	logger.DebugContext(ctx, "created temporary template directory",
 		"path", templateDir)
 
-	downloader, err := ParseSource(ctx, &ParseSourceParams{
+	downloader, err := ParseSourceWithCwd(ctx, &ParseSourceParams{
+		CWD:         p.CWD,
 		Source:      p.Source,
 		GitProtocol: p.GitProtocol,
 	})

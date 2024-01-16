@@ -277,10 +277,11 @@ func TestParseSourceWithCwd(t *testing.T) {
 			common.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
 
 			params := &ParseSourceParams{
+				CWD:         tempDir,
 				Source:      tc.source,
 				GitProtocol: tc.gitProtocol,
 			}
-			got, err := parseSourceWithCwd(ctx, tempDir, params)
+			got, err := ParseSourceWithCwd(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
