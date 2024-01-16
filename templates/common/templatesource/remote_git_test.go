@@ -24,7 +24,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-func TestGitDownloader_Download(t *testing.T) {
+func TestRemoteGitDownloader_Download(t *testing.T) {
 	t.Parallel()
 
 	// Most subtests can use this simple set of files.
@@ -35,14 +35,14 @@ func TestGitDownloader_Download(t *testing.T) {
 
 	cases := []struct {
 		name       string
-		dl         *gitDownloader
+		dl         *remoteGitDownloader
 		want       map[string]string
 		wantDLMeta *DownloadMetadata
 		wantErr    string
 	}{
 		{
 			name: "no_subdir",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
@@ -71,7 +71,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "latest_version_lookup",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
@@ -108,7 +108,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "with_subdir",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
@@ -142,7 +142,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "with_deep_subdir",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
@@ -176,7 +176,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "dot_dot_subdir",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				remote:  "fake-remote",
 				subdir:  "..",
 				version: "v1.2.3",
@@ -186,7 +186,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "missing_subdir",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				remote:  "fake-remote",
 				subdir:  "nonexistent",
 				version: "v1.2.3",
@@ -202,7 +202,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "file_instead_of_dir",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				remote:  "fake-remote",
 				subdir:  "file1.txt",
 				version: "v1.2.3",
@@ -218,7 +218,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "clone_by_sha",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
@@ -246,7 +246,7 @@ func TestGitDownloader_Download(t *testing.T) {
 		},
 		{
 			name: "clone_by_sha_with_detected_tag",
-			dl: &gitDownloader{
+			dl: &remoteGitDownloader{
 				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",

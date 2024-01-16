@@ -43,7 +43,7 @@ type sourceParser interface {
 var realSourceParsers = []sourceParser{
 	// This source parser recognizes template sources like
 	// "github.com/myorg/myrepo@v1.2.3" (and variants thereof).
-	&gitSourceParser{
+	&remoteGitSourceParser{
 		re: regexp.MustCompile(
 			`^` + // Anchor the start, must match the entire input
 				`(?P<host>github\.com|gitlab\.com)` + // The domain names of known git hosting services
@@ -62,7 +62,7 @@ var realSourceParsers = []sourceParser{
 
 	&localSourceParser{}, // Handles a template source that's a local directory.
 
-	&gitSourceParser{
+	&remoteGitSourceParser{
 		// This source parser recognizes template sources like
 		// github.com/abcxyz/abc.git//t/react_template?ref=latest.
 		// This is the old template location format from abc <=0.2
