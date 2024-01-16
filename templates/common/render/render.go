@@ -35,6 +35,7 @@ import (
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/sets"
 )
 
 // Params contains the arguments to Render().
@@ -165,12 +166,17 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err
 	}
 
+	vars := resolvedInputs
+	if !spec.Features.SkipGitVars {
+		vars = sets.UnionMapKeys(vars, downloaderVarsToMap(dlMeta.Vars))
+	}
+
 	sp := &stepParams{
 		debugDiffsDir:  debugStepDiffsDir,
 		ignorePatterns: spec.Ignore,
 		features:       spec.Features,
 		rp:             p,
-		scope:          common.NewScope(resolvedInputs),
+		scope:          common.NewScope(vars),
 		scratchDir:     scratchDir,
 		templateDir:    templateDir,
 	}
@@ -544,4 +550,17 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 		out[v] = struct{}{}
 	}
 	return out
+}
+
+func downloaderVarsToMap(d templatesource.DownloaderVars) map[string]string {
+	// Design decision: these inputs are always in scope, even if their value is
+	// just empty string. Why? Because we need to be able to write CEL
+	// expressions that test the absence of eg a git tag, and those CEL
+	// expressions will fail to compile if the variables don't exist. Like: `if:
+	// '_git_tag == ""'`.
+	return map[string]string{
+		"_git_tag":       d.GitTag,
+		"_git_sha":       d.GitSHA,
+		"_git_short_sha": d.GitShortSHA,
+	}
 }

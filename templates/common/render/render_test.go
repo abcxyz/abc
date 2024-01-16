@@ -780,14 +780,93 @@ emoji_suffix: '🐈'`, // missing in spec.yaml inputs
 kind: 'Template'
 desc: 'My template'
 inputs:
-  - name: 'name_to_greet',
+  - name: 'name_to_greet'
 steps:
   - action: 'print'
-    desc: 'print greeting',
+    desc: 'print greeting'
     params:
       message: 'Hello, {{.name_to_greet}}{{.emoji_suffix}}'`,
 			},
 			wantErr: "error reading template spec file",
+		},
+		{
+			name: "git_metadata_variables_are_in_scope",
+			templateContents: common.WithGitRepoAt("", map[string]string{
+				".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+desc: 'My template'
+steps:
+  - action: 'include'
+    desc: 'include TF file'
+    params:
+      paths: ['example.tf']
+  - action: 'go_template'
+    desc: 'expand _git_sha reference'
+    params:
+      paths: ['example.tf']`,
+
+				"example.tf": `
+module "cloud_run" {
+	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref={{._git_sha}}"
+}
+module "cloud_run" {
+	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref={{._git_short_sha}}"
+}
+module "cloud_run" {
+	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref={{._git_tag}}"
+}
+`,
+			}),
+			wantDestContents: map[string]string{
+				"example.tf": fmt.Sprintf(`
+module "cloud_run" {
+	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=%s"
+}
+module "cloud_run" {
+	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=%s"
+}
+module "cloud_run" {
+	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=%s"
+}
+`, common.MinimalGitHeadSHA, common.MinimalGitHeadShortSHA, "v1.2.3"),
+			},
+		},
+		{
+			name: "git_metadata_variables_are_empty_string_when_unavailable",
+			templateContents: map[string]string{
+				"example.txt": `"{{._git_tag}}" "{{._git_sha}}" "{{._git_short_sha}}"`,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+desc: 'My template'
+steps:
+  - action: 'include'
+    desc: 'include TF file'
+    params:
+      paths: ['example.txt']
+  - action: 'go_template'
+    desc: 'expand _git_sha reference'
+    params:
+      paths: ['example.txt']`,
+			},
+			wantDestContents: map[string]string{
+				"example.txt": `"" "" ""`,
+			},
+		},
+		{
+			name: "git_metadata_variables_not_in_scope_on_old_api_version",
+			templateContents: map[string]string{
+				"example.txt": `"{{._git_tag}}" "{{._git_sha}}" "{{._git_short_sha}}"`,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'Template'
+desc: 'My template'
+steps:
+  - action: 'print'
+    desc: 'should fail'
+    params:
+      message: '{{._git_tag}}'`,
+			},
+			wantErr: `nonexistent input variable name "_git_tag"`,
 		},
 	}
 
