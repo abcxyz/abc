@@ -17,7 +17,6 @@ package templatesource
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -36,7 +35,7 @@ type sourceParser interface {
 	// being downloadable by this sourceParser, then it returns true, along with
 	// a downloader that can download that template, and other metadata. See
 	// ParsedSource.
-	sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, bool, error)
+	sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error)
 }
 
 // realSourceParsers contains the non-test sourceParsers.
@@ -91,6 +90,9 @@ var realSourceParsers = []sourceParser{
 
 // ParseSourceParams contains the arguments to ParseSource.
 type ParseSourceParams struct {
+	// The working directory that we're in. Used to resolve relative paths.
+	CWD string
+
 	// Source could be any of the template source types we accept. Examples:
 	//  - github.com/foo/bar@latest
 	//  - /a/local/path
@@ -104,7 +106,7 @@ type ParseSourceParams struct {
 	GitProtocol string
 }
 
-// parseSourceWithCwd maps the input template source to a particular kind of
+// ParseSource maps the input template source to a particular kind of
 // source (e.g. git) and returns a downloader that will download that source.
 //
 // source is a template location, like "github.com/foo/bar@v1.2.3". protocol is
@@ -112,14 +114,14 @@ type ParseSourceParams struct {
 //
 // A list of sourceParsers is accepted as input for the purpose of testing,
 // rather than hardcoding the real list of sourceParsers.
-func parseSourceWithCwd(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, error) {
+func ParseSource(ctx context.Context, params *ParseSourceParams) (Downloader, error) {
 	if strings.HasSuffix(params.Source, specutil.SpecFileName) {
 		return nil, fmt.Errorf("the template source argument should be the name of a directory *containing* %s; it should not be the full path to %s",
 			specutil.SpecFileName, specutil.SpecFileName)
 	}
 
 	for _, sp := range realSourceParsers {
-		downloader, ok, err := sp.sourceParse(ctx, cwd, params)
+		downloader, ok, err := sp.sourceParse(ctx, params)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}
@@ -128,16 +130,6 @@ func parseSourceWithCwd(ctx context.Context, cwd string, params *ParseSourcePara
 		}
 	}
 	return nil, fmt.Errorf(`template source %q isn't a valid template name or doesn't exist; examples of valid names are: "github.com/myorg/myrepo/subdir@v1.2.3", "github.com/myorg/myrepo/subdir@latest", "./my-local-directory"`, params.Source)
-}
-
-// ParseSource is the same as [ParseSourceWithWorkingDir], but it uses the
-// current working directory [os.Getwd] as the base path.
-func ParseSource(ctx context.Context, params *ParseSourceParams) (Downloader, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current working directory: %w", err)
-	}
-	return parseSourceWithCwd(ctx, cwd, params)
 }
 
 // gitCanonicalVersion examines a template directory and tries to determine the
