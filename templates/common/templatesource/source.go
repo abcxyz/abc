@@ -29,6 +29,11 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
+const (
+	LocTypeLocalGit  = "local_git"
+	LocTypeRemoteGit = "remote_git"
+)
+
 // sourceParser is implemented for each particular kind of template source (git,
 // local file, etc.).
 type sourceParser interface {

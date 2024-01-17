@@ -170,6 +170,7 @@ kind: Manifest
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+location_type: ""
 template_version: ""
 template_dirhash: h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo=
 inputs:

@@ -70,6 +70,7 @@ kind: Manifest
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+location_type: ""
 template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
@@ -95,6 +96,7 @@ output_hashes:
 			dlMeta: &templatesource.DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "github.com/foo/bar",
+				LocationType:    "remote_git",
 				HasVersion:      true,
 				Version:         "v1.2.3",
 			},
@@ -113,6 +115,7 @@ kind: Manifest
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: github.com/foo/bar
+location_type: remote_git
 template_version: v1.2.3
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
@@ -175,6 +178,7 @@ kind: Manifest
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+location_type: ""
 template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs: []
@@ -206,6 +210,7 @@ kind: Manifest
 creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
+location_type: ""
 template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
