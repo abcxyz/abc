@@ -43,7 +43,7 @@ func TestParseSource(t *testing.T) {
 			name:                "latest",
 			source:              "github.com/myorg/myrepo@latest",
 			wantCanonicalSource: "github.com/myorg/myrepo",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "",
@@ -56,7 +56,7 @@ func TestParseSource(t *testing.T) {
 			name:                "given_version",
 			source:              "github.com/myorg/myrepo@v1.2.3",
 			wantCanonicalSource: "github.com/myorg/myrepo",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "",
@@ -69,7 +69,7 @@ func TestParseSource(t *testing.T) {
 			name:                "version_with_weird_chars",
 			source:              "github.com/myorg/myrepo@v1.2.3-foo/bar",
 			wantCanonicalSource: "github.com/myorg/myrepo",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "",
@@ -82,7 +82,7 @@ func TestParseSource(t *testing.T) {
 			name:                "subdir",
 			source:              "github.com/myorg/myrepo/mysubdir@v1.2.3",
 			wantCanonicalSource: "github.com/myorg/myrepo/mysubdir",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo/mysubdir",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "mysubdir",
@@ -95,7 +95,7 @@ func TestParseSource(t *testing.T) {
 			name:                "deep_subdir",
 			source:              "github.com/myorg/myrepo/my/deep/subdir@v1.2.3",
 			wantCanonicalSource: "github.com/myorg/myrepo/my/deep/subdir",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo/my/deep/subdir",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "my/deep/subdir",
@@ -175,7 +175,7 @@ func TestParseSource(t *testing.T) {
 				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
 			},
 			wantCanonicalSource: "github.com/myorg/myrepo/mysubdir",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo/mysubdir",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "mysubdir",
@@ -188,7 +188,7 @@ func TestParseSource(t *testing.T) {
 			name:                "go_getter_with_ref_and_subdirs",
 			source:              "github.com/myorg/myrepo.git//sub/dir?ref=latest",
 			wantCanonicalSource: "github.com/myorg/myrepo/sub/dir",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo/sub/dir",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "sub/dir",
@@ -201,7 +201,7 @@ func TestParseSource(t *testing.T) {
 			name:                "go_getter_with_ref_no_subdirs",
 			source:              "github.com/myorg/myrepo.git?ref=latest",
 			wantCanonicalSource: "github.com/myorg/myrepo",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "",
@@ -214,7 +214,7 @@ func TestParseSource(t *testing.T) {
 			name:                "go_getter_no_ref_no_subdirs",
 			source:              "github.com/myorg/myrepo.git",
 			wantCanonicalSource: "github.com/myorg/myrepo",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "",
@@ -227,7 +227,7 @@ func TestParseSource(t *testing.T) {
 			name:                "go_getter_no_ref_with_subdirs",
 			source:              "github.com/myorg/myrepo.git//sub/dir",
 			wantCanonicalSource: "github.com/myorg/myrepo/sub/dir",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo/sub/dir",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "sub/dir",
@@ -240,7 +240,7 @@ func TestParseSource(t *testing.T) {
 			name:                "go_getter_no_ref_single_subdir",
 			source:              "github.com/myorg/myrepo.git//subdir",
 			wantCanonicalSource: "github.com/myorg/myrepo/subdir",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo/subdir",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "subdir",
@@ -253,7 +253,7 @@ func TestParseSource(t *testing.T) {
 			name:                "go_getter_semver_ref",
 			source:              "github.com/myorg/myrepo.git?ref=v1.2.3",
 			wantCanonicalSource: "github.com/myorg/myrepo",
-			want: &gitDownloader{
+			want: &remoteGitDownloader{
 				canonicalSource: "github.com/myorg/myrepo",
 				remote:          "https://github.com/myorg/myrepo.git",
 				subdir:          "",
@@ -287,7 +287,7 @@ func TestParseSource(t *testing.T) {
 			}
 
 			opts := []cmp.Option{
-				cmp.AllowUnexported(gitDownloader{}, localDownloader{}),
+				cmp.AllowUnexported(remoteGitDownloader{}, localDownloader{}),
 
 				// The localDownloader may modify the provided source path if it was
 				// relative. This comparer removes the tempDir prefix so that test cases
