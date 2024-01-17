@@ -32,7 +32,7 @@ var _ sourceParser = (*localSourceParser)(nil)
 // directory.
 type localSourceParser struct{}
 
-func (l *localSourceParser) sourceParse(ctx context.Context, cwd string, params *ParseSourceParams) (Downloader, bool, error) {
+func (l *localSourceParser) sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "localSourceParser.sourceParse")
 
 	// Design decision: we could try to look at src and guess whether it looks
@@ -47,7 +47,7 @@ func (l *localSourceParser) sourceParse(ctx context.Context, cwd string, params 
 	// If the filepath was not absolute, convert it to be relative to the cwd.
 	absSource := params.Source
 	if !filepath.IsAbs(params.Source) {
-		absSource = filepath.Join(cwd, params.Source)
+		absSource = filepath.Join(params.CWD, params.Source)
 	}
 
 	fi, err := os.Stat(absSource)
