@@ -62,7 +62,7 @@ type remoteGitSourceParser struct {
 	warning string
 }
 
-func (g *remoteGitSourceParser) sourceParse(ctx context.Context, _ string, params *ParseSourceParams) (Downloader, bool, error) {
+func (g *remoteGitSourceParser) sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error) {
 	logger := logging.FromContext(ctx).With("logger", "remoteGitSourceParser.sourceParse")
 
 	match := g.re.FindStringSubmatchIndex(params.Source)

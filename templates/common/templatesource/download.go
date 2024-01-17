@@ -118,6 +118,7 @@ func Download(ctx context.Context, p *DownloadParams) (*DownloadMetadata, string
 		"path", templateDir)
 
 	downloader, err := ParseSource(ctx, &ParseSourceParams{
+		CWD:         p.CWD,
 		Source:      p.Source,
 		GitProtocol: p.GitProtocol,
 	})
