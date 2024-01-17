@@ -25,14 +25,14 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestParseTestCases(t *testing.T) {
 	t.Parallel()
 
-	validYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	validYaml := `api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'GoldenTest'`
 	invalidYaml := "bad yaml"
 	validTestCase := &goldentest.Test{}
@@ -156,7 +156,7 @@ kind: 'GoldenTest'`
 			}
 
 			opt := cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{})
-			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
+			if diff := cmp.Diff(got, tc.want, opt, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("Output test cases wasn't as expected (-got,+want): %s", diff)
 			}
 		})
@@ -217,7 +217,7 @@ steps:
 			testCase: &TestCase{
 				TestName: "test",
 				TestConfig: &goldentest.Test{
-					Inputs: []*goldentest.InputValue{
+					Inputs: []*goldentest.VarValue{
 						{
 							Name:  model.String{Val: "input_a"},
 							Value: model.String{Val: "a"},

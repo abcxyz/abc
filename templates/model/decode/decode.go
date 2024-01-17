@@ -26,6 +26,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
+	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
@@ -87,7 +88,7 @@ var apiVersions = []apiVersionDef{
 		apiVersion: "cli.abcxyz.dev/v1beta3",
 		kinds: map[string]model.ValidatorUpgrader{
 			KindTemplate:   &specv1beta3.Spec{},
-			KindGoldenTest: &goldentestv1alpha1.Test{},
+			KindGoldenTest: &goldentestv1beta3.Test{},
 			KindManifest:   &manifestv1alpha1.Manifest{},
 		},
 	},

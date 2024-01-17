@@ -28,7 +28,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/model/decode"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 )
 
 // TestCase describes a template golden test case.
