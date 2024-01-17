@@ -30,11 +30,11 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
-var _ sourceParser = (*gitSourceParser)(nil)
+var _ sourceParser = (*remoteGitSourceParser)(nil)
 
-// gitSourceParser implements sourceParser for downloading templates from a
+// remoteGitSourceParser implements sourceParser for downloading templates from a
 // remote git repo.
-type gitSourceParser struct {
+type remoteGitSourceParser struct {
 	// re is a regular expression that must have a capturing group for each
 	// group that is used in any of the "expansions" below. For example, if
 	// sshRemoteExpansion mentions "${host}", then re must have a group like
@@ -62,8 +62,8 @@ type gitSourceParser struct {
 	warning string
 }
 
-func (g *gitSourceParser) sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error) {
-	logger := logging.FromContext(ctx).With("logger", "gitSourceParser.sourceParse")
+func (g *remoteGitSourceParser) sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error) {
+	logger := logging.FromContext(ctx).With("logger", "remoteGitSourceParser.sourceParse")
 
 	match := g.re.FindStringSubmatchIndex(params.Source)
 	if match == nil {
@@ -98,7 +98,7 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, params *ParseSourcePa
 		canonicalSource += "/" + subdir
 	}
 
-	out := &gitDownloader{
+	out := &remoteGitDownloader{
 		remote:          remote,
 		subdir:          string(g.re.ExpandString(nil, g.subdirExpansion, params.Source, match)),
 		version:         version,
@@ -110,9 +110,9 @@ func (g *gitSourceParser) sourceParse(ctx context.Context, params *ParseSourcePa
 	return out, true, nil
 }
 
-// gitDownloader implements templateSource for templates hosted in a remote git
+// remoteGitDownloader implements templateSource for templates hosted in a remote git
 // repo, regardless of which git hosting service it uses.
-type gitDownloader struct {
+type remoteGitDownloader struct {
 	// An HTTPS or SSH connection string understood by "git clone".
 	remote string
 	// An optional subdirectory within the git repo that we want.
@@ -132,8 +132,8 @@ type gitDownloader struct {
 }
 
 // Download implements Downloader.
-func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
-	logger := logging.FromContext(ctx).With("logger", "gitDownloader.Download")
+func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
+	logger := logging.FromContext(ctx).With("logger", "remoteGitDownloader.Download")
 
 	// Validate first before doing expensive work
 	subdir, err := common.SafeRelPath(nil, g.subdir) // protect against ".." traversal attacks
@@ -225,7 +225,7 @@ func (g *gitDownloader) Download(ctx context.Context, cwd, destDir string) (*Dow
 	return dlMeta, nil
 }
 
-func (g *gitDownloader) CanonicalSource(context.Context, string, string) (string, bool, error) {
+func (g *remoteGitDownloader) CanonicalSource(context.Context, string, string) (string, bool, error) {
 	return g.canonicalSource, true, nil
 }
 
