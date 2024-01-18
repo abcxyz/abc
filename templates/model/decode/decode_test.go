@@ -26,6 +26,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
+	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
@@ -86,7 +87,7 @@ inputs:
   - name: 'foo'
     value: 'bar'`,
 			want: &goldentestv1alpha1.Test{
-				Inputs: []*goldentestv1alpha1.InputValue{
+				Inputs: []*goldentestv1alpha1.VarValue{
 					{
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},
@@ -150,7 +151,7 @@ inputs:
   - name: 'foo'
     value: 'bar'`,
 			want: &goldentestv1alpha1.Test{
-				Inputs: []*goldentestv1alpha1.InputValue{
+				Inputs: []*goldentestv1alpha1.VarValue{
 					{
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},
@@ -253,7 +254,7 @@ kind: 'GoldenTest'`,
 			wantErr: `must not set both apiVersion and api_version, please use api_version only`,
 		},
 		{
-			name:        "speculative_upgrade",
+			name:        "speculative_upgrade_template",
 			requireKind: KindTemplate,
 			fileContents: `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
@@ -280,6 +281,24 @@ steps:
 								},
 							},
 						},
+					},
+				},
+			},
+			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version`,
+		},
+		{
+			name:        "speculative_upgrade_goldentest",
+			requireKind: KindGoldenTest,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'GoldenTest'
+builtin_vars:
+- name: '_git_tag'
+  value: 'foo'`,
+			want: &goldentestv1beta3.Test{
+				BuiltinVars: []*goldentestv1beta3.VarValue{
+					{
+						Name:  model.String{Val: "_git_tag"},
+						Value: model.String{Val: "foo"},
 					},
 				},
 			},
@@ -361,8 +380,8 @@ kind: 'GoldenTest'
 inputs:
   - name: 'foo'
     value: 'bar'`,
-			want: &goldentestv1alpha1.Test{
-				Inputs: []*goldentestv1alpha1.InputValue{
+			want: &goldentestv1beta3.Test{
+				Inputs: []*goldentestv1beta3.VarValue{
 					{
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},
