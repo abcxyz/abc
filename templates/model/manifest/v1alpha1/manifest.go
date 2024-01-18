@@ -41,8 +41,12 @@ type Manifest struct {
 	// accurate as the system clock on the machine where the operation ran.
 	ModificationTime time.Time `yaml:"modification_time"`
 
-	// The template source address as passed to `abc templates render`.
+	// The canonical template location from which upgraded template versions can
+	// be fetched in the future.
 	TemplateLocation model.String `yaml:"template_location"`
+
+	// How to interpret template_location, e.g. "remote_git" or "local_git".
+	LocationType model.String `yaml:"location_type"`
 
 	// The tag, branch, SHA, or other version information.
 	TemplateVersion model.String `yaml:"template_version"`

@@ -216,6 +216,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string)
 	dlMeta := &DownloadMetadata{
 		IsCanonical:     true, // Remote git sources are always canonical.
 		CanonicalSource: g.canonicalSource,
+		LocationType:    LocTypeRemoteGit,
 		HasVersion:      true, // Remote git sources always have a tag or SHA.
 		Version:         canonicalVersion,
 		Vars:            *vars,

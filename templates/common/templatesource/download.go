@@ -62,9 +62,11 @@ type DownloadMetadata struct {
 	// directory are the same for everyone who clones the repo, that means the
 	// relative path counts as a canonical source.
 	//
-	// IsCanonical is true if and only if CanonicalSource is non-empty.
+	// IsCanonical is true if and only if CanonicalSource and LocationType are
+	// non-empty.
 	IsCanonical     bool
 	CanonicalSource string
+	LocationType    string
 
 	// Depending on where the template was taken from, there might be a version
 	// string associated with it (e.g. a git tag or a git SHA).
