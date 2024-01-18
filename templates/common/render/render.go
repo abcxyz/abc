@@ -35,7 +35,6 @@ import (
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/sets"
 )
 
 // Params contains the arguments to Render().
@@ -44,6 +43,10 @@ type Params struct {
 	// BackupDir is ignored if Backups is false.
 	BackupDir string
 	Backups   bool
+
+	// If len(OverrideBuiltinVars)>0, then these values replace the normal
+	// undercore-prefixed vars (_git_tag,  All map keys must begin with underscore.
+	OverrideBuiltinVars map[string]string
 
 	// Fakeable time for testing.
 	Clock clock.Clock
@@ -166,17 +169,27 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err
 	}
 
-	vars := resolvedInputs
-	if !spec.Features.SkipGitVars {
-		vars = sets.UnionMapKeys(vars, downloaderVarsToMap(dlMeta.Vars))
+	// TODO validate input keys are valid (no underscore, etc). Where does this validation currently live?
+
+	scope := common.NewScope(resolvedInputs)
+	if len(p.OverrideBuiltinVars) > 0 {
+		scope = scope.With(p.OverrideBuiltinVars)
+	} else {
+		scope = scope.With(builtinVars(dlMeta.Vars))
 	}
+
+	// vars := resolvedInputs
+	// if !spec.Features.SkipGitVars {
+	// 	vars = sets.UnionMapKeys(vars, builtinVars(dlMeta.Vars))
+	// }
 
 	sp := &stepParams{
 		debugDiffsDir:  debugStepDiffsDir,
 		ignorePatterns: spec.Ignore,
+		extraPrintVars: extraPrintVars(p),
 		features:       spec.Features,
 		rp:             p,
-		scope:          common.NewScope(vars),
+		scope:          scope,
 		scratchDir:     scratchDir,
 		templateDir:    templateDir,
 	}
@@ -269,9 +282,11 @@ type stepParams struct {
 	includedFromDest []string
 
 	// Scope contains all variable names that are in scope. This includes
-	// user-provided inputs, as well as any programmatically created variables
+	// user-provided scope, as well as any programmatically created variables
 	// like for_each keys.
 	scope *common.Scope
+
+	extraPrintVars map[string]string
 
 	debugDiffsDir string
 	scratchDir    string
@@ -552,7 +567,7 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 	return out
 }
 
-func downloaderVarsToMap(d templatesource.DownloaderVars) map[string]string {
+func builtinVars(d templatesource.DownloaderVars) map[string]string {
 	// Design decision: these inputs are always in scope, even if their value is
 	// just empty string. Why? Because we need to be able to write CEL
 	// expressions that test the absence of eg a git tag, and those CEL
@@ -562,5 +577,16 @@ func downloaderVarsToMap(d templatesource.DownloaderVars) map[string]string {
 		"_git_tag":       d.GitTag,
 		"_git_sha":       d.GitSHA,
 		"_git_short_sha": d.GitShortSHA,
+	}
+}
+
+func extraPrintVars(rp *Params) map[string]string {
+	// We only expose certain fields the print action; these are the ones that
+	// we have beneficial use cases for and that don't encourage bad API use. We
+	// also don't allow any other actions to touch these because we don't want
+	// them to be load-bearing, only informational.
+	return map[string]string{
+		"_flag_dest":   rp.DestDir,
+		"_flag_source": rp.Source,
 	}
 }

@@ -157,23 +157,27 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		return fmt.Errorf("failed to clear test directory: %w", err)
 	}
 
-	inputs := make(map[string]string, len(tc.TestConfig.Inputs))
-	for _, input := range tc.TestConfig.Inputs {
-		inputs[input.Name.Val] = input.Value.Val
-	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
+
 	return render.Render(ctx, &render.Params{ //nolint:wrapcheck
-		Clock:   clock.New(),
-		Cwd:     cwd,
-		DestDir: testDir,
-		FS:      &common.RealFS{},
-		Inputs:  inputs,
-		Backups: false,
-		Source:  templateDir,
-		Stdout:  io.Discard, // Mute stdout from command runs.
+		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
+		Clock:               clock.New(),
+		Cwd:                 cwd,
+		DestDir:             testDir,
+		FS:                  &common.RealFS{},
+		Inputs:              varValuesToMap(tc.TestConfig.Inputs),
+		Source:              templateDir,
+		Stdout:              io.Discard, // Mute stdout from command runs.
 	})
+}
+
+func varValuesToMap(vvs []*goldentest.VarValue) map[string]string {
+	out := make(map[string]string, len(vvs))
+	for _, vv := range vvs {
+		out[vv.Name.Val] = vv.Value.Val
+	}
+	return out
 }

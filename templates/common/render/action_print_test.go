@@ -32,23 +32,21 @@ func TestActionPrint(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name    string
-		in      string
-		inputs  map[string]string
-		params  *Params
-		want    string
-		wantErr string
+		name           string
+		in             string
+		inputs         map[string]string
+		extraPrintVars map[string]string
+		want           string
+		wantErr        string
 	}{
 		{
-			name:   "simple_success",
-			in:     "hello 🐕",
-			params: &Params{},
-			want:   "hello 🐕\n",
+			name: "simple_success",
+			in:   "hello 🐕",
+			want: "hello 🐕\n",
 		},
 		{
-			name:   "simple_templating",
-			in:     "hello {{.name}}",
-			params: &Params{},
+			name: "simple_templating",
+			in:   "hello {{.name}}",
 			inputs: map[string]string{
 				"name": "🐕",
 			},
@@ -57,16 +55,16 @@ func TestActionPrint(t *testing.T) {
 		{
 			name:    "template_missing_input",
 			in:      "hello {{.name}}",
-			params:  &Params{},
 			inputs:  map[string]string{},
 			wantErr: `template referenced a nonexistent variable name "name"`,
 		},
 		{
+			// TODO make a better test elsewhere in render package that tests the mapping from builtins to print vars
 			name: "flags_in_message",
 			in:   "{{._flag_dest}} {{._flag_source}}",
-			params: &Params{
-				Source:  "mysource",
-				DestDir: "mydest",
+			extraPrintVars: map[string]string{
+				"_flags_source": "mysource",
+				"_flags_dest":   "mydest",
 			},
 			want: "mydest mysource\n",
 		},

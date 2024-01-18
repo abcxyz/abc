@@ -23,7 +23,7 @@ import (
 )
 
 func actionPrint(ctx context.Context, p *spec.Print, sp *stepParams) error {
-	scope := sp.scope.With(flagsForTemplate(sp))
+	scope := sp.scope.With(sp.extraPrintVars)
 
 	msg, err := parseAndExecuteGoTmpl(p.Message.Pos, p.Message.Val, scope)
 	if err != nil {
@@ -40,13 +40,4 @@ func actionPrint(ctx context.Context, p *spec.Print, sp *stepParams) error {
 	}
 
 	return nil
-}
-
-func flagsForTemplate(sp *stepParams) map[string]string {
-	// We only expose certain fields the print action; these are the ones that
-	// we have beneficial use cases for and that don't encourage bad API use.
-	return map[string]string{
-		"_flag_dest":   sp.rp.DestDir,
-		"_flag_source": sp.rp.Source,
-	}
 }
