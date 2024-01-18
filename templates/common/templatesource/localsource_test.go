@@ -76,6 +76,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "../src",
+				LocationType:    "local_git",
 				HasVersion:      true,
 				Version:         common.MinimalGitHeadSHA,
 				Vars: DownloaderVars{
@@ -106,6 +107,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "../src",
+				LocationType:    "local_git",
 				HasVersion:      true,
 				Version:         "mytag",
 				Vars: DownloaderVars{
@@ -139,6 +141,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "../src",
+				LocationType:    "local_git",
 				HasVersion:      true,
 				Version:         common.MinimalGitHeadSHA,
 				Vars: DownloaderVars{

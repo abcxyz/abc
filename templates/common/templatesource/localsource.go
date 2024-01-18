@@ -101,7 +101,7 @@ func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 	if err != nil {
 		return nil, err
 	}
-	canonicalSource, version, err := canonicalize(ctx, cwd, l.srcPath, destDir, l.allowDirty)
+	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.srcPath, destDir, l.allowDirty)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +109,7 @@ func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 	dlMeta := &DownloadMetadata{
 		IsCanonical:     canonicalSource != "",
 		CanonicalSource: canonicalSource,
+		LocationType:    locType,
 
 		HasVersion: version != "",
 		Version:    version,
@@ -122,7 +123,7 @@ func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 // directories qualify as a canonical source, and if so, returns the
 // canonicalized version of the source. See the docs on DownloadMetadata for an
 // explanation of canonical sources.
-func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (canonicalSource, version string, _ error) {
+func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (canonicalSource, version, locType string, _ error) {
 	logger := logging.FromContext(ctx).With("logger", "canonicalize")
 
 	absDest := dest
@@ -134,11 +135,11 @@ func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (
 	// workspaces to decide if source is canonical.
 	sourceGitWorkspace, templateIsGit, err := git.Workspace(ctx, src)
 	if err != nil {
-		return "", "", err //nolint:wrapcheck
+		return "", "", "", err //nolint:wrapcheck
 	}
 	destGitWorkspace, destIsGit, err := git.Workspace(ctx, absDest)
 	if err != nil {
-		return "", "", err //nolint:wrapcheck
+		return "", "", "", err //nolint:wrapcheck
 	}
 	if !templateIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
 		logger.DebugContext(ctx, "local template source is not canonical, template dir and dest dir do not share a git workspace",
@@ -146,7 +147,7 @@ func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (
 			"dest", absDest,
 			"source_git_workspace", sourceGitWorkspace,
 			"dest_git_workspace", destGitWorkspace)
-		return "", "", nil
+		return "", "", "", nil
 	}
 
 	logger.DebugContext(ctx, "local template source is canonical because template dir and dest dir are both in the same git workspace",
@@ -155,13 +156,13 @@ func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (
 		"git_workspace", destGitWorkspace)
 	out, err := filepath.Rel(absDest, src)
 	if err != nil {
-		return "", "", fmt.Errorf("filepath.Rel(%q,%q): %w", dest, src, err)
+		return "", "", "", fmt.Errorf("filepath.Rel(%q,%q): %w", dest, src, err)
 	}
 
 	version, _, err = gitCanonicalVersion(ctx, sourceGitWorkspace, allowDirty)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
-	return filepath.ToSlash(out), version, nil
+	return filepath.ToSlash(out), version, LocTypeLocalGit, nil
 }

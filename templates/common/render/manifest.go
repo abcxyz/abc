@@ -206,6 +206,7 @@ func buildManifest(ctx context.Context, p *writeManifestParams, dlMeta *template
 
 	return &manifest.Manifest{
 		TemplateLocation: model.String{Val: p.dlMeta.CanonicalSource}, // may be empty string if location isn't canonical
+		LocationType:     model.String{Val: dlMeta.LocationType},
 		TemplateDirhash:  model.String{Val: templateDirhash},
 		TemplateVersion:  model.String{Val: p.dlMeta.Version},
 		CreationTime:     now,
