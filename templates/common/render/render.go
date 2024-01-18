@@ -25,8 +25,10 @@ import (
 	"strings"
 
 	"github.com/benbjohnson/clock"
+	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/paths"
 	"github.com/abcxyz/abc/templates/common/specutil"
@@ -45,7 +47,8 @@ type Params struct {
 	Backups   bool
 
 	// If len(OverrideBuiltinVars)>0, then these values replace the normal
-	// undercore-prefixed vars (_git_tag,  All map keys must begin with underscore.
+	// undercore-prefixed vars (_git_tag,  All map keys must begin with
+	// underscore.
 	OverrideBuiltinVars map[string]string
 
 	// Fakeable time for testing.
@@ -169,19 +172,15 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err
 	}
 
-	// TODO validate input keys are valid (no underscore, etc). Where does this validation currently live?
-
 	scope := common.NewScope(resolvedInputs)
 	if len(p.OverrideBuiltinVars) > 0 {
+		if err := builtinvar.Validate(spec.Features, maps.Keys(p.OverrideBuiltinVars)); err != nil {
+			return err
+		}
 		scope = scope.With(p.OverrideBuiltinVars)
-	} else if !spec.Features.SkipGitVars { // Must be api_version >=v1beta3 to include _git_* vars
-		scope = scope.With(builtinVars(dlMeta.Vars))
+	} else {
+		scope = scope.With(builtinVarValues(spec.Features, dlMeta.Vars))
 	}
-
-	// vars := resolvedInputs
-	// if !spec.Features.SkipGitVars {
-	// 	vars = sets.UnionMapKeys(vars, builtinVars(dlMeta.Vars))
-	// }
 
 	sp := &stepParams{
 		debugDiffsDir:  debugStepDiffsDir,
@@ -567,26 +566,37 @@ func sliceToSet[T comparable](vals []T) map[T]struct{} {
 	return out
 }
 
-func builtinVars(d templatesource.DownloaderVars) map[string]string {
-	// Design decision: these inputs are always in scope, even if their value is
-	// just empty string. Why? Because we need to be able to write CEL
-	// expressions that test the absence of eg a git tag, and those CEL
-	// expressions will fail to compile if the variables don't exist. Like: `if:
-	// '_git_tag == ""'`.
-	return map[string]string{
-		"_git_tag":       d.GitTag,
-		"_git_sha":       d.GitSHA,
-		"_git_short_sha": d.GitShortSHA,
-	}
-}
-
+// TODO comment
 func extraPrintVars(rp *Params) map[string]string {
 	// We only expose certain fields the print action; these are the ones that
 	// we have beneficial use cases for and that don't encourage bad API use. We
 	// also don't allow any other actions to touch these because we don't want
 	// them to be load-bearing, only informational.
 	return map[string]string{
-		"_flag_dest":   rp.DestDir,
-		"_flag_source": rp.Source,
+		builtinvar.FlagDest:   rp.DestDir,
+		builtinvar.FlagSource: rp.Source,
 	}
+}
+
+// TODO comment, for everything except print.
+func builtinVarValues(f features.Features, d templatesource.DownloaderVars) map[string]string {
+	out := map[string]string{}
+
+	// Git vars are present only in api_version >=v1beta3, hence this check.
+	if !f.SkipGitVars {
+		// Design decision: on api_version>=v1beta3, the _git_* vars are always
+		// in scope, even if their value is just empty string. Why? Because we
+		// need to be able to write CEL expressions that test the absence of eg
+		// a git tag, and those CEL expressions will fail to compile if the
+		// variables don't exist. Like: `if: '_git_tag == ""'`.
+		//
+		// Each of these values can be empty string in the case where the user
+		// is rendering the template from a non-git location, such as a local
+		// directory.
+		out[builtinvar.GitTag] = d.GitTag
+		out[builtinvar.GitSHA] = d.GitSHA
+		out[builtinvar.GitShortSHA] = d.GitShortSHA
+	}
+
+	return out
 }
