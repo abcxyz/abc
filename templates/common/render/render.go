@@ -174,7 +174,7 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 	scope := common.NewScope(resolvedInputs)
 	if len(p.OverrideBuiltinVars) > 0 {
 		scope = scope.With(p.OverrideBuiltinVars)
-	} else {
+	} else if !spec.Features.SkipGitVars { // Must be api_version >=v1beta3 to include _git_* vars
 		scope = scope.With(builtinVars(dlMeta.Vars))
 	}
 
@@ -281,7 +281,7 @@ type stepParams struct {
 	// are the same).
 	includedFromDest []string
 
-	// Scope contains all variable names that are in scope. This includes
+	// scope contains all variable names that are in scope. This includes
 	// user-provided scope, as well as any programmatically created variables
 	// like for_each keys.
 	scope *common.Scope

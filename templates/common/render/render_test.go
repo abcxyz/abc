@@ -857,7 +857,6 @@ steps:
 		{
 			name: "git_metadata_variables_not_in_scope_on_old_api_version",
 			templateContents: map[string]string{
-				"example.txt": `"{{._git_tag}}" "{{._git_sha}}" "{{._git_short_sha}}"`,
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta2'
 kind: 'Template'
 desc: 'My template'

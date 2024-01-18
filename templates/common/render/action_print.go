@@ -34,7 +34,7 @@ func actionPrint(ctx context.Context, p *spec.Print, sp *stepParams) error {
 	}
 
 	// We can ignore the int returned from Write() because the docs promise that
-	// short writes always return error.
+	// incomplete writes always return error.
 	if _, err := sp.rp.Stdout.Write([]byte(msg)); err != nil {
 		return fmt.Errorf("error writing to stdout: %w", err)
 	}

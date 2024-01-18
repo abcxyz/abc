@@ -63,8 +63,8 @@ func TestActionPrint(t *testing.T) {
 			name: "flags_in_message",
 			in:   "{{._flag_dest}} {{._flag_source}}",
 			extraPrintVars: map[string]string{
-				"_flags_source": "mysource",
-				"_flags_dest":   "mydest",
+				"_flag_source": "mysource",
+				"_flag_dest":   "mydest",
 			},
 			want: "mydest mysource\n",
 		},
@@ -78,12 +78,14 @@ func TestActionPrint(t *testing.T) {
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			var outBuf bytes.Buffer
 
-			params := *tc.params
-			params.Stdout = &outBuf
+			params := Params{
+				Stdout: &outBuf,
+			}
 
 			sp := &stepParams{
-				rp:    &params,
-				scope: common.NewScope(tc.inputs),
+				rp:             &params,
+				scope:          common.NewScope(tc.inputs),
+				extraPrintVars: tc.extraPrintVars,
 			}
 			pr := &spec.Print{
 				Message: model.String{
