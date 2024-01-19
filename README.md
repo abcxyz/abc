@@ -147,9 +147,9 @@ specified, all tests will be run against. This flag may be repeated, like
 The `<location>` parameter gives the location of the template.
 
 For every test case, it is expected that a
-`testdata/golden/<test_name>/test.yaml` exists to define template input
-params.Each "input" in this file must correspond to a template input defined in
-the template's`spec.yaml`. Each required input in the template's spec.yaml must
+`testdata/golden/<test_name>/test.yaml` exists to define template input params.
+Each "input" in this file must correspond to a template input defined in the
+template's `spec.yaml`. Each required input in the template's spec.yaml must
 have a corresponding input value defined in the `test.yaml`.
 
 Example test.yaml:
