@@ -170,6 +170,41 @@ The expected/desired test output for each test is stored in
 `golden-test record` subcommand to populate this directory, but it's also
 possible to create the desired output files by hand.
 
+#### Builtin vars in golden tests
+
+In `spec.yaml`, there some [built-in variables](#built-in-template-variables)
+like `_git_tag` that are populated automatically based on the environment. For
+unit testing, we need the ability to populate these variables with fixed values
+so the test output is the same every time.
+
+To support this, the `test.yaml` file may have a top-level field `builtin_vars`
+that sets the value of built-in variables while running the test. For example:
+
+```yaml
+api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'GoldenTest'
+
+inputs:
+  - name: 'some-normal-input'
+    value: 'some-value'
+
+# For the purposes of this golden test, provide a fake _git_tag value.
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'
+```
+
+Technicalities:
+
+- Any built-in variables that are _not_ set by `builtin_vars` will not be in
+  scope. For example, if your spec.yaml references `{{._git_tag}}`, but
+  test.yaml doesn't provide a value for `_git_tag` using `builtin_vars` in
+  `test.yaml`, then the golden-test command will fail with an error about an
+  unknown variable.
+- You can't set an arbitrary variable name; only a specific known set of
+  variable names are allowed (e.g. `_git_sha`, `_git_tag`, `_flag_dest`).
+- Built-in variable names always start with underscore.
+
 ### For `abc templates describe`
 
 The describe command downloads the template and prints out its description, and
