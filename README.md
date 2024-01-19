@@ -113,16 +113,32 @@ The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 
 ### For `abc templates golden-test`
 
-Usages:
+The golden-test feature is essentially unit testing for templates. You provide
+(1) a set of template input values and (2) the expected output directory
+contents. The test framework verifies that the actual output matches the
+expected output, using the `verify` subcommand. Separately, the `record` command
+helps with capturing the current template output and saving it as the "expected"
+output for future test runs. This concept is similar to "snapshot testing" and
+"[rpc replay testing](https://pkg.go.dev/cloud.google.com/go/rpcreplay)."
+
+Each test is configured by placing a file named `test.yaml` in a subdirectory of
+the template named `testdata/golden/<your-test-name>`. See below for details on
+this file.
+
+Usage:
 
 - `abc templates golden-test record [--test-name=<test_name>] <location>`
 - `abc templates golden-test verify [--test-name=<test_name>] <location>`
 
 Examples:
 
-- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
-- `abc templates golden-test record examples/templates/render/hello_jupiter`
-- `abc templates golden-test verify examples/templates/render/hello_jupiter`
+- `abc templates golden-test verify examples/templates/render/hello_jupiter`:
+  runs all golden-tests for the given template
+- `abc templates golden-test record examples/templates/render/hello_jupiter`:
+  record the current template output as the desired/expected output for all
+  tests within the given template, saving to `testdata/golden/<test_name>/data`.
+- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`:
+  same as above, but only for the specific named tests.
 
 The `<test_name>` parameter gives the test names to record or verify, if not
 specified, all tests will be run against. This flag may be repeated, like
@@ -130,18 +146,36 @@ specified, all tests will be run against. This flag may be repeated, like
 
 The `<location>` parameter gives the location of the template.
 
-For every test case, it is expected that
+For every test case, it is expected that a
+`testdata/golden/<test_name>/test.yaml` exists to define template input
+params.Each "input" in this file must correspond to a template input defined in
+the template's`spec.yaml`. Each required input in the template's spec.yaml must
+have a corresponding input value defined in the `test.yaml`.
 
-- a testdata/golden/<test_name> folder exists to host test results.
-- a testdata/golden/<test_name>/test.yaml exists to define template input
-  params.`
+Example test.yaml:
+
+```yaml
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'GoldenTest'
+
+inputs:
+  - name: 'my-service-account'
+    value: 'platform-ops@abcxyz-my-project.iam.gserviceaccount.com'
+  - name: 'my-project-number'
+    value: '123456789'
+```
+
+The expected/desired test output for each test is stored in
+`testdata/golden/<test_name>/data`. Typically you'll use the
+`golden-test record` subcommand to populate this directory, but it's also
+possible to create the desired output files by hand.
 
 ### For `abc templates describe`
 
 The describe command downloads the template and prints out its description, and
 describes the inputs that it accepts.
 
-Usages:
+Usage:
 
 - `abc templates describe <template_location>`
 
