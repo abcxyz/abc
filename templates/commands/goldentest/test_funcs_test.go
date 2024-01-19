@@ -32,8 +32,6 @@ import (
 func TestParseTestCases(t *testing.T) {
 	t.Parallel()
 
-	validYaml := `api_version: 'cli.abcxyz.dev/v1beta3'
-kind: 'GoldenTest'`
 	invalidYaml := "bad yaml"
 	validTestCase := &goldentest.Test{}
 
@@ -48,7 +46,8 @@ kind: 'GoldenTest'`
 			name:      "specified_test_name_succeed",
 			testNames: []string{"test_case_1"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": validYaml,
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
 				{
@@ -61,9 +60,12 @@ kind: 'GoldenTest'`
 			name:      "specified_multiple_test_names_succeed",
 			testNames: []string{"test_case_1", "test_case_2"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": validYaml,
-				"testdata/golden/test_case_2/test.yaml": validYaml,
-				"testdata/golden/test_case_3/test.yaml": validYaml,
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"testdata/golden/test_case_3/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
 				{
@@ -79,8 +81,10 @@ kind: 'GoldenTest'`
 		{
 			name: "all_tests_succeed",
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": validYaml,
-				"testdata/golden/test_case_2/test.yaml": validYaml,
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
 				{
@@ -129,10 +133,47 @@ kind: 'GoldenTest'`
 			name:      "specified_test_name_not_found",
 			testNames: []string{"test_case_2"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": validYaml,
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
 			},
 			want:    nil,
 			wantErr: "error opening test config",
+		},
+		{
+			name:      "builtin_overrides_rejected_on_old_api_version",
+			testNames: []string{"test_case_1"},
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'GoldenTest'
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'`,
+			},
+			wantErr: "does not parse and validate successfully under that version",
+		},
+		{
+			name:      "builtin_overrides_accepted_on_api_version_at_least_v1beta3",
+			testNames: []string{"test_case_1"},
+			filesContent: map[string]string{
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'`,
+			},
+			want: []*TestCase{
+				{
+					TestName: "test_case_1",
+					TestConfig: &goldentest.Test{
+						BuiltinVars: []*goldentest.VarValue{
+							{
+								Name:  model.String{Val: "_git_tag"},
+								Value: model.String{Val: "my-cool-tag"},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -240,6 +281,200 @@ steps:
 				"data/a.txt": "file A content",
 				"data/b.txt": "file B content",
 			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+
+			ctx := context.Background()
+			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
+			if err != nil {
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+				return
+			}
+
+			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
+			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent, common.CmpFileMode); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestOverrideBuiltIns(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name                  string
+		testCase              *TestCase
+		filesContent          map[string]string
+		expectedGoldenContent map[string]string
+		wantErr               string
+	}{
+		{
+			name: "builtins_are_present_on_spec_api_version_v1beta3",
+			testCase: &TestCase{
+				TestName: "test",
+				TestConfig: &goldentest.Test{
+					BuiltinVars: []*goldentest.VarValue{
+						{
+							Name:  model.String{Val: "_git_tag"},
+							Value: model.String{Val: "my-cool-tag"},
+						},
+					},
+				},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths: ['.']
+- desc: 'Replace git tag placeholder'
+  action: 'go_template'
+  params:
+    paths: ['my_file.txt']`,
+				"my_file.txt": "{{._git_tag}}",
+			},
+			expectedGoldenContent: map[string]string{
+				"data/my_file.txt": "my-cool-tag",
+			},
+		},
+		{
+			name: "builtins_are_rejected_on_old_spec_api_version_v1beta2",
+			testCase: &TestCase{
+				TestName: "test",
+				TestConfig: &goldentest.Test{
+					BuiltinVars: []*goldentest.VarValue{
+						{
+							Name:  model.String{Val: "_git_tag"},
+							Value: model.String{Val: "my-cool-tag"},
+						},
+					},
+				},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths: ['.']
+- desc: 'Replace git tag placeholder'
+  action: 'go_template'
+  params:
+    paths: ['my_file.txt']`,
+				"my_file.txt": "{{._git_tag}}",
+			},
+			wantErr: "these builtin override var names are unknown and therefore invalid: [_git_tag]",
+		},
+		{
+			name: "invalid_builtin_name_rejected",
+			testCase: &TestCase{
+				TestName: "test",
+				TestConfig: &goldentest.Test{
+					BuiltinVars: []*goldentest.VarValue{
+						{
+							Name:  model.String{Val: "_bad_var_name_should_fail"},
+							Value: model.String{Val: "foo"},
+						},
+					},
+				},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths: ['.']`,
+			},
+			wantErr: "these builtin override var names are unknown and therefore invalid: [_bad_var_name_should_fail]",
+		},
+		{
+			name: "dest_and_src_are_overrideable_for_print",
+			testCase: &TestCase{
+				TestName: "test",
+				TestConfig: &goldentest.Test{
+					BuiltinVars: []*goldentest.VarValue{
+						{
+							Name:  model.String{Val: "_flag_dest"},
+							Value: model.String{Val: "my-dest"},
+						},
+						{
+							Name:  model.String{Val: "_flag_source"},
+							Value: model.String{Val: "my-source"},
+						},
+					},
+				},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+- desc: 'Include some files and directories'
+  action: 'print'
+  params:
+    message: '{{._flag_dest}} {{._flag_source}}'`,
+			},
+		},
+
+		{
+			name: "dest_and_src_are_not_in_scope_outside_of_print_action",
+			testCase: &TestCase{
+				TestName: "test",
+				TestConfig: &goldentest.Test{
+					BuiltinVars: []*goldentest.VarValue{
+						{
+							Name:  model.String{Val: "_flag_dest"},
+							Value: model.String{Val: "my-dest"},
+						},
+						{
+							Name:  model.String{Val: "_flag_source"},
+							Value: model.String{Val: "my-source"},
+						},
+					},
+				},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths: ['{{._flag_dest}}', '{{._flag_source}}']`,
+			},
+			wantErr: `the template referenced a nonexistent variable name "_flag_dest"`,
 		},
 	}
 

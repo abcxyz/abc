@@ -126,7 +126,7 @@ func TestActionForEach(t *testing.T) {
 			wantStdout: "Hello Bob from Alice\nHello Charlie from Alice\nHello Bob from Zendaya\nHello Charlie from Zendaya\n",
 		},
 		{
-			name: "values_literal",
+			name: "single_value_literal",
 			inputs: map[string]string{
 				"color": "Blue",
 			},

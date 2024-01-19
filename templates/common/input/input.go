@@ -70,6 +70,10 @@ type Prompter interface {
 // Resolve combines flags, user prompts, and defaults to get the full set
 // of template inputs.
 func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) {
+	if badInputs := checkReservedInputs(rp.Inputs); len(badInputs) > 0 {
+		return nil, fmt.Errorf(`input names beginning with underscore cannot be overridden by a normal user input; the bad input names were: %v`, badInputs)
+	}
+
 	if unknownInputs := checkUnknownInputs(rp.Spec, rp.Inputs); len(unknownInputs) > 0 {
 		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
@@ -194,6 +198,17 @@ func promptForInputs(ctx context.Context, prompter Prompter, spec *spec.Spec, in
 		inputs[i.Name.Val] = inputVal
 	}
 	return nil
+}
+
+func checkReservedInputs(inputs map[string]string) []string {
+	var bad []string
+	for input := range inputs {
+		if strings.HasPrefix(input, "_") {
+			bad = append(bad, input)
+		}
+	}
+	sort.Strings(bad)
+	return bad
 }
 
 // checkUnknownInputs checks for any unknown input flags and returns them in a slice.

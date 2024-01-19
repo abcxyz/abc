@@ -32,7 +32,5 @@ func (t *Test) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta2 to v1beta3: %w", err)
 	}
 
-	fmt.Printf("t=%v out=%v\n", t.Inputs == nil, out.Inputs == nil)
-
 	return &out, nil
 }
