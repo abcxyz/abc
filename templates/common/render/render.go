@@ -224,8 +224,6 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_ *common.Scope, extraPrintVars map[string]string, _ error) {
 	scope := common.NewScope(resolvedInputs)
 
-	// builtins := builtinVarValues(p, spec.Features, dlMeta.Vars)
-
 	// Git vars are present only in api_version >=v1beta3, hence this check.
 	if !f.SkipGitVars {
 		// Design decision: on api_version>=v1beta3, the _git_* vars are always

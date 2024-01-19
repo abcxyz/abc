@@ -385,7 +385,7 @@ steps:
     paths: ['my_file.txt']`,
 				"my_file.txt": "{{._git_tag}}",
 			},
-			wantErr: "these var names are unknown and therefore invalid: [_git_tag]",
+			wantErr: "these builtin override var names are unknown and therefore invalid: [_git_tag]",
 		},
 		{
 			name: "invalid_builtin_name_rejected",
@@ -412,7 +412,7 @@ steps:
   params:
     paths: ['.']`,
 			},
-			wantErr: "these var names are unknown and therefore invalid: [_bad_var_name_should_fail]",
+			wantErr: "these builtin override var names are unknown and therefore invalid: [_bad_var_name_should_fail]",
 		},
 		{
 			name: "dest_and_src_are_overrideable_for_print",

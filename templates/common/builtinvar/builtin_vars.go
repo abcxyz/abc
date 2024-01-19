@@ -50,7 +50,7 @@ func Validate(f features.Features, attemptedNames []string) error {
 	allowed := namesInScope(f)
 	unknown := sets.Subtract(attemptedNames, allowed)
 	if len(unknown) > 0 {
-		return fmt.Errorf("these var names are unknown and therefore invalid: %v; the set of valid builtin var names is %v",
+		return fmt.Errorf("these builtin override var names are unknown and therefore invalid: %v; the set of valid builtin var names is %v",
 			unknown, allowed)
 	}
 	return nil

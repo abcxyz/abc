@@ -891,7 +891,6 @@ steps:
 			},
 			wantStdout: "/my/dest /my/source\n",
 		},
-
 		{
 			name:       "print_only_flags_are_not_in_scope_outside_of_print_actions",
 			flagInputs: map[string]string{},
@@ -950,6 +949,30 @@ steps:
     message: '{{._git_tag}}'`,
 			},
 			wantErr: `input names beginning with _ are reserved`,
+		},
+		{
+			name: "overrides_cant_set_regular_inputs",
+			flagInputs: map[string]string{
+				"git_tag": "foo",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+inputs:
+- desc: 'My custom git tag input'
+  name: 'git_tag'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: '{{.git_tag}}'`,
+			},
+			overrideBuiltinVars: map[string]string{
+				"git_tag": "bar",
+			},
+			wantErr: "these builtin override var names are unknown and therefore invalid: [git_tag]",
 		},
 	}
 
