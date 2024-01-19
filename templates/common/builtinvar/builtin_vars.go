@@ -42,7 +42,7 @@ const (
 	FlagSource = "_flag_source"
 )
 
-// Validate returns error of any of the attemptedNames are not valid builtin
+// Validate returns error if any of the attemptedNames are not valid builtin
 // var names. The "features" parameter is derived from the api_version, and it's
 // needed because the set of variable names that are in scope depends on the
 // api_version; we sometimes add new variables.
@@ -56,7 +56,7 @@ func Validate(f features.Features, attemptedNames []string) error {
 	return nil
 }
 
-// namesInScope returns the set of builtin var names
+// namesInScope returns the set of builtin var names.
 func namesInScope(f features.Features) []string {
 	// These vars have always existed in every api_version
 	out := []string{FlagDest, FlagSource}

@@ -246,7 +246,7 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 
 	if len(rp.OverrideBuiltinVars) > 0 { // The caller is overriding the builtin underscore-prefixed vars.
 		if err := builtinvar.Validate(f, maps.Keys(rp.OverrideBuiltinVars)); err != nil {
-			return nil, nil, err
+			return nil, nil, err //nolint:wrapcheck
 		}
 
 		// Split the caller-provided OverrideBuiltinVars into two
@@ -263,7 +263,6 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 		}
 		extraPrintVars = sets.IntersectMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames)
 		scope = scope.With(sets.SubtractMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames))
-
 	} else { // The caller isn't overriding any of the builtin underscore-prefixed vars.
 		extraPrintVars = map[string]string{
 			builtinvar.FlagDest:   rp.DestDir,
