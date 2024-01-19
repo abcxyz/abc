@@ -474,7 +474,7 @@ steps:
   params:
     paths: ['{{._flag_dest}}', '{{._flag_source}}']`,
 			},
-			wantErr: "TODO",
+			wantErr: `the template referenced a nonexistent variable name "_flag_dest"`,
 		},
 	}
 

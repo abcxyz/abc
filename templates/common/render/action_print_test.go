@@ -59,7 +59,6 @@ func TestActionPrint(t *testing.T) {
 			wantErr: `template referenced a nonexistent variable name "name"`,
 		},
 		{
-			// TODO make a better test elsewhere in render package that tests the mapping from builtins to print vars
 			name: "flags_in_message",
 			in:   "{{._flag_dest}} {{._flag_source}}",
 			extraPrintVars: map[string]string{

@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/paths"
 	"github.com/abcxyz/abc/templates/model"
@@ -93,6 +94,7 @@ steps:
 		flagSkipInputValidation bool
 		flagManifest            bool
 		flagDebugStepDiffs      bool
+		overrideBuiltinVars     map[string]string
 		removeAllErr            error
 		wantScratchContents     map[string]string
 		wantTemplateContents    map[string]string
@@ -857,6 +859,7 @@ steps:
 		{
 			name: "git_metadata_variables_not_in_scope_on_old_api_version",
 			templateContents: map[string]string{
+				"example.txt": `"{{._git_tag}}" "{{._git_sha}}" "{{._git_short_sha}}"`,
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta2'
 kind: 'Template'
 desc: 'My template'
@@ -867,6 +870,86 @@ steps:
       message: '{{._git_tag}}'`,
 			},
 			wantErr: `nonexistent variable name "_git_tag"`,
+		},
+		{
+			name:       "print_only_flags_are_in_scope_for_print_actions",
+			flagInputs: map[string]string{},
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: '{{._flag_dest}} {{._flag_source}}'`,
+			},
+			overrideBuiltinVars: map[string]string{
+				builtinvar.FlagDest:   "/my/dest",
+				builtinvar.FlagSource: "/my/source",
+			},
+			wantStdout: "/my/dest /my/source\n",
+		},
+
+		{
+			name:       "print_only_flags_are_not_in_scope_outside_of_print_actions",
+			flagInputs: map[string]string{},
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include action that should fail because it uses a disallowed builtin'
+  action: 'include'
+  params:
+    paths: ['{{._flag_dest}}']`,
+			},
+			overrideBuiltinVars: map[string]string{
+				builtinvar.FlagDest:   "/my/dest",
+				builtinvar.FlagSource: "/my/source",
+			},
+			wantErr: `nonexistent variable name "_flag_dest"`,
+		},
+		{
+			name: "builtins_cant_be_set_by_regular_input",
+			flagInputs: map[string]string{
+				"_git_tag": "my-tag",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: '{{._git_tag}}'`,
+			},
+			wantErr: `input names beginning with underscore cannot be overridden by a normal user input; the bad input names were: [_git_tag]`,
+		},
+		{
+			name: "inputs_cant_be_declared_with_leading_underscore",
+			flagInputs: map[string]string{
+				"_my_misnamed_input": "foo",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+inputs:
+- desc: 'This input should be rejected'
+  name: '_my_misnamed_input'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: '{{._git_tag}}'`,
+			},
+			wantErr: `input names beginning with _ are reserved`,
 		},
 	}
 
@@ -901,6 +984,7 @@ steps:
 				InputFiles:          inputFilePaths,
 				KeepTempDirs:        tc.flagKeepTempDirs,
 				Manifest:            tc.flagManifest,
+				OverrideBuiltinVars: tc.overrideBuiltinVars,
 				SkipInputValidation: tc.flagSkipInputValidation,
 				DebugStepDiffs:      tc.flagDebugStepDiffs,
 				Source:              sourceDir,
