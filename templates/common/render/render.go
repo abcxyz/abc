@@ -221,6 +221,14 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 	return nil
 }
 
+// scopes returns two things:
+//
+//   - a Scope object that has all variable bindings that are in scope for the
+//     spec.yaml. This
+//     includes vars for user inputs and also built-in vars like _git_tag.
+//   - a map of extra variable bindings in addition to the above scope, for
+//     variables that are only in scope inside "print" actions. Print has access
+//     to e.g. the _flag_dest var that cannot be accessed elsewhere.
 func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_ *common.Scope, extraPrintVars map[string]string, _ error) {
 	scope := common.NewScope(resolvedInputs)
 
@@ -249,12 +257,12 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 
 		// Split the caller-provided OverrideBuiltinVars into two
 		// non-overlapping sets:
-		//  1. The var names that are "print only" (only in scope for "print"
-		//     actions. Examples: _flag_dest, _flag_source
-		//  2. The var names that are available everywhere in the spec, not just
+		//  1. The var names that are available everywhere in the spec, not just
 		//     in "print" actions. Examples: _git_tag, _git_sha
+		//  2. The var names that are "print only" (only in scope for "print"
+		//     actions. Examples: _flag_dest, _flag_source
 		//
-		// The former go into "extraPrintVars", and the latter go into "scope".
+		// The former go into "scope", and the latter go into "extraPrintVars".
 		printOnlyVarNames := map[string]string{
 			builtinvar.FlagDest:   "",
 			builtinvar.FlagSource: "",
