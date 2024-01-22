@@ -306,7 +306,7 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 				t.Error(diff)
 			}
 			if tc.wantUnknownKeyErr {
-				as := &unknownTemplateKeyError{}
+				as := &UnknownTemplateKeyError{}
 				if ok := errors.As(err, &as); !ok {
 					t.Errorf("errors.As(%T)=false, wanted true, for error %v", &as, err)
 				}
@@ -322,18 +322,18 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
 	t.Parallel()
 
-	err1 := &unknownTemplateKeyError{
-		key:           "my_key",
-		availableKeys: []string{"other_key"},
-		wrapped:       errors.New("wrapped"),
+	err1 := &UnknownTemplateKeyError{
+		Key:           "my_key",
+		AvailableKeys: []string{"other_key"},
+		Wrapped:       errors.New("wrapped"),
 	}
 
-	is := &unknownTemplateKeyError{}
+	is := &UnknownTemplateKeyError{}
 	if !errors.Is(err1, is) {
 		t.Errorf("errors.Is() returned false, should return true when called with an error of type %T", is)
 	}
 
-	as := &unknownTemplateKeyError{}
+	as := &UnknownTemplateKeyError{}
 	if !errors.As(err1, &as) {
 		t.Errorf("errors.As() returned false, should return true when called with an error of type %T", as)
 	}

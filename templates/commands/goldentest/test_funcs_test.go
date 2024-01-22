@@ -501,6 +501,24 @@ steps:
 			},
 			wantErr: `the template referenced a nonexistent variable name "_flag_dest"`,
 		},
+		{
+			name: "custom_error_message_for_builtin_needing_override",
+			testCase: &TestCase{
+				TestName:   "test",
+				TestConfig: &goldentest.Test{},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+desc: 'A simple template'
+steps:
+- desc: 'Reference an undefined builtin'
+  action: 'print'
+  params:
+    message: '{{._git_tag}}'`,
+			},
+			wantErr: `you may need to provide a value for "_git_tag" in the builtin_vars section of test.yaml`,
+		},
 	}
 
 	for _, tc := range cases {

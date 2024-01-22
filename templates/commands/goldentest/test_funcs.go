@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/benbjohnson/clock"
 
@@ -162,7 +163,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
-	return render.Render(ctx, &render.Params{ //nolint:wrapcheck
+	err = render.Render(ctx, &render.Params{
 		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
 		Clock:               clock.New(),
 		Cwd:                 cwd,
@@ -172,6 +173,15 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		Source:              templateDir,
 		Stdout:              io.Discard, // Mute stdout from command runs.
 	})
+	if err != nil {
+		var utke *render.UnknownTemplateKeyError
+		if errors.As(err, &utke) && strings.HasPrefix(utke.Key, "_") {
+			return fmt.Errorf("you may need to provide a value for %q in the builtin_vars section of test.yaml: %w", utke.Key, err)
+		}
+		return err //nolint:wrapcheck
+	}
+
+	return nil
 }
 
 func varValuesToMap(vvs []*goldentest.VarValue) map[string]string {

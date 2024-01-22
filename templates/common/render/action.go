@@ -265,10 +265,10 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *common.Scop
 		if matches != nil {
 			varNames := maps.Keys(vars)
 			sort.Strings(varNames)
-			err = &unknownTemplateKeyError{
-				key:           matches[1],
-				availableKeys: varNames,
-				wrapped:       err,
+			err = &UnknownTemplateKeyError{
+				Key:           matches[1],
+				AvailableKeys: varNames,
+				Wrapped:       err,
 			}
 		}
 		return "", pos.Errorf("template.Execute() failed: %w", err)
@@ -288,24 +288,24 @@ func parseAndExecuteGoTmplAll(ss []model.String, scope *common.Scope) ([]string,
 	return out, nil
 }
 
-// unknownTemplateKeyError is an error that will be returned when a template
+// UnknownTemplateKeyError is an error that will be returned when a template
 // references a variable that's nonexistent.
-type unknownTemplateKeyError struct {
-	key           string
-	availableKeys []string
-	wrapped       error
+type UnknownTemplateKeyError struct {
+	Key           string
+	AvailableKeys []string
+	Wrapped       error
 }
 
-func (n *unknownTemplateKeyError) Error() string {
+func (n *UnknownTemplateKeyError) Error() string {
 	return fmt.Sprintf("the template referenced a nonexistent variable name %q; available variable names are %v",
-		n.key, n.availableKeys)
+		n.Key, n.AvailableKeys)
 }
 
-func (n *unknownTemplateKeyError) Unwrap() error {
-	return n.wrapped
+func (n *UnknownTemplateKeyError) Unwrap() error {
+	return n.Wrapped
 }
 
-func (n *unknownTemplateKeyError) Is(other error) bool {
-	_, ok := other.(*unknownTemplateKeyError)
+func (n *UnknownTemplateKeyError) Is(other error) bool {
+	_, ok := other.(*UnknownTemplateKeyError)
 	return ok
 }
