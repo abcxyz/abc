@@ -356,6 +356,31 @@ steps:
 			},
 		},
 		{
+			name: "builtins_are_only_in_scope_if_overridden",
+			testCase: &TestCase{
+				TestName:   "test",
+				TestConfig: &goldentest.Test{},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths: ['.']
+- desc: 'Replace git tag placeholder'
+  action: 'go_template'
+  params:
+    paths: ['my_file.txt']`,
+				"my_file.txt": "{{._git_tag}}",
+			},
+			wantErr: `nonexistent variable name "_git_tag"`,
+		},
+		{
 			name: "builtins_are_rejected_on_old_spec_api_version_v1beta2",
 			testCase: &TestCase{
 				TestName: "test",
