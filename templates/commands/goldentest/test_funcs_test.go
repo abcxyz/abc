@@ -189,10 +189,10 @@ builtin_vars:
 
 			ctx := context.Background()
 			got, err := parseTestCases(ctx, tempDir, tc.testNames)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
 			if err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
 				return
 			}
 
@@ -296,10 +296,10 @@ steps:
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
 			if err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
 				return
 			}
 
@@ -490,10 +490,10 @@ steps:
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
 			if err != nil {
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
 				return
 			}
 
