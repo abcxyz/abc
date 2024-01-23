@@ -12,35 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: 'cli.abcxyz.dev/v1beta2'
+apiVersion: 'cli.abcxyz.dev/v1beta3'
 kind: 'Template'
 
 desc: 'An example of using builtin git variables in a template'
 
 steps:
+  - desc: 'Include an empty file that we can append to'
+    action: 'include'
+    params:
+      paths: ['out.txt']
   - desc: 'Print a message if being rendered from git'
-    action: 'print'
+    action: 'append'
     if: '_git_sha != ""'
     params:
-      message: |-
+      paths: ['out.txt']
+      with: |-
         This template is rendered from git. The git short SHA is
         {{._git_short_sha}} and the full SHA is {{._git_sha}}.
   - desc: 'Print the git tag if there is one'
-    action: 'print'
+    action: 'append'
     if: '_git_tag != ""'
     params:
-      message: |-
+      paths: ['out.txt']
+      with: |-
         And furthermore, the git tag associated with that SHA is {{._git_tag}}.
   - desc: "If we're rendering from git and there's no tag, then say that"
-    action: 'print'
+    action: 'append'
     if: '_git_sha != "" && _git_tag == ""'
     params:
-      message: |-
+      paths: ['out.txt']
+      with: |-
         There isn't a tag pointing to this SHA.
 
   - desc: 'Print a message if NOT being rendered from git'
-    action: 'print'
+    action: 'append'
     if: '_git_sha == ""'
     params:
-      message: |-
+      paths: ['out.txt']
+      with: |-
         This template isn't being rendered from git, so there's no SHA or tag.
