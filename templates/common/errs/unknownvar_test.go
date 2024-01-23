@@ -25,18 +25,18 @@ import (
 func TestUnknownVar_ErrorsIsAs(t *testing.T) {
 	t.Parallel()
 
-	err := &UnknownVar{
+	err := &UnknownVarError{
 		VarName:       "my_var",
 		AvailableKeys: []string{"other_var"},
 		Wrapped:       errors.New("wrapped"),
 	}
 
-	is := &UnknownVar{}
+	is := &UnknownVarError{}
 	if !errors.Is(err, is) {
 		t.Errorf("errors.Is() returned false, should return true when called with an error of type %T", is)
 	}
 
-	as := &UnknownVar{}
+	as := &UnknownVarError{}
 	if !errors.As(err, &as) {
 		t.Errorf("errors.As() returned false, should return true when called with an error of type %T", as)
 	}

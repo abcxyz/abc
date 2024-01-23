@@ -19,24 +19,24 @@ package errs
 
 import "fmt"
 
-// UnknownVar is an error that will be returned when a template
+// UnknownVarError is an error that will be returned when a template
 // references a variable that's nonexistent.
-type UnknownVar struct {
+type UnknownVarError struct {
 	VarName       string
 	AvailableKeys []string
 	Wrapped       error
 }
 
-func (n *UnknownVar) Error() string {
+func (n *UnknownVarError) Error() string {
 	return fmt.Sprintf("the template referenced a nonexistent variable name %q; available variable names are %v",
 		n.VarName, n.AvailableKeys)
 }
 
-func (n *UnknownVar) Unwrap() error {
+func (n *UnknownVarError) Unwrap() error {
 	return n.Wrapped
 }
 
-func (n *UnknownVar) Is(other error) bool {
-	_, ok := other.(*UnknownVar)
+func (n *UnknownVarError) Is(other error) bool {
+	_, ok := other.(*UnknownVarError)
 	return ok
 }

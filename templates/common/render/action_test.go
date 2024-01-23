@@ -307,7 +307,7 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 				t.Error(diff)
 			}
 			if tc.wantUnknownKeyErr {
-				as := &errs.UnknownVar{}
+				as := &errs.UnknownVarError{}
 				if ok := errors.As(err, &as); !ok {
 					t.Errorf("errors.As(%T)=false, wanted true, for error %v", &as, err)
 				}
@@ -319,7 +319,6 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 		})
 	}
 }
-
 
 // These are basic tests to ensure the template functions are mounted. More
 // exhaustive tests are at template_funcs_test.go.

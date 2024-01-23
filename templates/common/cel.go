@@ -305,7 +305,7 @@ func celCompile(ctx context.Context, scope *Scope, expr string) (cel.Program, er
 	ast, issues := env.Compile(expr)
 	if err := issues.Err(); err != nil {
 		if name, ok := isCELUndeclaredRef(err); ok {
-			return nil, &errs.UnknownVar{
+			return nil, &errs.UnknownVarError{
 				VarName:       name,
 				AvailableKeys: maps.Keys(scope.All()),
 				Wrapped:       err,

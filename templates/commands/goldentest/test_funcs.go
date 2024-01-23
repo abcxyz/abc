@@ -175,7 +175,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		Stdout:              io.Discard, // Mute stdout from command runs.
 	})
 	if err != nil {
-		var uve *errs.UnknownVar
+		var uve *errs.UnknownVarError
 		if errors.As(err, &uve) && strings.HasPrefix(uve.VarName, "_") {
 			return fmt.Errorf("you may need to provide a value for %q in the builtin_vars section of test.yaml: %w", uve.VarName, err)
 		}

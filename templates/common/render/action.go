@@ -266,7 +266,7 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *common.Scop
 		if matches != nil {
 			varNames := maps.Keys(vars)
 			sort.Strings(varNames)
-			err = &errs.UnknownVar{
+			err = &errs.UnknownVarError{
 				VarName:       matches[1],
 				AvailableKeys: varNames,
 				Wrapped:       err,
