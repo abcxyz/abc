@@ -47,7 +47,7 @@ const (
 // needed because the set of variable names that are in scope depends on the
 // api_version; we sometimes add new variables.
 func Validate(f features.Features, attemptedNames []string) error {
-	allowed := namesInScope(f)
+	allowed := NamesInScope(f)
 	unknown := sets.Subtract(attemptedNames, allowed)
 	if len(unknown) > 0 {
 		return fmt.Errorf("these builtin override var names are unknown and therefore invalid: %v; the set of valid builtin var names is %v",
@@ -56,8 +56,8 @@ func Validate(f features.Features, attemptedNames []string) error {
 	return nil
 }
 
-// namesInScope returns the set of builtin var names.
-func namesInScope(f features.Features) []string {
+// NamesInScope returns the set of builtin var names.
+func NamesInScope(f features.Features) []string {
 	// These vars have always existed in every api_version
 	out := []string{FlagDest, FlagSource}
 
