@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -306,7 +307,7 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 				t.Error(diff)
 			}
 			if tc.wantUnknownKeyErr {
-				as := &UnknownTemplateKeyError{}
+				as := &errs.UnknownVar{}
 				if ok := errors.As(err, &as); !ok {
 					t.Errorf("errors.As(%T)=false, wanted true, for error %v", &as, err)
 				}
@@ -319,25 +320,6 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 	}
 }
 
-func TestUnknownTemplateKeyError_ErrorsIsAs(t *testing.T) {
-	t.Parallel()
-
-	err1 := &UnknownTemplateKeyError{
-		Key:           "my_key",
-		AvailableKeys: []string{"other_key"},
-		Wrapped:       errors.New("wrapped"),
-	}
-
-	is := &UnknownTemplateKeyError{}
-	if !errors.Is(err1, is) {
-		t.Errorf("errors.Is() returned false, should return true when called with an error of type %T", is)
-	}
-
-	as := &UnknownTemplateKeyError{}
-	if !errors.As(err1, &as) {
-		t.Errorf("errors.As() returned false, should return true when called with an error of type %T", as)
-	}
-}
 
 // These are basic tests to ensure the template functions are mounted. More
 // exhaustive tests are at template_funcs_test.go.

@@ -872,6 +872,22 @@ steps:
 			wantErr: `nonexistent variable name "_git_tag"`,
 		},
 		{
+			name: "git_metadata_variables_not_in_scope_on_old_api_version_cel",
+			templateContents: map[string]string{
+				"example.txt": `"{{._git_tag}}" "{{._git_sha}}" "{{._git_short_sha}}"`,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta2'
+kind: 'Template'
+desc: 'My template'
+steps:
+  - action: 'print'
+    desc: 'should fail'
+    if: '_git_tag == ""' # _git_tag shouldn't be in scope. Should error out.
+    params:
+      message: 'Some message'`,
+			},
+			wantErr: `at line 7 column 9: the template referenced a nonexistent variable name "_git_tag"`,
+		},
+		{
 			name:       "print_only_flags_are_in_scope_for_print_actions",
 			flagInputs: map[string]string{},
 			templateContents: map[string]string{
@@ -1023,6 +1039,12 @@ steps:
 			err := Render(ctx, p)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
+			}
+			if err != nil {
+				errStr := err.Error()
+				if strings.Count(errStr, " at line ") > 1 {
+					t.Errorf(`this error message reported the "at line" location more than once: %q`, errStr)
+				}
 			}
 
 			if diff := cmp.Diff(stdoutBuf.String(), tc.wantStdout); diff != "" {

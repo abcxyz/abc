@@ -32,12 +32,11 @@ func TestCompileAndEvalCEL(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name           string
-		in             model.String
-		vars           map[string]string
-		want           any
-		wantCompileErr string
-		wantEvalErr    string
+		name    string
+		in      model.String
+		vars    map[string]string
+		want    any
+		wantErr string
 	}{
 		{
 			name: "simple-success",
@@ -45,22 +44,22 @@ func TestCompileAndEvalCEL(t *testing.T) {
 			want: []string{"alligator", "crocodile"},
 		},
 		{
-			name:        "bad-int-to-string",
-			in:          model.String{Val: `42`},
-			want:        []string(nil),
-			wantEvalErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to []string`,
+			name:    "bad-int-to-string",
+			in:      model.String{Val: `42`},
+			want:    []string(nil),
+			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to []string`,
 		},
 		{
-			name:        "bad-list-of-int-to-list-of-string",
-			in:          model.String{Val: `[42]`},
-			want:        []string(nil),
-			wantEvalErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
+			name:    "bad-list-of-int-to-list-of-string",
+			in:      model.String{Val: `[42]`},
+			want:    []string(nil),
+			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
 		{
-			name:        "bad-heterogenous list",
-			in:          model.String{Val: `["alligator", 42]`},
-			want:        []string(nil),
-			wantEvalErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
+			name:    "bad-heterogenous list",
+			in:      model.String{Val: `["alligator", 42]`},
+			want:    []string(nil),
+			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
 		{
 			name: "string-split",
@@ -74,19 +73,10 @@ func TestCompileAndEvalCEL(t *testing.T) {
 			want: []string{"alligator", "crocodile"},
 		},
 		{
-			name:           "invalid-cel-syntax",
-			in:             model.String{Val: `[[[[[`},
-			want:           "",
-			wantCompileErr: "Syntax error: mismatched input",
-		},
-		{
-			name: "yaml-pos-passed-through-on-error",
-			in: model.String{
-				Val: `[[[[[`,
-				Pos: &model.ConfigPos{Line: 9876},
-			},
-			want:           "",
-			wantCompileErr: "9876",
+			name:    "invalid-cel-syntax",
+			in:      model.String{Val: `[[[[[`},
+			want:    "",
+			wantErr: "Syntax error: mismatched input",
 		},
 		{
 			name: "simple-int-return",
@@ -114,20 +104,14 @@ func TestCompileAndEvalCEL(t *testing.T) {
 			ctx := context.Background()
 			scope := NewScope(tc.vars)
 
-			prog, err := celCompile(ctx, scope, tc.in)
-			if diff := testutil.DiffErrString(err, tc.wantCompileErr); diff != "" {
+			// Create a new "any" variable whose type is pointer-to-the-type-of-tc.want.
+			gotPtr := reflect.New(reflect.ValueOf(tc.want).Type()).Interface()
+			err := CelCompileAndEval(ctx, scope, tc.in, gotPtr)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 			if err != nil {
 				return // If compilation failed, don't try to eval.
-			}
-
-			// Create a new "any" variable whose type is pointer-to-the-type-of-tc.want.
-			gotPtr := reflect.New(reflect.ValueOf(tc.want).Type()).Interface()
-
-			err = celEval(ctx, scope, tc.in.Pos, prog, gotPtr)
-			if diff := testutil.DiffErrString(err, tc.wantEvalErr); diff != "" {
-				t.Fatal(diff)
 			}
 
 			// Dereference the pointer hidden inside the gotPtr "any" variable.
@@ -579,7 +563,7 @@ func compileEvalForTest(t *testing.T, expr string, want any, wantErr string) {
 
 	ctx := context.Background()
 
-	prog, err := celCompile(ctx, NewScope(nil), model.String{Val: expr})
+	prog, err := celCompile(ctx, NewScope(nil), expr)
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 		t.Fatal(diff)
 	}
