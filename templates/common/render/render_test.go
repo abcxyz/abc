@@ -602,7 +602,7 @@ steps:
         skip: ['file1.txt']
 `,
 			},
-			wantDestContents: nil,
+			wantDestContents: map[string]string{},
 		},
 		{
 			name: "glob_include",
@@ -664,7 +664,8 @@ steps:
             message: 'Working on environment {{.env}}'
 `,
 			},
-			wantStdout: "Working on environment production\nWorking on environment dev\n",
+			wantStdout:       "Working on environment production\nWorking on environment dev\n",
+			wantDestContents: map[string]string{},
 		},
 		{
 			name: "skip_input_validation",
@@ -688,6 +689,7 @@ steps:
 			flagInputs:              map[string]string{"my_input": "crocodile"},
 			flagSkipInputValidation: true,
 			wantStdout:              "my_input is crocodile\n",
+			wantDestContents:        map[string]string{},
 		},
 		{
 			name: "step_with_if",
@@ -713,7 +715,8 @@ steps:
     params:
       message: 'Goodbye'`,
 			},
-			wantStdout: "Hello\n",
+			wantStdout:       "Hello\n",
+			wantDestContents: map[string]string{},
 		},
 		{
 			name: "step_with_if_needs_v1beta1",
@@ -889,7 +892,8 @@ steps:
 				builtinvar.FlagDest:   "/my/dest",
 				builtinvar.FlagSource: "/my/source",
 			},
-			wantStdout: "/my/dest /my/source\n",
+			wantStdout:       "/my/dest /my/source\n",
+			wantDestContents: map[string]string{},
 		},
 		{
 			name:       "print_only_flags_are_not_in_scope_outside_of_print_actions",

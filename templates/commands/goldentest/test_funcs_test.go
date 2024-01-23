@@ -282,6 +282,25 @@ steps:
 				"data/b.txt": "file B content",
 			},
 		},
+		{
+			name: "empty_template_output_is_valid",
+			testCase: &TestCase{
+				TestName:   "test",
+				TestConfig: &goldentest.Test{},
+			},
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'A template that outputs no files'
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+        message: 'Hello'`,
+			},
+			expectedGoldenContent: map[string]string{},
+		},
 	}
 
 	for _, tc := range cases {
@@ -315,11 +334,11 @@ func TestOverrideBuiltIns(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name                  string
-		testCase              *TestCase
-		filesContent          map[string]string
-		expectedGoldenContent map[string]string
-		wantErr               string
+		name         string
+		testCase     *TestCase
+		filesContent map[string]string
+		want         map[string]string
+		wantErr      string
 	}{
 		{
 			name: "builtins_are_present_on_spec_api_version_v1beta3",
@@ -351,7 +370,7 @@ steps:
     paths: ['my_file.txt']`,
 				"my_file.txt": "{{._git_tag}}",
 			},
-			expectedGoldenContent: map[string]string{
+			want: map[string]string{
 				"data/my_file.txt": "my-cool-tag",
 			},
 		},
@@ -468,6 +487,7 @@ steps:
   params:
     message: '{{._flag_dest}} {{._flag_source}}'`,
 			},
+			want: map[string]string{},
 		},
 
 		{
@@ -541,7 +561,7 @@ steps:
 			}
 
 			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
-			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.want, common.CmpFileMode); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})

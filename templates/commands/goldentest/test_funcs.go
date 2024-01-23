@@ -154,10 +154,6 @@ func renderTestCases(ctx context.Context, testCases []*TestCase, location string
 func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *TestCase) error {
 	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName, testDataDir)
 
-	if err := os.RemoveAll(testDir); err != nil {
-		return fmt.Errorf("failed to clear test directory: %w", err)
-	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("os.Getwd(): %w", err)

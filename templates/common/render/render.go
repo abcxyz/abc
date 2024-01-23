@@ -516,6 +516,16 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, includedFromDest map[string]struct{}) (map[string][]byte, error) {
 	logger := logging.FromContext(ctx).With("logger", "commit")
 
+	if !dryRun {
+		// Output dirs will be created as needed, but we'll still create the
+		// output dir here to handle the edge case where the template generates
+		// no output files. In that case, the output directory should be created
+		// but empty.
+		if err := p.FS.MkdirAll(p.DestDir, common.OwnerRWXPerms); err != nil {
+			return nil, fmt.Errorf("failed creating template output directory: %w", err)
+		}
+	}
+
 	visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
 		_, ok := includedFromDest[relPath]
 		return common.CopyHint{
