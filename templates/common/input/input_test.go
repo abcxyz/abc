@@ -89,7 +89,7 @@ func TestValidateInputs(t *testing.T) {
 		want        string
 	}{
 		{
-			name: "no-validation-rule",
+			name: "no_validation_rule",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -100,7 +100,7 @@ func TestValidateInputs(t *testing.T) {
 			},
 		},
 		{
-			name: "single-passing-validation-rule",
+			name: "single_passing_validation_rule",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -117,7 +117,7 @@ func TestValidateInputs(t *testing.T) {
 			},
 		},
 		{
-			name: "single-failing-validation-rule",
+			name: "single_failing_validation_rule",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -140,7 +140,7 @@ Rule:         size(my_input) < 3
 Rule msg:     Length must be less than 3`,
 		},
 		{
-			name: "multiple-passing-validation-rules",
+			name: "multiple_passing_validation_rules",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -165,7 +165,7 @@ Rule msg:     Length must be less than 3`,
 			},
 		},
 		{
-			name: "multiple-passing-validation-rules-one-failing",
+			name: "multiple_passing_validation_rules_one_failing",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -196,7 +196,7 @@ Rule:         size(my_input) < 3
 Rule msg:     Length must be less than 3`,
 		},
 		{
-			name: "multiple-failing-validation-rules",
+			name: "multiple_failing_validation_rules",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -237,7 +237,7 @@ Rule:         my_input.contains("shoe")
 Rule msg:     Must contain "shoe"`,
 		},
 		{
-			name: "cel-syntax-error",
+			name: "cel_syntax_error",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -259,7 +259,7 @@ Rule:         (
 CEL error:    failed compiling CEL expression: ERROR: <input>:1:2: Syntax error:`, // remainder of error omitted
 		},
 		{
-			name: "cel-type-conversion-error",
+			name: "cel_type_conversion_error",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -281,7 +281,7 @@ Rule:         bool(42)
 CEL error:    failed compiling CEL expression: ERROR: <input>:1:5: found no matching overload for 'bool'`, // remainder of error omitted
 		},
 		{
-			name: "cel-output-type-conversion-error",
+			name: "cel_output_type_conversion_error",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
@@ -303,7 +303,7 @@ Rule:         42
 CEL error:    CEL expression result couldn't be converted to bool. The CEL engine error was: unsupported type conversion from 'int' to bool`, // remainder of error omitted
 		},
 		{
-			name: "multi-input-validation",
+			name: "multi_input_validation",
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
