@@ -1,4 +1,4 @@
-// Copyright 2023 The Authors (see AUTHORS file)
+// Copyright 2024 The Authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ package goldentest
 import (
 	"fmt"
 	"strings"
+
+	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/pkg/cli"
@@ -45,6 +47,16 @@ type NewTestFlags struct {
 func (r *NewTestFlags) Register(set *cli.FlagSet) {
 	f := set.NewSection("NEW-TEST OPTIONS")
 
+	f.StringVar(&cli.StringVar{
+		Name:    "location",
+		Example: "/my/git/dir",
+		Target:  &r.Location,
+		Default: ".",
+		Predict: predict.Dirs("*"),
+		Usage: "Location is the file system location of the template to be tested and " +
+			"it must be a local directory.",
+	})
+
 	f.StringMapVar(flags.Inputs(&r.Inputs))
 
 	f.BoolVar(&cli.BoolVar{
@@ -69,20 +81,14 @@ func (r *NewTestFlags) Register(set *cli.FlagSet) {
 
 	// Default NewTestName to the first CLI argument, if given
 	set.AfterParse(func(existingErr error) error {
-		r.NewTestName = strings.TrimSpace(set.Arg(0))
+		r.NewTestName = set.Arg(0)
 
 		if r.NewTestName == "" {
 			return fmt.Errorf("missing template <new-test-name>")
 		}
-		return nil
-	})
 
-	// Default Location to the second CLI argument, if given
-	set.AfterParse(func(existingErr error) error {
-		r.Location = strings.TrimSpace(set.Arg(1))
-
-		if r.Location == "" {
-			return fmt.Errorf("missing template <location>")
+		if strings.Contains(r.NewTestName, "/") || strings.Contains(r.NewTestName, "\\") {
+			return fmt.Errorf("<new-test-name> can't include any slashes or backslashes")
 		}
 		return nil
 	})

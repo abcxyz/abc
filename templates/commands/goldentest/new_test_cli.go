@@ -1,4 +1,4 @@
-// Copyright 2023 The Authors (see AUTHORS file)
+// Copyright 2024 The Authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/specutil"
-	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model/decode"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 	"github.com/abcxyz/pkg/cli"
@@ -48,13 +47,11 @@ func (c *NewTestCommand) Desc() string {
 
 func (c *NewTestCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [options] <test_name> <location>
+Usage: {{ COMMAND }} [options] <test_name>
 
 The {{ COMMAND }} create a new golden test.
 
 The "<test_name>" is the name of the test.
-
-The "<location>" is the location of the template.
 `
 }
 
@@ -79,26 +76,13 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		rErr = errors.Join(rErr, os.RemoveAll(tempDir))
 	}()
 
-	wd, err := c.WorkingDir()
-	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
-
 	fs := &common.RealFS{}
-	logger.DebugContext(ctx, "downloading/copying template")
-	_, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
-		CWD:         wd,
-		FS:          fs,
-		TempDirBase: tempDir,
-		Source:      c.flags.Location,
-		// using localSourceParser instead of remoteGitSourceParser.
-		GitProtocol: "",
-	})
+
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
 
-	spec, err := specutil.Load(ctx, fs, templateDir, c.flags.Location)
+	spec, err := specutil.Load(ctx, fs, c.flags.Location, c.flags.Location)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -117,7 +101,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 
 	buf, err := marshalTestCase(resolvedInputs)
 	if err != nil {
-		return fmt.Errorf("failed to marhsal test config data: %w", err)
+		return fmt.Errorf("failed to marshal test config data: %w", err)
 	}
 
 	testDir := filepath.Join(c.flags.Location, goldenTestDir, c.flags.NewTestName)
@@ -127,10 +111,10 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err != nil {
 		return fmt.Errorf("failed creating %s directory to contain test yaml file: %w", testDir, err)
 	}
-	// file overriding is not allowed.
+	// file overwriting is not allowed.
 	fh, err := fs.OpenFile(testConfigFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, common.OwnerRWPerms)
 	if err != nil {
-		return fmt.Errorf("OpenFile(%q): %w", testConfigFile, err)
+		return fmt.Errorf("can't open file(%q): %w", testConfigFile, err)
 	}
 	defer func() {
 		rErr = errors.Join(rErr, fh.Close())
