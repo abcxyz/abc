@@ -16,11 +16,14 @@
 package goldentest
 
 // This file implements the "templates golden-test new-test" subcommand.
-
 import (
 	"context"
 	"errors"
 	"fmt"
+	"gopkg.in/yaml.v3"
+	"os"
+	"path/filepath"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/specutil"
@@ -29,9 +32,6 @@ import (
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 type NewTestCommand struct {
@@ -68,7 +68,6 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	fmt.Printf("debug print %s\n", c.flags.Inputs)
 
 	tempDir, err := os.MkdirTemp("", "abc-new-test-*")
 	if err != nil {
@@ -98,7 +97,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "resolving inputs")
-	fmt.Printf("flag input is %s\n", c.flags.Inputs)
+
 	resolvedInputs, err := input.Resolve(ctx, &input.ResolveParams{
 		FS:       fs,
 		Inputs:   c.flags.Inputs,
@@ -109,7 +108,6 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-	fmt.Printf("resolved inputs is %s\n", resolvedInputs)
 
 	testCase := goldentest.Test{
 		Inputs: mapToVarValues(resolvedInputs),
