@@ -233,7 +233,7 @@ name: '_name_with_leading_underscore'`,
 			wantValidateErr: "are reserved",
 		},
 		{
-			name: "validation-rule",
+			name: "validation_rule",
 			in: `desc: 'foo'
 name: 'a'
 rules:
@@ -251,7 +251,7 @@ rules:
 			},
 		},
 		{
-			name: "validation-rule-without-message",
+			name: "validation_rule_without_message",
 			in: `desc: 'foo'
 name: 'a'
 rules:
@@ -267,7 +267,7 @@ rules:
 			},
 		},
 		{
-			name: "multiple-validation-rules",
+			name: "multiple_validation_rules",
 			in: `desc: 'foo'
 name: 'a'
 rules:
