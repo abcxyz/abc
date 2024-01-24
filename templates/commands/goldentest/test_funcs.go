@@ -27,6 +27,7 @@ import (
 	"github.com/benbjohnson/clock"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/model/decode"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
@@ -174,9 +175,9 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		Stdout:              io.Discard, // Mute stdout from command runs.
 	})
 	if err != nil {
-		var utke *render.UnknownTemplateKeyError
-		if errors.As(err, &utke) && strings.HasPrefix(utke.Key, "_") {
-			return fmt.Errorf("you may need to provide a value for %q in the builtin_vars section of test.yaml: %w", utke.Key, err)
+		var uve *errs.UnknownVarError
+		if errors.As(err, &uve) && strings.HasPrefix(uve.VarName, "_") {
+			return fmt.Errorf("you may need to provide a value for %q in the builtin_vars section of test.yaml: %w", uve.VarName, err)
 		}
 		return err //nolint:wrapcheck
 	}
