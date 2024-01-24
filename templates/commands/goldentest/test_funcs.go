@@ -194,7 +194,7 @@ func varValuesToMap(vvs []*goldentest.VarValue) map[string]string {
 }
 
 func mapToVarValues(m map[string]string) []*goldentest.VarValue {
-	var out []*goldentest.VarValue
+	out := make([]*goldentest.VarValue, 0, len(m))
 	for k, v := range m {
 		out = append(out, &goldentest.VarValue{
 			Name:  model.String{Val: k},

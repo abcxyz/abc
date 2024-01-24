@@ -16,13 +16,15 @@
 package goldentest
 
 // This file implements the "templates golden-test new-test" subcommand.
+
 import (
 	"context"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
@@ -46,7 +48,7 @@ func (c *NewTestCommand) Desc() string {
 
 func (c *NewTestCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [--test-name=<test-name-1>]
+Usage: {{ COMMAND }} [options] <test_name> <location>
 
 The {{ COMMAND }} create a new golden test.
 
@@ -92,6 +94,10 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		// using localSourceParser instead of remoteGitSourceParser.
 		GitProtocol: "",
 	})
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
 	spec, err := specutil.Load(ctx, fs, templateDir, c.flags.Location)
 	if err != nil {
 		return err //nolint:wrapcheck
@@ -109,32 +115,19 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	testCase := goldentest.Test{
-		Inputs: mapToVarValues(resolvedInputs),
-	}
-
-	buf, err := yaml.Marshal(testCase)
+	buf, err := marshalTestCase(resolvedInputs)
 	if err != nil {
-		return fmt.Errorf("failed marshaling test case when writing: %w", err)
+		return fmt.Errorf("failed to marhsal test config data: %w", err)
 	}
-	header := map[string]string{
-		"api_version": decode.LatestAPIVersion,
-		"kind":        decode.KindGoldenTest,
-	}
-	headerYAML, err := yaml.Marshal(header)
-	if err != nil {
-		return fmt.Errorf("failed marshaling api_version: %w", err)
-	}
-
-	buf = append(headerYAML,
-		buf...)
 
 	testDir := filepath.Join(c.flags.Location, goldenTestDir, c.flags.NewTestName)
 	testConfigFile := filepath.Join(testDir, configName)
+
 	err = fs.MkdirAll(testDir, common.OwnerRWXPerms)
 	if err != nil {
 		return fmt.Errorf("failed creating %s directory to contain test yaml file: %w", testDir, err)
 	}
+	// file overriding is not allowed.
 	fh, err := fs.OpenFile(testConfigFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, common.OwnerRWPerms)
 	if err != nil {
 		return fmt.Errorf("OpenFile(%q): %w", testConfigFile, err)
@@ -145,5 +138,28 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if _, err := fh.Write(buf); err != nil {
 		return fmt.Errorf("write(%q): %w", testConfigFile, err)
 	}
+
 	return nil
+}
+
+func marshalTestCase(resolvedInputs map[string]string) ([]byte, error) {
+	testCase := goldentest.Test{
+		Inputs: mapToVarValues(resolvedInputs),
+	}
+	buf, err := yaml.Marshal(testCase)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling test case when writing: %w", err)
+	}
+	header := map[string]string{
+		"api_version": decode.LatestAPIVersion,
+		"kind":        decode.KindGoldenTest,
+	}
+	headerYAML, err := yaml.Marshal(header)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling api_version: %w", err)
+	}
+
+	buf = append(headerYAML,
+		buf...)
+	return buf, nil
 }
