@@ -211,62 +211,62 @@ func TestGCPMatchesServiceAccount(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:  "simple-success",
+			name:  "simple_success",
 			param: `"platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  true,
 		},
 		{
-			name:  "must-not-begin-with-digit",
+			name:  "must_not_begin_with_digit",
 			param: `"9platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  false,
 		},
 		{
-			name:  "must-not-begin-with-dash",
+			name:  "must_not_begin_with_dash",
 			param: `"-platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  false,
 		},
 		{
-			name:  "longest-valid",
+			name:  "longest_valid",
 			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  true,
 		},
 		{
-			name:  "too-long",
+			name:  "too_long",
 			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  false,
 		},
 		{
-			name:  "too-short",
+			name:  "too_short",
 			param: `"abcde@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  false,
 		},
 		{
-			name:  "shortest-valid",
+			name:  "shortest_valid",
 			param: `"abcdef@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  true,
 		},
 		{
-			name:  "default-compute-service-account",
+			name:  "default_compute_service_account",
 			param: `"824005440568-compute@developer.gserviceaccount.com"`,
 			want:  true,
 		},
 		{
-			name:  "wrong-domain",
+			name:  "wrong_domain",
 			param: `"abcdef@abcxyz-my-project.iam.fake.biz"`,
 			want:  false,
 		},
 		{
-			name:    "type-error-number-as-service-account",
+			name:    "type_error_number_as_service_account",
 			param:   `42`,
 			wantErr: `found no matching overload for 'gcp_matches_service_account' applied to '(int)'`,
 		},
 		{
-			name:  "random-string",
+			name:  "random_string",
 			param: `"alligator"`,
 			want:  false,
 		},
 		{
-			name:  "random-email-address",
+			name:  "random_email_address",
 			param: `"example@example.com"`,
 			want:  false,
 		},
@@ -294,42 +294,42 @@ func TestGCPMatchesServiceAccountID(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:  "shortest-valid",
+			name:  "shortest_valid",
 			param: `"abcdef"`,
 			want:  true,
 		},
 		{
-			name:  "too-short",
+			name:  "too_short",
 			param: `"abcde"`,
 			want:  false,
 		},
 		{
-			name:  "longest-valid",
+			name:  "longest_valid",
 			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`,
 			want:  true,
 		},
 		{
-			name:  "too-long",
+			name:  "too_long",
 			param: `"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`,
 			want:  false,
 		},
 		{
-			name:  "must-not-begin-with-digit",
+			name:  "must_not_begin_with_digit",
 			param: `"9platform-ops"`,
 			want:  false,
 		},
 		{
-			name:  "must-not-begin-with-dash",
+			name:  "must_not_begin_with_dash",
 			param: `"-platform-ops"`,
 			want:  false,
 		},
 		{
-			name:    "type-error-number",
+			name:    "type_error_number",
 			param:   `42`,
 			wantErr: `found no matching overload for 'gcp_matches_service_account_id' applied to '(int)'`,
 		},
 		{
-			name:  "full-service-account-rejected",
+			name:  "full_service_account_rejected",
 			param: `"platform-ops@abcxyz-my-project.iam.gserviceaccount.com"`,
 			want:  false,
 		},
@@ -357,27 +357,27 @@ func TestGCPMatchesProjectID(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:  "simple-success",
+			name:  "simple_success",
 			param: `"my-project-id"`,
 			want:  true,
 		},
 		{
-			name:  "with-domain",
+			name:  "with_domain",
 			param: `"example.com:my-project-123"`,
 			want:  true,
 		},
 		{
-			name:  "must-not-end-with-dash",
+			name:  "must_not_end_with_dash",
 			param: `"my-project-id-"`,
 			want:  false,
 		},
 		{
-			name:  "reject-whitespace",
+			name:  "reject_whitespace",
 			param: `"my project id"`,
 			want:  false,
 		},
 		{
-			name:    "type-error-number",
+			name:    "type_error_number",
 			param:   `42`,
 			wantErr: `found no matching overload for 'gcp_matches_project_id' applied to '(int)'`,
 		},
@@ -404,27 +404,27 @@ func TestGCPMatchesProjectNumber(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:  "simple-success",
+			name:  "simple_success",
 			param: `"123123123123123"`,
 			want:  true,
 		},
 		{
-			name:  "no-letters-allowed",
+			name:  "no_letters_allowed",
 			param: `"a123123123123123"`,
 			want:  false,
 		},
 		{
-			name:  "empty-string",
+			name:  "empty_string",
 			param: `""`,
 			want:  false,
 		},
 		{
-			name:  "too-small",
+			name:  "too_small",
 			param: `"1"`,
 			want:  false,
 		},
 		{
-			name:    "type-error",
+			name:    "type_error",
 			param:   `false`,
 			wantErr: `found no matching overload for 'gcp_matches_project_number' applied to '(bool)'`,
 		},
@@ -452,37 +452,37 @@ func TestMatchesCapitalizedBool(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:  "capitalized-true",
+			name:  "capitalized_true",
 			param: `"True"`,
 			want:  true,
 		},
 		{
-			name:  "capitalized-false",
+			name:  "capitalized_false",
 			param: `"False"`,
 			want:  true,
 		},
 		{
-			name:  "uncapitalized-true",
+			name:  "uncapitalized_true",
 			param: `"true"`,
 			want:  false,
 		},
 		{
-			name:  "uncapitalized-false",
+			name:  "uncapitalized_false",
 			param: `"false"`,
 			want:  false,
 		},
 		{
-			name:  "random-string",
+			name:  "random_string",
 			param: `"abcabc"`,
 			want:  false,
 		},
 		{
-			name:  "empty-string",
+			name:  "empty_string",
 			param: `""`,
 			want:  false,
 		},
 		{
-			name:    "type-error",
+			name:    "type_error",
 			param:   `42`,
 			wantErr: "found no matching overload for 'matches_capitalized_bool' applied to '(int)'",
 		},
@@ -510,37 +510,37 @@ func TestMatchesUncapitalizedBool(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:  "capitalized-true",
+			name:  "capitalized_true",
 			param: `"True"`,
 			want:  false,
 		},
 		{
-			name:  "capitalized-false",
+			name:  "capitalized_false",
 			param: `"False"`,
 			want:  false,
 		},
 		{
-			name:  "uncapitalized-true",
+			name:  "uncapitalized_true",
 			param: `"true"`,
 			want:  true,
 		},
 		{
-			name:  "uncapitalized-false",
+			name:  "uncapitalized_false",
 			param: `"false"`,
 			want:  true,
 		},
 		{
-			name:  "random-string",
+			name:  "random_string",
 			param: `"abcabc"`,
 			want:  false,
 		},
 		{
-			name:  "empty-string",
+			name:  "empty_string",
 			param: `""`,
 			want:  false,
 		},
 		{
-			name:    "type-error",
+			name:    "type_error",
 			param:   `42`,
 			wantErr: "found no matching overload for 'matches_uncapitalized_bool' applied to '(int)'",
 		},
