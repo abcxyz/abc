@@ -307,7 +307,7 @@ func celCompile(ctx context.Context, scope *Scope, expr string) (cel.Program, er
 		if name, ok := isCELUndeclaredRef(err); ok {
 			return nil, &errs.UnknownVarError{
 				VarName:       name,
-				AvailableKeys: maps.Keys(scope.All()),
+				AvailableVars: maps.Keys(scope.All()),
 				Wrapped:       err,
 			}
 		}

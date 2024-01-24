@@ -23,13 +23,13 @@ import "fmt"
 // references a variable that's nonexistent.
 type UnknownVarError struct {
 	VarName       string
-	AvailableKeys []string
+	AvailableVars []string
 	Wrapped       error
 }
 
 func (n *UnknownVarError) Error() string {
 	return fmt.Sprintf("the template referenced a nonexistent variable name %q; available variable names are %v",
-		n.VarName, n.AvailableKeys)
+		n.VarName, n.AvailableVars)
 }
 
 func (n *UnknownVarError) Unwrap() error {

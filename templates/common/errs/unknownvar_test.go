@@ -27,7 +27,7 @@ func TestUnknownVar_ErrorsIsAs(t *testing.T) {
 
 	err := &UnknownVarError{
 		VarName:       "my_var",
-		AvailableKeys: []string{"other_var"},
+		AvailableVars: []string{"other_var"},
 		Wrapped:       errors.New("wrapped"),
 	}
 
