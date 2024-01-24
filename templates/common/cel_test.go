@@ -39,57 +39,57 @@ func TestCompileAndEvalCEL(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "simple-success",
+			name: "simple_success",
 			in:   model.String{Val: `["alligator","crocodile"]`},
 			want: []string{"alligator", "crocodile"},
 		},
 		{
-			name:    "bad-int-to-string",
+			name:    "bad_int_to_string",
 			in:      model.String{Val: `42`},
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to []string`,
 		},
 		{
-			name:    "bad-list-of-int-to-list-of-string",
+			name:    "bad_list_of_int_to_list_of_string",
 			in:      model.String{Val: `[42]`},
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
 		{
-			name:    "bad-heterogenous list",
+			name:    "bad_heterogenous_list",
 			in:      model.String{Val: `["alligator", 42]`},
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
 		{
-			name: "string-split",
+			name: "string_split",
 			in:   model.String{Val: `"alligator,crocodile".split(",")`},
 			want: []string{"alligator", "crocodile"},
 		},
 		{
-			name: "input-vars",
+			name: "input_vars",
 			in:   model.String{Val: `["alligator", reptile]`},
 			vars: map[string]string{"reptile": "crocodile"},
 			want: []string{"alligator", "crocodile"},
 		},
 		{
-			name:    "invalid-cel-syntax",
+			name:    "invalid_cel_syntax",
 			in:      model.String{Val: `[[[[[`},
 			want:    "",
 			wantErr: "Syntax error: mismatched input",
 		},
 		{
-			name: "simple-int-return",
+			name: "simple_int_return",
 			in:   model.String{Val: "42"},
 			want: 42,
 		},
 		{
-			name: "simple-uint-return",
+			name: "simple_uint_return",
 			in:   model.String{Val: "42u"},
 			want: uint(42),
 		},
 		{
-			name: "simple-map-return",
+			name: "simple_map_return",
 			in:   model.String{Val: `{"reptile": "alligator"}`},
 			want: map[string]any{"reptile": "alligator"},
 		},
@@ -135,22 +135,22 @@ func TestCELFuncs(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "string-split-success",
+			name: "string_split_success",
 			expr: `"foo,bar".split(",")`,
 			want: []string{"foo", "bar"},
 		},
 		{
-			name: "string-split-no-separator",
+			name: "string_split_no_separator",
 			expr: `"foo".split(",")`,
 			want: []string{"foo"},
 		},
 		{
-			name: "string-split-multiple-separators",
+			name: "string_split_multiple_separators",
 			expr: `"foo,bar,baz".split(",")`,
 			want: []string{"foo", "bar", "baz"},
 		},
 		{
-			name: "string-split-empty-string",
+			name: "string_split_empty_string",
 			expr: `"".split(",")`,
 			want: []string{""},
 		},
