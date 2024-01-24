@@ -22,6 +22,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -527,6 +528,11 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 	}
 
 	visitor := func(relPath string, _ fs.DirEntry) (common.CopyHint, error) {
+		split := strings.Split(relPath, string(filepath.Separator))
+		if slices.Contains(split, common.ABCInternalDir) {
+			return common.CopyHint{}, fmt.Errorf("the output path %q uses the reserved name %q", relPath, common.ABCInternalDir)
+		}
+
 		_, ok := includedFromDest[relPath]
 		return common.CopyHint{
 			BackupIfExists: p.Backups,

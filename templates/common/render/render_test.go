@@ -978,6 +978,60 @@ steps:
 			},
 			wantErr: "these builtin override var names are unknown and therefore invalid: [git_tag]",
 		},
+		{
+			name: "abc_internal_is_reserved",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['.abc_internal']`,
+				"file1.txt": "",
+			},
+			wantErr: `uses the reserved name ".abc_internal"`,
+		},
+		{
+			name: "abc_internal_is_reserved_in_subdir",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['foo/.abc_internal']`,
+				"file1.txt": "",
+			},
+			wantErr: `uses the reserved name ".abc_internal"`,
+		},
+		{
+			name: "abc_internal_is_reserved_in_internal_subdir",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['foo/.abc_internal/bar.txt']`,
+				"file1.txt": "",
+			},
+			wantErr: `uses the reserved name ".abc_internal"`,
+		},
 	}
 
 	for _, tc := range cases {
