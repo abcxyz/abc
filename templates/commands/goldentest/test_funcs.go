@@ -28,6 +28,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 )
@@ -188,6 +189,17 @@ func varValuesToMap(vvs []*goldentest.VarValue) map[string]string {
 	out := make(map[string]string, len(vvs))
 	for _, vv := range vvs {
 		out[vv.Name.Val] = vv.Value.Val
+	}
+	return out
+}
+
+func mapToVarValues(m map[string]string) []*goldentest.VarValue {
+	var out []*goldentest.VarValue
+	for k, v := range m {
+		out = append(out, &goldentest.VarValue{
+			Name:  model.String{Val: k},
+			Value: model.String{Val: v},
+		})
 	}
 	return out
 }
