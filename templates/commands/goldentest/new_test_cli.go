@@ -48,7 +48,9 @@ func (c *NewTestCommand) Desc() string {
 
 func (c *NewTestCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [options] <test_name>
+Usage: {{ COMMAND }} [options] <test_name> <location>
+
+If no "<location>" is given, default to current directory.
 
 The {{ COMMAND }} create a new golden test.
 

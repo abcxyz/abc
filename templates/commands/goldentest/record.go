@@ -51,7 +51,8 @@ anticipated outcome akin to expected output in unit test).
 The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be recorded.
 
-The "<location>" is the location of the template.
+The "<location>" is the location of the template. 
+If no "<location>" is given, default to current directory.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
