@@ -104,7 +104,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	for k := range c.flags.BuiltinVars {
 		builtinVarsKeys = append(builtinVarsKeys, k)
 	}
-	err = builtinvar.ValidateBuiltinVars(builtinVarsKeys)
+	err = builtinvar.Validate(spec.Features, builtinVarsKeys)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
