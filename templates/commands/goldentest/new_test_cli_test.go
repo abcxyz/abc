@@ -48,17 +48,37 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
+	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'An example template that demonstrates the "print" action'
+
+inputs:
+  - name: 'name'
+    desc: 'the name of the person to greet'
+
+steps:
+  - desc: 'Print a personalized message'
+    action: 'print'
+    params:
+      message: 'Hello, {{.name}}!'
+`
+
 	testYaml := `api_version: cli.abcxyz.dev/v1beta3
 kind: GoldenTest
 inputs:
     - name: name
       value: Bob
+builtin_vars:
+    - name: _git_tag
+      value: my-cool-tag
 `
 
 	cases := []struct {
 		name               string
 		newTestName        string
 		flagInputs         map[string]string
+		flagBuiltinVars    map[string]string
 		flagForceOverwrite bool
 		templateContents   map[string]string
 		expectedContents   map[string]string
@@ -70,8 +90,27 @@ inputs:
 			flagInputs: map[string]string{
 				"name": "Bob",
 			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
 			templateContents: map[string]string{
 				"spec.yaml": specYaml,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": testYaml,
+			},
+		},
+		{
+			name:        "simple_test_succeeds_with_no_default_spec",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Bob",
+			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": specYamlNoDefault,
 			},
 			expectedContents: map[string]string{
 				"test.yaml": testYaml,
@@ -89,6 +128,20 @@ inputs:
 			wantErr: "unknown input(s)",
 		},
 		{
+			name:        "unknown_builtin_vars",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Bob",
+			},
+			flagBuiltinVars: map[string]string{
+				"unknown_builtin": "unknown",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": specYaml,
+			},
+			wantErr: "these builtin override var names are unknown and therefore invalid",
+		},
+		{
 			name:        "test_yaml_already_exists",
 			newTestName: "new-test",
 			flagInputs: map[string]string{
@@ -104,7 +157,10 @@ inputs:
 			name:        "force_overwrite_success",
 			newTestName: "new-test",
 			flagInputs: map[string]string{
-				"name": "Alice",
+				"name": "John",
+			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
 			},
 			flagForceOverwrite: true,
 			templateContents: map[string]string{
@@ -116,7 +172,10 @@ inputs:
 kind: GoldenTest
 inputs:
     - name: name
-      value: Alice
+      value: John
+builtin_vars:
+    - name: _git_tag
+      value: my-cool-tag
 `,
 			},
 		},
@@ -125,6 +184,9 @@ inputs:
 			newTestName: "new-test",
 			flagInputs: map[string]string{
 				"name": "Bob",
+			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
 			},
 			flagForceOverwrite: true,
 			templateContents: map[string]string{
@@ -152,6 +214,9 @@ inputs:
 			args = append(args, fmt.Sprintf("--location=%s", tempDir))
 			for k, v := range tc.flagInputs {
 				args = append(args, fmt.Sprintf("--input=%s=%s", k, v))
+			}
+			for k, v := range tc.flagBuiltinVars {
+				args = append(args, fmt.Sprintf("--builtin-var=%s=%s", k, v))
 			}
 			if tc.flagForceOverwrite {
 				args = append(args, "--force-overwrite")
