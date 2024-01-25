@@ -53,6 +53,9 @@ var rootCmd = func() *cli.RootCommand {
 								Name:        "golden-test",
 								Description: "subcommands for validating template rendering with golden tests",
 								Commands: map[string]cli.CommandFactory{
+									"new-test": func() cli.Command {
+										return &goldentest.NewTestCommand{}
+									},
 									"record": func() cli.Command {
 										return &goldentest.RecordCommand{}
 									},
