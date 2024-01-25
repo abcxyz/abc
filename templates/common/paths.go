@@ -19,13 +19,9 @@ import (
 	"strings"
 )
 
-// // When running a golden test, this is the reserved name of the directory inside
-// // the recorded test output that contains files that shouldn't be touched by the
-// // user.
-// const ABCInternalDir = ".abc_internal"
-
-// manifestDirName is the subdirectory underneath the destination directory
-// where we'll write the manifest file.
+// ABCInternalDir is the name for internal directories that have things like
+// manifests and .gitkeep files. These may be destination directories or
+// golden-test data/ directories.
 const ABCInternalDir = ".abc"
 
 // IsReservedInDest returns true if the given path cannot be created in the
@@ -36,8 +32,5 @@ const ABCInternalDir = ".abc"
 func IsReservedInDest(relPath string) bool {
 	clean := filepath.Clean(relPath)
 	firstToken := strings.Split(clean, string(filepath.Separator))[0]
-	if firstToken == ABCInternalDir {
-		return true
-	}
-	return false
+	return firstToken == ABCInternalDir
 }
