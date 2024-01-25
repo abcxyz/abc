@@ -16,7 +16,6 @@
 package goldentest
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/abcxyz/pkg/cli"
@@ -51,12 +50,14 @@ func (r *Flags) Register(set *cli.FlagSet) {
 		Usage:   "The name of the test cases to record or verify.",
 	})
 
-	// Default template location to the first CLI argument, if given
+	// Default template location to the first CLI argument, if given.
+	// If not given, default to current directory.
 	set.AfterParse(func(existingErr error) error {
 		r.Location = strings.TrimSpace(set.Arg(0))
 
 		if r.Location == "" {
-			return fmt.Errorf("missing template <location>")
+			// make current directory the default location
+			r.Location = "."
 		}
 		return nil
 	})

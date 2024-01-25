@@ -242,14 +242,3 @@ kind: 'GoldenTest'`
 		})
 	}
 }
-
-func TestVerifyLocationRequired(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	err := (&VerifyCommand{}).Run(ctx, nil)
-	want := "missing template <location>"
-	if diff := testutil.DiffErrString(err, want); diff != "" {
-		t.Error(diff)
-	}
-}
