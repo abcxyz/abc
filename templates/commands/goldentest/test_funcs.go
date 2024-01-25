@@ -27,7 +27,9 @@ import (
 	"github.com/benbjohnson/clock"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 )
@@ -170,9 +172,9 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		Stdout:              io.Discard, // Mute stdout from command runs.
 	})
 	if err != nil {
-		var utke *render.UnknownTemplateKeyError
-		if errors.As(err, &utke) && strings.HasPrefix(utke.Key, "_") {
-			return fmt.Errorf("you may need to provide a value for %q in the builtin_vars section of test.yaml: %w", utke.Key, err)
+		var uve *errs.UnknownVarError
+		if errors.As(err, &uve) && strings.HasPrefix(uve.VarName, "_") {
+			return fmt.Errorf("you may need to provide a value for %q in the builtin_vars section of test.yaml: %w", uve.VarName, err)
 		}
 		return err //nolint:wrapcheck
 	}
@@ -184,6 +186,17 @@ func varValuesToMap(vvs []*goldentest.VarValue) map[string]string {
 	out := make(map[string]string, len(vvs))
 	for _, vv := range vvs {
 		out[vv.Name.Val] = vv.Value.Val
+	}
+	return out
+}
+
+func mapToVarValues(m map[string]string) []*goldentest.VarValue {
+	out := make([]*goldentest.VarValue, 0, len(m))
+	for k, v := range m {
+		out = append(out, &goldentest.VarValue{
+			Name:  model.String{Val: k},
+			Value: model.String{Val: v},
+		})
 	}
 	return out
 }

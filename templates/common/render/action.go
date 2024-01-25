@@ -29,6 +29,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -242,7 +243,7 @@ var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"
 // pos may be nil if the template is not coming from the spec file and therefore
 // there's no reason to print out spec file location in an error message. If
 // template execution fails because of a missing input variable, the error will
-// be wrapped in a unknownTemplateKeyError.
+// be wrapped in a UnknownVarErr.
 func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *common.Scope) (string, error) {
 	parsedTmpl, err := parseGoTmpl(tmpl)
 	if err != nil {
@@ -265,9 +266,9 @@ func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *common.Scop
 		if matches != nil {
 			varNames := maps.Keys(vars)
 			sort.Strings(varNames)
-			err = &UnknownTemplateKeyError{
-				Key:           matches[1],
-				AvailableKeys: varNames,
+			err = &errs.UnknownVarError{
+				VarName:       matches[1],
+				AvailableVars: varNames,
 				Wrapped:       err,
 			}
 		}
@@ -286,26 +287,4 @@ func parseAndExecuteGoTmplAll(ss []model.String, scope *common.Scope) ([]string,
 		}
 	}
 	return out, nil
-}
-
-// UnknownTemplateKeyError is an error that will be returned when a template
-// references a variable that's nonexistent.
-type UnknownTemplateKeyError struct {
-	Key           string
-	AvailableKeys []string
-	Wrapped       error
-}
-
-func (n *UnknownTemplateKeyError) Error() string {
-	return fmt.Sprintf("the template referenced a nonexistent variable name %q; available variable names are %v",
-		n.Key, n.AvailableKeys)
-}
-
-func (n *UnknownTemplateKeyError) Unwrap() error {
-	return n.Wrapped
-}
-
-func (n *UnknownTemplateKeyError) Is(other error) bool {
-	_, ok := other.(*UnknownTemplateKeyError)
-	return ok
 }

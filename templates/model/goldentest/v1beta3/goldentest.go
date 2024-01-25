@@ -50,8 +50,8 @@ type Test struct {
 	// Pos is the YAML file location where this object started.
 	Pos model.ConfigPos `yaml:"-"`
 
-	Inputs      []*VarValue `yaml:"inputs"`
-	BuiltinVars []*VarValue `yaml:"builtin_vars"`
+	Inputs      []*VarValue `yaml:"inputs,omitempty"`
+	BuiltinVars []*VarValue `yaml:"builtin_vars,omitempty"`
 }
 
 // Validate implements model.Validator.

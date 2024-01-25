@@ -168,7 +168,7 @@ func TestActionForEach(t *testing.T) {
 			wantErr: `nonexistent variable name "nonexistent"`,
 		},
 		{
-			name: "cel-values-from",
+			name: "cel_values_from",
 			inputs: map[string]string{
 				"environments": "production,dev",
 			},
@@ -188,7 +188,7 @@ func TestActionForEach(t *testing.T) {
 			wantStdout: "production\ndev\n",
 		},
 		{
-			name: "cel-values-empty-no-actions",
+			name: "cel_values_empty_no_actions",
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:        model.String{Val: "env"},
@@ -205,7 +205,7 @@ func TestActionForEach(t *testing.T) {
 			wantStdout: "",
 		},
 		{
-			name: "cel-values-literal",
+			name: "cel_values_literal",
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:        model.String{Val: "env"},
