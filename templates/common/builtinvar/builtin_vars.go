@@ -68,3 +68,15 @@ func NamesInScope(f features.Features) []string {
 
 	return out
 }
+
+// ValidateBuiltinVars returns error if any of the attemptedNames are not valid builtin
+// var names.
+func ValidateBuiltinVars(attemptedNames []string) error {
+	allowed := []string{FlagDest, FlagSource, GitSHA, GitShortSHA, GitTag}
+	unknown := sets.Subtract(attemptedNames, allowed)
+	if len(unknown) > 0 {
+		return fmt.Errorf("these builtin var names are unknown and therefore invalid: %v; the set of valid builtin var names is %v",
+			unknown, allowed)
+	}
+	return nil
+}

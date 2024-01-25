@@ -27,6 +27,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/model/decode"
@@ -99,7 +100,16 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	buf, err := marshalTestCase(resolvedInputs)
+	builtinVarsKeys := make([]string, 0, len(c.flags.BuiltinVars))
+	for k := range c.flags.BuiltinVars {
+		builtinVarsKeys = append(builtinVarsKeys, k)
+	}
+	err = builtinvar.ValidateBuiltinVars(builtinVarsKeys)
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	buf, err := marshalTestCase(resolvedInputs, c.flags.BuiltinVars)
 	if err != nil {
 		return fmt.Errorf("failed to marshal test config data: %w", err)
 	}
@@ -131,9 +141,10 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	return nil
 }
 
-func marshalTestCase(resolvedInputs map[string]string) ([]byte, error) {
+func marshalTestCase(inputs, builtinVars map[string]string) ([]byte, error) {
 	testCase := goldentest.Test{
-		Inputs: mapToVarValues(resolvedInputs),
+		Inputs:      mapToVarValues(inputs),
+		BuiltinVars: mapToVarValues(builtinVars),
 	}
 	buf, err := yaml.Marshal(testCase)
 	if err != nil {
