@@ -26,7 +26,9 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"golang.org/x/exp/maps"
 
+	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -275,18 +277,18 @@ var celFuncs = []cel.EnvOption{
 // the CEL expression is "hello" and outPtr points to an int, an error will
 // returned because CEL cannot treat "hello" as an integer.
 func CelCompileAndEval(ctx context.Context, scope *Scope, expr model.String, outPtr any) error {
-	prog, err := celCompile(ctx, scope, expr)
+	prog, err := celCompile(ctx, scope, expr.Val)
 	if err != nil {
-		return err
+		return expr.Pos.Errorf("%w", err)
 	}
-	if err := celEval(ctx, scope, expr.Pos, prog, outPtr); err != nil {
-		return err
+	if err := celEval(ctx, scope, prog, outPtr); err != nil {
+		return expr.Pos.Errorf("%w", err)
 	}
 	return nil
 }
 
 // celCompile parses and compiles the given expr into executable Program.
-func celCompile(ctx context.Context, scope *Scope, expr model.String) (cel.Program, error) {
+func celCompile(ctx context.Context, scope *Scope, expr string) (cel.Program, error) {
 	startedAt := time.Now()
 
 	celOpts := []cel.EnvOption{}
@@ -297,17 +299,24 @@ func celCompile(ctx context.Context, scope *Scope, expr model.String) (cel.Progr
 
 	env, err := cel.NewEnv(celOpts...)
 	if err != nil {
-		return nil, expr.Pos.Errorf("internal error: failed configuring CEL environment: %w", err)
+		return nil, fmt.Errorf("internal error: failed configuring CEL environment: %w", err)
 	}
 
-	ast, issues := env.Compile(expr.Val)
+	ast, issues := env.Compile(expr)
 	if err := issues.Err(); err != nil {
-		return nil, expr.Pos.Errorf("failed compiling CEL expression: %w", err)
+		if name, ok := isCELUndeclaredRef(err); ok {
+			return nil, &errs.UnknownVarError{
+				VarName:       name,
+				AvailableVars: maps.Keys(scope.All()),
+				Wrapped:       err,
+			}
+		}
+		return nil, fmt.Errorf("failed compiling CEL expression: %w", err)
 	}
 
 	prog, err := env.Program(ast)
 	if err != nil {
-		return nil, expr.Pos.Errorf("failed constructing CEL program: %w", err)
+		return nil, fmt.Errorf("failed constructing CEL program: %w", err)
 	}
 
 	latency := time.Since(startedAt)
@@ -319,6 +328,18 @@ func celCompile(ctx context.Context, scope *Scope, expr model.String) (cel.Progr
 	return prog, nil
 }
 
+var celUndeclaredRefRE = regexp.MustCompile(`undeclared reference to '([^']+)'`)
+
+func isCELUndeclaredRef(err error) (string, bool) {
+	// The variable name that is the "undeclared reference" isn't available
+	// as a field of the error, so we're forced to parse the error message.
+	matches := celUndeclaredRefRE.FindStringSubmatch(err.Error())
+	if len(matches) < 2 {
+		return "", false
+	}
+	return matches[1], true
+}
+
 // celEval runs a previously-compiled CEL Program (which you can get from
 // celCompile()).
 //
@@ -327,7 +348,7 @@ func celCompile(ctx context.Context, scope *Scope, expr model.String) (cel.Progr
 // converted to the given type, then an error will be returned. For example, if
 // the CEL expression is "hello" and outPtr points to an int, an error will
 // returned because CEL cannot treat "hello" as an integer.
-func celEval(ctx context.Context, scope *Scope, pos *model.ConfigPos, prog cel.Program, outPtr any) error {
+func celEval(ctx context.Context, scope *Scope, prog cel.Program, outPtr any) error {
 	startedAt := time.Now()
 
 	// The CEL engine needs variable values as a map[string]any, but we have a
@@ -340,7 +361,7 @@ func celEval(ctx context.Context, scope *Scope, pos *model.ConfigPos, prog cel.P
 
 	celOut, _, err := prog.Eval(scopeMapAny)
 	if err != nil {
-		return pos.Errorf("failed executing CEL expression: %w", err)
+		return fmt.Errorf("failed executing CEL expression: %w", err)
 	}
 
 	outPtrRefVal := reflect.ValueOf(outPtr)
@@ -352,7 +373,7 @@ func celEval(ctx context.Context, scope *Scope, pos *model.ConfigPos, prog cel.P
 
 	celAny, err := celOut.ConvertToNative(outRefVal.Type())
 	if err != nil {
-		return pos.Errorf("CEL expression result couldn't be converted to %s. The CEL engine error was: %w", outRefVal.Type(), err)
+		return fmt.Errorf("CEL expression result couldn't be converted to %s. The CEL engine error was: %w", outRefVal.Type(), err)
 	}
 
 	outRefVal.Set(reflect.ValueOf(celAny))
