@@ -37,10 +37,6 @@ import (
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 )
 
-// manifestDirName is the subdirectory underneath the destination directory
-// where we'll write the manifest file.
-const manifestDirName = ".abc"
-
 // writeManifestParams are all the argument to writeManifest, wrapped in a
 // struct because there are so many.
 type writeManifestParams struct {
@@ -140,7 +136,7 @@ func writeManifest(ctx context.Context, p *writeManifestParams) (rErr error) {
 // template (not an upgrade to an already-installed manifest). This includes the
 // ".abc/" prefix.
 func newManifestFilename(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (string, error) {
-	manifestDir := filepath.Join(p.destDir, manifestDirName)
+	manifestDir := filepath.Join(p.destDir, common.ABCInternalDir)
 	if err := p.fs.MkdirAll(manifestDir, common.OwnerRWXPerms); err != nil {
 		return "", fmt.Errorf("failed creating %s directory to contain manifest: %w", manifestDir, err)
 	}

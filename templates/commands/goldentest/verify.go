@@ -46,7 +46,7 @@ func (c *VerifyCommand) Desc() string {
 
 func (c *VerifyCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] <location>
+Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] [<location>]
 
 The {{ COMMAND }} verifies the template golden tests.
 
@@ -54,6 +54,7 @@ The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be run against.
 
 The "<location>" is the location of the template.
+If no "<location>" is given, default to current directory.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.
@@ -187,14 +188,25 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 		if err != nil {
 			return fmt.Errorf("fs.WalkDir(%s): %w", path, err)
 		}
-		if de.IsDir() {
-			return nil
-		}
 
 		relToSrc, err := filepath.Rel(testDataDir, path)
 		if err != nil {
 			return fmt.Errorf("filepath.Rel(%s,%s): %w", testDataDir, path, err)
 		}
+
+		// Don't assert the contents of ".abc". As of this writing, the .abc
+		// dir contains things that are specific to recorded tests and not part
+		// of the expected template output.
+		if common.IsReservedInDest(relToSrc) {
+			if de.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if de.IsDir() {
+			return nil
+		}
+
 		fileSet[relToSrc] = struct{}{}
 		return nil
 	})

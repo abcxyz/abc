@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/posener/complete/v2/predict"
-
 	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/pkg/cli"
 )
@@ -43,22 +41,15 @@ type NewTestFlags struct {
 	// Whether to prompt the user for new-test inputs.
 	Prompt bool
 
+	// Fake builtin_vars used in goldentest.
+	BuiltinVars map[string]string
+
 	// ForceOverwrite lets existing test config file be overwritten.
 	ForceOverwrite bool
 }
 
 func (r *NewTestFlags) Register(set *cli.FlagSet) {
 	f := set.NewSection("NEW-TEST OPTIONS")
-
-	f.StringVar(&cli.StringVar{
-		Name:    "location",
-		Example: "/my/git/dir",
-		Target:  &r.Location,
-		Default: ".",
-		Predict: predict.Dirs("*"),
-		Usage: "Location is the file system location of the template to be tested and " +
-			"it must be a local directory.",
-	})
 
 	f.StringMapVar(flags.Inputs(&r.Inputs))
 
@@ -89,6 +80,13 @@ func (r *NewTestFlags) Register(set *cli.FlagSet) {
 		Usage:   "If an test yaml file already exists, overwrite it instead of failing.",
 	})
 
+	f.StringMapVar(&cli.StringMapVar{
+		Name:    "builtin-var",
+		Example: "_git_tag=my-cool-tag",
+		Target:  &r.BuiltinVars,
+		Usage:   "The key=val pairs of builtin_vars; may be repeated.",
+	})
+
 	// Default NewTestName to the first CLI argument, if given
 	set.AfterParse(func(existingErr error) error {
 		r.NewTestName = set.Arg(0)
@@ -99,6 +97,18 @@ func (r *NewTestFlags) Register(set *cli.FlagSet) {
 
 		if strings.Contains(r.NewTestName, "/") || strings.Contains(r.NewTestName, "\\") {
 			return fmt.Errorf("<new-test-name> can't include any slashes or backslashes")
+		}
+		return nil
+	})
+
+	// Default Location to the second CLI argument, if given
+	// If not given, default to current directory.
+	set.AfterParse(func(existingErr error) error {
+		r.Location = strings.TrimSpace(set.Arg(1))
+
+		if r.Location == "" {
+			// make current directory the default location
+			r.Location = "."
 		}
 		return nil
 	})

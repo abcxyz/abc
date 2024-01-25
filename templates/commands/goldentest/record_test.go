@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -61,10 +62,10 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "file A content",
-				"test/data/b.txt":                  "file B content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "file A content",
+				"test/data/b.txt":         "file B content",
 			},
 		},
 		{
@@ -76,12 +77,12 @@ kind: 'GoldenTest'`
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml":                   testYaml,
-				"test1/data/.abc_internal/.gitkeep": "",
-				"test1/data/a.txt":                  "file A content",
-				"test2/test.yaml":                   testYaml,
-				"test2/data/.abc_internal/.gitkeep": "",
-				"test2/data/a.txt":                  "file A content",
+				"test1/test.yaml":          testYaml,
+				"test1/data/.abc/.gitkeep": "",
+				"test1/data/a.txt":         "file A content",
+				"test2/test.yaml":          testYaml,
+				"test2/data/.abc/.gitkeep": "",
+				"test2/data/a.txt":         "file A content",
 			},
 		},
 		{
@@ -93,9 +94,9 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/outdated.txt": "outdated file",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "file A content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "file A content",
 			},
 		},
 		{
@@ -107,9 +108,9 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/a.txt": "old content",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "new content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "new content",
 			},
 		},
 		{
@@ -121,9 +122,9 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/unexpected_file.txt": "oh",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "file A content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "file A content",
 			},
 		},
 		{
@@ -136,10 +137,10 @@ kind: 'GoldenTest'`
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml":                   testYaml,
-				"test1/data/.abc_internal/.gitkeep": "",
-				"test1/data/a.txt":                  "file A content",
-				"test2/test.yaml":                   testYaml,
+				"test1/test.yaml":          testYaml,
+				"test1/data/.abc/.gitkeep": "",
+				"test1/data/a.txt":         "file A content",
+				"test2/test.yaml":          testYaml,
 			},
 		},
 		{
@@ -153,13 +154,13 @@ kind: 'GoldenTest'`
 				"testdata/golden/test3/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml":                   testYaml,
-				"test1/data/.abc_internal/.gitkeep": "",
-				"test1/data/a.txt":                  "file A content",
-				"test2/test.yaml":                   testYaml,
-				"test2/data/.abc_internal/.gitkeep": "",
-				"test2/data/a.txt":                  "file A content",
-				"test3/test.yaml":                   testYaml,
+				"test1/test.yaml":          testYaml,
+				"test1/data/.abc/.gitkeep": "",
+				"test1/data/a.txt":         "file A content",
+				"test2/test.yaml":          testYaml,
+				"test2/data/.abc/.gitkeep": "",
+				"test2/data/a.txt":         "file A content",
+				"test3/test.yaml":          testYaml,
 			},
 		},
 		{
@@ -206,6 +207,61 @@ kind: 'GoldenTest'`
 			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden"))
 			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestNewRecordFlags_Parse(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		args    []string
+		want    Flags
+		wantErr string
+	}{
+		{
+			name: "all_flags_present",
+			args: []string{
+				"--test-name=test1",
+				"/a/b/c",
+			},
+			want: Flags{
+				TestNames: []string{"test1"},
+				Location:  "/a/b/c",
+			},
+		},
+		{
+			name: "default_location",
+			args: []string{
+				"--test-name=test1",
+			},
+			want: Flags{
+				TestNames: []string{"test1"},
+				Location:  ".",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cmd RecordCommand
+			cmd.SetLookupEnv(cli.MapLookuper(nil))
+
+			err := cmd.Flags().Parse(tc.args)
+			if err != nil || tc.wantErr != "" {
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+				return
+			}
+			if diff := cmp.Diff(cmd.flags, tc.want); diff != "" {
+				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.flags, tc.want, diff)
 			}
 		})
 	}
