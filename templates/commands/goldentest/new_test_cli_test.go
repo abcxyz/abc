@@ -120,6 +120,20 @@ inputs:
 `,
 			},
 		},
+		{
+			name:        "force_overwrite_success_with_no_exist_test_yaml",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Bob",
+			},
+			flagForceOverwrite: true,
+			templateContents: map[string]string{
+				"spec.yaml": specYaml,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": testYaml,
+			},
+		},
 	}
 
 	for _, tc := range cases {
