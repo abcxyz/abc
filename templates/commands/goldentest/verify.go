@@ -106,7 +106,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
 
 		fileSet := make(map[string]struct{})
-		if err := addTestFiles(fileSet, goldenDataDir, common.ABCInternalDir); err != nil {
+		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
 			return err
 		}
 		if err := addTestFiles(fileSet, tempDataDir); err != nil {
@@ -183,7 +183,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 }
 
 // addTestFiles collects file paths generated in a golden test.
-func addTestFiles(fileSet map[string]struct{}, testDataDir string, ignoreDEntries ...string) error {
+func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 	err := fs.WalkDir(&common.RealFS{}, testDataDir, func(path string, de fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("fs.WalkDir(%s): %w", path, err)
