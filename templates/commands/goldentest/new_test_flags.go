@@ -42,6 +42,9 @@ type NewTestFlags struct {
 
 	// Whether to prompt the user for new-test inputs.
 	Prompt bool
+
+	// ForceOverwrite lets existing test config file be overwritten.
+	ForceOverwrite bool
 }
 
 func (r *NewTestFlags) Register(set *cli.FlagSet) {
@@ -77,6 +80,13 @@ func (r *NewTestFlags) Register(set *cli.FlagSet) {
 		Default: false,
 
 		Usage: "Prompt the user for template inputs that weren't provided as flags.",
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "force-overwrite",
+		Target:  &r.ForceOverwrite,
+		Default: false,
+		Usage:   "If an test yaml file already exists, overwrite it instead of failing.",
 	})
 
 	// Default NewTestName to the first CLI argument, if given

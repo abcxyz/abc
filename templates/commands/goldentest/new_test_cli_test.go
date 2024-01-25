@@ -56,12 +56,13 @@ inputs:
 `
 
 	cases := []struct {
-		name             string
-		newTestName      string
-		flagInputs       map[string]string
-		templateContents map[string]string
-		expectedContents map[string]string
-		wantErr          string
+		name               string
+		newTestName        string
+		flagInputs         map[string]string
+		flagForceOverwrite bool
+		templateContents   map[string]string
+		expectedContents   map[string]string
+		wantErr            string
 	}{
 		{
 			name:        "simple_test_succeeds",
@@ -99,6 +100,26 @@ inputs:
 			},
 			wantErr: "can't open file",
 		},
+		{
+			name:        "force_overwrite_success",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Alice",
+			},
+			flagForceOverwrite: true,
+			templateContents: map[string]string{
+				"spec.yaml":                          specYaml,
+				"testdata/golden/new-test/test.yaml": testYaml,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+inputs:
+    - name: name
+      value: Alice
+`,
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -117,6 +138,9 @@ inputs:
 			args = append(args, fmt.Sprintf("--location=%s", tempDir))
 			for k, v := range tc.flagInputs {
 				args = append(args, fmt.Sprintf("--input=%s=%s", k, v))
+			}
+			if tc.flagForceOverwrite {
+				args = append(args, "--force-overwrite")
 			}
 			args = append(args, tc.newTestName)
 
