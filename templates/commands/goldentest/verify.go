@@ -46,7 +46,7 @@ func (c *VerifyCommand) Desc() string {
 
 func (c *VerifyCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] <location>
+Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] [<location>]
 
 The {{ COMMAND }} verifies the template golden tests.
 
@@ -54,6 +54,7 @@ The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be run against.
 
 The "<location>" is the location of the template.
+If no "<location>" is given, default to current directory.
 
 For every test case, it is expected that
   - a testdata/golden/<test_name> folder exists to host test results.

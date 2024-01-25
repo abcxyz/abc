@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -197,6 +198,61 @@ kind: 'GoldenTest'`
 			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden"))
 			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestNewRecordFlags_Parse(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		args    []string
+		want    Flags
+		wantErr string
+	}{
+		{
+			name: "all_flags_present",
+			args: []string{
+				"--test-name=test1",
+				"/a/b/c",
+			},
+			want: Flags{
+				TestNames: []string{"test1"},
+				Location:  "/a/b/c",
+			},
+		},
+		{
+			name: "default_location",
+			args: []string{
+				"--test-name=test1",
+			},
+			want: Flags{
+				TestNames: []string{"test1"},
+				Location:  ".",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cmd RecordCommand
+			cmd.SetLookupEnv(cli.MapLookuper(nil))
+
+			err := cmd.Flags().Parse(tc.args)
+			if err != nil || tc.wantErr != "" {
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+				return
+			}
+			if diff := cmp.Diff(cmd.flags, tc.want); diff != "" {
+				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.flags, tc.want, diff)
 			}
 		})
 	}

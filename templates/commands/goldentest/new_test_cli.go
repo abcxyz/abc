@@ -48,11 +48,13 @@ func (c *NewTestCommand) Desc() string {
 
 func (c *NewTestCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [options] <test_name>
+Usage: {{ COMMAND }} [options] <test_name> [<location>]
 
 The {{ COMMAND }} create a new golden test.
 
 The "<test_name>" is the name of the test.
+The "<location>" is the location of the template. 
+If no "<location>" is given, default to current directory.
 `
 }
 

@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/posener/complete/v2/predict"
-
 	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/pkg/cli"
 )
@@ -52,16 +50,6 @@ type NewTestFlags struct {
 
 func (r *NewTestFlags) Register(set *cli.FlagSet) {
 	f := set.NewSection("NEW-TEST OPTIONS")
-
-	f.StringVar(&cli.StringVar{
-		Name:    "location",
-		Example: "/my/git/dir",
-		Target:  &r.Location,
-		Default: ".",
-		Predict: predict.Dirs("*"),
-		Usage: "Location is the file system location of the template to be tested and " +
-			"it must be a local directory.",
-	})
 
 	f.StringMapVar(flags.Inputs(&r.Inputs))
 
@@ -109,6 +97,18 @@ func (r *NewTestFlags) Register(set *cli.FlagSet) {
 
 		if strings.Contains(r.NewTestName, "/") || strings.Contains(r.NewTestName, "\\") {
 			return fmt.Errorf("<new-test-name> can't include any slashes or backslashes")
+		}
+		return nil
+	})
+
+	// Default Location to the second CLI argument, if given
+	// If not given, default to current directory.
+	set.AfterParse(func(existingErr error) error {
+		r.Location = strings.TrimSpace(set.Arg(1))
+
+		if r.Location == "" {
+			// make current directory the default location
+			r.Location = "."
 		}
 		return nil
 	})

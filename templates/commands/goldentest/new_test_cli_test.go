@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -211,7 +212,6 @@ builtin_vars:
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 			var args []string
-			args = append(args, fmt.Sprintf("--location=%s", tempDir))
 			for k, v := range tc.flagInputs {
 				args = append(args, fmt.Sprintf("--input=%s=%s", k, v))
 			}
@@ -222,6 +222,7 @@ builtin_vars:
 				args = append(args, "--force-overwrite")
 			}
 			args = append(args, tc.newTestName)
+			args = append(args, tempDir)
 
 			r := &NewTestCommand{}
 			if err := r.Run(ctx, args); err != nil {
@@ -234,6 +235,77 @@ builtin_vars:
 			gotContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
 			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestNewTestFlags_Parse(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		args    []string
+		want    NewTestFlags
+		wantErr string
+	}{
+		{
+			name: "all_flags_present",
+			args: []string{
+				"--input", "x=y",
+				"--builtin-var", "_git_tag=my-cool-tag",
+				"--force-overwrite",
+				"--prompt",
+				"new-test",
+				"/a/b/c",
+			},
+			want: NewTestFlags{
+				NewTestName:    "new-test",
+				Location:       "/a/b/c",
+				Inputs:         map[string]string{"x": "y"},
+				BuiltinVars:    map[string]string{"_git_tag": "my-cool-tag"},
+				ForceOverwrite: true,
+				Prompt:         true,
+			},
+		},
+		{
+			name: "default_location",
+			args: []string{
+				"--input", "x=y",
+				"--builtin-var", "_git_tag=my-cool-tag",
+				"--force-overwrite",
+				"--prompt",
+				"new-test",
+			},
+			want: NewTestFlags{
+				NewTestName:    "new-test",
+				Location:       ".",
+				Inputs:         map[string]string{"x": "y"},
+				BuiltinVars:    map[string]string{"_git_tag": "my-cool-tag"},
+				ForceOverwrite: true,
+				Prompt:         true,
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cmd NewTestCommand
+			cmd.SetLookupEnv(cli.MapLookuper(nil))
+
+			err := cmd.Flags().Parse(tc.args)
+			if err != nil || tc.wantErr != "" {
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+				return
+			}
+			if diff := cmp.Diff(cmd.flags, tc.want); diff != "" {
+				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.flags, tc.want, diff)
 			}
 		})
 	}
