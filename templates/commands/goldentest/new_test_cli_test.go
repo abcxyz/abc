@@ -211,7 +211,6 @@ builtin_vars:
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 			var args []string
-			args = append(args, fmt.Sprintf("--location=%s", tempDir))
 			for k, v := range tc.flagInputs {
 				args = append(args, fmt.Sprintf("--input=%s=%s", k, v))
 			}
@@ -222,6 +221,7 @@ builtin_vars:
 				args = append(args, "--force-overwrite")
 			}
 			args = append(args, tc.newTestName)
+			args = append(args, tempDir)
 
 			r := &NewTestCommand{}
 			if err := r.Run(ctx, args); err != nil {
