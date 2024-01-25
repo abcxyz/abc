@@ -112,7 +112,12 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed creating %s directory to contain test yaml file: %w", testDir, err)
 	}
 	// file overwriting is not allowed.
-	fh, err := fs.OpenFile(testConfigFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, common.OwnerRWPerms)
+	fileFlag := os.O_CREATE | os.O_EXCL | os.O_WRONLY
+	if c.flags.ForceOverwrite {
+		// file overwriting is allowed.
+		fileFlag = os.O_CREATE | os.O_WRONLY
+	}
+	fh, err := fs.OpenFile(testConfigFile, fileFlag, common.OwnerRWPerms)
 	if err != nil {
 		return fmt.Errorf("can't open file(%q): %w", testConfigFile, err)
 	}
