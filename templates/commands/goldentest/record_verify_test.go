@@ -72,6 +72,7 @@ inputs:
 		{
 			name: "mismatch_should_fail",
 			messWith: func(t *testing.T, dir string) {
+				t.Helper()
 				common.WriteAllDefaultMode(t, dir, map[string]string{
 					"a.txt": "mismatched content",
 				})
