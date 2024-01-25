@@ -48,7 +48,7 @@ func (c *NewTestCommand) Desc() string {
 
 func (c *NewTestCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [options] <test_name> <location>
+Usage: {{ COMMAND }} [options] <test_name> [<location>]
 
 The {{ COMMAND }} create a new golden test.
 

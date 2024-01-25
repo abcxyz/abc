@@ -43,7 +43,7 @@ func (c *RecordCommand) Desc() string {
 
 func (c *RecordCommand) Help() string {
 	return `
-Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] <location>
+Usage: {{ COMMAND }} [--test-name=<test-name-1>,<test-name-2>] [<location>]
 
 The {{ COMMAND }} records the template golden tests (capture the
 anticipated outcome akin to expected output in unit test).
