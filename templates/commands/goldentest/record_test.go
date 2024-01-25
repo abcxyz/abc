@@ -61,10 +61,10 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "file A content",
-				"test/data/b.txt":                  "file B content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "file A content",
+				"test/data/b.txt":         "file B content",
 			},
 		},
 		{
@@ -76,12 +76,12 @@ kind: 'GoldenTest'`
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml":                   testYaml,
-				"test1/data/.abc_internal/.gitkeep": "",
-				"test1/data/a.txt":                  "file A content",
-				"test2/test.yaml":                   testYaml,
-				"test2/data/.abc_internal/.gitkeep": "",
-				"test2/data/a.txt":                  "file A content",
+				"test1/test.yaml":          testYaml,
+				"test1/data/.abc/.gitkeep": "",
+				"test1/data/a.txt":         "file A content",
+				"test2/test.yaml":          testYaml,
+				"test2/data/.abc/.gitkeep": "",
+				"test2/data/a.txt":         "file A content",
 			},
 		},
 		{
@@ -93,9 +93,9 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/outdated.txt": "outdated file",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "file A content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "file A content",
 			},
 		},
 		{
@@ -107,9 +107,9 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/a.txt": "old content",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "new content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "new content",
 			},
 		},
 		{
@@ -121,9 +121,9 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/unexpected_file.txt": "oh",
 			},
 			expectedGoldenContent: map[string]string{
-				"test/test.yaml":                   testYaml,
-				"test/data/.abc_internal/.gitkeep": "",
-				"test/data/a.txt":                  "file A content",
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/a.txt":         "file A content",
 			},
 		},
 		{
@@ -136,10 +136,10 @@ kind: 'GoldenTest'`
 				"testdata/golden/test2/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml":                   testYaml,
-				"test1/data/.abc_internal/.gitkeep": "",
-				"test1/data/a.txt":                  "file A content",
-				"test2/test.yaml":                   testYaml,
+				"test1/test.yaml":          testYaml,
+				"test1/data/.abc/.gitkeep": "",
+				"test1/data/a.txt":         "file A content",
+				"test2/test.yaml":          testYaml,
 			},
 		},
 		{
@@ -153,13 +153,13 @@ kind: 'GoldenTest'`
 				"testdata/golden/test3/test.yaml": testYaml,
 			},
 			expectedGoldenContent: map[string]string{
-				"test1/test.yaml":                   testYaml,
-				"test1/data/.abc_internal/.gitkeep": "",
-				"test1/data/a.txt":                  "file A content",
-				"test2/test.yaml":                   testYaml,
-				"test2/data/.abc_internal/.gitkeep": "",
-				"test2/data/a.txt":                  "file A content",
-				"test3/test.yaml":                   testYaml,
+				"test1/test.yaml":          testYaml,
+				"test1/data/.abc/.gitkeep": "",
+				"test1/data/a.txt":         "file A content",
+				"test2/test.yaml":          testYaml,
+				"test2/data/.abc/.gitkeep": "",
+				"test2/data/a.txt":         "file A content",
+				"test3/test.yaml":          testYaml,
 			},
 		},
 		{

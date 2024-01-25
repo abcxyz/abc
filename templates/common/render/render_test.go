@@ -995,7 +995,7 @@ steps:
 			wantErr: "these builtin override var names are unknown and therefore invalid: [git_tag]",
 		},
 		{
-			name: "abc_internal_is_reserved",
+			name: "abc_is_reserved_as_file_name_in_dest_dir",
 			templateContents: map[string]string{
 				"spec.yaml": `
 api_version: 'cli.abcxyz.dev/v1alpha1'
@@ -1007,13 +1007,13 @@ steps:
   params:
     paths:
       - paths: ['file1.txt']
-        as:    ['.abc_internal']`,
+        as:    ['.abc']`,
 				"file1.txt": "",
 			},
-			wantErr: `uses the reserved name ".abc_internal"`,
+			wantErr: `uses the reserved name ".abc"`,
 		},
 		{
-			name: "abc_internal_is_reserved_in_subdir",
+			name: "abc_is_reserved_as_dir_name_in_dest_dir",
 			templateContents: map[string]string{
 				"spec.yaml": `
 api_version: 'cli.abcxyz.dev/v1alpha1'
@@ -1025,13 +1025,13 @@ steps:
   params:
     paths:
       - paths: ['file1.txt']
-        as:    ['foo/.abc_internal']`,
+        as:    ['.abc/file1.txt']`,
 				"file1.txt": "",
 			},
-			wantErr: `uses the reserved name ".abc_internal"`,
+			wantErr: `uses the reserved name ".abc"`,
 		},
 		{
-			name: "abc_internal_is_reserved_in_internal_subdir",
+			name: "abc_is_not_reserved_for_file_in_subdir",
 			templateContents: map[string]string{
 				"spec.yaml": `
 api_version: 'cli.abcxyz.dev/v1alpha1'
@@ -1043,10 +1043,32 @@ steps:
   params:
     paths:
       - paths: ['file1.txt']
-        as:    ['foo/.abc_internal/bar.txt']`,
+        as:    ['foo/.abc']`,
 				"file1.txt": "",
 			},
-			wantErr: `uses the reserved name ".abc_internal"`,
+			wantDestContents: map[string]string{
+				"foo/.abc": "",
+			},
+		},
+		{
+			name: "abc_is_not_reserved_as_subdir_name",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['foo/.abc/bar.txt']`,
+				"file1.txt": "",
+			},
+			wantDestContents: map[string]string{
+				"foo/.abc/bar.txt": "",
+			},
 		},
 	}
 
