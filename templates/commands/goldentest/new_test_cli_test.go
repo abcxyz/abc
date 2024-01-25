@@ -139,7 +139,7 @@ builtin_vars:
 			templateContents: map[string]string{
 				"spec.yaml": specYaml,
 			},
-			wantErr: "these builtin var names or builtin override var names are unknown and therefore invalid",
+			wantErr: "these builtin override var names are unknown and therefore invalid",
 		},
 		{
 			name:        "test_yaml_already_exists",
