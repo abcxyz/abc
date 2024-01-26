@@ -311,96 +311,6 @@ func TestNewTestFlags_Parse(t *testing.T) {
 	}
 }
 
-//
-//func TestPromptDialog(t *testing.T) {
-//	t.Parallel()
-//
-//	cases := []struct {
-//		name          string
-//		inputs        []*spec.Input
-//		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
-//		dialog        []abctestutil.DialogStep
-//		want          map[string]string
-//		wantErr       string
-//	}{
-//		{
-//			name: "single_input_prompt",
-//			inputs: []*spec.Input{
-//				{
-//					Name: model.String{Val: "name"},
-//					Desc: model.String{Val: "the name of the person to greet"},
-//				},
-//			},
-//			dialog: []abctestutil.DialogStep{
-//				{
-//					WaitForPrompt: `
-//Input name:   name
-//Description:  the name of the person to greet
-//
-//Enter value: `,
-//					ThenRespond: "Bob\n",
-//				},
-//			},
-//			want: map[string]string{
-//				"name": "Bob",
-//			},
-//		},
-//	}
-//
-//	for _, tc := range cases {
-//		tc := tc
-//		t.Run(tc.name, func(t *testing.T) {
-//			t.Parallel()
-//
-//			cmd := &cli.BaseCommand{}
-//
-//			stdinReader, stdinWriter := io.Pipe()
-//			stdoutReader, stdoutWriter := io.Pipe()
-//			_, stderrWriter := io.Pipe()
-//
-//			cmd.SetStdin(stdinReader)
-//			cmd.SetStdout(stdoutWriter)
-//			cmd.SetStderr(stderrWriter)
-//
-//			ctx := context.Background()
-//			errCh := make(chan error)
-//			var got map[string]string
-//			go func() {
-//				defer close(errCh)
-//				params := &input.ResolveParams{
-//					Inputs:             tc.flagInputVals,
-//					Prompt:             true,
-//					Prompter:           cmd,
-//					SkipPromptTTYCheck: true,
-//					Spec: &spec.Spec{
-//						Inputs: tc.inputs,
-//					},
-//				}
-//				var err error
-//				got, err = input.Resolve(ctx, params)
-//				errCh <- err
-//			}()
-//
-//			for _, ds := range tc.dialog {
-//				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
-//				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
-//			}
-//
-//			select {
-//			case err := <-errCh:
-//				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-//					t.Fatal(diff)
-//				}
-//			case <-time.After(time.Second):
-//				t.Fatal("timed out waiting for background goroutine to finish")
-//			}
-//			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
-//				t.Fatalf("input values were different than expected (-got,+want): %s", diff)
-//			}
-//		})
-//	}
-//}
-
 func TestNewTestPrompt(t *testing.T) {
 	t.Parallel()
 
@@ -500,8 +410,7 @@ inputs:
 			errCh := make(chan error)
 			go func() {
 				defer close(errCh)
-				var err error
-				err = r.Run(ctx, args)
+				err := r.Run(ctx, args)
 				errCh <- err
 			}()
 

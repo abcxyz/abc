@@ -92,11 +92,12 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	logger.DebugContext(ctx, "resolving inputs")
 
 	resolvedInputs, err := input.Resolve(ctx, &input.ResolveParams{
-		FS:       fs,
-		Inputs:   c.flags.Inputs,
-		Prompt:   c.flags.Prompt,
-		Prompter: c,
-		Spec:     spec,
+		FS:                 fs,
+		Inputs:             c.flags.Inputs,
+		Prompt:             c.flags.Prompt,
+		Prompter:           c,
+		Spec:               spec,
+		SkipPromptTTYCheck: true,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck
