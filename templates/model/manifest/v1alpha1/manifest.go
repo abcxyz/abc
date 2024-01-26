@@ -21,6 +21,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/header"
 )
 
 // Manifest represents the contents of a manifest file. A manifest file is the
@@ -61,6 +62,19 @@ type Manifest struct {
 
 	// The hash of each output file created by the template.
 	OutputHashes []*OutputHash `yaml:"output_hashes"`
+}
+
+// This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
+// in the YAML library. We want to inline a Manifest in a WithHeader when
+// marshaling. But the bug prevents that. As a workaround, we create a new type
+// with the same fields but without the Unmarshal method.
+type ForHeader Manifest
+
+// WithHeader is a manifest together with the header fields, for the purpose of
+// writing to an output file.
+type WithHeader struct {
+	Header   *header.Fields `yaml:",inline"`
+	Manifest *ForHeader     `yaml:",inline"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/header"
 )
 
 // This file parses a YAML file that describes test configs.
@@ -52,6 +53,19 @@ type Test struct {
 
 	Inputs      []*VarValue `yaml:"inputs,omitempty"`
 	BuiltinVars []*VarValue `yaml:"builtin_vars,omitempty"`
+}
+
+// This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
+// in the YAML library. We want to inline a Test in a WithHeader when
+// marshaling. But the bug prevents that. As a workaround, we create a new type
+// with the same fields but without the Unmarshal method.
+type ForHeader Test
+
+// WithHeader is a test together with the header fields, for the purpose of
+// writing to an output file.
+type WithHeader struct {
+	Header *header.Fields `yaml:",inline"`
+	Test   *ForHeader     `yaml:",inline"`
 }
 
 // Validate implements model.Validator.

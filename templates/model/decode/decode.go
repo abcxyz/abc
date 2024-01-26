@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	"github.com/abcxyz/abc/templates/model/header"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
@@ -106,7 +107,7 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 		return nil, "", fmt.Errorf("error reading file %s: %w", filename, err)
 	}
 
-	cf := &commonFields{}
+	cf := &header.Fields{}
 	if err := yaml.Unmarshal(buf, cf); err != nil {
 		return nil, "", fmt.Errorf("error parsing file %s: %w", filename, err)
 	}
@@ -125,14 +126,14 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 		apiVersion = cf.OldStyleAPIVersion.Val
 	}
 
-	if cf.Kind == "" {
+	if cf.Kind.Val == "" {
 		return nil, "", fmt.Errorf(`file %s must set the field "kind"`, filename)
 	}
-	if requireKind != "" && cf.Kind != requireKind {
-		return nil, "", fmt.Errorf("file %s has kind %q, but %q is required", filename, cf.Kind, requireKind)
+	if requireKind != "" && cf.Kind.Val != requireKind {
+		return nil, "", fmt.Errorf("file %s has kind %q, but %q is required", filename, cf.Kind.Val, requireKind)
 	}
 
-	vu, err := decodeFromVersionKind(filename, apiVersion, cf.Kind, buf)
+	vu, err := decodeFromVersionKind(filename, apiVersion, cf.Kind.Val, buf)
 	if err == nil {
 		return vu, apiVersion, nil
 	}
@@ -148,7 +149,7 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 	if attemptAPIVersion == apiVersion {
 		return nil, "", err // api_version upgrade isn't possible, they're already on the latest.
 	}
-	if _, attemptErr := decodeFromVersionKind(filename, attemptAPIVersion, cf.Kind, buf); attemptErr == nil {
+	if _, attemptErr := decodeFromVersionKind(filename, attemptAPIVersion, cf.Kind.Val, buf); attemptErr == nil {
 		return nil, "", fmt.Errorf("file %s sets api_version %q but does not parse and validate successfully under that version. However, it will be valid if you change the api_version to %q. The error was: %w",
 			filename, apiVersion, attemptAPIVersion, err)
 	}
@@ -182,14 +183,6 @@ func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKi
 			return nil, fmt.Errorf("internal error: validation failed after automatic schema upgrade from %s in %s: %w", apiVersion, filename, err)
 		}
 	}
-}
-
-// commonFields is the set fields that are present in every "kind" of YAML file
-// used in this program.
-type commonFields struct {
-	OldStyleAPIVersion model.String `yaml:"api_version"`
-	NewStyleAPIVersion model.String `yaml:"apiVersion"`
-	Kind               string       `yaml:"kind"`
 }
 
 // decodeFromVersionKind returns an instance of the YAML struct for the given API version and kind.
