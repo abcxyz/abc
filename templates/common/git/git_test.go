@@ -111,7 +111,7 @@ func TestClone(t *testing.T) {
 		{
 			name:    "nonexistent_remote",
 			remote:  "https://example.com/foo/bar",
-			wantErr: "repository 'https://example.com/foo/bar/' not found",
+			wantErr: "fatal: ", // the part of the error message that's the same on win and linux
 		},
 		{
 			name:    "symlinks_forbidden",
