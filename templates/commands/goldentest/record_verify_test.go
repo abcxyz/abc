@@ -28,47 +28,48 @@ import (
 // command.
 func TestRecordVerify(t *testing.T) {
 	t.Parallel()
-	cases := []struct {
-		name            string
-		testNames       []string
-		templateContent map[string]string
-		messWith        func(*testing.T, string)
-		wantVerifyErr   string
-	}{
-		{
-			name: "simple_test_succeeds",
-			templateContent: map[string]string{
-				"a.txt": "file A content",
-				"b.txt": "file B content",
 
-				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+	specYAMLContents := `
+api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
-
 desc: 'A simple template'
-
 inputs:
   - name: 'path_to_include'
     desc: 'Path to include'
     default: '.'
-
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: ['{{.path_to_include}}']
-`,
+`
 
-				"testdata/golden/test/test.yaml": `
+	testYAMLContents := `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'GoldenTest'
-
 inputs:
-  - name: 'path_to_include'
-    value: '.'
-`,
-			},
-		},
+- name: 'path_to_include'
+  value: '.'
+`
 
+	templateContent := map[string]string{
+		"a.txt":                          "file A content",
+		"b.txt":                          "file B content",
+		"spec.yaml":                      specYAMLContents,
+		"testdata/golden/test/test.yaml": testYAMLContents,
+	}
+
+	cases := []struct {
+		name      string
+		testNames []string
+		// messWith allows the testcase to break/mutate the recorded test output
+		// directory, to see if verification will catch the problem.
+		messWith      func(_ *testing.T, recordedDir string)
+		wantVerifyErr string
+	}{
+		{
+			name: "simple_test_succeeds",
+		},
 		{
 			name: "mismatch_should_fail",
 			messWith: func(t *testing.T, dir string) {
@@ -76,36 +77,6 @@ inputs:
 				common.WriteAllDefaultMode(t, dir, map[string]string{
 					"a.txt": "mismatched content",
 				})
-			},
-			templateContent: map[string]string{
-				"a.txt": "file A content",
-				"b.txt": "file B content",
-
-				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
-kind: 'Template'
-
-desc: 'A simple template'
-
-inputs:
-  - name: 'path_to_include'
-    desc: 'Path to include'
-    default: '.'
-
-steps:
-  - desc: 'Include some files and directories'
-    action: 'include'
-    params:
-      paths: ['{{.path_to_include}}']
-`,
-
-				"testdata/golden/test/test.yaml": `
-api_version: 'cli.abcxyz.dev/v1alpha1'
-kind: 'GoldenTest'
-
-inputs:
-  - name: 'path_to_include'
-    value: '.'
-`,
 			},
 			wantVerifyErr: "file content mismatch",
 		},
@@ -118,7 +89,7 @@ inputs:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.templateContent)
+			common.WriteAllDefaultMode(t, tempDir, templateContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
