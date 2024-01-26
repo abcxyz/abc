@@ -144,7 +144,9 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 }
 
 func marshalTestCase(inputs, builtinVars map[string]string) ([]byte, error) {
-	testCase := goldentest.Test{
+	testCase := &goldentest.TestCase{
+		APIVersion:  decode.LatestAPIVersion,
+		Kind:        decode.KindGoldenTest,
 		Inputs:      mapToVarValues(inputs),
 		BuiltinVars: mapToVarValues(builtinVars),
 	}
@@ -152,16 +154,5 @@ func marshalTestCase(inputs, builtinVars map[string]string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed marshaling test case when writing: %w", err)
 	}
-	header := map[string]string{
-		"api_version": decode.LatestAPIVersion,
-		"kind":        decode.KindGoldenTest,
-	}
-	headerYAML, err := yaml.Marshal(header)
-	if err != nil {
-		return nil, fmt.Errorf("failed marshaling api_version: %w", err)
-	}
-
-	buf = append(headerYAML,
-		buf...)
 	return buf, nil
 }

@@ -118,6 +118,28 @@ builtin_vars:
 			},
 		},
 		{
+			name:        "simple_header_succeeds",
+			newTestName: "new-test",
+			templateContents: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'An example template that demonstrates the "print" action'
+
+steps:
+  - desc: 'Print a personalized message'
+    action: 'print'
+    params:
+      message: 'Hello!'
+`,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+`,
+			},
+		},
+		{
 			name:        "unknown_inputs",
 			newTestName: "new-test",
 			flagInputs: map[string]string{

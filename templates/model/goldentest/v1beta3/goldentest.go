@@ -54,6 +54,14 @@ type Test struct {
 	BuiltinVars []*VarValue `yaml:"builtin_vars,omitempty"`
 }
 
+// TestCase represents a test.yaml describing test configs.
+type TestCase struct {
+	APIVersion  string      `yaml:"api_version,omitempty"`
+	Kind        string      `yaml:"kind,omitempty"`
+	Inputs      []*VarValue `yaml:"inputs,omitempty"`
+	BuiltinVars []*VarValue `yaml:"builtin_vars,omitempty"`
+}
+
 // Validate implements model.Validator.
 func (t *Test) Validate() error {
 	return errors.Join(
