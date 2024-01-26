@@ -18,6 +18,13 @@ package goldentest
 import (
 	"context"
 	"fmt"
+	"io"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
 	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
@@ -26,12 +33,7 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"io"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 func TestNewTestCommand(t *testing.T) {
