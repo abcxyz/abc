@@ -98,6 +98,8 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		Prompter: c,
 		Spec:     spec,
 	})
+	buf1, err := yaml.Marshal(spec.Inputs)
+	fmt.Printf("spec input is %s", string(buf1))
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
