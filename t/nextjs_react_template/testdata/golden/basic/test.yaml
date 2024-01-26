@@ -1,0 +1,13 @@
+api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+inputs:
+    - name: client_secret
+      value: example-client-secret
+    - name: session_secret
+      value: exampleexampleexample
+    - name: base_url
+      value: http://localhost:3000
+    - name: issuer_base_url
+      value: https://example.com
+    - name: client_id
+      value: example-client-id

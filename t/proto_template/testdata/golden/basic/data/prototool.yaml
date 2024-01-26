@@ -1,0 +1,5 @@
+protoc:
+  version: '24.3'
+
+lint:
+  group: 'google'
