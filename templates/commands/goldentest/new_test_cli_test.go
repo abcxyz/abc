@@ -54,21 +54,21 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
-	//	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta3'
-	//kind: 'Template'
-	//
-	//desc: 'An example template that demonstrates the "print" action'
-	//
-	//inputs:
-	//  - name: 'name'
-	//    desc: 'the name of the person to greet'
-	//
-	//steps:
-	//  - desc: 'Print a personalized message'
-	//    action: 'print'
-	//    params:
-	//      message: 'Hello, {{.name}}!'
-	//`
+	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'An example template that demonstrates the "print" action'
+
+inputs:
+  - name: 'name'
+    desc: 'the name of the person to greet'
+
+steps:
+  - desc: 'Print a personalized message'
+    action: 'print'
+    params:
+      message: 'Hello, {{.name}}!'
+`
 
 	testYaml := `api_version: cli.abcxyz.dev/v1beta3
 kind: GoldenTest
@@ -86,141 +86,115 @@ builtin_vars:
 		flagInputs         map[string]string
 		flagBuiltinVars    map[string]string
 		flagForceOverwrite bool
-		flagPrompt         bool
-		dialog             []abctestutil.DialogStep
 		templateContents   map[string]string
 		expectedContents   map[string]string
 		wantErr            string
 	}{
-		//		{
-		//			name:        "simple_test_succeeds",
-		//			newTestName: "new-test",
-		//			flagInputs: map[string]string{
-		//				"name": "Bob",
-		//			},
-		//			flagBuiltinVars: map[string]string{
-		//				"_git_tag": "my-cool-tag",
-		//			},
-		//			templateContents: map[string]string{
-		//				"spec.yaml": specYaml,
-		//			},
-		//			expectedContents: map[string]string{
-		//				"test.yaml": testYaml,
-		//			},
-		//		},
-		//		{
-		//			name:        "simple_test_succeeds_with_no_default_spec",
-		//			newTestName: "new-test",
-		//			flagInputs: map[string]string{
-		//				"name": "Bob",
-		//			},
-		//			flagBuiltinVars: map[string]string{
-		//				"_git_tag": "my-cool-tag",
-		//			},
-		//			templateContents: map[string]string{
-		//				"spec.yaml": specYamlNoDefault,
-		//			},
-		//			expectedContents: map[string]string{
-		//				"test.yaml": testYaml,
-		//			},
-		//		},
-		//		{
-		//			name:        "unknown_inputs",
-		//			newTestName: "new-test",
-		//			flagInputs: map[string]string{
-		//				"unknown_input": "unknown",
-		//			},
-		//			templateContents: map[string]string{
-		//				"spec.yaml": specYaml,
-		//			},
-		//			wantErr: "unknown input(s)",
-		//		},
-		//		{
-		//			name:        "unknown_builtin_vars",
-		//			newTestName: "new-test",
-		//			flagInputs: map[string]string{
-		//				"name": "Bob",
-		//			},
-		//			flagBuiltinVars: map[string]string{
-		//				"unknown_builtin": "unknown",
-		//			},
-		//			templateContents: map[string]string{
-		//				"spec.yaml": specYaml,
-		//			},
-		//			wantErr: "these builtin override var names are unknown and therefore invalid",
-		//		},
-		//		{
-		//			name:        "test_yaml_already_exists",
-		//			newTestName: "new-test",
-		//			flagInputs: map[string]string{
-		//				"name": "Bob",
-		//			},
-		//			templateContents: map[string]string{
-		//				"spec.yaml":                          specYaml,
-		//				"testdata/golden/new-test/test.yaml": testYaml,
-		//			},
-		//			wantErr: "can't open file",
-		//		},
-		//		{
-		//			name:        "force_overwrite_success",
-		//			newTestName: "new-test",
-		//			flagInputs: map[string]string{
-		//				"name": "John",
-		//			},
-		//			flagBuiltinVars: map[string]string{
-		//				"_git_tag": "my-cool-tag",
-		//			},
-		//			flagForceOverwrite: true,
-		//			templateContents: map[string]string{
-		//				"spec.yaml":                          specYaml,
-		//				"testdata/golden/new-test/test.yaml": testYaml,
-		//			},
-		//			expectedContents: map[string]string{
-		//				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
-		//kind: GoldenTest
-		//inputs:
-		//    - name: name
-		//      value: John
-		//builtin_vars:
-		//    - name: _git_tag
-		//      value: my-cool-tag
-		//`,
-		//			},
-		//		},
-		//		{
-		//			name:        "force_overwrite_success_with_no_exist_test_yaml",
-		//			newTestName: "new-test",
-		//			flagInputs: map[string]string{
-		//				"name": "Bob",
-		//			},
-		//			flagBuiltinVars: map[string]string{
-		//				"_git_tag": "my-cool-tag",
-		//			},
-		//			flagForceOverwrite: true,
-		//			templateContents: map[string]string{
-		//				"spec.yaml": specYaml,
-		//			},
-		//			expectedContents: map[string]string{
-		//				"test.yaml": testYaml,
-		//			},
-		//		},
 		{
-			name:        "prompt_succeeds",
+			name:        "simple_test_succeeds",
 			newTestName: "new-test",
-			dialog: []abctestutil.DialogStep{
-				{
-					WaitForPrompt: `
-Input name:   name
-Description:  the name of the person to greet
-
-Enter value: `,
-					ThenRespond: "Bob\n",
-				},
+			flagInputs: map[string]string{
+				"name": "Bob",
 			},
 			flagBuiltinVars: map[string]string{
 				"_git_tag": "my-cool-tag",
 			},
-			flagPrompt: true,
+			templateContents: map[string]string{
+				"spec.yaml": specYaml,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": testYaml,
+			},
+		},
+		{
+			name:        "simple_test_succeeds_with_no_default_spec",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Bob",
+			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": specYamlNoDefault,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": testYaml,
+			},
+		},
+		{
+			name:        "unknown_inputs",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"unknown_input": "unknown",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": specYaml,
+			},
+			wantErr: "unknown input(s)",
+		},
+		{
+			name:        "unknown_builtin_vars",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Bob",
+			},
+			flagBuiltinVars: map[string]string{
+				"unknown_builtin": "unknown",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": specYaml,
+			},
+			wantErr: "these builtin override var names are unknown and therefore invalid",
+		},
+		{
+			name:        "test_yaml_already_exists",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Bob",
+			},
+			templateContents: map[string]string{
+				"spec.yaml":                          specYaml,
+				"testdata/golden/new-test/test.yaml": testYaml,
+			},
+			wantErr: "can't open file",
+		},
+		{
+			name:        "force_overwrite_success",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "John",
+			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
+			flagForceOverwrite: true,
+			templateContents: map[string]string{
+				"spec.yaml":                          specYaml,
+				"testdata/golden/new-test/test.yaml": testYaml,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+inputs:
+    - name: name
+      value: John
+builtin_vars:
+    - name: _git_tag
+      value: my-cool-tag
+`,
+			},
+		},
+		{
+			name:        "force_overwrite_success_with_no_exist_test_yaml",
+			newTestName: "new-test",
+			flagInputs: map[string]string{
+				"name": "Bob",
+			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
+			flagForceOverwrite: true,
 			templateContents: map[string]string{
 				"spec.yaml": specYaml,
 			},
@@ -252,45 +226,15 @@ Enter value: `,
 			if tc.flagForceOverwrite {
 				args = append(args, "--force-overwrite")
 			}
-			if tc.flagPrompt {
-				args = append(args, "--prompt")
-			}
 			args = append(args, tc.newTestName)
 			args = append(args, tempDir)
 
 			r := &NewTestCommand{}
-			stdinReader, stdinWriter := io.Pipe()
-			stdoutReader, stdoutWriter := io.Pipe()
-			_, stderrWriter := io.Pipe()
-
-			r.SetStdin(stdinReader)
-			r.SetStdout(stdoutWriter)
-			r.SetStderr(stderrWriter)
-			errCh := make(chan error)
-			go func() {
-				defer close(errCh)
-				var err error
-				err = r.Run(ctx, args)
-				errCh <- err
-			}()
-			for _, ds := range tc.dialog {
-				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
-				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
-			}
-
 			if err := r.Run(ctx, args); err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
 				}
 				return
-			}
-			select {
-			case err := <-errCh:
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("timed out waiting for background goroutine to finish")
 			}
 
 			gotContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
