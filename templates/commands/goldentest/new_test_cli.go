@@ -149,7 +149,7 @@ func marshalTestCase(inputs, builtinVars map[string]string) ([]byte, error) {
 			NewStyleAPIVersion: model.String{Val: decode.LatestAPIVersion},
 			Kind:               model.String{Val: decode.KindGoldenTest},
 		},
-		Test: &goldentest.ForHeader{
+		Wrapped: &goldentest.ForMarshaling{
 			Inputs:      mapToVarValues(inputs),
 			BuiltinVars: mapToVarValues(builtinVars),
 		},

@@ -23,3 +23,12 @@ type Fields struct {
 	NewStyleAPIVersion model.String `yaml:"api_version,omitempty"`
 	Kind               model.String `yaml:"kind"`
 }
+
+// With wraps any type in a struct that contains header fields. The header
+// fields and payload fields are inlined together in the YAML output. This is
+// intended to be used when marshaling a struct for output to a file, because
+// our model structs don't have the "api_version" and "kind" fields.
+type With[T any] struct {
+	Header  *Fields `yaml:",inline"`
+	Wrapped T       `yaml:",inline"`
+}

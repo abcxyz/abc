@@ -65,17 +65,14 @@ type Manifest struct {
 }
 
 // This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
-// in the YAML library. We want to inline a Manifest in a WithHeader when
-// marshaling. But the bug prevents that. As a workaround, we create a new type
-// with the same fields but without the Unmarshal method.
-type ForHeader Manifest
-
-// WithHeader is a manifest together with the header fields, for the purpose of
-// writing to an output file.
-type WithHeader struct {
-	Header   *header.Fields `yaml:",inline"`
-	Manifest *ForHeader     `yaml:",inline"`
-}
+// in the YAML library. We want to inline a ManifTest in a WithHeader when
+// marshaling. But the bug prevents that, because anything that implements
+// Marshaler cannot be inlined. As a workaround, we create a new type with the
+// same fields but without the Unmarshal method.
+type (
+	ForMarshaling Manifest
+	WithHeader    header.With[*ForMarshaling]
+)
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {

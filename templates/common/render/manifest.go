@@ -196,7 +196,7 @@ func buildManifest(ctx context.Context, p *writeManifestParams, dlMeta *template
 			NewStyleAPIVersion: model.String{Val: decode.LatestAPIVersion},
 			Kind:               model.String{Val: decode.KindManifest},
 		},
-		Manifest: &manifest.ForHeader{
+		Wrapped: &manifest.ForMarshaling{
 			TemplateLocation: model.String{Val: p.dlMeta.CanonicalSource}, // may be empty string if location isn't canonical
 			LocationType:     model.String{Val: dlMeta.LocationType},
 			TemplateDirhash:  model.String{Val: templateDirhash},

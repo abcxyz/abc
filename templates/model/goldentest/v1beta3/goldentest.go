@@ -55,19 +55,6 @@ type Test struct {
 	BuiltinVars []*VarValue `yaml:"builtin_vars,omitempty"`
 }
 
-// This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
-// in the YAML library. We want to inline a Test in a WithHeader when
-// marshaling. But the bug prevents that. As a workaround, we create a new type
-// with the same fields but without the Unmarshal method.
-type ForHeader Test
-
-// WithHeader is a test together with the header fields, for the purpose of
-// writing to an output file.
-type WithHeader struct {
-	Header *header.Fields `yaml:",inline"`
-	Test   *ForHeader     `yaml:",inline"`
-}
-
 // Validate implements model.Validator.
 func (t *Test) Validate() error {
 	return errors.Join(
@@ -79,3 +66,13 @@ func (t *Test) Validate() error {
 func (t *Test) UnmarshalYAML(n *yaml.Node) error {
 	return model.UnmarshalPlain(n, t, &t.Pos, "api_version", "apiVersion", "kind") //nolint:wrapcheck
 }
+
+// This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
+// in the YAML library. We want to inline a Test in a WithHeader when
+// marshaling. But the bug prevents that, because anything that implements
+// Marshaler cannot be inlined. As a workaround, we create a new type with the
+// same fields but without the Unmarshal method.
+type (
+	ForMarshaling Test
+	WithHeader    header.With[*ForMarshaling]
+)
