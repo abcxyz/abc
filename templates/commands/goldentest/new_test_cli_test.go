@@ -18,15 +18,15 @@ package goldentest
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"testing"
-
-	"github.com/google/go-cmp/cmp"
-
 	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
+	"io"
+	"path/filepath"
+	"testing"
 )
 
 func TestNewTestCommand(t *testing.T) {
@@ -81,6 +81,8 @@ builtin_vars:
 		flagInputs         map[string]string
 		flagBuiltinVars    map[string]string
 		flagForceOverwrite bool
+		flagPrompt         bool
+		dialog             []abctestutil.DialogStep
 		templateContents   map[string]string
 		expectedContents   map[string]string
 		wantErr            string
@@ -197,6 +199,30 @@ builtin_vars:
 				"test.yaml": testYaml,
 			},
 		},
+		{
+			name:        "prompt_succeeds",
+			newTestName: "new-test",
+			dialog: []abctestutil.DialogStep{
+				{
+					WaitForPrompt: `
+Input name:   name
+Description:  the name of the person to greet
+
+Enter value: `,
+					ThenRespond: "Bob\n",
+				},
+			},
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
+			flagPrompt: true,
+			templateContents: map[string]string{
+				"spec.yaml": specYaml,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": testYaml,
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -221,10 +247,25 @@ builtin_vars:
 			if tc.flagForceOverwrite {
 				args = append(args, "--force-overwrite")
 			}
+			if tc.flagPrompt {
+				args = append(args, "--prompt")
+			}
 			args = append(args, tc.newTestName)
 			args = append(args, tempDir)
 
 			r := &NewTestCommand{}
+			stdinReader, stdinWriter := io.Pipe()
+			stdoutReader, stdoutWriter := io.Pipe()
+			_, stderrWriter := io.Pipe()
+
+			r.SetStdin(stdinReader)
+			r.SetStdout(stdoutWriter)
+			r.SetStderr(stderrWriter)
+			for _, ds := range tc.dialog {
+				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
+				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
+			}
+
 			if err := r.Run(ctx, args); err != nil {
 				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 					t.Fatal(diff)
