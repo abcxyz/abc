@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package header helps with marshaling and unmarshaling YAML structs together
+// with header fields.
 package header
 
 import "github.com/abcxyz/abc/templates/model"
@@ -19,9 +21,14 @@ import "github.com/abcxyz/abc/templates/model"
 // Fields is the set of fields that are present in every "kind" of YAML file
 // used in this program.
 type Fields struct {
-	OldStyleAPIVersion model.String `yaml:"apiVersion,omitempty"`
+	// When marshaling, use NewStyleAPIVersion and not OldStyleAPIVersion.
 	NewStyleAPIVersion model.String `yaml:"api_version,omitempty"`
-	Kind               model.String `yaml:"kind"`
+	// OldStyleAPIVersion only exists to handle a legacy naming apiVersion; the
+	// new, more correct name is "api_version".
+	OldStyleAPIVersion model.String `yaml:"apiVersion,omitempty"`
+
+	// One of "Template", "GoldenTest", etc.
+	Kind model.String `yaml:"kind"`
 }
 
 // With wraps any type in a struct that contains header fields. The header
