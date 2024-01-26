@@ -232,11 +232,10 @@ kind: 'GoldenTest'`
 			args = append(args, tempDir)
 
 			r := &VerifyCommand{}
-			if err := r.Run(ctx, args); err != nil {
-				for _, wantErr := range tc.wantErrs {
-					if diff := testutil.DiffErrString(err, wantErr); diff != "" {
-						t.Fatal(diff)
-					}
+			err := r.Run(ctx, args)
+			for _, wantErr := range tc.wantErrs {
+				if diff := testutil.DiffErrString(err, wantErr); diff != "" {
+					t.Fatal(diff)
 				}
 			}
 		})
