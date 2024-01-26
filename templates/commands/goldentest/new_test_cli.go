@@ -106,8 +106,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	for k := range c.flags.BuiltinVars {
 		builtinVarsKeys = append(builtinVarsKeys, k)
 	}
-	err = builtinvar.Validate(spec.Features, builtinVarsKeys)
-	if err != nil {
+	if err = builtinvar.Validate(spec.Features, builtinVarsKeys); err != nil {
 		return err //nolint:wrapcheck
 	}
 
@@ -119,8 +118,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	testDir := filepath.Join(c.flags.Location, goldenTestDir, c.flags.NewTestName)
 	testConfigFile := filepath.Join(testDir, configName)
 
-	err = fs.MkdirAll(testDir, common.OwnerRWXPerms)
-	if err != nil {
+	if err = fs.MkdirAll(testDir, common.OwnerRWXPerms); err != nil {
 		return fmt.Errorf("failed creating %s directory to contain test yaml file: %w", testDir, err)
 	}
 	// file overwriting is not allowed.
