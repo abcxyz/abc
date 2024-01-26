@@ -182,9 +182,6 @@ kind: GoldenTest
 			flagInputs: map[string]string{
 				"name": "John",
 			},
-			flagBuiltinVars: map[string]string{
-				"_git_tag": "my-cool-tag",
-			},
 			flagForceOverwrite: true,
 			templateContents: map[string]string{
 				"spec.yaml":                          specYaml,
@@ -196,9 +193,6 @@ kind: GoldenTest
 inputs:
     - name: name
       value: John
-builtin_vars:
-    - name: _git_tag
-      value: my-cool-tag
 `,
 			},
 		},

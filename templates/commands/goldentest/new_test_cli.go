@@ -127,7 +127,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	fileFlag := os.O_CREATE | os.O_EXCL | os.O_WRONLY
 	if c.flags.ForceOverwrite {
 		// file overwriting is allowed.
-		fileFlag = os.O_CREATE | os.O_WRONLY
+		fileFlag = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	}
 	fh, err := fs.OpenFile(testConfigFile, fileFlag, common.OwnerRWPerms)
 	if err != nil {
