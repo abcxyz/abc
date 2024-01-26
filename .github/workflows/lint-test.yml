@@ -47,7 +47,14 @@ jobs:
   yaml_lint:
     uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
 
-  golden_tests:
+  golden_test_presence:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Check that all templates have a golden test'
+        shell: 'bash'
+        run: 'require_golden_tests.sh'
+
+  run_golden_tests:
     strategy:
       # allow all os suites to complete, even if one fails
       fail-fast: false
