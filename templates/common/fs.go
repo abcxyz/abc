@@ -147,7 +147,8 @@ type CopyHint struct {
 	Skip bool
 }
 
-// CopyRecursive recursively copy folder contents with designated config params.
+// CopyRecursive recursively copies folder contents with designated config
+// params.
 func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "CopyRecursive")
 

@@ -602,7 +602,7 @@ steps:
         skip: ['file1.txt']
 `,
 			},
-			wantDestContents: nil,
+			wantDestContents: map[string]string{},
 		},
 		{
 			name: "glob_include",
@@ -664,7 +664,8 @@ steps:
             message: 'Working on environment {{.env}}'
 `,
 			},
-			wantStdout: "Working on environment production\nWorking on environment dev\n",
+			wantStdout:       "Working on environment production\nWorking on environment dev\n",
+			wantDestContents: map[string]string{},
 		},
 		{
 			name: "skip_input_validation",
@@ -688,6 +689,7 @@ steps:
 			flagInputs:              map[string]string{"my_input": "crocodile"},
 			flagSkipInputValidation: true,
 			wantStdout:              "my_input is crocodile\n",
+			wantDestContents:        map[string]string{},
 		},
 		{
 			name: "step_with_if",
@@ -713,7 +715,8 @@ steps:
     params:
       message: 'Goodbye'`,
 			},
-			wantStdout: "Hello\n",
+			wantStdout:       "Hello\n",
+			wantDestContents: map[string]string{},
 		},
 		{
 			name: "step_with_if_needs_v1beta1",
@@ -905,7 +908,8 @@ steps:
 				builtinvar.FlagDest:   "/my/dest",
 				builtinvar.FlagSource: "/my/source",
 			},
-			wantStdout: "/my/dest /my/source\n",
+			wantStdout:       "/my/dest /my/source\n",
+			wantDestContents: map[string]string{},
 		},
 		{
 			name:       "print_only_flags_are_not_in_scope_outside_of_print_actions",
@@ -989,6 +993,82 @@ steps:
 				"git_tag": "bar",
 			},
 			wantErr: "these builtin override var names are unknown and therefore invalid: [git_tag]",
+		},
+		{
+			name: "abc_is_reserved_as_file_name_in_dest_dir",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['.abc']`,
+				"file1.txt": "",
+			},
+			wantErr: `uses the reserved name ".abc"`,
+		},
+		{
+			name: "abc_is_reserved_as_dir_name_in_dest_dir",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['.abc/file1.txt']`,
+				"file1.txt": "",
+			},
+			wantErr: `uses the reserved name ".abc"`,
+		},
+		{
+			name: "abc_is_not_reserved_for_file_in_subdir",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['foo/.abc']`,
+				"file1.txt": "",
+			},
+			wantDestContents: map[string]string{
+				"foo/.abc": "",
+			},
+		},
+		{
+			name: "abc_is_not_reserved_as_subdir_name",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt']
+        as:    ['foo/.abc/bar.txt']`,
+				"file1.txt": "",
+			},
+			wantDestContents: map[string]string{
+				"foo/.abc/bar.txt": "",
+			},
 		},
 	}
 

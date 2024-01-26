@@ -112,6 +112,16 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 			Visitor: visitor,
 		}
 		merr = errors.Join(merr, common.CopyRecursive(ctx, nil, params))
+
+		abcInternal := filepath.Join(testDir, common.ABCInternalDir)
+		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
+			return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)
+		}
+		// git won't commit an empty directory, so add a placeholder file.
+		gitKeep := filepath.Join(abcInternal, ".gitkeep")
+		if err := os.WriteFile(gitKeep, []byte{}, common.OwnerRWPerms); err != nil {
+			return fmt.Errorf("failed creating %q: %w", gitKeep, err)
+		}
 	}
 	if merr != nil {
 		return fmt.Errorf("failed to write golden test data: %w", merr)
