@@ -26,14 +26,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/common/input"
 	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
-	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestNewTestCommand(t *testing.T) {
@@ -315,24 +311,133 @@ func TestNewTestFlags_Parse(t *testing.T) {
 	}
 }
 
-func TestPromptDialog(t *testing.T) {
+//
+//func TestPromptDialog(t *testing.T) {
+//	t.Parallel()
+//
+//	cases := []struct {
+//		name          string
+//		inputs        []*spec.Input
+//		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
+//		dialog        []abctestutil.DialogStep
+//		want          map[string]string
+//		wantErr       string
+//	}{
+//		{
+//			name: "single_input_prompt",
+//			inputs: []*spec.Input{
+//				{
+//					Name: model.String{Val: "name"},
+//					Desc: model.String{Val: "the name of the person to greet"},
+//				},
+//			},
+//			dialog: []abctestutil.DialogStep{
+//				{
+//					WaitForPrompt: `
+//Input name:   name
+//Description:  the name of the person to greet
+//
+//Enter value: `,
+//					ThenRespond: "Bob\n",
+//				},
+//			},
+//			want: map[string]string{
+//				"name": "Bob",
+//			},
+//		},
+//	}
+//
+//	for _, tc := range cases {
+//		tc := tc
+//		t.Run(tc.name, func(t *testing.T) {
+//			t.Parallel()
+//
+//			cmd := &cli.BaseCommand{}
+//
+//			stdinReader, stdinWriter := io.Pipe()
+//			stdoutReader, stdoutWriter := io.Pipe()
+//			_, stderrWriter := io.Pipe()
+//
+//			cmd.SetStdin(stdinReader)
+//			cmd.SetStdout(stdoutWriter)
+//			cmd.SetStderr(stderrWriter)
+//
+//			ctx := context.Background()
+//			errCh := make(chan error)
+//			var got map[string]string
+//			go func() {
+//				defer close(errCh)
+//				params := &input.ResolveParams{
+//					Inputs:             tc.flagInputVals,
+//					Prompt:             true,
+//					Prompter:           cmd,
+//					SkipPromptTTYCheck: true,
+//					Spec: &spec.Spec{
+//						Inputs: tc.inputs,
+//					},
+//				}
+//				var err error
+//				got, err = input.Resolve(ctx, params)
+//				errCh <- err
+//			}()
+//
+//			for _, ds := range tc.dialog {
+//				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
+//				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
+//			}
+//
+//			select {
+//			case err := <-errCh:
+//				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+//					t.Fatal(diff)
+//				}
+//			case <-time.After(time.Second):
+//				t.Fatal("timed out waiting for background goroutine to finish")
+//			}
+//			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
+//				t.Fatalf("input values were different than expected (-got,+want): %s", diff)
+//			}
+//		})
+//	}
+//}
+
+func TestNewTestPrompt(t *testing.T) {
 	t.Parallel()
 
+	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'An example template that demonstrates the "print" action'
+
+inputs:
+  - name: 'name'
+    desc: 'the name of the person to greet'
+
+steps:
+  - desc: 'Print a personalized message'
+    action: 'print'
+    params:
+      message: 'Hello, {{.name}}!'
+`
+
 	cases := []struct {
-		name          string
-		inputs        []*spec.Input
-		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
-		dialog        []abctestutil.DialogStep
-		want          map[string]string
-		wantErr       string
+		name               string
+		newTestName        string
+		flagInputs         map[string]string
+		flagBuiltinVars    map[string]string
+		flagForceOverwrite bool
+		flagPrompt         bool
+		dialog             []abctestutil.DialogStep
+		templateContents   map[string]string
+		expectedContents   map[string]string
+		wantErr            string
 	}{
 		{
-			name: "single_input_prompt",
-			inputs: []*spec.Input{
-				{
-					Name: model.String{Val: "name"},
-					Desc: model.String{Val: "the name of the person to greet"},
-				},
+			name:        "prompt_success",
+			newTestName: "new-test",
+			flagPrompt:  true,
+			templateContents: map[string]string{
+				"spec.yaml": specYaml,
 			},
 			dialog: []abctestutil.DialogStep{
 				{
@@ -341,46 +446,62 @@ Input name:   name
 Description:  the name of the person to greet
 
 Enter value: `,
-					ThenRespond: "Bob\n",
+					ThenRespond: "John\n",
 				},
 			},
-			want: map[string]string{
-				"name": "Bob",
+			expectedContents: map[string]string{
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+inputs:
+    - name: name
+      value: John
+`,
 			},
 		},
 	}
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			cmd := &cli.BaseCommand{}
+			tempDir := t.TempDir()
 
+			common.WriteAllDefaultMode(t, tempDir, tc.templateContents)
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+			var args []string
+			for k, v := range tc.flagInputs {
+				args = append(args, fmt.Sprintf("--input=%s=%s", k, v))
+			}
+			for k, v := range tc.flagBuiltinVars {
+				args = append(args, fmt.Sprintf("--builtin-var=%s=%s", k, v))
+			}
+			if tc.flagForceOverwrite {
+				args = append(args, "--force-overwrite")
+			}
+			if tc.flagPrompt {
+				args = append(args, "--prompt")
+			}
+			args = append(args, tc.newTestName)
+			args = append(args, tempDir)
+
+			r := &NewTestCommand{}
 			stdinReader, stdinWriter := io.Pipe()
 			stdoutReader, stdoutWriter := io.Pipe()
 			_, stderrWriter := io.Pipe()
 
-			cmd.SetStdin(stdinReader)
-			cmd.SetStdout(stdoutWriter)
-			cmd.SetStderr(stderrWriter)
+			r.SetStdin(stdinReader)
+			r.SetStdout(stdoutWriter)
+			r.SetStderr(stderrWriter)
 
-			ctx := context.Background()
 			errCh := make(chan error)
-			var got map[string]string
 			go func() {
 				defer close(errCh)
-				params := &input.ResolveParams{
-					Inputs:             tc.flagInputVals,
-					Prompt:             true,
-					Prompter:           cmd,
-					SkipPromptTTYCheck: true,
-					Spec: &spec.Spec{
-						Inputs: tc.inputs,
-					},
-				}
 				var err error
-				got, err = input.Resolve(ctx, params)
+				err = r.Run(ctx, args)
 				errCh <- err
 			}()
 
@@ -397,8 +518,9 @@ Enter value: `,
 			case <-time.After(time.Second):
 				t.Fatal("timed out waiting for background goroutine to finish")
 			}
-			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
-				t.Fatalf("input values were different than expected (-got,+want): %s", diff)
+			gotContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
+			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
