@@ -245,11 +245,8 @@ func TestNewRecordFlags_Parse(t *testing.T) {
 			cmd.SetLookupEnv(cli.MapLookuper(nil))
 
 			err := cmd.Flags().Parse(tc.args)
-			if err != nil || tc.wantErr != "" {
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
-				return
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
 			}
 			if diff := cmp.Diff(cmd.flags, tc.want); diff != "" {
 				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.flags, tc.want, diff)
