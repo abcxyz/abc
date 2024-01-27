@@ -30,8 +30,10 @@ import (
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/specutil"
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	"github.com/abcxyz/abc/templates/model/header"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -142,24 +144,20 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 }
 
 func marshalTestCase(inputs, builtinVars map[string]string) ([]byte, error) {
-	testCase := goldentest.Test{
-		Inputs:      mapToVarValues(inputs),
-		BuiltinVars: mapToVarValues(builtinVars),
+	testCase := &goldentest.WithHeader{
+		Header: &header.Fields{
+			NewStyleAPIVersion: model.String{Val: decode.LatestAPIVersion},
+			Kind:               model.String{Val: decode.KindGoldenTest},
+		},
+		Wrapped: &goldentest.ForMarshaling{
+			Inputs:      mapToVarValues(inputs),
+			BuiltinVars: mapToVarValues(builtinVars),
+		},
 	}
 	buf, err := yaml.Marshal(testCase)
 	if err != nil {
 		return nil, fmt.Errorf("failed marshaling test case when writing: %w", err)
 	}
-	header := map[string]string{
-		"api_version": decode.LatestAPIVersion,
-		"kind":        decode.KindGoldenTest,
-	}
-	headerYAML, err := yaml.Marshal(header)
-	if err != nil {
-		return nil, fmt.Errorf("failed marshaling api_version: %w", err)
-	}
 
-	buf = append(headerYAML,
-		buf...)
 	return buf, nil
 }

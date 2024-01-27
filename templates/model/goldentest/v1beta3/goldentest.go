@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/header"
 )
 
 // This file parses a YAML file that describes test configs.
@@ -65,3 +66,13 @@ func (t *Test) Validate() error {
 func (t *Test) UnmarshalYAML(n *yaml.Node) error {
 	return model.UnmarshalPlain(n, t, &t.Pos, "api_version", "apiVersion", "kind") //nolint:wrapcheck
 }
+
+// This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
+// in the YAML library. We want to inline a Test in a WithHeader when
+// marshaling. But the bug prevents that, because anything that implements
+// Unmarshaler cannot be inlined. As a workaround, we create a new type with the
+// same fields but without the Unmarshal method.
+type (
+	ForMarshaling Test
+	WithHeader    header.With[*ForMarshaling]
+)
