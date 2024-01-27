@@ -1,19 +1,19 @@
-api_version: cli.abcxyz.dev/v1beta3
-kind: GoldenTest
+api_version: "cli.abcxyz.dev/v1beta3"
+kind: "GoldenTest"
 inputs:
-    - name: automation_service_account
-      value: platform-ops@abcxyz-my-project.iam.gserviceaccount.com
-    - name: wif_provider
-      value: projects/my-project/locations/global/workloadIdentityPools/my-pool/providers/my-provider
-    - name: ar_repository
-      value: ci-images
-    - name: ar_location
-      value: us-docker.pkg.dev
-    - name: cr_service
-      value: hello-jupiter-api
-    - name: region
-      value: us-west1
-    - name: environment
-      value: integration
-    - name: project_id
-      value: example.com:my-project
+  - name: "automation_service_account"
+    value: "platform-ops@abcxyz-my-project.iam.gserviceaccount.com"
+  - name: "wif_provider"
+    value: "projects/my-project/locations/global/workloadIdentityPools/my-pool/providers/my-provider"
+  - name: "ar_repository"
+    value: "ci-images"
+  - name: "ar_location"
+    value: "us-docker.pkg.dev"
+  - name: "cr_service"
+    value: "hello-jupiter-api"
+  - name: "region"
+    value: "us-west1"
+  - name: "environment"
+    value: "integration"
+  - name: "project_id"
+    value: "example.com:my-project"
