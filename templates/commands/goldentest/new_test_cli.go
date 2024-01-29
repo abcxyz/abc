@@ -40,6 +40,9 @@ type NewTestCommand struct {
 	cli.BaseCommand
 
 	flags NewTestFlags
+
+	// used in prompt UT.
+	skipPromptTTYCheck bool
 }
 
 func (c *NewTestCommand) Desc() string {
@@ -97,7 +100,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		Prompt:             c.flags.Prompt,
 		Prompter:           c,
 		Spec:               spec,
-		SkipPromptTTYCheck: true,
+		SkipPromptTTYCheck: c.skipPromptTTYCheck,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck

@@ -314,7 +314,25 @@ func TestNewTestFlags_Parse(t *testing.T) {
 func TestNewTestPrompt(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta3'
+	cases := []struct {
+		name             string
+		newTestName      string
+		flagBuiltinVars  map[string]string
+		flagPrompt       bool
+		dialog           []abctestutil.DialogStep
+		templateContents map[string]string
+		expectedContents map[string]string
+		wantErr          string
+	}{
+		{
+			name:        "prompt_success",
+			newTestName: "new-test",
+			flagPrompt:  true,
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta3'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'
@@ -327,27 +345,7 @@ steps:
   - desc: 'Print a personalized message'
     action: 'print'
     params:
-      message: 'Hello, {{.name}}!'
-`
-
-	cases := []struct {
-		name               string
-		newTestName        string
-		flagInputs         map[string]string
-		flagBuiltinVars    map[string]string
-		flagForceOverwrite bool
-		flagPrompt         bool
-		dialog             []abctestutil.DialogStep
-		templateContents   map[string]string
-		expectedContents   map[string]string
-		wantErr            string
-	}{
-		{
-			name:        "prompt_success",
-			newTestName: "new-test",
-			flagPrompt:  true,
-			templateContents: map[string]string{
-				"spec.yaml": specYaml,
+      message: 'Hello, {{.name}}!'`,
 			},
 			dialog: []abctestutil.DialogStep{
 				{
@@ -365,6 +363,9 @@ kind: GoldenTest
 inputs:
     - name: name
       value: John
+builtin_vars:
+    - name: _git_tag
+      value: my-cool-tag
 `,
 			},
 		},
@@ -383,14 +384,8 @@ inputs:
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 			var args []string
-			for k, v := range tc.flagInputs {
-				args = append(args, fmt.Sprintf("--input=%s=%s", k, v))
-			}
 			for k, v := range tc.flagBuiltinVars {
 				args = append(args, fmt.Sprintf("--builtin-var=%s=%s", k, v))
-			}
-			if tc.flagForceOverwrite {
-				args = append(args, "--force-overwrite")
 			}
 			if tc.flagPrompt {
 				args = append(args, "--prompt")
@@ -399,6 +394,7 @@ inputs:
 			args = append(args, tempDir)
 
 			r := &NewTestCommand{}
+			r.skipPromptTTYCheck = true
 			stdinReader, stdinWriter := io.Pipe()
 			stdoutReader, stdoutWriter := io.Pipe()
 			_, stderrWriter := io.Pipe()
