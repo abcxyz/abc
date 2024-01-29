@@ -15,15 +15,21 @@
 package render
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"io/fs"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -147,6 +153,125 @@ func TestDestOK(t *testing.T) {
 			got := destOK(tc.fs, tc.dest)
 			if diff := testutil.DiffErrString(got, tc.wantErr); diff != "" {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestRenderPrompt(t *testing.T) {
+	t.Parallel()
+
+	specContents := `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+inputs:
+- name: 'name_of_favourite_person'
+  desc: 'The name of favourite person'
+steps:
+- desc: 'Include some files and directories'
+  action: 'include'
+  params:
+    paths:
+      - paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
+- desc: 'Replace "Alice" with [input]'
+  action: 'string_replace'
+  params:
+    paths: ['.']
+    replacements:
+    - to_replace: 'Alice'
+      with: '{{.name_of_favourite_person}}'
+`
+
+	cases := []struct {
+		name             string
+		templateContents map[string]string
+		flagPrompt       bool
+		dialog           []abctestutil.DialogStep
+		wantDestContents map[string]string
+		wantErr          string
+	}{
+		{
+			name: "simple_success",
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite person is Alice",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			flagPrompt: true,
+			dialog: []abctestutil.DialogStep{
+				{
+					WaitForPrompt: `
+Input name:   name_of_favourite_person
+Description:  The name of favourite person
+
+Enter value: `,
+					ThenRespond: "Bob\n",
+				},
+			},
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite person is Bob",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			dest := filepath.Join(tempDir, "dest")
+			sourceDir := filepath.Join(tempDir, "source")
+
+			common.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+			var args []string
+			if tc.flagPrompt {
+				args = append(args, "--prompt")
+			}
+			args = append(args, fmt.Sprintf("--dest=%s", dest))
+			args = append(args, sourceDir)
+
+			r := &Command{skipPromptTTYCheck: true}
+			stdinReader, stdinWriter := io.Pipe()
+			stdoutReader, stdoutWriter := io.Pipe()
+			_, stderrWriter := io.Pipe()
+
+			r.SetStdin(stdinReader)
+			r.SetStdout(stdoutWriter)
+			r.SetStderr(stderrWriter)
+
+			errCh := make(chan error)
+			go func() {
+				defer close(errCh)
+				err := r.Run(ctx, args)
+				errCh <- err
+			}()
+
+			for _, ds := range tc.dialog {
+				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
+				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
+			}
+
+			select {
+			case err := <-errCh:
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("timed out waiting for background goroutine to finish")
+			}
+
+			gotDestContents := common.LoadDirWithoutMode(t, dest)
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, common.CmpFileMode); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
