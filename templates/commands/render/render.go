@@ -35,6 +35,8 @@ import (
 type Command struct {
 	cli.BaseCommand
 	flags RenderFlags
+	// used in prompt UT.
+	skipPromptTTYCheck bool
 }
 
 // Desc implements cli.Command.
@@ -113,6 +115,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Prompt:               c.flags.Prompt,
 		Prompter:             c,
 		SkipInputValidation:  c.flags.SkipInputValidation,
+		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
 		Source:               c.flags.Source,
 		Stdout:               c.Stdout(),
 	})
