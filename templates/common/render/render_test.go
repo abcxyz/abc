@@ -31,6 +31,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/paths"
+	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/cli"
@@ -1196,15 +1197,11 @@ func testMustGlob(t *testing.T, glob string) (string, bool) {
 func TestPromptDialog(t *testing.T) {
 	t.Parallel()
 
-	type dialogStep struct {
-		waitForPrompt string
-		thenRespond   string // should end with newline
-	}
 	cases := []struct {
 		name          string
 		inputs        []*spec.Input
 		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
-		dialog        []dialogStep
+		dialog        []abctestutil.DialogStep
 		want          map[string]string
 		wantErr       string
 	}{
@@ -1216,14 +1213,14 @@ func TestPromptDialog(t *testing.T) {
 					Desc: model.String{Val: "your favorite animal"},
 				},
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   animal
 Description:  your favorite animal
 
 Enter value: `,
-					thenRespond: "alligator\n",
+					ThenRespond: "alligator\n",
 				},
 			},
 			want: map[string]string{
@@ -1244,16 +1241,16 @@ Enter value: `,
 					},
 				},
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   animal
 Description:  your favorite animal
 Rule:         size(animal) > 1
 Rule msg:     length must be greater than 1
 
 Enter value: `,
-					thenRespond: "alligator\n",
+					ThenRespond: "alligator\n",
 				},
 			},
 			want: map[string]string{
@@ -1278,9 +1275,9 @@ Enter value: `,
 					},
 				},
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   animal
 Description:  your favorite animal
 Rule 0:       size(animal) > 1
@@ -1289,7 +1286,7 @@ Rule 1:       size(animal) < 100
 Rule 1 msg:   length must be less than 100
 
 Enter value: `,
-					thenRespond: "alligator\n",
+					ThenRespond: "alligator\n",
 				},
 			},
 			want: map[string]string{
@@ -1308,22 +1305,22 @@ Enter value: `,
 					Desc: model.String{Val: "your favorite car"},
 				},
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   animal
 Description:  your favorite animal
 
 Enter value: `,
-					thenRespond: "alligator\n",
+					ThenRespond: "alligator\n",
 				},
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   car
 Description:  your favorite car
 
 Enter value: `,
-					thenRespond: "Ford Bronco 🐎\n",
+					ThenRespond: "Ford Bronco 🐎\n",
 				},
 			},
 			want: map[string]string{
@@ -1362,14 +1359,14 @@ Enter value: `,
 			flagInputVals: map[string]string{
 				"animal": "duck",
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   car
 Description:  your favorite car
 
 Enter value: `,
-					thenRespond: "Peugeot\n",
+					ThenRespond: "Peugeot\n",
 				},
 			},
 			want: map[string]string{
@@ -1390,15 +1387,15 @@ Enter value: `,
 					Default: &model.String{Val: "shark"},
 				},
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   animal
 Description:  your favorite animal
 Default:      shark
 
 Enter value, or leave empty to accept default: `,
-					thenRespond: "\n",
+					ThenRespond: "\n",
 				},
 			},
 			want: map[string]string{
@@ -1414,15 +1411,15 @@ Enter value, or leave empty to accept default: `,
 					Default: &model.String{Val: "shark"},
 				},
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   animal
 Description:  your favorite animal
 Default:      shark
 
 Enter value, or leave empty to accept default: `,
-					thenRespond: "alligator\n",
+					ThenRespond: "alligator\n",
 				},
 			},
 			want: map[string]string{
@@ -1438,15 +1435,15 @@ Enter value, or leave empty to accept default: `,
 					Default: &model.String{Val: ""},
 				},
 			},
-			dialog: []dialogStep{
+			dialog: []abctestutil.DialogStep{
 				{
-					waitForPrompt: `
+					WaitForPrompt: `
 Input name:   animal
 Description:  your favorite animal
 Default:      ""
 
 Enter value, or leave empty to accept default: `,
-					thenRespond: "\n",
+					ThenRespond: "\n",
 				},
 			},
 			want: map[string]string{
@@ -1490,8 +1487,8 @@ Enter value, or leave empty to accept default: `,
 			}()
 
 			for _, ds := range tc.dialog {
-				readWithTimeout(t, stdoutReader, ds.waitForPrompt)
-				writeWithTimeout(t, stdinWriter, ds.thenRespond)
+				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
+				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
 			}
 
 			select {
@@ -1506,68 +1503,5 @@ Enter value, or leave empty to accept default: `,
 				t.Fatalf("input values were different than expected (-got,+want): %s", diff)
 			}
 		})
-	}
-}
-
-// readWithTimeout does a single read from the given reader. It calls Fatal if
-// that read fails or the returned string doesn't contain wantSubStr. May leak a
-// goroutine on timeout.
-func readWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
-	tb.Helper()
-
-	tb.Logf("readWith starting with %q", wantSubstr)
-
-	var got string
-	errCh := make(chan error)
-	go func() {
-		defer close(errCh)
-		buf := make([]byte, 64*1_000)
-		tb.Log("to Read")
-		n, err := r.Read(buf)
-		tb.Log("from Read")
-		if err != nil {
-			errCh <- err
-			return
-		}
-		got = string(buf[:n])
-	}()
-
-	select {
-	case err := <-errCh:
-		if err != nil {
-			tb.Fatal(err)
-		}
-	case <-time.After(time.Second):
-		tb.Fatalf("timed out waiting to read %q", wantSubstr)
-	}
-
-	if !strings.Contains(got, wantSubstr) {
-		tb.Fatalf("got a prompt %q, but wanted a prompt containing %q", got, wantSubstr)
-	}
-}
-
-// writeWithTimeout does a single write to the given writer. It calls Fatal
-// if that read doesn't contain wantSubStr. May leak a goroutine on timeout.
-func writeWithTimeout(tb testing.TB, w io.Writer, msg string) {
-	tb.Helper()
-
-	tb.Logf("writeWithTimeout starting with %q", msg)
-
-	errCh := make(chan error)
-	go func() {
-		defer close(errCh)
-		tb.Log("to Write")
-		_, err := w.Write([]byte(msg))
-		tb.Log("from Write")
-		errCh <- err
-	}()
-
-	select {
-	case err := <-errCh:
-		if err != nil {
-			tb.Fatal(err)
-		}
-	case <-time.After(time.Second):
-		tb.Fatalf("timed out waiting to write %q", msg)
 	}
 }

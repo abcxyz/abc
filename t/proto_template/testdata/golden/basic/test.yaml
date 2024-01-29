@@ -20,7 +20,7 @@ inputs:
   - name: 'go_version'
     value: '1.21.1'
   - name: 'go_gar_proto_version'
-    value: v0.0.0
+    value: 'v0.0.0'
   - name: 'wif_provider'
     value: 'projects/my-project/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
   - name: 'wif_service_account'
