@@ -18,12 +18,15 @@ package goldentest
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -160,9 +163,6 @@ builtin_vars:
 			flagInputs: map[string]string{
 				"name": "John",
 			},
-			flagBuiltinVars: map[string]string{
-				"_git_tag": "my-cool-tag",
-			},
 			flagForceOverwrite: true,
 			templateContents: map[string]string{
 				"spec.yaml":                          specYaml,
@@ -174,9 +174,6 @@ kind: GoldenTest
 inputs:
     - name: name
       value: John
-builtin_vars:
-    - name: _git_tag
-      value: my-cool-tag
 `,
 			},
 		},
@@ -195,6 +192,26 @@ builtin_vars:
 			},
 			expectedContents: map[string]string{
 				"test.yaml": testYaml,
+			},
+		},
+		{
+			name:        "template_with_no_inputs",
+			newTestName: "new-test",
+			templateContents: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+desc: 'A template with no inputs'
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+      message: 'Hello!'
+`,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+`,
 			},
 		},
 	}
@@ -303,6 +320,126 @@ func TestNewTestFlags_Parse(t *testing.T) {
 			}
 			if diff := cmp.Diff(cmd.flags, tc.want); diff != "" {
 				t.Errorf("got %#v, want %#v, diff (-got, +want): %v", cmd.flags, tc.want, diff)
+			}
+		})
+	}
+}
+
+func TestNewTestPrompt(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name             string
+		newTestName      string
+		flagBuiltinVars  map[string]string
+		flagPrompt       bool
+		dialog           []abctestutil.DialogStep
+		templateContents map[string]string
+		expectedContents map[string]string
+		wantErr          string
+	}{
+		{
+			name:        "prompt_success",
+			newTestName: "new-test",
+			flagPrompt:  true,
+			flagBuiltinVars: map[string]string{
+				"_git_tag": "my-cool-tag",
+			},
+			templateContents: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'An example template that demonstrates the "print" action'
+
+inputs:
+  - name: 'name'
+    desc: 'the name of the person to greet'
+
+steps:
+  - desc: 'Print a personalized message'
+    action: 'print'
+    params:
+      message: 'Hello, {{.name}}!'`,
+			},
+			dialog: []abctestutil.DialogStep{
+				{
+					WaitForPrompt: `
+Input name:   name
+Description:  the name of the person to greet
+
+Enter value: `,
+					ThenRespond: "John\n",
+				},
+			},
+			expectedContents: map[string]string{
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+inputs:
+    - name: name
+      value: John
+builtin_vars:
+    - name: _git_tag
+      value: my-cool-tag
+`,
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			common.WriteAllDefaultMode(t, tempDir, tc.templateContents)
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+			var args []string
+			for k, v := range tc.flagBuiltinVars {
+				args = append(args, fmt.Sprintf("--builtin-var=%s=%s", k, v))
+			}
+			if tc.flagPrompt {
+				args = append(args, "--prompt")
+			}
+			args = append(args, tc.newTestName)
+			args = append(args, tempDir)
+
+			r := &NewTestCommand{}
+			r.skipPromptTTYCheck = true
+			stdinReader, stdinWriter := io.Pipe()
+			stdoutReader, stdoutWriter := io.Pipe()
+			_, stderrWriter := io.Pipe()
+
+			r.SetStdin(stdinReader)
+			r.SetStdout(stdoutWriter)
+			r.SetStderr(stderrWriter)
+
+			errCh := make(chan error)
+			go func() {
+				defer close(errCh)
+				err := r.Run(ctx, args)
+				errCh <- err
+			}()
+
+			for _, ds := range tc.dialog {
+				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
+				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
+			}
+
+			select {
+			case err := <-errCh:
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("timed out waiting for background goroutine to finish")
+			}
+			gotContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
+			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
