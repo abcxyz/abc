@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 
 # This script is intended to be invoked in a github action. It will return a
 # nonzero exit code and print a message if there are any example templates that
