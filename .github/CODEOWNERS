@@ -12,3 +12,7 @@
 *.jsx    @abcxyz/typescript-readability
 *.ts     @abcxyz/typescript-readability
 *.tsx    @abcxyz/typescript-readability
+
+# By leaving the owners group empty, remove the need for owners approval on
+# golden-test output.
+**/testdata/golden/*/data/**
