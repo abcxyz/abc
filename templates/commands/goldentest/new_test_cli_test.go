@@ -194,6 +194,26 @@ inputs:
 				"test.yaml": testYaml,
 			},
 		},
+		{
+			name:        "template_with_no_inputs",
+			newTestName: "new-test",
+			templateContents: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+desc: 'A template with no inputs'
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+      message: 'Hello!'
+`,
+			},
+			expectedContents: map[string]string{
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+kind: GoldenTest
+`,
+			},
+		},
 	}
 
 	for _, tc := range cases {
