@@ -58,6 +58,7 @@ jobs:
           - 'windows-latest'
     runs-on: '${{ matrix.runner }}'
     steps:
+      # A workaround for #400:
       - run: 'git config --global core.autocrlf false'
 
       - name: 'Checkout'
