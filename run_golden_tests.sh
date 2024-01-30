@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 
 # This script is intended to be invoked in a github action. It will run all the
 # the golden tests that it can find.
