@@ -37,7 +37,7 @@ steps:
       as:
         - '.'
         - '.env.local'
-      skip: 
+      skip:
         - '.gitignore'
   - desc: 'Include .gitignore under a different name'
     action: 'include'
