@@ -160,7 +160,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 %s
 =====
 goldenFile: %s
-golden plain:%s
+golden plain: %s
 golden hex:%s
 =====
 tempFile: %s
