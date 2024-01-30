@@ -1,0 +1,10 @@
+api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'
+
+inputs:
+  - name: 'my_input_without_default'
+    value: 'foo'
+  - name: 'my_service_account'
+    value: 'platform-ops@abcxyz-my-project.iam.gserviceaccount.com'
+  - name: 'my_service_account_id'
+    value: 'platform-ops'

@@ -37,6 +37,15 @@ steps:
       as:
         - '.'
         - '.env.local'
+      skip:
+        - '.gitignore'
+  - desc: 'Include .gitignore under a different name'
+    action: 'include'
+    params:
+      paths:
+        - 'contents/.gitignore_template_rename' # A bare .gitignore file will break the hosting repo
+      as:
+        - '.gitignore'
   - desc: 'Replace Auth0 configuration variables'
     action: 'string_replace'
     params:

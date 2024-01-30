@@ -1,0 +1,9 @@
+api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'
+inputs:
+  - name: 'auth0_domain'
+    value: 'example.com'
+  - name: 'auth0_client_id'
+    value: 'my-client-id'
+  - name: 'auth0_url_scheme'
+    value: 'https://my-domain'

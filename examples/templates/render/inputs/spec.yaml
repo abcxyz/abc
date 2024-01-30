@@ -55,10 +55,15 @@ inputs:
       - rule: 'gcp_matches_service_account_id(my_service_account_id)'
 
 steps:
-  - desc: 'Print input values'
-    action: 'print'
+  - desc: 'Include an empty file that we can append to'
+    action: 'include'
     params:
-      message: |
+      paths: ['out.txt']
+  - desc: 'Print input values'
+    action: 'append'
+    params:
+      paths: ['out.txt']
+      with: |
         The variable values are:
           my_input_with_default={{.my_input_with_default}}
           my_input_without_default={{.my_input_without_default}}

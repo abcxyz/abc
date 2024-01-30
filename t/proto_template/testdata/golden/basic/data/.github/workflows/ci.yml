@@ -1,0 +1,84 @@
+name: 'ci'
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.21.1'
+  PROTOTOOL_VERSION: '1.10.0' # this is the last released version before the project was completed
+  PROTOBUF_VERSION: '24.3'
+  PROTOC_GEN_GO_VERSION: '1.31.0'
+
+jobs:
+  prototool:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9' # ratchet:actions/checkout@v3
+
+      - name: 'Setup Go'
+        uses: 'actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753' # ratchet:actions/setup-go@v4
+        with:
+          go-version: '${{ env.GO_VERSION }}'
+
+      - name: 'Install protobuf'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:exclude
+        with:
+          download_url: 'https://github.com/protocolbuffers/protobuf/releases/download/v${{ env.PROTOBUF_VERSION }}/protoc-${{ env.PROTOBUF_VERSION }}-linux-x86_64.zip'
+          install_path: '${{ runner.temp }}/.protoc'
+          checksum: 'fc793561283d9ea6813fb757ae54f1afea6770afcd930904bdf3e590910420aa'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_protoc_${{ env.PROTOBUF_VERSION }}'
+          add_to_path: true
+
+      - name: 'Install protoc-gen-go'
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v${{ env.PROTOC_GEN_GO_VERSION }}
+
+      - name: 'Install prototool binary'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:exclude
+        with:
+          download_url: 'https://github.com/uber/prototool/releases/download/v${{ env.PROTOTOOL_VERSION }}/prototool-Linux-x86_64.tar.gz'
+          install_path: '${{ runner.temp }}/.prototool'
+          checksum: '50e53589b95e2435e26de01de8eac6af6ae6980b1cacf1e0ad319b7644f16b3b'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_prototool_${{ env.PROTOTOOL_VERSION }}'
+          add_to_path: true
+
+      - name: 'Set prototool to path'
+        env:
+          PROTOTOOL_PATH: '${{ runner.temp }}/.prototool/prototool/bin'
+        shell: 'bash'
+        run: |
+          echo "${PROTOTOOL_PATH}" >> $GITHUB_PATH
+
+      - name: 'Lint proto files'
+        shell: 'bash'
+        run: |
+          set +e
+          LINTER_OUTPUT=$(prototool lint protos)
+          if ! [[ -z "${LINTER_OUTPUT}" ]]; then
+            echo "::error::LINTER_OUTPUT"
+            exit 1
+          fi
+
+      - name: 'Verify generated proto files'
+        run: |
+          # add protoc to the path
+          export PATH="$PATH:${{ runner.temp }}/.protoc/bin"
+          chmod +x ./scripts/generate.sh && ./scripts/generate.sh
+          GIT_DIFF=$(git diff)
+          if ! [[ -z "${GIT_DIFF}" ]]; then
+            echo "::error::Generated proto files are out of sync, re-run script to reflect latest proto state"
+            exit 1
+          fi
