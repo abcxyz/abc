@@ -156,8 +156,9 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 
 			if hasDiff(diffs) {
 				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
-				err := fmt.Errorf("%s:\n%s\ngolden hex:%s\ntemp hex:%s", failureText, dmp.DiffPrettyText(diffs),
-					hex.EncodeToString(goldenContent), hex.EncodeToString(tempContent))
+				err := fmt.Errorf("%s:\n%s\ngolden plain:%s\ngolden hex:%s\ntemp plain: %s\ntemp hex:%s", failureText, dmp.DiffPrettyText(diffs),
+					goldenContent, hex.EncodeToString(goldenContent),
+					tempContent, hex.EncodeToString(tempContent))
 				tcErr = errors.Join(tcErr, err)
 			}
 		}
