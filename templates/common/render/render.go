@@ -99,6 +99,11 @@ type Params struct {
 	// The value of --skip-input-validation.
 	SkipInputValidation bool
 
+	// Normally, we'll only prompt if the input is a TTY. For testing, this
+	// can be set to true to bypass the check and allow stdin to be something
+	// other than a TTY, like an os.Pipe.
+	SkipPromptTTYCheck bool
+
 	// The location from which the template is installed, as provided by the
 	// user on the command line.
 	Source string
@@ -154,6 +159,7 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		Prompt:              p.Prompt,
 		Prompter:            p.Prompter,
 		SkipInputValidation: p.SkipInputValidation,
+		SkipPromptTTYCheck:  p.SkipPromptTTYCheck,
 		Spec:                spec,
 	})
 	if err != nil {

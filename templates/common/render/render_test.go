@@ -1133,7 +1133,7 @@ steps:
 			}
 
 			var gotTemplateContents map[string]string
-			templateDir, ok := testMustGlob(t, filepath.Join(tempDir, paths.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
+			templateDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
 			if ok {
 				gotTemplateContents = common.LoadDirWithoutMode(t, templateDir)
 			}
@@ -1142,7 +1142,7 @@ steps:
 			}
 
 			var gotScratchContents map[string]string
-			scratchDir, ok := testMustGlob(t, filepath.Join(tempDir, paths.ScratchDirNamePart+"*"))
+			scratchDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.ScratchDirNamePart+"*"))
 			if ok {
 				gotScratchContents = common.LoadDirWithoutMode(t, scratchDir)
 			}
@@ -1156,7 +1156,7 @@ steps:
 			}
 
 			var gotBackupContents map[string]string
-			backupSubdir, ok := testMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
+			backupSubdir, ok := abctestutil.TestMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
 			if ok {
 				gotBackupContents = common.LoadDirWithoutMode(t, backupSubdir)
 			}
@@ -1165,7 +1165,7 @@ steps:
 			}
 
 			var gotDebugContents map[string]string
-			debugDir, ok := testMustGlob(t, filepath.Join(tempDir, paths.DebugStepDiffsDirNamePart+"*"))
+			debugDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.DebugStepDiffsDirNamePart+"*"))
 			if ok {
 				gotDebugContents = common.LoadDirWithoutMode(t, debugDir)
 			}
@@ -1175,23 +1175,6 @@ steps:
 			}
 		})
 	}
-}
-
-func testMustGlob(t *testing.T, glob string) (string, bool) {
-	t.Helper()
-
-	matches, err := filepath.Glob(glob)
-	if err != nil {
-		t.Fatalf("couldn't find template directory: %v", err)
-	}
-	switch len(matches) {
-	case 0:
-		return "", false
-	case 1:
-		return matches[0], true
-	}
-	t.Fatalf("got %d matches for glob %q, wanted 1: %s", len(matches), glob, matches)
-	panic("unreachable") // silence compiler warning for "missing return"
 }
 
 func TestPromptDialog(t *testing.T) {
