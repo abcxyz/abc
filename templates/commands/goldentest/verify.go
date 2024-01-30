@@ -19,6 +19,7 @@ package goldentest
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -155,7 +156,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 
 			if hasDiff(diffs) {
 				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
-				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
+				err := fmt.Errorf("%s:\n%s\ngolden hex:%s\ntemp hex:%s", failureText, dmp.DiffPrettyText(diffs),
+					hex.EncodeToString(goldenContent), hex.EncodeToString(tempContent))
 				tcErr = errors.Join(tcErr, err)
 			}
 		}
@@ -218,7 +220,9 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 
 // hasDiff returns whether file content mismatch exits.
 func hasDiff(diffs []diffmatchpatch.Diff) bool {
+	fmt.Printf(" **** A: diffs: %s\n", diffs)
 	for _, diff := range diffs {
+		fmt.Printf(" **** B: diff.Type=%v\n", diff.Type)
 		if diff.Type != diffmatchpatch.DiffEqual {
 			return true
 		}

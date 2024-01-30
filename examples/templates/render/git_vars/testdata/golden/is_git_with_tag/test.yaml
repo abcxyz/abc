@@ -1,0 +1,10 @@
+api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'
+
+builtin_vars:
+  - name: '_git_sha'
+    value: '3d99e9bae57b99bc551904ab1b916ecd3c9c4118'
+  - name: '_git_short_sha'
+    value: '3d99e9b'
+  - name: '_git_tag'
+    value: 'my-tag'
