@@ -12,3 +12,8 @@
 *.jsx    @abcxyz/typescript-readability
 *.ts     @abcxyz/typescript-readability
 *.tsx    @abcxyz/typescript-readability
+
+# By leaving the owners group empty, remove the need for owners approval on
+# golden-test output. We don't want to require TS/Go/etc owners approval when
+# the output of a template changes.
+**/testdata/golden/*/data/**
