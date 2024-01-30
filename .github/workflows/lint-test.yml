@@ -84,4 +84,4 @@ jobs:
         # This is a bit of a hack until we add feature #311 to discover and run
         # all golden-tests within a given directory. Once we have that, we won't
         # need "for", "find" and "xargs".
-        run: 'run_golden_tests.sh'
+        run: './run_golden_tests.sh'
