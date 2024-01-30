@@ -161,11 +161,11 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 =====
 goldenFile: %s
 golden plain: %s
-golden hex:%s
+golden hex: %s
 =====
 tempFile: %s
 temp plain: %s
-temp hex:%s`,
+temp hex: %s`,
 					failureText, dmp.DiffPrettyText(diffs),
 					goldenFile, goldenContent, hex.Dump(goldenContent),
 					tempFile, tempContent, hex.Dump(tempContent))
