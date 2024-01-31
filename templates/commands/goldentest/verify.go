@@ -164,15 +164,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		if goldenContentFilesNotExist {
-			failureText := red(fmt.Sprintf("golden test [%s] not recorded in test data, you might "+
-				"need to run 'record' command to create it", tc.TestName))
-			err := fmt.Errorf(failureText)
-			tcErr = errors.Join(tcErr, err)
-		}
-
-		if filesMismatch {
-			failureText := red(fmt.Sprintf("golden test [%s] file content mismatch, you might "+
+		if goldenContentFilesNotExist || filesMismatch {
+			failureText := red(fmt.Sprintf("golden test [%s] didn't match actual output, you might "+
 				"need to run 'record' command to capture it as the new expected output", tc.TestName))
 			err := fmt.Errorf(failureText)
 			tcErr = errors.Join(tcErr, err)

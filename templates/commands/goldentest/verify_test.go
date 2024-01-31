@@ -84,8 +84,8 @@ kind: 'GoldenTest'`
 			},
 			wantErrs: []string{
 				"b.txt] generated, however not recorded in test data",
-				"golden test [test] not recorded in test data, you might " +
-					"need to run 'record' command to create it",
+				"golden test [test] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
@@ -111,7 +111,7 @@ kind: 'GoldenTest'`
 			},
 			wantErrs: []string{
 				"a.txt] file content mismatch",
-				"golden test [test] file content mismatch, you might " +
+				"golden test [test] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
@@ -126,7 +126,7 @@ kind: 'GoldenTest'`
 			},
 			wantErrs: []string{
 				"a.txt] file content mismatch",
-				"golden test [test] file content mismatch, you might " +
+				"golden test [test] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
@@ -183,9 +183,7 @@ kind: 'GoldenTest'`
 			wantErrs: []string{
 				"a.txt] file content mismatch",
 				"b.txt] generated, however not recorded in test data",
-				"golden test [test] not recorded in test data, you might " +
-					"need to run 'record' command to create it",
-				"golden test [test] file content mismatch, you might " +
+				"golden test [test] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
