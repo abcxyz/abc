@@ -112,7 +112,8 @@ kind: 'GoldenTest'`
 			wantErrs: []string{
 				"a.txt] file content mismatch",
 				"golden test [test] file content mismatch, you might " +
-					"need to run 'record' command to capture it as the new expected output"},
+					"need to run 'record' command to capture it as the new expected output",
+			},
 		},
 		{
 			name: "remove_file_content",
