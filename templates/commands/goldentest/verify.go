@@ -123,8 +123,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		dmp := diffmatchpatch.New()
 
 		var tcErr error
-		goldenContentFilesNotExist := false
-		filesMismatch := false
+		outputMismatch := false
 		for _, relPath := range relPaths {
 			goldenFile := filepath.Join(goldenDataDir, relPath)
 			tempFile := filepath.Join(tempDataDir, relPath)
@@ -135,7 +134,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", goldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
-					goldenContentFilesNotExist = true
+					outputMismatch = true
 					continue
 				}
 				return fmt.Errorf("failed to read (%s): %w", goldenFile, err)
@@ -160,11 +159,11 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
 				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
 				tcErr = errors.Join(tcErr, err)
-				filesMismatch = true
+				outputMismatch = true
 			}
 		}
 
-		if goldenContentFilesNotExist || filesMismatch {
+		if outputMismatch {
 			failureText := red(fmt.Sprintf("golden test [%s] didn't match actual output, you might "+
 				"need to run 'record' command to capture it as the new expected output", tc.TestName))
 			err := fmt.Errorf(failureText)
