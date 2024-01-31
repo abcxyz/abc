@@ -82,7 +82,11 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/.abc/.gitkeep": "",
 				"testdata/golden/test/data/a.txt":         "file A content",
 			},
-			wantErrs: []string{"b.txt] generated, however not recorded in test data"},
+			wantErrs: []string{
+				"b.txt] generated, however not recorded in test data",
+				"golden test [test] not recorded in test data, you might " +
+					"need to run 'record' command to create it",
+			},
 		},
 		{
 			name: "missing_file",
@@ -171,7 +175,9 @@ kind: 'GoldenTest'`
 			},
 			wantErrs: []string{
 				"a.txt] file content mismatch",
-				"b.txt] generated, however not recorded in test data, you might need to run 'record' command to create it",
+				"b.txt] generated, however not recorded in test data",
+				"golden test [test] not recorded in test data, you might " +
+					"need to run 'record' command to create it",
 			},
 		},
 		{
