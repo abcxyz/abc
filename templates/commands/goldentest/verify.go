@@ -130,7 +130,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			goldenContent, err := os.ReadFile(goldenFile)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", goldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data, you might "+
+						"need to run 'record' command to create it", goldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					continue
@@ -154,7 +155,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			diffs := dmp.DiffMain(string(tempContent), string(goldenContent), false)
 
 			if hasDiff(diffs) {
-				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
+				failureText := red(fmt.Sprintf("-- [%s] file content mismatch, you might "+
+					"need to run 'record' command to capture it as the new expected output", goldenFile))
 				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
 				tcErr = errors.Join(tcErr, err)
 			}

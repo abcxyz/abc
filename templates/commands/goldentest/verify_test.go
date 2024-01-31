@@ -116,7 +116,8 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/.abc/.gitkeep": "",
 				"testdata/golden/test/data/a.txt":         "file A",
 			},
-			wantErrs: []string{"a.txt] file content mismatch"},
+			wantErrs: []string{"a.txt] file content mismatch, you might " +
+				"need to run 'record' command to capture it as the new expected output"},
 		},
 		{
 			name: "one_of_the_tests_fails",
@@ -170,7 +171,7 @@ kind: 'GoldenTest'`
 			},
 			wantErrs: []string{
 				"a.txt] file content mismatch",
-				"b.txt] generated, however not recorded in test data",
+				"b.txt] generated, however not recorded in test data, you might need to run 'record' command to create it",
 			},
 		},
 		{
