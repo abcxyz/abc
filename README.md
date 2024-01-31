@@ -149,7 +149,7 @@ For `record` and `verify` subcommand, the `<test_name>` parameter gives the test
 specified, all tests will be run against. This flag may be repeated, like
 `--test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
-For `new-test` subcommand, the `<test_name>` parameter gives the test name used to create the goldentest, like
+For `new-test` subcommand, the `--test-name` parameter gives the test name used to create the golden-test, like
 `--test-name=test1`, `--test-name=test2`.
  
 The `<location>` parameter gives the location of the template, defaults to the current directory.
