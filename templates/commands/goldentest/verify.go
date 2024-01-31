@@ -124,7 +124,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 
 		var tcErr error
 		goldenContentFilesNotExist := false
-		fileMismatch := false
+		filesMismatch := false
 		for _, relPath := range relPaths {
 			goldenFile := filepath.Join(goldenDataDir, relPath)
 			tempFile := filepath.Join(tempDataDir, relPath)
@@ -160,7 +160,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
 				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
 				tcErr = errors.Join(tcErr, err)
-				fileMismatch = true
+				filesMismatch = true
 			}
 		}
 
@@ -171,7 +171,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			tcErr = errors.Join(tcErr, err)
 		}
 
-		if fileMismatch {
+		if filesMismatch {
 			failureText := red(fmt.Sprintf("golden test [%s] file content mismatch, you might "+
 				"need to run 'record' command to capture it as the new expected output", tc.TestName))
 			err := fmt.Errorf(failureText)
