@@ -82,7 +82,11 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/.abc/.gitkeep": "",
 				"testdata/golden/test/data/a.txt":         "file A content",
 			},
-			wantErrs: []string{"b.txt] generated, however not recorded in test data"},
+			wantErrs: []string{
+				"b.txt] generated, however not recorded in test data",
+				"golden test [test] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
+			},
 		},
 		{
 			name: "missing_file",
@@ -105,7 +109,11 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/.abc/.gitkeep": "",
 				"testdata/golden/test/data/a.txt":         "file A content\n",
 			},
-			wantErrs: []string{"a.txt] file content mismatch"},
+			wantErrs: []string{
+				"a.txt] file content mismatch",
+				"golden test [test] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
+			},
 		},
 		{
 			name: "remove_file_content",
@@ -116,7 +124,11 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/.abc/.gitkeep": "",
 				"testdata/golden/test/data/a.txt":         "file A",
 			},
-			wantErrs: []string{"a.txt] file content mismatch"},
+			wantErrs: []string{
+				"a.txt] file content mismatch",
+				"golden test [test] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
+			},
 		},
 		{
 			name: "one_of_the_tests_fails",
@@ -171,6 +183,8 @@ kind: 'GoldenTest'`
 			wantErrs: []string{
 				"a.txt] file content mismatch",
 				"b.txt] generated, however not recorded in test data",
+				"golden test [test] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
