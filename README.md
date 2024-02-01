@@ -128,7 +128,7 @@ this file.
 
 Usage:
 
-- `abc templates golden-test new-test [options] --test-name=<test_name> [<location>]`
+- `abc templates golden-test new-test [options] <test_name> [<location>]`
    see `abc-templates golden-test new-test --help` for supported options.
 - `abc templates golden-test record [--test-name=<test_name>] [<location>]`
 - `abc templates golden-test verify [--test-name=<test_name>] [<location>]`
