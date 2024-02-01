@@ -135,7 +135,7 @@ Usage:
 
 Examples:
 
-- `abc templates golden-test new-test --test-name=basic examples/templates/render/hello_jupiter`
+- `abc templates golden-test new-test basic examples/templates/render/hello_jupiter`
   creates a new golden-test for the specific named test called `basic` for the given template
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`:
   runs all golden-tests for the given template
