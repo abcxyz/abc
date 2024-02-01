@@ -79,7 +79,6 @@ The `<template_location>` parameter is one of these two things:
   `--input-file=some-inputs.yaml --input-file=more-inputs.yaml`. When there are
   multiple input files, they must not have any overlapping keys.
 
-- `--log-level`: one of `debug|info|warning|error`. How verbose to log.
 - `--force-overwrite`: normally, the template rendering operation will abort if
   the template would output a file at a location that already exists on the
   filesystem. This flag allows it to continue.
@@ -116,10 +115,12 @@ The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 The golden-test feature is essentially unit testing for templates. You provide
 (1) a set of template input values and (2) the expected output directory
 contents. The test framework verifies that the actual output matches the
-expected output, using the `verify` subcommand. Separately, the `record` command
+expected output, using the `verify` subcommand. Separately, the `record` subcommand
 helps with capturing the current template output and saving it as the "expected"
 output for future test runs. This concept is similar to "snapshot testing" and
-"[rpc replay testing](https://pkg.go.dev/cloud.google.com/go/rpcreplay)."
+"[rpc replay testing](https://pkg.go.dev/cloud.google.com/go/rpcreplay)." 
+In addition, the `new-test` subcommand create a new golden test to initialize the needed 
+golden test directory structure and `test.yaml`.
 
 Each test is configured by placing a file named `test.yaml` in a subdirectory of
 the template named `testdata/golden/<your-test-name>`. See below for details on
@@ -127,11 +128,15 @@ this file.
 
 Usage:
 
-- `abc templates golden-test record [--test-name=<test_name>] <location>`
-- `abc templates golden-test verify [--test-name=<test_name>] <location>`
+- `abc templates golden-test new-test [options] <test_name> [<location>]`
+   see `abc-templates golden-test new-test --help` for supported options.
+- `abc templates golden-test record [--test-name=<test_name>] [<location>]`
+- `abc templates golden-test verify [--test-name=<test_name>] [<location>]`
 
 Examples:
 
+- `abc templates golden-test new-test basic examples/templates/render/hello_jupiter`
+  creates a new golden-test for the specific named test called `basic` for the given template
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`:
   runs all golden-tests for the given template
 - `abc templates golden-test record examples/templates/render/hello_jupiter`:
@@ -140,17 +145,21 @@ Examples:
 - `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`:
   same as above, but only for the specific named tests.
 
-The `<test_name>` parameter gives the test names to record or verify, if not
+For `record` and `verify` subcommand, the `<test_name>` parameter gives the test names to record or verify, if not
 specified, all tests will be run against. This flag may be repeated, like
 `--test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
-The `<location>` parameter gives the location of the template.
+The `<location>` parameter gives the location of the template, defaults to the current directory.
 
 For every test case, it is expected that a
 `testdata/golden/<test_name>/test.yaml` exists to define template input params.
 Each "input" in this file must correspond to a template input defined in the
 template's `spec.yaml`. Each required input in the template's spec.yaml must
-have a corresponding input value defined in the `test.yaml`.
+have a corresponding input value defined in the `test.yaml`. Typically, you will use
+`golden-test new-test` subcommand to initialize the 
+needed golden test directory structure and `test.yaml`,
+but it's also possible to create the 
+desired goldentest directory structure and `test.yaml` by hand.
 
 Example test.yaml:
 
@@ -166,7 +175,7 @@ inputs:
 ```
 
 The expected/desired test output for each test is stored in
-`testdata/golden/<test_name>/data`. Typically you'll use the
+`testdata/golden/<test_name>/data`. Typically, you'll use the
 `golden-test record` subcommand to populate this directory, but it's also
 possible to create the desired output files by hand.
 
