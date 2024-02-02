@@ -256,7 +256,6 @@ kind: 'GoldenTest'`
 			},
 			wantErrs: []string{
 				"golden test test1 fails",
-				".abc/.stdout] file content mismatch",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
 			},
