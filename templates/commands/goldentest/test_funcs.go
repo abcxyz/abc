@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -161,6 +160,8 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
+	stdoutBuf := &strings.Builder{}
+
 	err = render.Render(ctx, &render.Params{
 		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
 		Clock:               clock.New(),
@@ -169,7 +170,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		FS:                  &common.RealFS{},
 		Inputs:              varValuesToMap(tc.TestConfig.Inputs),
 		Source:              templateDir,
-		Stdout:              io.Discard, // Mute stdout from command runs.
+		Stdout:              stdoutBuf,
 	})
 	if err != nil {
 		var uve *errs.UnknownVarError
@@ -179,6 +180,17 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		return err //nolint:wrapcheck
 	}
 
+	// write stdout to ".abc/.stdout".
+	if stdoutBuf.Len() > 0 {
+		abcInternal := filepath.Join(testDir, common.ABCInternalDir)
+		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
+			return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)
+		}
+		stdoutFile := filepath.Join(abcInternal, common.ABCInternalStdout)
+		if err := os.WriteFile(stdoutFile, []byte(stdoutBuf.String()), common.OwnerRWPerms); err != nil {
+			return fmt.Errorf("failed creating %q: %w", stdoutFile, err)
+		}
+	}
 	return nil
 }
 

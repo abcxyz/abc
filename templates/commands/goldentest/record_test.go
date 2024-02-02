@@ -177,6 +177,26 @@ kind: 'GoldenTest'`
 			},
 			wantErr: "failed to parse golden test",
 		},
+		{
+			name: "test_with_stdout_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'A template that outputs no files and do print'
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+        message: 'Hello'`,
+				"testdata/golden/test/test.yaml": testYaml,
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml":          testYaml,
+				"test/data/.abc/.gitkeep": "",
+				"test/data/.abc/.stdout":  "Hello\n",
+			},
+		},
 	}
 
 	for _, tc := range cases {

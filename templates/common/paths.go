@@ -22,7 +22,10 @@ import (
 // ABCInternalDir is the name for internal directories that have things like
 // manifests and .gitkeep files. These may be destination directories or
 // golden-test data/ directories.
-const ABCInternalDir = ".abc"
+const (
+	ABCInternalDir    = ".abc"
+	ABCInternalStdout = ".stdout"
+)
 
 // IsReservedInDest returns true if the given path cannot be created in the
 // destination directory because that name is reserved for internal purposes.
@@ -33,4 +36,17 @@ func IsReservedInDest(relPath string) bool {
 	clean := filepath.Clean(relPath)
 	firstToken := strings.Split(clean, string(filepath.Separator))[0]
 	return firstToken == ABCInternalDir
+}
+
+// IsReservedStdout returns true if the given path is the internal stdout path.
+//
+// The input path must use the local OS separators, since we process it with
+// filepath. This path is relative to the destination directory.
+func IsReservedStdout(relPath string) bool {
+	clean := filepath.Clean(relPath)
+	tokens := strings.Split(clean, string(filepath.Separator))
+	if len(tokens) == 2 {
+		return tokens[0] == ABCInternalDir && tokens[1] == ABCInternalStdout
+	}
+	return false
 }

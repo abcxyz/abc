@@ -39,6 +39,18 @@ steps:
     params:
       paths: ['.']
 `
+
+	printSpecYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+      message: 'Hello'
+`
 	testYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'GoldenTest'`
 
@@ -225,6 +237,29 @@ kind: 'GoldenTest'`
 				"golden test test2 fails",
 			},
 		},
+		{
+			name: "simple_test_with_stdout_verify_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml":                               printSpecYaml,
+				"testdata/golden/test/test.yaml":          testYaml,
+				"testdata/golden/test/data/.abc/.gitkeep": "",
+				"testdata/golden/test/data/.abc/.stdout":  "Hello\n",
+			},
+		},
+		{
+			name: "simple_test_with_stdout_verify_fails",
+			filesContent: map[string]string{
+				"spec.yaml":                                printSpecYaml,
+				"testdata/golden/test1/test.yaml":          testYaml,
+				"testdata/golden/test1/data/.abc/.gitkeep": "",
+				"testdata/golden/test1/data/.abc/.stdout":  "Bob\n",
+			},
+			wantErrs: []string{
+				"golden test test1 fails",
+				"golden test [test1] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -247,6 +282,9 @@ kind: 'GoldenTest'`
 
 			r := &VerifyCommand{}
 			err := r.Run(ctx, args)
+			if err != nil && len(tc.wantErrs) == 0 {
+				t.Fatalf("got unexpected error %s", err)
+			}
 			for _, wantErr := range tc.wantErrs {
 				if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 					t.Fatal(diff)
