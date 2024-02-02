@@ -204,14 +204,14 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 			return fmt.Errorf("filepath.Rel(%s,%s): %w", testDataDir, path, err)
 		}
 
-		// Don't assert the contents of ".abc". As of this writing, the .abc
-		// dir contains things that are specific to recorded tests and not part
+		// Don't assert the contents of ".abc" except ".abc/.stdout".
+		// As of this writing, the .abc dir except ".abc/.stdout" contains things that are specific to recorded tests and not part
 		// of the expected template output.
 		if common.IsReservedInDest(relToSrc) {
-			if de.IsDir() {
-				return fs.SkipDir
+			// skip files under ".abc" directory except ".abc/.stdout".
+			if !common.IsReservedStdout(relToSrc) {
+				return nil
 			}
-			return nil
 		}
 		if de.IsDir() {
 			return nil

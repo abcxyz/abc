@@ -283,7 +283,7 @@ steps:
 			},
 		},
 		{
-			name: "empty_template_output_is_valid",
+			name: "empty_template_output_is_valid_with_stdout",
 			testCase: &TestCase{
 				TestName:   "test",
 				TestConfig: &goldentest.Test{},
@@ -292,14 +292,16 @@ steps:
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
 kind: 'Template'
 
-desc: 'A template that outputs no files'
+desc: 'A template that outputs no files and do print'
 steps:
   - desc: 'Print a message'
     action: 'print'
     params:
         message: 'Hello'`,
 			},
-			expectedGoldenContent: map[string]string{},
+			expectedGoldenContent: map[string]string{
+				"data/.abc/.stdout": "Hello\n",
+			},
 		},
 	}
 
@@ -487,7 +489,9 @@ steps:
   params:
     message: '{{._flag_dest}} {{._flag_source}}'`,
 			},
-			want: map[string]string{},
+			want: map[string]string{
+				"data/.abc/.stdout": "my-dest my-source\n",
+			},
 		},
 
 		{
