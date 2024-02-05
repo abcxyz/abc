@@ -39,7 +39,6 @@ jobs:
         runner:
           - 'macos-latest'
           - 'ubuntu-latest'
-          - 'windows-latest'
     with:
       runs-on: '"${{ matrix.runner }}"'
       env: '{"ABC_TEST_NON_HERMETIC": true}'
@@ -65,7 +64,6 @@ jobs:
         runner:
           - 'macos-latest'
           - 'ubuntu-latest'
-          - 'windows-latest'
     runs-on: '${{ matrix.runner }}'
     steps:
       # A workaround for #400:

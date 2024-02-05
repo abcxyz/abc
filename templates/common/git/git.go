@@ -61,7 +61,7 @@ func Clone(ctx context.Context, remote, version, outDir string) error {
 		return fmt.Errorf("findSymlinks: %w", err)
 	}
 	if len(links) > 0 {
-		return fmt.Errorf("one or more symlinks were found in %q at %v; for security reasons and to support windows, git repos containing symlinks are not allowed", remote, links)
+		return fmt.Errorf("one or more symlinks were found in %q at %v; for security reasons, git repos containing symlinks are not allowed", remote, links)
 	}
 	return nil
 }

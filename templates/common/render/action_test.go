@@ -466,14 +466,6 @@ func TestProcessPaths(t *testing.T) {
 			scope:   common.NewScope(map[string]string{}),
 			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../foo.txt")),
 		},
-		{
-			name: "no_escaping_glob_paths",
-			paths: modelStrings([]string{
-				`file\1.txt`,
-			}),
-			scope:   common.NewScope(map[string]string{}),
-			wantErr: fmt.Sprintf(`backslashes in glob paths are not permitted: %q`, `file\1.txt`),
-		},
 	}
 
 	for _, tc := range cases {

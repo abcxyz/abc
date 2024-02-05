@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/abcxyz/abc/internal/version"
@@ -104,5 +105,8 @@ func setLogEnvVars() {
 }
 
 func realMain(ctx context.Context) error {
+	if runtime.GOOS == "windows" {
+		return fmt.Errorf("windows is not supported in abc cli")
+	}
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }

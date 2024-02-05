@@ -16,7 +16,6 @@ package common
 
 import (
 	"context"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -28,14 +27,12 @@ func TestExec(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name           string
-		args           []string
-		timeout        time.Duration
-		windowsOnly    bool
-		nonWindowsOnly bool
-		wantStdout     string
-		wantStderr     string
-		wantErr        string
+		name       string
+		args       []string
+		timeout    time.Duration
+		wantStdout string
+		wantStderr string
+		wantErr    string
 	}{
 		{
 			name:       "multi_args",
@@ -43,17 +40,10 @@ func TestExec(t *testing.T) {
 			wantStdout: "hello world",
 		},
 		{
-			name:           "nonwindows_simple_stderr",
-			args:           []string{"ls", "--nonexistent"},
-			nonWindowsOnly: true,
-			wantErr:        "exec of [ls --nonexistent] failed",
-			wantStderr:     "ls: unrecognized option",
-		},
-		{
-			name:        "windows_simple_stderr",
-			args:        []string{"cmd", "/c", `echo hello 1>&2`},
-			windowsOnly: true,
-			wantStderr:  "hello",
+			name:       "simple_stderr",
+			args:       []string{"ls", "--nonexistent"},
+			wantErr:    "exec of [ls --nonexistent] failed",
+			wantStderr: "ls: unrecognized option",
 		},
 		{
 			name:    "nonexistent_cmd",
@@ -72,13 +62,6 @@ func TestExec(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			if tc.nonWindowsOnly && runtime.GOOS == "windows" {
-				return
-			}
-			if tc.windowsOnly && runtime.GOOS != "windows" {
-				return
-			}
 
 			ctx := context.Background()
 			if tc.timeout != 0 {

@@ -398,10 +398,8 @@ func (e *ErrorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 
 // IsStatNotExistErr takes an error returned by os.Stat() and returns true if
 // the error means "the path you stat'ed doesn't exist." It otherwise returns
-// false. This exists because on Windows there are a variety of possible errors
-// depending on what exactly is wrong with the path.
+// false.
 func IsStatNotExistErr(err error) bool {
 	return errors.Is(err, fs.ErrNotExist) ||
-		errors.Is(err, fs.ErrInvalid) ||
-		errors.As(err, new(*fs.PathError))
+		errors.Is(err, fs.ErrInvalid)
 }
