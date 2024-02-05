@@ -142,9 +142,6 @@ func newManifestFilename(p *writeManifestParams, dlMeta *templatesource.Download
 	// destination directory.
 	timeStr := p.clock.Now().UTC().Format(time.RFC3339Nano)
 
-	// Windows doesn't allow colons in filenames 🙄
-	timeStr = strings.ReplaceAll(timeStr, ":", "_")
-
 	baseName := strings.Join(
 		[]string{"manifest", namePart, timeStr},
 		"_") + ".lock.yaml"

@@ -304,7 +304,7 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 		// affecting the scratch dir.
 		{"git", "--git-dir", out, "--work-tree", scratchDir, "init"},
 
-		// Set git user name and email, required for ubuntu and windows os.
+		// Set git user name and email, required for ubuntu.
 		{"git", "--git-dir", out, "config", "user.name", "abc CLI"},
 		{"git", "--git-dir", out, "config", "user.email", "abc@abcxyz.com"},
 	}

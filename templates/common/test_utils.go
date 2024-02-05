@@ -23,7 +23,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -47,26 +46,8 @@ var (
 	MinimalGitHeadShortSHA = MinimalGitHeadSHA[:7]
 )
 
-// CmpFileMode is a cmp option that handles the conflict between Unix and
-// Windows systems file permissions.
+// CmpFileMode is a cmp option that to compare the file mode.
 var CmpFileMode = cmp.Comparer(func(a, b fs.FileMode) bool {
-	// Windows really only has 2 file modes: 0666 and 0444[1]. Thus we only check
-	// the first bit, since we know the remaining bits will be the same.
-	// Furthermore, there's no reliable way to know whether the executive bit is
-	// set[2], so we ignore it.
-	//
-	// I tried doing fancy bitmasking stuff here, but apparently umasks on Windows
-	// are undefined(?), so we've resorted to substring matching - hooray.
-	//
-	// [1]: https://medium.com/@MichalPristas/go-and-file-perms-on-windows-3c944d55dd44
-	// [2]: https://github.com/golang/go/issues/41809
-	if runtime.GOOS == "windows" {
-		// A filemode of 0644 would show as "-rw-r--r--", but on Windows we only
-		// care about the first bit (which is the first 3 characters in the output
-		// string).
-		return a.Perm().String()[1:3] == b.Perm().String()[1:3]
-	}
-
 	return a == b
 })
 
@@ -92,8 +73,6 @@ func WriteAllDefaultMode(t *testing.T, root string, files map[string]string) {
 // WriteAll saves the given file contents with the given permissions.
 func WriteAll(t *testing.T, root string, files map[string]ModeAndContents) {
 	t.Helper()
-
-	files = mapKeyFunc(filepath.FromSlash, files)
 
 	for path, mc := range files {
 		fullPath := filepath.Join(root, path)
@@ -153,7 +132,6 @@ func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 	if err != nil {
 		t.Fatalf("WalkDir(): %v", err)
 	}
-	out = mapKeyFunc(filepath.ToSlash, out)
 	return out
 }
 
@@ -170,15 +148,6 @@ func LoadDirWithoutMode(t *testing.T, dir string) map[string]string {
 	out := map[string]string{}
 	for name, mc := range withMode {
 		out[name] = mc.Contents
-	}
-	return out
-}
-
-// Return a copy of the input map where each key is transformed as f(key).
-func mapKeyFunc[T any](f func(string) string, in map[string]T) map[string]T {
-	out := make(map[string]T, len(in))
-	for k, v := range in {
-		out[f(k)] = v
 	}
 	return out
 }
