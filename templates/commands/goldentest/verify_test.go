@@ -260,6 +260,20 @@ kind: 'GoldenTest'`
 					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
+		{
+			name: "simple_test_with_gitignore_verify_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml":                      specYaml,
+				"a.txt":                          "file A content",
+				"b.txt":                          "file B content",
+				".gitignore":                     "gitignore contents",
+				"testdata/golden/test/test.yaml": testYaml,
+				"testdata/golden/test/data/.abc/.gitkeep":          "",
+				"testdata/golden/test/data/a.txt":                  "file A content",
+				"testdata/golden/test/data/b.txt":                  "file B content",
+				"testdata/golden/test/data/.gitignore.abc_renamed": "gitignore contents",
+			},
+		},
 	}
 
 	for _, tc := range cases {

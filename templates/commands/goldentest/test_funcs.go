@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -211,4 +212,23 @@ func mapToVarValues(m map[string]string) []*goldentest.VarValue {
 		})
 	}
 	return out
+}
+
+func renameGitignoreFiles(dir string) error {
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !d.IsDir() && d.Name() == ".gitignore" {
+			newPath := path + ".abc_renamed"
+
+			if err := os.Rename(path, newPath); err != nil {
+				return fmt.Errorf("error renaming file %s: %w", path, err)
+			}
+		}
+		return nil
+	})
+
+	return err //nolint:wrapcheck
 }

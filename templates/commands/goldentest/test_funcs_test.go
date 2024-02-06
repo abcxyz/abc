@@ -590,3 +590,61 @@ steps:
 		})
 	}
 }
+
+func TestRenameGitignoreFiles(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		filesContent map[string]string
+		want         map[string]string
+		wantErr      string
+	}{
+		{
+			name: "simple_success",
+			filesContent: map[string]string{
+				".gitignore": "gitignore contents",
+				"file1.txt":  "file1",
+			},
+			want: map[string]string{
+				".gitignore.abc_renamed": "gitignore contents",
+				"file1.txt":              "file1",
+			},
+		},
+		{
+			name: "non_root_gitignore_success",
+			filesContent: map[string]string{
+				"subfolder1/.gitignore": "subfolder1 gitignore contents",
+				"subfolder2/.gitignore": "subfolder2 gitignore contents",
+				"file1.txt":             "file1",
+			},
+			want: map[string]string{
+				"subfolder1/.gitignore.abc_renamed": "subfolder1 gitignore contents",
+				"subfolder2/.gitignore.abc_renamed": "subfolder2 gitignore contents",
+				"file1.txt":                         "file1",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+
+			err := renameGitignoreFiles(tempDir)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
+
+			gotDestContents := common.LoadDirWithoutMode(t, tempDir)
+			if diff := cmp.Diff(gotDestContents, tc.want, common.CmpFileMode); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
