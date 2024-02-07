@@ -20,8 +20,11 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
+	"time"
 
+	"github.com/abcxyz/abc-updater/sdk/go/abc-updater"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
@@ -104,9 +107,40 @@ func setLogEnvVars() {
 	}
 }
 
+// checkForUpdates asynchronously checks for updates and prints results to
+// stderr. A sync.WaitGroup is returned so main can wait for completion before
+// exiting.
+func checkForUpdates(ctx context.Context) sync.WaitGroup {
+	updaterParams := abcupdater.CheckVersionParams{
+		AppID: version.Name,
+		// Version: version.Version,
+		Version: "0.4.0", // intentionally older than cur version to test
+		Writer:  os.Stderr,
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// todo: timeout?
+		logger := logging.FromContext(ctx)
+		updateTime := time.Now()
+		err := abcupdater.CheckAppVersion(ctx, &updaterParams)
+		logger.WarnContext(ctx, "*dev* version check time", "ms", time.Now().Sub(updateTime).Milliseconds())
+		if err != nil {
+			logger.WarnContext(ctx, "failed to check for new versions of abc", "error", err)
+		}
+	}()
+	return wg
+}
+
 func realMain(ctx context.Context) error {
 	if runtime.GOOS == "windows" {
 		return fmt.Errorf("windows os is not supported in abc cli")
 	}
+
+	wg := checkForUpdates(ctx)
+	defer wg.Wait()
+
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }

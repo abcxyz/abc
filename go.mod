@@ -4,7 +4,8 @@ go 1.21
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/abcxyz/pkg v0.7.1
+	github.com/abcxyz/abc-updater v0.0.0-20240206230321-7b64a5fb822a
+	github.com/abcxyz/pkg v0.7.2
 	github.com/benbjohnson/clock v1.3.5
 	github.com/fatih/color v1.16.0
 	github.com/google/cel-go v0.17.1
@@ -23,6 +24,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
@@ -35,6 +37,7 @@ require (
 	github.com/posener/script v1.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
+	github.com/sethvargo/go-envconfig v0.9.0 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
