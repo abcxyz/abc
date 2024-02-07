@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -108,21 +109,23 @@ func setLogEnvVars() {
 }
 
 // checkForUpdates asynchronously checks for updates and prints results to
-// stderr. A sync.WaitGroup is returned so main can wait for completion before
-// exiting.
-func checkForUpdates(ctx context.Context) sync.WaitGroup {
+// returned buffer.
+// A sync.WaitGroup is returned so main can wait for completion before exiting.
+func checkForUpdates(ctx context.Context) (*sync.WaitGroup, bytes.Buffer) {
+	var out bytes.Buffer
+
 	updaterParams := abcupdater.CheckVersionParams{
 		AppID: version.Name,
 		// Version: version.Version,
 		Version: "0.4.0", // intentionally older than cur version to test
-		Writer:  os.Stderr,
+		Writer:  &out,
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		// todo: timeout?
+		defer (&wg).Done()
+		// todo: timeout context?
 		logger := logging.FromContext(ctx)
 		updateTime := time.Now()
 		err := abcupdater.CheckAppVersion(ctx, &updaterParams)
@@ -131,7 +134,7 @@ func checkForUpdates(ctx context.Context) sync.WaitGroup {
 			logger.WarnContext(ctx, "failed to check for new versions of abc", "error", err)
 		}
 	}()
-	return wg
+	return &wg, out
 }
 
 func realMain(ctx context.Context) error {
@@ -139,8 +142,15 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("windows os is not supported in abc cli")
 	}
 
-	wg := checkForUpdates(ctx)
-	defer wg.Wait()
+	// Version check
+	wg, versionInfo := checkForUpdates(ctx)
+	defer func() {
+		wg.Wait()
+		if versionMsg := versionInfo.String(); len(versionMsg) > 0 {
+			logger := logging.FromContext(ctx)
+			logger.WarnContext(ctx, versionMsg)
+		}
+	}()
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }
