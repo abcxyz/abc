@@ -25,8 +25,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/abcxyz/abc/templates/common"
-	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -224,7 +223,7 @@ kind: GoldenTest
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.templateContents)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.templateContents)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -249,7 +248,7 @@ kind: GoldenTest
 				return
 			}
 
-			gotContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
+			gotContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
 			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -393,7 +392,7 @@ builtin_vars:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.templateContents)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.templateContents)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -437,7 +436,7 @@ builtin_vars:
 			case <-time.After(time.Second):
 				t.Fatal("timed out waiting for background goroutine to finish")
 			}
-			gotContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
+			gotContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
 			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

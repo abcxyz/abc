@@ -24,6 +24,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/templatesource"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -233,8 +234,8 @@ output_hashes: []
 			templateDir := t.TempDir()
 			destDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, templateDir, tc.templateContents)
-			common.WriteAllDefaultMode(t, destDir, tc.destDirContents)
+			abctestutil.WriteAllDefaultMode(t, templateDir, tc.templateContents)
+			abctestutil.WriteAllDefaultMode(t, destDir, tc.destDirContents)
 
 			ctx := context.Background()
 			err := writeManifest(ctx, &writeManifestParams{
@@ -252,7 +253,7 @@ output_hashes: []
 				t.Fatal(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, destDir)
+			got := abctestutil.LoadDirWithoutMode(t, destDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("destination directory contents were not as expected (-got,+want): %s", diff)
 			}

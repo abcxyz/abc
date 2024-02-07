@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -270,7 +270,7 @@ kind: 'GoldenTest'`
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 

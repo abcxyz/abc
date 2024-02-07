@@ -22,7 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -64,7 +64,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_dir_in_same_git_workspace",
 			srcDir:  "src",
 			destDir: "dst",
-			initialContents: common.WithGitRepoAt("",
+			initialContents: abctestutil.WithGitRepoAt("",
 				map[string]string{
 					"src/spec.yaml": "file1 contents",
 					"src/file1.txt": "file1 contents",
@@ -78,10 +78,10 @@ func TestLocalDownloader_Download(t *testing.T) {
 				CanonicalSource: "../src",
 				LocationType:    "local_git",
 				HasVersion:      true,
-				Version:         common.MinimalGitHeadSHA,
+				Version:         abctestutil.MinimalGitHeadSHA,
 				Vars: DownloaderVars{
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 					GitTag:      "",
 				},
 			},
@@ -90,7 +90,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_dir_in_same_git_workspace_with_tag",
 			srcDir:  "src",
 			destDir: "dst",
-			initialContents: common.WithGitRepoAt("",
+			initialContents: abctestutil.WithGitRepoAt("",
 				map[string]string{
 					"src/spec.yaml": "file1 contents",
 					"src/file1.txt": "file1 contents",
@@ -98,7 +98,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 					// This assumes that we're using the git repo created by
 					// common.WithGitRepoAt(). We're tweaking the repo structure
 					// to add a tag. The named SHA already exists in the repo.
-					".git/refs/tags/mytag": common.MinimalGitHeadSHA,
+					".git/refs/tags/mytag": abctestutil.MinimalGitHeadSHA,
 				}),
 			wantNewFiles: map[string]string{
 				"dst/spec.yaml": "file1 contents",
@@ -111,8 +111,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 				HasVersion:      true,
 				Version:         "mytag",
 				Vars: DownloaderVars{
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 					GitTag:      "mytag",
 				},
 			},
@@ -121,7 +121,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_dir_in_same_git_workspace_with_detached_head",
 			srcDir:  "src",
 			destDir: "dst",
-			initialContents: common.WithGitRepoAt("",
+			initialContents: abctestutil.WithGitRepoAt("",
 				map[string]string{
 					"src/spec.yaml": "file1 contents",
 					"src/file1.txt": "file1 contents",
@@ -132,7 +132,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 					// this creates a detached head state is because .git/HEAD
 					// would normally contain a branch name, but when you put a
 					// SHA in there in means you have a detached head.
-					".git/HEAD": common.MinimalGitHeadSHA,
+					".git/HEAD": abctestutil.MinimalGitHeadSHA,
 				}),
 			wantNewFiles: map[string]string{
 				"dst/spec.yaml": "file1 contents",
@@ -143,10 +143,10 @@ func TestLocalDownloader_Download(t *testing.T) {
 				CanonicalSource: "../src",
 				LocationType:    "local_git",
 				HasVersion:      true,
-				Version:         common.MinimalGitHeadSHA,
+				Version:         abctestutil.MinimalGitHeadSHA,
 				Vars: DownloaderVars{
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 					GitTag:      "",
 				},
 			},
@@ -155,8 +155,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_dir_in_different_git_workspace",
 			srcDir:  "src/dir1",
 			destDir: "dst/dir1",
-			initialContents: common.WithGitRepoAt("src/",
-				common.WithGitRepoAt("dst/",
+			initialContents: abctestutil.WithGitRepoAt("src/",
+				abctestutil.WithGitRepoAt("dst/",
 					map[string]string{
 						"src/dir1/spec.yaml": "file1 contents",
 						"src/dir1/file1.txt": "file1 contents",
@@ -168,8 +168,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
 				Vars: DownloaderVars{
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 					GitTag:      "",
 				},
 			},
@@ -178,7 +178,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "source_in_git_but_dest_is_not",
 			srcDir:  "src/dir1",
 			destDir: "dst",
-			initialContents: common.WithGitRepoAt("src/",
+			initialContents: abctestutil.WithGitRepoAt("src/",
 				map[string]string{
 					"src/dir1/spec.yaml": "file1 contents",
 					"src/dir1/file1.txt": "file1 contents",
@@ -190,8 +190,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
 				Vars: DownloaderVars{
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 					GitTag:      "",
 				},
 			},
@@ -200,7 +200,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_in_git_but_src_is_not",
 			srcDir:  "src",
 			destDir: "dst",
-			initialContents: common.WithGitRepoAt("dst/",
+			initialContents: abctestutil.WithGitRepoAt("dst/",
 				map[string]string{
 					"src/spec.yaml": "file1 contents",
 					"src/file1.txt": "file1 contents",
@@ -223,7 +223,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 
 			ctx := context.Background()
 			tmp := t.TempDir()
-			common.WriteAllDefaultMode(t, tmp, tc.initialContents)
+			abctestutil.WriteAllDefaultMode(t, tmp, tc.initialContents)
 			dl := &localDownloader{
 				srcPath:    filepath.Join(tmp, filepath.FromSlash(tc.srcDir)),
 				allowDirty: true,
@@ -234,7 +234,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, tmp)
+			got := abctestutil.LoadDirWithoutMode(t, tmp)
 			want := sets.UnionMapKeys(tc.initialContents, tc.wantNewFiles)
 			if diff := cmp.Diff(got, want); diff != "" {
 				t.Errorf("output directory contents were not as expected (-got,+want): %s", diff)

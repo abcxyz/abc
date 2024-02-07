@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -274,7 +274,7 @@ func TestParseSource(t *testing.T) {
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
 
 			params := &ParseSourceParams{
 				CWD:         tempDir,
@@ -319,60 +319,60 @@ func TestGitCanonicalVersion(t *testing.T) {
 		{
 			name:  "simple_success_no_tag",
 			dir:   ".",
-			files: common.WithGitRepoAt("", nil),
-			want:  common.MinimalGitHeadSHA,
+			files: abctestutil.WithGitRepoAt("", nil),
+			want:  abctestutil.MinimalGitHeadSHA,
 		},
 		{
 			name: "simple_success_with_tag",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
+			files: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+					".git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
 				}),
 			want: "v1.2.3",
 		},
 		{
 			name: "semver_ordering",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
+			files: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/v4.5.6":  common.MinimalGitHeadSHA,
-					".git/refs/tags/v11.0.0": common.MinimalGitHeadSHA,
-					".git/refs/tags/v7.8.9":  common.MinimalGitHeadSHA,
+					".git/refs/tags/v4.5.6":  abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/v11.0.0": abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/v7.8.9":  abctestutil.MinimalGitHeadSHA,
 				}),
 			want: "v11.0.0",
 		},
 		{
 			name: "only_v_prefix_counts_as_semver",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
+			files: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/v4.5.6": common.MinimalGitHeadSHA,
-					".git/refs/tags/11.0.0": common.MinimalGitHeadSHA,
-					".git/refs/tags/v7.8.9": common.MinimalGitHeadSHA,
+					".git/refs/tags/v4.5.6": abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/11.0.0": abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/v7.8.9": abctestutil.MinimalGitHeadSHA,
 				}),
 			want: "v7.8.9",
 		},
 		{
 			name: "semver_before_non_semver",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
+			files: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/v4.5.6":    common.MinimalGitHeadSHA,
-					".git/refs/tags/zzzzzz":    common.MinimalGitHeadSHA,
-					".git/refs/tags/999999":    common.MinimalGitHeadSHA,
-					".git/refs/tags/v5xxx.0.0": common.MinimalGitHeadSHA,
+					".git/refs/tags/v4.5.6":    abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/zzzzzz":    abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/999999":    abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/v5xxx.0.0": abctestutil.MinimalGitHeadSHA,
 				}),
 			want: "v4.5.6",
 		},
 		{
 			name: "non_semver_in_reverse_order",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
+			files: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/a": common.MinimalGitHeadSHA,
-					".git/refs/tags/z": common.MinimalGitHeadSHA,
-					".git/refs/tags/j": common.MinimalGitHeadSHA,
+					".git/refs/tags/a": abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/z": abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/j": abctestutil.MinimalGitHeadSHA,
 				}),
 			want: "z",
 		},
@@ -385,7 +385,7 @@ func TestGitCanonicalVersion(t *testing.T) {
 			name:       "dirty_workspace_not_allowed",
 			dir:        ".",
 			allowDirty: false,
-			files: common.WithGitRepoAt("", map[string]string{
+			files: abctestutil.WithGitRepoAt("", map[string]string{
 				"my_file.txt": "my contents",
 			}),
 		},
@@ -393,10 +393,10 @@ func TestGitCanonicalVersion(t *testing.T) {
 			name:       "dirty_workspace_allowed",
 			dir:        ".",
 			allowDirty: true,
-			files: common.WithGitRepoAt("", map[string]string{
+			files: abctestutil.WithGitRepoAt("", map[string]string{
 				"my_file.txt": "my contents",
 			}),
-			want: common.MinimalGitHeadSHA,
+			want: abctestutil.MinimalGitHeadSHA,
 		},
 	}
 
@@ -407,7 +407,7 @@ func TestGitCanonicalVersion(t *testing.T) {
 			t.Parallel()
 
 			tmp := t.TempDir()
-			common.WriteAllDefaultMode(t, tmp, tc.files)
+			abctestutil.WriteAllDefaultMode(t, tmp, tc.files)
 			ctx := context.Background()
 			got, gotOK, err := gitCanonicalVersion(ctx, filepath.Join(tmp, tc.dir), tc.allowDirty)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

@@ -24,6 +24,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -249,25 +250,25 @@ func TestHeadTags(t *testing.T) {
 		{
 			name:  "simple_success_no_tag",
 			dir:   ".",
-			files: common.WithGitRepoAt("", nil),
+			files: abctestutil.WithGitRepoAt("", nil),
 			want:  nil,
 		},
 		{
 			name: "simple_success_with_tag",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
+			files: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+					".git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
 				}),
 			want: []string{"v1.2.3"},
 		},
 		{
 			name: "multiple_tags",
 			dir:  ".",
-			files: common.WithGitRepoAt("",
+			files: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
-					".git/refs/tags/v2.3.4": common.MinimalGitHeadSHA,
+					".git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
+					".git/refs/tags/v2.3.4": abctestutil.MinimalGitHeadSHA,
 				}),
 			want: []string{
 				"v1.2.3",
@@ -277,9 +278,9 @@ func TestHeadTags(t *testing.T) {
 		{
 			name: "git_repo_in_subdir",
 			dir:  "mysubdir",
-			files: common.WithGitRepoAt("mysubdir/",
+			files: abctestutil.WithGitRepoAt("mysubdir/",
 				map[string]string{
-					"mysubdir/.git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+					"mysubdir/.git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
 				}),
 			want: []string{"v1.2.3"},
 		},
@@ -298,7 +299,7 @@ func TestHeadTags(t *testing.T) {
 			ctx := context.Background()
 
 			tmpDir := t.TempDir()
-			common.WriteAllDefaultMode(t, tmpDir, tc.files)
+			abctestutil.WriteAllDefaultMode(t, tmpDir, tc.files)
 
 			dir := filepath.Join(tmpDir, tc.dir)
 

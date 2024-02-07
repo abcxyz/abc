@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -165,7 +166,7 @@ func TestActionAppend(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			common.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
+			abctestutil.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
 
 			sr := &spec.Append{
 				Paths: modelStrings(tc.paths),
@@ -193,7 +194,7 @@ func TestActionAppend(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}

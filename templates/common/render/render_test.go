@@ -31,9 +31,9 @@ import (
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/paths"
-	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	testutil3 "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -798,8 +798,8 @@ steps:
 		},
 		{
 			name: "git_metadata_variables_are_in_scope",
-			templateContents: common.WithGitRepoAt("", map[string]string{
-				".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+			templateContents: testutil3.WithGitRepoAt("", map[string]string{
+				".git/refs/tags/v1.2.3": testutil3.MinimalGitHeadSHA,
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'Template'
 desc: 'My template'
@@ -836,7 +836,7 @@ module "cloud_run" {
 module "cloud_run" {
 	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=%s"
 }
-`, common.MinimalGitHeadSHA, common.MinimalGitHeadShortSHA, "v1.2.3"),
+`, testutil3.MinimalGitHeadSHA, testutil3.MinimalGitHeadShortSHA, "v1.2.3"),
 			},
 		},
 		{
@@ -1080,18 +1080,18 @@ steps:
 
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
-			common.WriteAllDefaultMode(t, dest, tc.existingDestContents)
+			testutil3.WriteAllDefaultMode(t, dest, tc.existingDestContents)
 
 			inputFilePaths := make([]string, 0, len(tc.inputFileNames))
 			for _, f := range tc.inputFileNames {
 				inputFileDir := filepath.Join(tempDir, "inputs")
-				common.WriteAllDefaultMode(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
+				testutil3.WriteAllDefaultMode(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
 				inputFilePaths = append(inputFilePaths, filepath.Join(inputFileDir, f))
 			}
 
 			backupDir := filepath.Join(tempDir, "backups")
 			sourceDir := filepath.Join(tempDir, "source")
-			common.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+			testutil3.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
@@ -1133,41 +1133,41 @@ steps:
 			}
 
 			var gotTemplateContents map[string]string
-			templateDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
+			templateDir, ok := testutil3.TestMustGlob(t, filepath.Join(tempDir, paths.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
 			if ok {
-				gotTemplateContents = common.LoadDirWithoutMode(t, templateDir)
+				gotTemplateContents = testutil3.LoadDirWithoutMode(t, templateDir)
 			}
-			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, testutil3.CmpFileMode); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			var gotScratchContents map[string]string
-			scratchDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.ScratchDirNamePart+"*"))
+			scratchDir, ok := testutil3.TestMustGlob(t, filepath.Join(tempDir, paths.ScratchDirNamePart+"*"))
 			if ok {
-				gotScratchContents = common.LoadDirWithoutMode(t, scratchDir)
+				gotScratchContents = testutil3.LoadDirWithoutMode(t, scratchDir)
 			}
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, common.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, testutil3.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, dest)
-			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, common.CmpFileMode); diff != "" {
+			gotDestContents := testutil3.LoadDirWithoutMode(t, dest)
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, testutil3.CmpFileMode); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			var gotBackupContents map[string]string
-			backupSubdir, ok := abctestutil.TestMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
+			backupSubdir, ok := testutil3.TestMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
 			if ok {
-				gotBackupContents = common.LoadDirWithoutMode(t, backupSubdir)
+				gotBackupContents = testutil3.LoadDirWithoutMode(t, backupSubdir)
 			}
 			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			var gotDebugContents map[string]string
-			debugDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.DebugStepDiffsDirNamePart+"*"))
+			debugDir, ok := testutil3.TestMustGlob(t, filepath.Join(tempDir, paths.DebugStepDiffsDirNamePart+"*"))
 			if ok {
-				gotDebugContents = common.LoadDirWithoutMode(t, debugDir)
+				gotDebugContents = testutil3.LoadDirWithoutMode(t, debugDir)
 			}
 			gotDebugDirExists := len(gotDebugContents) > 0
 			if tc.flagDebugStepDiffs != gotDebugDirExists {
@@ -1184,7 +1184,7 @@ func TestPromptDialog(t *testing.T) {
 		name          string
 		inputs        []*spec.Input
 		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
-		dialog        []abctestutil.DialogStep
+		dialog        []testutil3.DialogStep
 		want          map[string]string
 		wantErr       string
 	}{
@@ -1196,7 +1196,7 @@ func TestPromptDialog(t *testing.T) {
 					Desc: model.String{Val: "your favorite animal"},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1224,7 +1224,7 @@ Enter value: `,
 					},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1258,7 +1258,7 @@ Enter value: `,
 					},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1288,7 +1288,7 @@ Enter value: `,
 					Desc: model.String{Val: "your favorite car"},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1342,7 +1342,7 @@ Enter value: `,
 			flagInputVals: map[string]string{
 				"animal": "duck",
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   car
@@ -1370,7 +1370,7 @@ Enter value: `,
 					Default: &model.String{Val: "shark"},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1394,7 +1394,7 @@ Enter value, or leave empty to accept default: `,
 					Default: &model.String{Val: "shark"},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1418,7 +1418,7 @@ Enter value, or leave empty to accept default: `,
 					Default: &model.String{Val: ""},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []testutil3.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1470,8 +1470,8 @@ Enter value, or leave empty to accept default: `,
 			}()
 
 			for _, ds := range tc.dialog {
-				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
-				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
+				testutil3.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
+				testutil3.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
 			}
 
 			select {
