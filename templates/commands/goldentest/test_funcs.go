@@ -60,7 +60,7 @@ const (
 	// The prefix of git related directories and files.
 	gitPrefix = ".git"
 
-	//
+	// the suffix of abc renamed directories and files
 	abcRenameSuffix = ".abc_renamed"
 )
 
