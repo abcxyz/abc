@@ -274,6 +274,26 @@ kind: 'GoldenTest'`
 				"testdata/golden/test/data/.gitignore.abc_renamed": "gitignore contents",
 			},
 		},
+		{
+			name: "simple_test_with_gitignore_verify_fails",
+			filesContent: map[string]string{
+				"spec.yaml":                       specYaml,
+				"a.txt":                           "file A content",
+				"b.txt":                           "file B content",
+				".gitignore":                      "gitignore contents",
+				"testdata/golden/test1/test.yaml": testYaml,
+				"testdata/golden/test1/data/.abc/.gitkeep":          "",
+				"testdata/golden/test1/data/a.txt":                  "file A content",
+				"testdata/golden/test1/data/b.txt":                  "file B content",
+				"testdata/golden/test1/data/.gitignore.abc_renamed": "not matched gitignore contents",
+			},
+			wantErrs: []string{
+				"golden test test1 fails",
+				"golden test [test1] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
+				".gitignore] file content mismatch",
+			},
+		},
 	}
 
 	for _, tc := range cases {

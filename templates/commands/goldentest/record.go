@@ -84,7 +84,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
-	if err := renameGitignoreFiles(tempDir); err != nil {
+	if err := renameGitDirsAndFiles(tempDir); err != nil {
 		return fmt.Errorf("failed renaming .gitignore file: %w", err)
 	}
 

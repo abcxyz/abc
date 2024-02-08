@@ -56,6 +56,12 @@ const (
 	// The golden test config file is always located in the test case root dir and
 	// named test.yaml.
 	configName = "test.yaml"
+
+	// The prefix of git related directories and files.
+	gitPrefix = ".git"
+
+	//
+	abcRenameSuffix = ".abc_renamed"
 )
 
 // parseTestCases returns a list of test cases to record or verify.
@@ -214,21 +220,32 @@ func mapToVarValues(m map[string]string) []*goldentest.VarValue {
 	return out
 }
 
-func renameGitignoreFiles(dir string) error {
+func renameGitDirsAndFiles(dir string) error {
+	var gitDirPaths []string
+	// Need to rename files first and then dirs, otherwise you will encounter dir not found error as the original dir has been renamed.
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if !d.IsDir() && d.Name() == ".gitignore" {
+		if !d.IsDir() && strings.HasPrefix(d.Name(), gitPrefix) {
 			newPath := path + ".abc_renamed"
-
 			if err := os.Rename(path, newPath); err != nil {
 				return fmt.Errorf("error renaming file %s: %w", path, err)
 			}
+			return nil
+		}
+		if d.IsDir() && d.Name() == gitPrefix {
+			gitDirPaths = append(gitDirPaths, path)
+			return nil
 		}
 		return nil
 	})
-
+	for _, gitDirPath := range gitDirPaths {
+		newPath := gitDirPath + abcRenameSuffix
+		if err := os.Rename(gitDirPath, newPath); err != nil {
+			return fmt.Errorf("error renaming directory %s: %w", gitDirPath, err)
+		}
+	}
 	return err //nolint:wrapcheck
 }

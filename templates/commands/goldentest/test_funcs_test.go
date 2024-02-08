@@ -584,14 +584,14 @@ steps:
 			}
 
 			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
-			if diff := cmp.Diff(gotDestContents, tc.want, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
 }
 
-func TestRenameGitignoreFiles(t *testing.T) {
+func TestRenameGitDirsAndFiles(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -603,12 +603,16 @@ func TestRenameGitignoreFiles(t *testing.T) {
 		{
 			name: "simple_success",
 			filesContent: map[string]string{
-				".gitignore": "gitignore contents",
-				"file1.txt":  "file1",
+				".git/config": "gitconfig contents",
+				".git/ref":    "gitref contents",
+				".gitignore":  "gitignore contents",
+				"file1.txt":   "file1",
 			},
 			want: map[string]string{
-				".gitignore.abc_renamed": "gitignore contents",
-				"file1.txt":              "file1",
+				".git.abc_renamed/config": "gitconfig contents",
+				".git.abc_renamed/ref":    "gitref contents",
+				".gitignore.abc_renamed":  "gitignore contents",
+				"file1.txt":               "file1",
 			},
 		},
 		{
@@ -636,13 +640,13 @@ func TestRenameGitignoreFiles(t *testing.T) {
 
 			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
-			err := renameGitignoreFiles(tempDir)
+			err := renameGitDirsAndFiles(tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
 			gotDestContents := common.LoadDirWithoutMode(t, tempDir)
-			if diff := cmp.Diff(gotDestContents, tc.want, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
