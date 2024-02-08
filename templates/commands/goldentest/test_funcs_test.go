@@ -325,7 +325,7 @@ steps:
 			}
 
 			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
-			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent, abctestutil.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -584,7 +584,7 @@ steps:
 			}
 
 			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
-			if diff := cmp.Diff(gotDestContents, tc.want, abctestutil.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})

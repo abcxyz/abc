@@ -1137,7 +1137,7 @@ steps:
 			if ok {
 				gotTemplateContents = abctestutil.LoadDirWithoutMode(t, templateDir)
 			}
-			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, abctestutil.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}
 
@@ -1146,12 +1146,12 @@ steps:
 			if ok {
 				gotScratchContents = abctestutil.LoadDirWithoutMode(t, scratchDir)
 			}
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, abctestutil.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			gotDestContents := abctestutil.LoadDirWithoutMode(t, dest)
-			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, abctestutil.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 

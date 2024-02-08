@@ -924,12 +924,12 @@ func TestActionInclude(t *testing.T) {
 			}
 
 			gotTemplateContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, paths.TemplateDirNamePart))
-			if diff := cmp.Diff(gotTemplateContents, tc.templateContents, abctestutil.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
 			gotScratchContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, paths.ScratchDirNamePart))
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, abctestutil.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
