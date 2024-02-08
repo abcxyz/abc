@@ -243,7 +243,7 @@ kind: 'GoldenTest'`
 				"spec.yaml":                               printSpecYaml,
 				"testdata/golden/test/test.yaml":          testYaml,
 				"testdata/golden/test/data/.abc/.gitkeep": "",
-				"testdata/golden/test/data/.abc/.stdout":  "Hello\n",
+				"testdata/golden/test/data/.abc/stdout":   "Hello\n",
 			},
 		},
 		{
@@ -252,7 +252,7 @@ kind: 'GoldenTest'`
 				"spec.yaml":                                printSpecYaml,
 				"testdata/golden/test1/test.yaml":          testYaml,
 				"testdata/golden/test1/data/.abc/.gitkeep": "",
-				"testdata/golden/test1/data/.abc/.stdout":  "Bob\n",
+				"testdata/golden/test1/data/.abc/stdout":   "Bob\n",
 			},
 			wantErrs: []string{
 				"golden test test1 fails",

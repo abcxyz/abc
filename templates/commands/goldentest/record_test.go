@@ -194,7 +194,7 @@ steps:
 			expectedGoldenContent: map[string]string{
 				"test/test.yaml":          testYaml,
 				"test/data/.abc/.gitkeep": "",
-				"test/data/.abc/.stdout":  "Hello\n",
+				"test/data/.abc/stdout":   "Hello\n",
 			},
 		},
 	}

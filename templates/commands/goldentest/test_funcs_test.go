@@ -300,7 +300,7 @@ steps:
         message: 'Hello'`,
 			},
 			expectedGoldenContent: map[string]string{
-				"data/.abc/.stdout": "Hello\n",
+				"data/.abc/stdout": "Hello\n",
 			},
 		},
 	}
@@ -490,7 +490,7 @@ steps:
     message: '{{._flag_dest}} {{._flag_source}}'`,
 			},
 			want: map[string]string{
-				"data/.abc/.stdout": "my-dest my-source\n",
+				"data/.abc/stdout": "my-dest my-source\n",
 			},
 		},
 
