@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -207,7 +207,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -224,7 +224,7 @@ steps:
 				}
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden"))
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden"))
 			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

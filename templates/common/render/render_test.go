@@ -31,9 +31,9 @@ import (
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/paths"
-	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -798,8 +798,8 @@ steps:
 		},
 		{
 			name: "git_metadata_variables_are_in_scope",
-			templateContents: common.WithGitRepoAt("", map[string]string{
-				".git/refs/tags/v1.2.3": common.MinimalGitHeadSHA,
+			templateContents: abctestutil.WithGitRepoAt("", map[string]string{
+				".git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'Template'
 desc: 'My template'
@@ -836,7 +836,7 @@ module "cloud_run" {
 module "cloud_run" {
 	source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=%s"
 }
-`, common.MinimalGitHeadSHA, common.MinimalGitHeadShortSHA, "v1.2.3"),
+`, abctestutil.MinimalGitHeadSHA, abctestutil.MinimalGitHeadShortSHA, "v1.2.3"),
 			},
 		},
 		{
@@ -1080,18 +1080,18 @@ steps:
 
 			tempDir := t.TempDir()
 			dest := filepath.Join(tempDir, "dest")
-			common.WriteAllDefaultMode(t, dest, tc.existingDestContents)
+			abctestutil.WriteAllDefaultMode(t, dest, tc.existingDestContents)
 
 			inputFilePaths := make([]string, 0, len(tc.inputFileNames))
 			for _, f := range tc.inputFileNames {
 				inputFileDir := filepath.Join(tempDir, "inputs")
-				common.WriteAllDefaultMode(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
+				abctestutil.WriteAllDefaultMode(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
 				inputFilePaths = append(inputFilePaths, filepath.Join(inputFileDir, f))
 			}
 
 			backupDir := filepath.Join(tempDir, "backups")
 			sourceDir := filepath.Join(tempDir, "source")
-			common.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+			abctestutil.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
@@ -1135,30 +1135,30 @@ steps:
 			var gotTemplateContents map[string]string
 			templateDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
 			if ok {
-				gotTemplateContents = common.LoadDirWithoutMode(t, templateDir)
+				gotTemplateContents = abctestutil.LoadDirWithoutMode(t, templateDir)
 			}
-			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, common.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents, abctestutil.CmpFileMode); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			var gotScratchContents map[string]string
 			scratchDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.ScratchDirNamePart+"*"))
 			if ok {
-				gotScratchContents = common.LoadDirWithoutMode(t, scratchDir)
+				gotScratchContents = abctestutil.LoadDirWithoutMode(t, scratchDir)
 			}
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, common.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, abctestutil.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, dest)
-			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, common.CmpFileMode); diff != "" {
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, dest)
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, abctestutil.CmpFileMode); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			var gotBackupContents map[string]string
 			backupSubdir, ok := abctestutil.TestMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
 			if ok {
-				gotBackupContents = common.LoadDirWithoutMode(t, backupSubdir)
+				gotBackupContents = abctestutil.LoadDirWithoutMode(t, backupSubdir)
 			}
 			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
@@ -1167,7 +1167,7 @@ steps:
 			var gotDebugContents map[string]string
 			debugDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.DebugStepDiffsDirNamePart+"*"))
 			if ok {
-				gotDebugContents = common.LoadDirWithoutMode(t, debugDir)
+				gotDebugContents = abctestutil.LoadDirWithoutMode(t, debugDir)
 			}
 			gotDebugDirExists := len(gotDebugContents) > 0
 			if tc.flagDebugStepDiffs != gotDebugDirExists {
