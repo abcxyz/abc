@@ -23,9 +23,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -185,7 +185,7 @@ builtin_vars:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			got, err := parseTestCases(ctx, tempDir, tc.testNames)
@@ -313,7 +313,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
@@ -324,8 +324,8 @@ steps:
 				return
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
-			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent, common.CmpFileMode); diff != "" {
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
+			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -572,7 +572,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
@@ -583,7 +583,7 @@ steps:
 				return
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
 			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -638,14 +638,14 @@ func TestRenameGitDirsAndFiles(t *testing.T) {
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
 
 			err := renameGitDirsAndFiles(tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, tempDir)
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, tempDir)
 			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

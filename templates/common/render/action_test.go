@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/model"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -216,7 +217,7 @@ func TestWalkAndModify(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			common.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
+			abctestutil.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
 
 			sp := &stepParams{
 				scope:      common.NewScope(nil),
@@ -242,7 +243,7 @@ func TestWalkAndModify(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}
@@ -499,7 +500,7 @@ func TestProcessGlobs(t *testing.T) {
 
 	cases := []struct {
 		name           string
-		dirContents    map[string]common.ModeAndContents
+		dirContents    map[string]abctestutil.ModeAndContents
 		paths          []model.String
 		wantPaths      []model.String
 		wantGlobErr    string
@@ -507,7 +508,7 @@ func TestProcessGlobs(t *testing.T) {
 	}{
 		{
 			name: "non_glob_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
@@ -529,7 +530,7 @@ func TestProcessGlobs(t *testing.T) {
 		},
 		{
 			name: "star_glob_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
@@ -549,7 +550,7 @@ func TestProcessGlobs(t *testing.T) {
 		},
 		{
 			name: "glob_star_in_middle",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
@@ -569,7 +570,7 @@ func TestProcessGlobs(t *testing.T) {
 		},
 		{
 			name: "glob_star_all_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
@@ -586,7 +587,7 @@ func TestProcessGlobs(t *testing.T) {
 		},
 		{
 			name: "glob_star_matches_hidden_files",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				".gitignore": {Mode: 0o600, Contents: ".gitignore contents"},
 				".something": {Mode: 0o600, Contents: ".something contents"},
 			},
@@ -598,7 +599,7 @@ func TestProcessGlobs(t *testing.T) {
 		},
 		{
 			name: "question_glob_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
@@ -626,7 +627,7 @@ func TestProcessGlobs(t *testing.T) {
 		},
 		{
 			name: "character_range_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"abc.txt": {Mode: 0o600, Contents: "bcd contents"},
 				"xyz.txt": {Mode: 0o600, Contents: "xyz contents"},
 			},
@@ -646,7 +647,7 @@ func TestProcessGlobs(t *testing.T) {
 
 			// pre-populate dir contents
 			tempDir := t.TempDir()
-			common.WriteAll(t, tempDir, tc.dirContents)
+			abctestutil.WriteAll(t, tempDir, tc.dirContents)
 			ctx := context.Background()
 
 			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false) // with globbing enabled

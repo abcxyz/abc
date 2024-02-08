@@ -25,6 +25,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -160,7 +161,7 @@ steps:
 
 			tempDir := t.TempDir()
 			sourceDir := filepath.Join(tempDir, "source")
-			common.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+			abctestutil.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			r := &Command{

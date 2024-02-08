@@ -23,6 +23,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -191,7 +192,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			common.WriteAllDefaultMode(t, scratchDir, tc.initContents)
+			abctestutil.WriteAllDefaultMode(t, scratchDir, tc.initContents)
 
 			ctx := context.Background()
 			sp := &stepParams{
@@ -206,7 +207,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDirWithoutMode(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output differed from expected, (-got,+want): %s", diff)
 			}
