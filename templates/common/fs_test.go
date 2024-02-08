@@ -455,12 +455,12 @@ func TestCopyRecursive(t *testing.T) {
 			}
 
 			got := abctestutil.LoadDirContents(t, toDir)
-			if diff := cmp.Diff(got, tc.want, abctestutil.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
 			}
 
 			gotBackups := abctestutil.LoadDirContents(t, backupDir)
-			if diff := cmp.Diff(gotBackups, tc.wantBackups, abctestutil.CmpFileMode, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(gotBackups, tc.wantBackups, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
 			}
 

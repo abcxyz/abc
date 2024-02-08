@@ -270,7 +270,7 @@ Enter value: `,
 			}
 
 			gotDestContents := abctestutil.LoadDirWithoutMode(t, dest)
-			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, abctestutil.CmpFileMode); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})

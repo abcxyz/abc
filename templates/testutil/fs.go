@@ -24,8 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 // A minimal but actually valid .git directory that allows running real git
@@ -45,11 +43,6 @@ var (
 	MinimalGitHeadSHA      = "5597fc600ead69ad92c81a22b58c9e551cd86b9a"
 	MinimalGitHeadShortSHA = MinimalGitHeadSHA[:7]
 )
-
-// CmpFileMode is a cmp option that to compare the file mode.
-var CmpFileMode = cmp.Comparer(func(a, b fs.FileMode) bool {
-	return a == b
-})
 
 type ModeAndContents struct {
 	Mode     os.FileMode
