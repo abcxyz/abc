@@ -209,10 +209,10 @@ func checkIgnore(patterns []model.String, path string) (bool, error) {
 			matched, err = filepath.Match(p.Val, filepath.Base(path))
 		} else if p.Val[0] == '/' {
 			// Match pattern with a leading slash as it is from the same root as path.
-			matched, err = filepath.Match(filepath.FromSlash(p.Val[1:]), path)
+			matched, err = filepath.Match(p.Val[1:], path)
 		} else {
 			// Math pattern using relative path.
-			matched, err = filepath.Match(filepath.FromSlash(p.Val), path)
+			matched, err = filepath.Match(p.Val, path)
 		}
 		if err != nil {
 			return false,

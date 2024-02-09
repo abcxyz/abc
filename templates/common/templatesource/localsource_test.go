@@ -225,10 +225,10 @@ func TestLocalDownloader_Download(t *testing.T) {
 			tmp := t.TempDir()
 			abctestutil.WriteAllDefaultMode(t, tmp, tc.initialContents)
 			dl := &localDownloader{
-				srcPath:    filepath.Join(tmp, filepath.FromSlash(tc.srcDir)),
+				srcPath:    filepath.Join(tmp, tc.srcDir),
 				allowDirty: true,
 			}
-			dest := filepath.Join(tmp, filepath.FromSlash(tc.destDir))
+			dest := filepath.Join(tmp, tc.destDir)
 			gotMeta, err := dl.Download(ctx, tmp, dest)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
