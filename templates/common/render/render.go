@@ -163,7 +163,6 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	
 	scratchDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.ScratchDirNamePart)
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)

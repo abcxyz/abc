@@ -155,7 +155,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string)
 	// for a subdirectory, e.g. "github.com/my-org/my-repo/my-subdir@v1.2.3".
 	tempTracker := tempdir.NewDirTracker(&common.RealFS{}, false)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
-	tmpDir, err := tempTracker.MkdirTempTracked("", "git-clone-")
+	tmpDir, err := tempTracker.MkdirTempTracked(os.TempDir(), "git-clone-")
 	if err != nil {
 		return nil, fmt.Errorf("MkdirTemp: %w", err)
 	}
