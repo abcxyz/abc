@@ -31,6 +31,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -68,7 +69,7 @@ func (c *VerifyCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
+func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
@@ -78,12 +79,17 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse golden tests: %w", err)
 	}
 
+	fs := &common.RealFS{}
+
+	tempTracker := tempdir.NewDirTracker(fs, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+
 	// Create a temporary directory to render golden tests
 	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
-	defer os.RemoveAll(tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
+	tempTracker.Track(tempDir)
 
 	var merr error
 

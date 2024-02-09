@@ -17,7 +17,6 @@ package render
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -30,8 +29,8 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
-	"github.com/abcxyz/abc/templates/common/paths"
 	"github.com/abcxyz/abc/templates/common/specutil"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec/features"
@@ -123,13 +122,11 @@ type Params struct {
 //
 // This is a library function because template rendering is a reusable operation
 // that is called as a subroutine by "golden-test" and "upgrade" commands.
-func Render(ctx context.Context, p *Params) (outErr error) {
+func Render(ctx context.Context, p *Params) (rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "Render")
 
-	tempRemover := newTempDirRemover(p.FS, p.KeepTempDirs)
-	defer func() {
-		outErr = errors.Join(outErr, tempRemover.maybeRemoveAll(ctx))
-	}()
+	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
 	logger.DebugContext(ctx, "downloading/copying template")
 	dlMeta, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
@@ -139,7 +136,7 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		Source:      p.Source,
 		GitProtocol: p.GitProtocol,
 	})
-	tempRemover.append(templateDir) // templateDir might be set even if there's an error
+	tempTracker.Track(templateDir) // templateDir might be set even if there's an error
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -166,13 +163,13 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	scratchDir, err := p.FS.MkdirTemp(p.TempDirBase, paths.ScratchDirNamePart)
+	
+	scratchDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.ScratchDirNamePart)
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
 	}
 	logger.DebugContext(ctx, "created temporary scratch directory",
 		"path", scratchDir)
-	tempRemover.append(scratchDir)
 
 	debugStepDiffsDir, err := initDebugStepDiffsDir(ctx, p, scratchDir)
 	if err != nil {
@@ -293,7 +290,7 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 		return "", nil // This particular debugging feature isn't enabled
 	}
 
-	out, err := p.FS.MkdirTemp(p.TempDirBase, paths.DebugStepDiffsDirNamePart)
+	out, err := p.FS.MkdirTemp(p.TempDirBase, tempdir.DebugStepDiffsDirNamePart)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory for debug directory: %w", err)
 	}
@@ -589,50 +586,6 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		logger.InfoContext(ctx, "template render succeeded")
 	}
 	return params.OutHashes, nil
-}
-
-// tempDirRemover helps manage the removal of temporary directories when
-// rendering is finished.
-type tempDirRemover struct {
-	fs           common.FS
-	tempDirs     []string
-	keepTempDirs bool
-}
-
-func newTempDirRemover(fs common.FS, keepTempDirs bool) *tempDirRemover {
-	return &tempDirRemover{
-		fs:           fs,
-		keepTempDirs: keepTempDirs,
-	}
-}
-
-func (t *tempDirRemover) append(dir string) {
-	if dir == "" {
-		return
-	}
-	t.tempDirs = append(t.tempDirs, dir)
-}
-
-// maybeRemoveAll should be called in a defer to clean up temp dirs, like this:
-//
-//		 defer func() {
-//		   outErr = errors.Join(outErr, t.maybeRemoveAll(ctx))
-//	     }()
-func (t *tempDirRemover) maybeRemoveAll(ctx context.Context) error {
-	logger := logging.FromContext(ctx).With("logger", "tempDirRemover.Remove")
-	if t.keepTempDirs {
-		logger.WarnContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
-			"paths", t.tempDirs)
-		return nil
-	}
-
-	logger.DebugContext(ctx, "removing all temporary directories (skip this with --keep-temp-dirs)")
-
-	var merr error
-	for _, p := range t.tempDirs {
-		merr = errors.Join(merr, t.fs.RemoveAll(p))
-	}
-	return merr
 }
 
 func sliceToSet[T comparable](vals []T) map[T]struct{} {

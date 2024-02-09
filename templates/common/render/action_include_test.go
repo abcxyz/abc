@@ -23,7 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/common/paths"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
@@ -894,8 +894,8 @@ func TestActionInclude(t *testing.T) {
 			toPlatformPaths(tc.wantIncludedFromDest)
 
 			tempDir := t.TempDir()
-			templateDir := filepath.Join(tempDir, paths.TemplateDirNamePart)
-			scratchDir := filepath.Join(tempDir, paths.ScratchDirNamePart)
+			templateDir := filepath.Join(tempDir, tempdir.TemplateDirNamePart)
+			scratchDir := filepath.Join(tempDir, tempdir.ScratchDirNamePart)
 			destDir := filepath.Join(tempDir, "dest")
 
 			abctestutil.WriteAll(t, templateDir, tc.templateContents)
@@ -923,12 +923,12 @@ func TestActionInclude(t *testing.T) {
 				t.Error(diff)
 			}
 
-			gotTemplateContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, paths.TemplateDirNamePart))
+			gotTemplateContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart))
 			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
-			gotScratchContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, paths.ScratchDirNamePart))
+			gotScratchContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart))
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}

@@ -30,7 +30,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
-	"github.com/abcxyz/abc/templates/common/paths"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
@@ -1133,7 +1133,7 @@ steps:
 			}
 
 			var gotTemplateContents map[string]string
-			templateDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
+			templateDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
 			if ok {
 				gotTemplateContents = abctestutil.LoadDirWithoutMode(t, templateDir)
 			}
@@ -1142,7 +1142,7 @@ steps:
 			}
 
 			var gotScratchContents map[string]string
-			scratchDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.ScratchDirNamePart+"*"))
+			scratchDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart+"*"))
 			if ok {
 				gotScratchContents = abctestutil.LoadDirWithoutMode(t, scratchDir)
 			}
@@ -1165,7 +1165,7 @@ steps:
 			}
 
 			var gotDebugContents map[string]string
-			debugDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, paths.DebugStepDiffsDirNamePart+"*"))
+			debugDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, tempdir.DebugStepDiffsDirNamePart+"*"))
 			if ok {
 				gotDebugContents = abctestutil.LoadDirWithoutMode(t, debugDir)
 			}
