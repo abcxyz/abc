@@ -159,7 +159,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string)
 	if err != nil {
 		return nil, fmt.Errorf("MkdirTemp: %w", err)
 	}
-	subdirToCopy := filepath.Join(tmpDir, filepath.FromSlash(subdir))
+	subdirToCopy := filepath.Join(tmpDir, subdir)
 
 	if err := g.cloner.Clone(ctx, g.remote, versionToDownload, tmpDir); err != nil {
 		return nil, fmt.Errorf("Clone(): %w", err)

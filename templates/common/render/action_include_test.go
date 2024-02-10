@@ -87,7 +87,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../file.txt")),
+			wantErr: `path "../file.txt" must not contain ".."`,
 		},
 		{
 			name: "reject_dot_dot_glob",
@@ -98,7 +98,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../*.txt")),
+			wantErr: `path "../*.txt" must not contain ".."`,
 		},
 		{
 			name: "templated_filename_success",
@@ -890,9 +890,6 @@ func TestActionInclude(t *testing.T) {
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
-			// Convert to OS-specific paths
-			toPlatformPaths(tc.wantIncludedFromDest)
-
 			tempDir := t.TempDir()
 			templateDir := filepath.Join(tempDir, tempdir.TemplateDirNamePart)
 			scratchDir := filepath.Join(tempDir, tempdir.ScratchDirNamePart)
@@ -937,16 +934,5 @@ func TestActionInclude(t *testing.T) {
 				t.Errorf("includedFromDest was not as expected (-got,+want): %s", diff)
 			}
 		})
-	}
-}
-
-// toPlatformPaths converts each element of each input slice from a/b/c style
-// forward slash paths to platform-specific file paths. The slices are modified
-// in place.
-func toPlatformPaths(slices ...[]string) {
-	for _, s := range slices {
-		for i, elem := range s {
-			s[i] = filepath.FromSlash(elem)
-		}
 	}
 }

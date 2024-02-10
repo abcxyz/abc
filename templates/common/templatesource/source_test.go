@@ -116,12 +116,12 @@ func TestParseSource(t *testing.T) {
 		},
 		{
 			name:   "local_absolute_dir",
-			source: filepath.FromSlash("my/dir"),
+			source: "my/dir",
 			tempDirContents: map[string]string{
 				"my/dir/spec.yaml": "my spec file contents",
 			},
 			want: &localDownloader{
-				srcPath: filepath.FromSlash("my/dir"),
+				srcPath: "my/dir",
 			},
 		},
 		{
@@ -160,12 +160,12 @@ func TestParseSource(t *testing.T) {
 
 		{
 			name:   "dot_slash_forces_treating_as_local_dir",
-			source: filepath.FromSlash("./github.com/myorg/myrepo/mysubdir@latest"),
+			source: "./github.com/myorg/myrepo/mysubdir@latest",
 			tempDirContents: map[string]string{
 				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
 			},
 			want: &localDownloader{
-				srcPath: filepath.FromSlash("github.com/myorg/myrepo/mysubdir@latest"),
+				srcPath: "github.com/myorg/myrepo/mysubdir@latest",
 			},
 		},
 		{
