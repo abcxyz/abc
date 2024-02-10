@@ -99,7 +99,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		fmt.Sprint(time.Now().Unix()))
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-		CWD:         wd, // TODO is this actually used?
+		CWD:         wd,
 		Source:      c.flags.Source,
 		GitProtocol: c.flags.GitProtocol,
 	})

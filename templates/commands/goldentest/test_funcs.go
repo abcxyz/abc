@@ -28,6 +28,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
@@ -137,7 +138,7 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 
 // renderTestCases render all test cases in a temporary directory.
 func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (string, error) {
-	tempDir, err := os.MkdirTemp("", "abc-test-*")
+	tempDir, err := os.MkdirTemp("", tempdir.GoldenTestRenderNamePart)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary directory: %w", err)
 	}
@@ -171,6 +172,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		FS:                  &common.RealFS{},
 		Inputs:              varValuesToMap(tc.TestConfig.Inputs),
 		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
+		SourceForMessages:   templateDir,
 		Stdout:              stdoutBuf,
 	})
 	if err != nil {
