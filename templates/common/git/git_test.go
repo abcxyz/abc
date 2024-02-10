@@ -206,13 +206,13 @@ func TestFindSymlinks(t *testing.T) {
 			tempDir := t.TempDir()
 
 			for _, r := range tc.regularFiles {
-				path := filepath.Join(tempDir, filepath.FromSlash(r))
+				path := filepath.Join(tempDir, r)
 				if err := os.WriteFile(path, []byte("my-contents"), 0o644); err != nil { //nolint:gosec
 					t.Fatal(err)
 				}
 			}
 			for _, s := range tc.symlinks {
-				path := filepath.Join(tempDir, filepath.FromSlash(s))
+				path := filepath.Join(tempDir, s)
 				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 					t.Fatal(err)
 				}
@@ -226,11 +226,7 @@ func TestFindSymlinks(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			want := make([]string, 0, len(tc.want))
-			for _, w := range tc.want {
-				want = append(want, filepath.FromSlash(w))
-			}
-			if !slices.Equal(got, want) {
+			if !slices.Equal(got, tc.want) {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
