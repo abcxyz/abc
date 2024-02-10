@@ -70,8 +70,6 @@ func (c *Command) Flags() *cli.FlagSet {
 type runParams struct {
 	fs     common.FS
 	stdout io.Writer
-
-	describeTempDirBase string
 }
 
 func (c *Command) Run(ctx context.Context, args []string) error {
@@ -88,7 +86,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	})
 }
 
-// readRun provides fakable interface to test Run.
+// realRun provides a fakeable interface to test Run.
 func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 	tempTracker := tempdir.NewDirTracker(rp.fs, false)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
@@ -97,16 +95,23 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 	if err != nil {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
-	_, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
-		FS:          rp.fs,
-		TempDirBase: rp.describeTempDirBase,
+
+	templateDir, err := tempTracker.MkdirTempTracked("", tempdir.TemplateDirNamePart)
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
+	}
+	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
+		CWD:         cwd,
 		Source:      c.flags.Source,
 		GitProtocol: c.flags.GitProtocol,
-		CWD:         cwd,
 	})
-	tempTracker.Track(templateDir)
 	if err != nil {
 		return err //nolint:wrapcheck
+	}
+
+	_, err = downloader.Download(ctx, cwd, templateDir)
+	if err != nil {
+		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
 
 	spec, err := specutil.Load(ctx, rp.fs, templateDir, c.flags.Source)
