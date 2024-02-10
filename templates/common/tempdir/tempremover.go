@@ -58,7 +58,7 @@ func (t *DirTracker) MkdirTempTracked(dir, pattern string) (string, error) {
 		return "", err
 	}
 	t.Track(tempDir)
-	return dir, nil
+	return tempDir, nil
 }
 
 // DeferMaybeRemoveAll should be called in a defer to clean up temp dirs, like this:
