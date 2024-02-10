@@ -137,7 +137,7 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 
 // renderTestCases render all test cases into a temporary directory.
 func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (dir string, _ error) {
-	tempDir, err := os.MkdirTemp("", tempdir.DebugStepDiffsDirNamePart)
+	tempDir, err := os.MkdirTemp("", tempdir.GoldenTestRenderNamePart)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary directory: %w", err)
 	}

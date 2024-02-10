@@ -174,12 +174,12 @@ steps:
   params:
     paths:
       - paths: ['file1.txt', 'dir1', 'dir2/file2.txt']
-- desc: 'Replace "Bob" with [input]'
+- desc: 'Replace "Alice" with [input]'
   action: 'string_replace'
   params:
     paths: ['.']
     replacements:
-    - to_replace: 'Bob'
+    - to_replace: 'Alice'
       with: '{{.name_of_favourite_person}}'
 `
 
@@ -196,7 +196,7 @@ steps:
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
-				"file1.txt":            "my favorite person is Bob",
+				"file1.txt":            "my favorite person is Alice",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},

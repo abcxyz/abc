@@ -30,8 +30,8 @@ type DirTracker struct {
 	keepTempDirs bool
 }
 
-// NewDirTracker constructs a TempDirRemover. Use this instead of creating
-// a TempDirRemover yourself.
+// NewDirTracker constructs a DirTracker. Use this instead of creating a
+// DirTracker yourself.
 //
 // keepTempDirs is like a no-op flag; it preserves the temp dirs for debugging
 // rather than removing them.
