@@ -18,7 +18,7 @@ const (
 	// These will be used as part of the names of the temporary directories to
 	// make them identifiable.
 	DebugStepDiffsDirNamePart = "debug-step-diffs-"
-	GoldenTestRenderNamePart = "golden-test-"
+	GoldenTestRenderNamePart  = "golden-test-"
 	ScratchDirNamePart        = "scratch-"
 	TemplateDirNamePart       = "template-copy-"
 )

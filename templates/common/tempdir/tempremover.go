@@ -55,7 +55,7 @@ func (t *DirTracker) Track(dir string) {
 func (t *DirTracker) MkdirTempTracked(dir, pattern string) (string, error) {
 	tempDir, err := t.fs.MkdirTemp(dir, pattern)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 	t.Track(tempDir)
 	return tempDir, nil
