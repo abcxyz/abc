@@ -17,7 +17,8 @@ package tempdir
 const (
 	// These will be used as part of the names of the temporary directories to
 	// make them identifiable.
-	TemplateDirNamePart       = "template-copy-"
-	ScratchDirNamePart        = "scratch-"
 	DebugStepDiffsDirNamePart = "debug-step-diffs-"
+	GoldenTestRenderNamePart = "golden-test-"
+	ScratchDirNamePart        = "scratch-"
+	TemplateDirNamePart       = "template-copy-"
 )
