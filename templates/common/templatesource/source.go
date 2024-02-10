@@ -18,19 +18,9 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
-
-	"github.com/abcxyz/abc/templates/common/git"
 	"github.com/abcxyz/abc/templates/common/specutil"
-	"github.com/abcxyz/pkg/logging"
-)
-
-const (
-	LocTypeLocalGit  = "local_git"
-	LocTypeRemoteGit = "remote_git"
 )
 
 // sourceParser is implemented for each particular kind of template source (git,
@@ -58,8 +48,6 @@ var realSourceParsers = []sourceParser{
 				`(/(?P<subdir>[^@]*))?` + // Optional subdir with leading slash; the leading slash is not part of capturing group ${subdir}
 				`@(?P<version>[a-zA-Z0-9_/.-]+)` + // The "@latest" or "@v1.2.3" or "@v1.2.3-foo" at the end; the "@" is not part of the capturing group
 				`$`), // Anchor the end, must match the entire input
-		httpsRemoteExpansion: `https://${host}/${org}/${repo}.git`,
-		sshRemoteExpansion:   `git@${host}:${org}/${repo}.git`,
 		subdirExpansion:      `${subdir}`,
 		versionExpansion:     `${version}`,
 	},
@@ -84,8 +72,6 @@ var realSourceParsers = []sourceParser{
 				`(//(?P<subdir>[^?]*))?` + // Optional subdir
 				`(\?ref=(?P<version>[a-zA-Z0-9_/.-]+))?` + // optional ?ref=branch_or_tag
 				`$`), // Anchor the end, must match the entire input
-		httpsRemoteExpansion: `https://${host}/${org}/${repo}.git`,
-		sshRemoteExpansion:   `git@${host}:${org}/${repo}.git`,
 		subdirExpansion:      `${subdir}`,
 		versionExpansion:     `${version}`,
 		defaultVersion:       "latest",
@@ -135,95 +121,4 @@ func ParseSource(ctx context.Context, params *ParseSourceParams) (Downloader, er
 		}
 	}
 	return nil, fmt.Errorf(`template source %q isn't a valid template name or doesn't exist; examples of valid names are: "github.com/myorg/myrepo/subdir@v1.2.3", "github.com/myorg/myrepo/subdir@latest", "./my-local-directory"`, params.Source)
-}
-
-// gitCanonicalVersion examines a template directory and tries to determine the
-// "best" template version by looking at .git. The "best" template version is
-// defined as (in decreasing order of precedence):
-//
-//   - tags in decreasing order of semver (recent releases first)
-//   - other non-semver tags in reverse alphabetical order
-//   - the HEAD SHA
-//
-// It returns false if:
-//
-//   - the given directory is not in a git workspace
-//   - the git workspace is not clean (uncommitted changes) (for testing, you
-//     can provide allowDirty=true to override this)
-//
-// It returns error only if something weird happened when running git commands.
-// The returned string is always empty if the boolean is false.
-func gitCanonicalVersion(ctx context.Context, dir string, allowDirty bool) (string, bool, error) {
-	logger := logging.FromContext(ctx).With("logger", "CanonicalVersion")
-
-	_, ok, err := git.Workspace(ctx, dir)
-	if err != nil {
-		return "", false, err //nolint:wrapcheck
-	}
-	if !ok {
-		return "", false, nil
-	}
-
-	if !allowDirty {
-		ok, err = git.IsClean(ctx, dir)
-		if err != nil {
-			return "", false, err //nolint:wrapcheck
-		}
-		if !ok {
-			logger.WarnContext(ctx, "omitting template git version from manifest because the workspace is dirty",
-				"source_git_workspace", dir)
-			return "", false, nil
-		}
-	}
-
-	tag, ok, err := bestHeadTag(ctx, dir)
-	if err != nil {
-		return "", false, err
-	}
-	if ok {
-		return tag, true, nil
-	}
-
-	sha, err := git.CurrentSHA(ctx, dir)
-	if err != nil {
-		return "", false, err //nolint:wrapcheck
-	}
-	return sha, true, nil
-}
-
-// bestHeadTag returns the tag that points to the current HEAD SHA. If there are
-// multiple such tags, the precedence order is:
-//   - tags in decreasing order of semver (recent releases first)
-//   - other non-semver tags in reverse alphabetical order
-//
-// Returns false if there are no tags pointing to HEAD.
-func bestHeadTag(ctx context.Context, dir string) (string, bool, error) {
-	tags, err := git.HeadTags(ctx, dir)
-	if err != nil {
-		return "", false, err //nolint:wrapcheck
-	}
-
-	var nonSemverTags []string
-	var semverTags []*semver.Version
-	for _, tag := range tags {
-		semverTag, err := git.ParseSemverTag(tag)
-		if err != nil {
-			nonSemverTags = append(nonSemverTags, tag)
-		} else {
-			semverTags = append(semverTags, semverTag)
-		}
-	}
-
-	if len(semverTags) > 0 {
-		sort.Sort(sort.Reverse(semver.Collection(semverTags)))
-		// The "v" was trimmed off during parsing. Add it back.
-		return "v" + semverTags[0].Original(), true, nil
-	}
-
-	if len(nonSemverTags) > 0 {
-		sort.Sort(sort.Reverse(sort.StringSlice(nonSemverTags)))
-		return nonSemverTags[0], true, nil
-	}
-
-	return "", false, nil
 }
