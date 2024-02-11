@@ -16,7 +16,6 @@ package decode
 
 import (
 	"context"
-	specv1beta4 "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	"reflect"
 	"strings"
 	"testing"
@@ -33,6 +32,7 @@ import (
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	specv1beta4 "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
