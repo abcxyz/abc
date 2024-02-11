@@ -32,7 +32,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -1216,7 +1216,7 @@ Enter value: `,
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: "size(animal) > 1"},
 							Message: model.String{Val: "length must be greater than 1"},
@@ -1246,7 +1246,7 @@ Enter value: `,
 				{
 					Name: model.String{Val: "animal"},
 					Desc: model.String{Val: "your favorite animal"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: "size(animal) > 1"},
 							Message: model.String{Val: "length must be greater than 1"},

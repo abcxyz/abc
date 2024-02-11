@@ -16,6 +16,7 @@ package decode
 
 import (
 	"context"
+	specv1beta4 "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	"reflect"
 	"strings"
 	"testing"
@@ -350,18 +351,19 @@ steps:
     desc: 'step desc'
     params:
       paths: ['.']`,
-			want: &specv1beta3.Spec{
+			want: &specv1beta4.Spec{
 				Desc: model.String{Val: "mydesc"},
 				Features: features.Features{
-					SkipGlobs:   true,
-					SkipGitVars: true,
+					SkipGlobs:            true,
+					SkipGitVars:          true,
+					SkipIndependentRules: true,
 				},
-				Steps: []*specv1beta3.Step{
+				Steps: []*specv1beta4.Step{
 					{
 						Action: model.String{Val: "include"},
 						Desc:   model.String{Val: "step desc"},
-						Include: &specv1beta3.Include{
-							Paths: []*specv1beta3.IncludePath{
+						Include: &specv1beta4.Include{
+							Paths: []*specv1beta4.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},

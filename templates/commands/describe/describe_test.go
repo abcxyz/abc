@@ -24,7 +24,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -202,7 +202,7 @@ func Test_SpecFieldsForDescribe(t *testing.T) {
 						Name:    model.String{Val: "name1"},
 						Desc:    model.String{Val: "desc1"},
 						Default: &model.String{Val: "."},
-						Rules: []*spec.InputRule{
+						Rules: []*spec.Rule{
 							{
 								Rule:    model.String{Val: "test rule 0"},
 								Message: model.String{Val: "test rule 0 message"},

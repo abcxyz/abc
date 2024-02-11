@@ -29,4 +29,8 @@ type Features struct {
 	// SkipGitVars determines whether to create builtin variables for _git_sha,
 	// _git_short_sha, and _git_tag. New in v1beta3.
 	SkipGitVars bool
+
+	// SkipIndependentRules determines whether to rules can be made independent
+	// of an input variable
+	SkipIndependentRules bool
 }

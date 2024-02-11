@@ -29,12 +29,13 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
+	"github.com/abcxyz/abc/templates/common/rules"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec/features"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
 )
@@ -178,6 +179,12 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	scope, extraPrintVars, err := scopes(resolvedInputs, p, spec.Features, dlMeta.Vars)
 	if err != nil {
 		return err
+	}
+
+	if !spec.Features.SkipIndependentRules {
+		if err := rules.ValidateRules(ctx, scope, spec.Rules); err != nil {
+			return err //nolint:wrapcheck
+		}
 	}
 
 	sp := &stepParams{

@@ -20,7 +20,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 )
 
 func TestSpecDescriptionForDescribe(t *testing.T) {
@@ -52,7 +52,7 @@ func TestAllSpecInputVarForDescribe(t *testing.T) {
 				Name:    model.String{Val: "name1"},
 				Desc:    model.String{Val: "desc1"},
 				Default: &model.String{Val: "."},
-				Rules: []*spec.InputRule{
+				Rules: []*spec.Rule{
 					{
 						Rule:    model.String{Val: "test rule 0"},
 						Message: model.String{Val: "test rule 0 message"},
@@ -101,7 +101,7 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 						Name:    model.String{Val: "name1"},
 						Desc:    model.String{Val: "desc1"},
 						Default: &model.String{Val: "."},
-						Rules: []*spec.InputRule{
+						Rules: []*spec.Rule{
 							{
 								Rule:    model.String{Val: "test rule 0"},
 								Message: model.String{Val: "test rule 0 message"},
