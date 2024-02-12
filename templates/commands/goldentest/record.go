@@ -90,6 +90,9 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
 	tempTracker.Track(tempDir)
+	if err := renameGitDirsAndFiles(tempDir); err != nil {
+		return fmt.Errorf("failed renaming git related dirs and files: %w", err)
+	}
 
 	var merr error
 	logger := logging.FromContext(ctx)

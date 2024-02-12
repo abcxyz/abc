@@ -590,3 +590,82 @@ steps:
 		})
 	}
 }
+
+func TestRenameGitDirsAndFiles(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		filesContent map[string]string
+		want         map[string]string
+		wantErr      string
+	}{
+		{
+			name: "simple_success",
+			filesContent: map[string]string{
+				".gitfoo/file1.txt": "foo file1",
+				".git/config":       "gitconfig contents",
+				".git/ref":          "gitref contents",
+				".gitignore":        "gitignore contents",
+				"file1.txt":         "file1",
+			},
+			want: map[string]string{
+				".gitfoo.abc_renamed/file1.txt": "foo file1",
+				".git.abc_renamed/config":       "gitconfig contents",
+				".git.abc_renamed/ref":          "gitref contents",
+				".gitignore.abc_renamed":        "gitignore contents",
+				"file1.txt":                     "file1",
+			},
+		},
+		{
+			name: "non_root_gitignore_success",
+			filesContent: map[string]string{
+				"subfolder1/.gitignore": "subfolder1 gitignore contents",
+				"subfolder2/.gitignore": "subfolder2 gitignore contents",
+				"file1.txt":             "file1",
+			},
+			want: map[string]string{
+				"subfolder1/.gitignore.abc_renamed": "subfolder1 gitignore contents",
+				"subfolder2/.gitignore.abc_renamed": "subfolder2 gitignore contents",
+				"file1.txt":                         "file1",
+			},
+		},
+		{
+			name: "nested_git_success",
+			filesContent: map[string]string{
+				".git/config":           "gitconfig contents",
+				".git/.gitignore":       "git gitignore contents",
+				"subfolder1/.gitignore": "subfolder1 gitignore contents",
+				"file1.txt":             "file1",
+			},
+			want: map[string]string{
+				".git.abc_renamed/config":                 "gitconfig contents",
+				".git.abc_renamed/.gitignore.abc_renamed": "git gitignore contents",
+				"subfolder1/.gitignore.abc_renamed":       "subfolder1 gitignore contents",
+				"file1.txt":                               "file1",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+
+			err := renameGitDirsAndFiles(tempDir)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
+
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, tempDir)
+			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}

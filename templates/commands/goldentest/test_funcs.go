@@ -19,8 +19,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -56,6 +58,12 @@ const (
 	// The golden test config file is always located in the test case root dir and
 	// named test.yaml.
 	configName = "test.yaml"
+
+	// The prefix of git/github related directories and files.
+	gitPrefix = ".git"
+
+	// the suffix of abc renamed directories and files.
+	abcRenameSuffix = ".abc_renamed"
 )
 
 // parseTestCases returns a list of test cases to record or verify.
@@ -213,4 +221,32 @@ func mapToVarValues(m map[string]string) []*goldentest.VarValue {
 		})
 	}
 	return out
+}
+
+func renameGitDirsAndFiles(dir string) error {
+	// including path of git related directories and files.
+	var gitPaths []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if strings.HasPrefix(d.Name(), gitPrefix) {
+			gitPaths = append(gitPaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
+	}
+
+	// rename in reverse order, otherwise you will rename directory before you rename the files under the specific directory.
+	slices.Reverse(gitPaths)
+	for _, gitPath := range gitPaths {
+		newPath := gitPath + abcRenameSuffix
+		if err := os.Rename(gitPath, newPath); err != nil {
+			return fmt.Errorf("error renaming directory or file %s: %w", gitPath, err)
+		}
+	}
+	return nil
 }

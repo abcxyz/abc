@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
@@ -90,6 +91,9 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
 	tempTracker.Track(tempDir)
+	if err := renameGitDirsAndFiles(tempDir); err != nil {
+		return fmt.Errorf("failed renaming git related dirs and files: %w", err)
+	}
 
 	var merr error
 
@@ -135,28 +139,30 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		for _, relPath := range relPaths {
 			goldenFile := filepath.Join(goldenDataDir, relPath)
 			tempFile := filepath.Join(tempDataDir, relPath)
+			abcRenameTrimedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
+			abcRenameTrimedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
 
 			goldenContent, err := os.ReadFile(goldenFile)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", goldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimedGoldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					outputMismatch = true
 					continue
 				}
-				return fmt.Errorf("failed to read (%s): %w", goldenFile, err)
+				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimedGoldenFile, err)
 			}
 
 			tempContent, err := os.ReadFile(tempFile)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", goldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimedGoldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					continue
 				}
-				return fmt.Errorf("failed to read (%s): %w", tempFile, err)
+				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimedTempFile, err)
 			}
 
 			// Set checklines to false: avoid a line-level diff which is faster
@@ -164,7 +170,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 			diffs := dmp.DiffMain(string(tempContent), string(goldenContent), false)
 
 			if hasDiff(diffs) {
-				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
+				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", abcRenameTrimedGoldenFile))
 				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
 				tcErr = errors.Join(tcErr, err)
 				outputMismatch = true
