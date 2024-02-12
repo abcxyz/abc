@@ -165,7 +165,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		stdoutDiff, err := getstdoutDiff(goldenstdoutFile, tempstdoutFile, dmp)
+		stdoutDiff, err := getStdoutDiff(goldenstdoutFile, tempstdoutFile, dmp)
 		if err != nil {
 			return fmt.Errorf("failed to compare stdout:%w", err)
 		}
@@ -249,19 +249,19 @@ func hasDiff(diffs []diffmatchpatch.Diff) bool {
 	return false
 }
 
-func getstdoutDiff(goldenstdoutPath, tempstdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
-	goldenstdout, err := os.ReadFile(goldenstdoutPath)
+func getStdoutDiff(goldenStdoutPath, tempStdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
+	goldenstdout, err := os.ReadFile(goldenStdoutPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("failed to read (%s): %w", tempstdoutPath, err)
+			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
 		}
 		goldenstdout = []byte("")
 	}
 
-	tempstdout, err := os.ReadFile(tempstdoutPath)
+	tempstdout, err := os.ReadFile(tempStdoutPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("failed to read (%s): %w", tempstdoutPath, err)
+			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
 		}
 		tempstdout = []byte("")
 	}
