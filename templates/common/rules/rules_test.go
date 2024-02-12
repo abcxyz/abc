@@ -17,10 +17,11 @@ package rules
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-cmp/cmp"
 	"strings"
 	"testing"
 	"text/tabwriter"
+
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
