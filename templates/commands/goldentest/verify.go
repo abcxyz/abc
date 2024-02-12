@@ -250,24 +250,24 @@ func hasDiff(diffs []diffmatchpatch.Diff) bool {
 }
 
 func getStdoutDiff(goldenStdoutPath, tempStdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
-	goldenstdout, err := os.ReadFile(goldenStdoutPath)
+	goldenStdout, err := os.ReadFile(goldenStdoutPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
 		}
-		goldenstdout = []byte("")
+		goldenStdout = []byte("")
 	}
 
-	tempstdout, err := os.ReadFile(tempStdoutPath)
+	tempStdout, err := os.ReadFile(tempStdoutPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
 		}
-		tempstdout = []byte("")
+		tempStdout = []byte("")
 	}
 	// Set checklines to false: avoid a line-level diff which is faster
 	// however less optimal.
-	diffs := dmp.DiffMain(string(tempstdout), string(goldenstdout), false)
+	diffs := dmp.DiffMain(string(tempStdout), string(goldenStdout), false)
 
 	return diffs, nil
 }
