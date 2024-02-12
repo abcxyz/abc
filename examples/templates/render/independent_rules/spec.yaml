@@ -31,5 +31,4 @@ steps:
   - desc: 'Print a message if validation passed'
     action: 'print'
     params:
-      message: |-
-        Rule validation passed.
+      message: 'Rule validation passed.'
