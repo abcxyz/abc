@@ -11,3 +11,4 @@ inputs:
     value: 'https://example.com'
   - name: 'client_id'
     value: 'example-client-id'
+    
