@@ -229,7 +229,7 @@ func renameGitDirsAndFiles(dir string) error {
 			return err
 		}
 
-		if (d.IsDir() && d.Name() == gitPrefix) || (!d.IsDir() && strings.HasPrefix(d.Name(), gitPrefix)) {
+		if strings.HasPrefix(d.Name(), gitPrefix) {
 			gitPaths = append(gitPaths, path)
 			return nil
 		}
