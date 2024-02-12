@@ -608,6 +608,7 @@ func TestRenameGitDirsAndFiles(t *testing.T) {
 				".git/ref":          "gitref contents",
 				".gitignore":        "gitignore contents",
 				"file1.txt":         "file1",
+				".github/config":    "github config",
 			},
 			want: map[string]string{
 				".gitfoo.abc_renamed/file1.txt": "foo file1",
@@ -615,6 +616,7 @@ func TestRenameGitDirsAndFiles(t *testing.T) {
 				".git.abc_renamed/ref":          "gitref contents",
 				".gitignore.abc_renamed":        "gitignore contents",
 				"file1.txt":                     "file1",
+				".github/config":                "github config",
 			},
 		},
 		{

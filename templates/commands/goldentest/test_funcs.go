@@ -60,6 +60,9 @@ const (
 	// The prefix of git related directories and files.
 	gitPrefix = ".git"
 
+	// The prefix of github related directories and files.
+	gitHubPrefix = ".github"
+
 	// the suffix of abc renamed directories and files.
 	abcRenameSuffix = ".abc_renamed"
 )
@@ -229,7 +232,7 @@ func renameGitDirsAndFiles(dir string) error {
 			return err
 		}
 
-		if strings.HasPrefix(d.Name(), gitPrefix) {
+		if strings.HasPrefix(d.Name(), gitPrefix) && !strings.HasPrefix(d.Name(), gitHubPrefix) {
 			gitPaths = append(gitPaths, path)
 			return nil
 		}
