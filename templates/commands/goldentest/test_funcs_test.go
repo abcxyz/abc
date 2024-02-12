@@ -628,6 +628,21 @@ func TestRenameGitDirsAndFiles(t *testing.T) {
 				"file1.txt":                         "file1",
 			},
 		},
+		{
+			name: "nested_git_success",
+			filesContent: map[string]string{
+				".git/config":           "gitconfig contents",
+				".git/.gitignore":       "git gitignore contents",
+				"subfolder1/.gitignore": "subfolder1 gitignore contents",
+				"file1.txt":             "file1",
+			},
+			want: map[string]string{
+				".git.abc_renamed/config":                 "gitconfig contents",
+				".git.abc_renamed/.gitignore.abc_renamed": "git gitignore contents",
+				"subfolder1/.gitignore.abc_renamed":       "subfolder1 gitignore contents",
+				"file1.txt":                               "file1",
+			},
+		},
 	}
 
 	for _, tc := range cases {

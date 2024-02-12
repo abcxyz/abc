@@ -221,7 +221,8 @@ func mapToVarValues(m map[string]string) []*goldentest.VarValue {
 }
 
 func renameGitDirsAndFiles(dir string) error {
-	var gitDirPaths []string
+	// including gitPath of git related directories and files.
+	var gitPaths []string
 	// Need to rename files first and then dirs, otherwise you will encounter dir not found error as the original dir has been renamed.
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -229,23 +230,26 @@ func renameGitDirsAndFiles(dir string) error {
 		}
 
 		if !d.IsDir() && strings.HasPrefix(d.Name(), gitPrefix) {
-			newPath := path + ".abc_renamed"
-			if err := os.Rename(path, newPath); err != nil {
-				return fmt.Errorf("error renaming file %s: %w", path, err)
-			}
+			gitPaths = append(gitPaths, path)
 			return nil
 		}
 		if d.IsDir() && d.Name() == gitPrefix {
-			gitDirPaths = append(gitDirPaths, path)
+			gitPaths = append(gitPaths, path)
 			return nil
 		}
 		return nil
 	})
-	for _, gitDirPath := range gitDirPaths {
-		newPath := gitDirPath + abcRenameSuffix
-		if err := os.Rename(gitDirPath, newPath); err != nil {
-			return fmt.Errorf("error renaming directory %s: %w", gitDirPath, err)
+	if err != nil {
+		return fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
+	}
+
+	// rename in reverse order, otherwise you will rename directory before you rename the files under the specific directory.
+	for i := len(gitPaths) - 1; i >= 0; i-- {
+		gitPath := gitPaths[i]
+		newPath := gitPath + abcRenameSuffix
+		if err := os.Rename(gitPath, newPath); err != nil {
+			return fmt.Errorf("error renaming directory or file %s: %w", gitPath, err)
 		}
 	}
-	return err //nolint:wrapcheck
+	return nil
 }
