@@ -104,8 +104,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	for _, tc := range testCases {
 		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
-		goldenstdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
-		tempstdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+		goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+		tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 
 		fileSet := make(map[string]struct{})
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
@@ -165,7 +165,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		stdoutDiff, err := getStdoutDiff(goldenstdoutFile, tempstdoutFile, dmp)
+		stdoutDiff, err := getStdoutDiff(goldenStdoutFile, tempStdoutFile, dmp)
 		if err != nil {
 			return fmt.Errorf("failed to compare stdout:%w", err)
 		}
