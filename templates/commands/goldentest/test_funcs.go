@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -223,7 +224,6 @@ func mapToVarValues(m map[string]string) []*goldentest.VarValue {
 func renameGitDirsAndFiles(dir string) error {
 	// including path of git related directories and files.
 	var gitPaths []string
-	// Need to rename files first and then dirs, otherwise you will encounter dir not found error as the original dir has been renamed.
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -231,7 +231,6 @@ func renameGitDirsAndFiles(dir string) error {
 
 		if strings.HasPrefix(d.Name(), gitPrefix) {
 			gitPaths = append(gitPaths, path)
-			return nil
 		}
 		return nil
 	})
@@ -240,8 +239,8 @@ func renameGitDirsAndFiles(dir string) error {
 	}
 
 	// rename in reverse order, otherwise you will rename directory before you rename the files under the specific directory.
-	for i := len(gitPaths) - 1; i >= 0; i-- {
-		gitPath := gitPaths[i]
+	slices.Reverse(gitPaths)
+	for _, gitPath := range gitPaths {
 		newPath := gitPath + abcRenameSuffix
 		if err := os.Rename(gitPath, newPath); err != nil {
 			return fmt.Errorf("error renaming directory or file %s: %w", gitPath, err)
