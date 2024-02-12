@@ -18,7 +18,6 @@ package rules
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"text/tabwriter"
 
@@ -32,7 +31,7 @@ func ValidateRules(ctx context.Context, scope *common.Scope, rules []*spec.Rule)
 	sb := &strings.Builder{}
 	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
 
-	ValidateRulesWithMessage(ctx, scope, rules, tw, func(writer io.Writer) {})
+	ValidateRulesWithMessage(ctx, scope, rules, tw, func() {})
 
 	tw.Flush()
 	if sb.Len() > 0 {
@@ -42,9 +41,9 @@ func ValidateRules(ctx context.Context, scope *common.Scope, rules []*spec.Rule)
 }
 
 // ValidateRulesWithMessage validates the given rules using the given context and scope.
-// If any rules are violated, the given writeMessage function is called on the given writer, and then
+// If any rules are violated, the given preWriteCallBack function is called, and then
 // the rule is written to the given writer.
-func ValidateRulesWithMessage(ctx context.Context, scope *common.Scope, rules []*spec.Rule, writer io.Writer, writeMessage func(io.Writer)) {
+func ValidateRulesWithMessage(ctx context.Context, scope *common.Scope, rules []*spec.Rule, writer *tabwriter.Writer, preWriteCallBack func()) {
 	for _, rule := range rules {
 		var ok bool
 		err := common.CelCompileAndEval(ctx, scope, rule.Rule, &ok)
@@ -52,7 +51,7 @@ func ValidateRulesWithMessage(ctx context.Context, scope *common.Scope, rules []
 			continue
 		}
 
-		writeMessage(writer)
+		preWriteCallBack()
 		WriteRule(writer, rule, false, 0)
 		if err != nil {
 			fmt.Fprintf(writer, "\nCEL error:\t%s", err.Error())
@@ -67,7 +66,7 @@ func ValidateRulesWithMessage(ctx context.Context, scope *common.Scope, rules []
 // Sometimes we run this in a context where we want to include the index of the
 // rules in the list of rules; in that case, pass includeIndex=true and the index
 // value. If includeIndex is false, then index is ignored.
-func WriteRule(writer io.Writer, rule *spec.Rule, includeIndex bool, index int) {
+func WriteRule(writer *tabwriter.Writer, rule *spec.Rule, includeIndex bool, index int) {
 	indexStr := ""
 	if includeIndex {
 		indexStr = fmt.Sprintf(" %d", index)

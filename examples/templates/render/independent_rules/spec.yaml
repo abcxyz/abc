@@ -19,7 +19,7 @@ desc: 'An example of using independent rules'
 
 rules:
   - rule: '10 > 2'
-    message: 'arbitrary CLE predicates are allowed'
+    message: 'arbitrary CEL predicates are allowed'
   - rule: '_git_sha != ""'
     message: 'git sha must not be empty'
   - rule: '_git_short_sha != ""'

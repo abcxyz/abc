@@ -437,12 +437,12 @@ features are only available in more recent versions.
 The currently valid versions are:
 
 | api_version             | Supported in abc CLI versions | Notes                                                                 |
-|-------------------------| ----------------------------- |-----------------------------------------------------------------------|
+|-------------------------|-------------------------------|-----------------------------------------------------------------------|
 | cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                                       |
 | cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step in soec.yaml          |
 | cli.abcxyz.dev/v1beta2  | 0.4.0 and up                  | Adds: <br>- the top-level `ignore` field in spec.yaml<br>- Path globs |
 | cli.abcxyz.dev/v1beta3  | 0.5.0                         | Adds: <br>- `_git_*` builtin variables                                |
-| cli.abcxyz.dev/v1beta4  | 0.5.0                         | Adds: <br>- indpendent rules                                          |
+| cli.abcxyz.dev/v1beta4  | unreleased                    | Adds: <br>- indpendent rules                                          |
 
 #### Template inputs
 

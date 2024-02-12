@@ -126,7 +126,7 @@ func validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map
 
 	for _, input := range specInputs {
 		input := input
-		rules.ValidateRulesWithMessage(ctx, scope, input.Rules, tw, func(writer io.Writer) {
+		rules.ValidateRulesWithMessage(ctx, scope, input.Rules, tw, func() {
 			fmt.Fprintf(tw, "\nInput name:\t%s", input.Name.Val)
 			fmt.Fprintf(tw, "\nInput value:\t%s", inputVals[input.Name.Val])
 		})
