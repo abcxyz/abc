@@ -57,11 +57,8 @@ const (
 	// named test.yaml.
 	configName = "test.yaml"
 
-	// The prefix of git related directories and files.
+	// The prefix of git/github related directories and files.
 	gitPrefix = ".git"
-
-	// The prefix of github related directories and files.
-	gitHubPrefix = ".github"
 
 	// the suffix of abc renamed directories and files.
 	abcRenameSuffix = ".abc_renamed"
@@ -232,7 +229,7 @@ func renameGitDirsAndFiles(dir string) error {
 			return err
 		}
 
-		if strings.HasPrefix(d.Name(), gitPrefix) && !strings.HasPrefix(d.Name(), gitHubPrefix) {
+		if strings.HasPrefix(d.Name(), gitPrefix) {
 			gitPaths = append(gitPaths, path)
 			return nil
 		}
