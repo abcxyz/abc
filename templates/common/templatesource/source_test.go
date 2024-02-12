@@ -120,8 +120,8 @@ func TestParseSource(t *testing.T) {
 			tempDirContents: map[string]string{
 				"my/dir/spec.yaml": "my spec file contents",
 			},
-			want: &localDownloader{
-				srcPath: "my/dir",
+			want: &LocalDownloader{
+				SrcPath: "my/dir",
 			},
 		},
 		{
@@ -164,8 +164,8 @@ func TestParseSource(t *testing.T) {
 			tempDirContents: map[string]string{
 				"github.com/myorg/myrepo/mysubdir@latest/spec.yaml": "my spec file contents",
 			},
-			want: &localDownloader{
-				srcPath: "github.com/myorg/myrepo/mysubdir@latest",
+			want: &LocalDownloader{
+				SrcPath: "github.com/myorg/myrepo/mysubdir@latest",
 			},
 		},
 		{
@@ -287,14 +287,14 @@ func TestParseSource(t *testing.T) {
 			}
 
 			opts := []cmp.Option{
-				cmp.AllowUnexported(remoteGitDownloader{}, localDownloader{}),
+				cmp.AllowUnexported(remoteGitDownloader{}, LocalDownloader{}),
 
 				// The localDownloader may modify the provided source path if it was
 				// relative. This comparer removes the tempDir prefix so that test cases
 				// can still do relative filepath comparisons.
-				cmp.Comparer(func(a, b localDownloader) bool {
-					l := strings.TrimPrefix(a.srcPath, tempDir+string(filepath.Separator))
-					r := strings.TrimPrefix(b.srcPath, tempDir+string(filepath.Separator))
+				cmp.Comparer(func(a, b LocalDownloader) bool {
+					l := strings.TrimPrefix(a.SrcPath, tempDir+string(filepath.Separator))
+					r := strings.TrimPrefix(b.SrcPath, tempDir+string(filepath.Separator))
 					return l == r
 				}),
 			}

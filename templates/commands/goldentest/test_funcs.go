@@ -31,6 +31,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/tempdir"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
@@ -144,7 +145,7 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 }
 
 // renderTestCases render all test cases into a temporary directory.
-func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (dir string, _ error) {
+func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (string, error) {
 	tempDir, err := os.MkdirTemp("", tempdir.GoldenTestRenderNamePart)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary directory: %w", err)
@@ -155,7 +156,6 @@ func renderTestCases(ctx context.Context, testCases []*TestCase, location string
 		merr = errors.Join(merr, renderTestCase(ctx, location, tempDir, tc))
 	}
 	if merr != nil {
-		merr = errors.Join(merr, os.RemoveAll(tempDir))
 		return "", fmt.Errorf("failed to render golden tests: %w", merr)
 	}
 	return tempDir, nil
@@ -173,13 +173,14 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 	stdoutBuf := &strings.Builder{}
 
 	err = render.Render(ctx, &render.Params{
-		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
 		Clock:               clock.New(),
 		Cwd:                 cwd,
 		DestDir:             testDir,
+		Downloader:          &templatesource.LocalDownloader{SrcPath: templateDir},
 		FS:                  &common.RealFS{},
 		Inputs:              varValuesToMap(tc.TestConfig.Inputs),
-		Source:              templateDir,
+		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
+		SourceForMessages:   templateDir,
 		Stdout:              stdoutBuf,
 	})
 	if err != nil {

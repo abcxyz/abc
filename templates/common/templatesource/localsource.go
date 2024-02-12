@@ -68,40 +68,40 @@ func (l *localSourceParser) sourceParse(ctx context.Context, params *ParseSource
 
 	logger.InfoContext(ctx, "treating src as a local path", "src", absSource)
 
-	return &localDownloader{
-		srcPath: absSource,
+	return &LocalDownloader{
+		SrcPath: absSource,
 	}, true, nil
 }
 
-// localDownloader implements Downloader.
-type localDownloader struct {
+// LocalDownloader implements Downloader.
+type LocalDownloader struct {
 	// This path uses the OS-native file separator and is an absolute path.
-	srcPath string
+	SrcPath string
 
 	// It's too hard in tests to generate a clean git repo, so we provide
 	// this option to just ignore the fact that the git repo is dirty.
 	allowDirty bool
 }
 
-func (l *localDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
+func (l *LocalDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
 	logger := logging.FromContext(ctx).With("logger", "localTemplateSource.Download")
 
 	logger.DebugContext(ctx, "copying local template source",
-		"srcPath", l.srcPath,
+		"srcPath", l.SrcPath,
 		"destDir", destDir)
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
-		SrcRoot: l.srcPath,
+		SrcRoot: l.SrcPath,
 		DstRoot: destDir,
 		FS:      &common.RealFS{},
 	}); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
-	gitVars, err := gitTemplateVars(ctx, l.srcPath)
+	gitVars, err := gitTemplateVars(ctx, l.SrcPath)
 	if err != nil {
 		return nil, err
 	}
-	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.srcPath, destDir, l.allowDirty)
+	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.SrcPath, destDir, l.allowDirty)
 	if err != nil {
 		return nil, err
 	}

@@ -29,6 +29,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -97,6 +98,15 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		"backups",
 		fmt.Sprint(time.Now().Unix()))
 
+	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
+		CWD:         wd,
+		Source:      c.flags.Source,
+		GitProtocol: c.flags.GitProtocol,
+	})
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
 	return render.Render(ctx, &render.Params{ //nolint:wrapcheck
 		BackupDir:            backupDir,
 		Backups:              true,
@@ -105,6 +115,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		DebugScratchContents: c.flags.DebugScratchContents,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
 		DestDir:              c.flags.Dest,
+		Downloader:           downloader,
 		ForceOverwrite:       c.flags.ForceOverwrite,
 		FS:                   fs,
 		GitProtocol:          c.flags.GitProtocol,
@@ -116,7 +127,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Prompter:             c,
 		SkipInputValidation:  c.flags.SkipInputValidation,
 		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
-		Source:               c.flags.Source,
+		SourceForMessages:    c.flags.Source,
 		Stdout:               c.Stdout(),
 	})
 }

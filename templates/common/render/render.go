@@ -66,6 +66,9 @@ type Params struct {
 	// The value of --dest.
 	DestDir string
 
+	// The downloader that will provide the template.
+	Downloader templatesource.Downloader
+
 	// The value of --force-overwrite.
 	ForceOverwrite bool
 
@@ -104,8 +107,9 @@ type Params struct {
 	SkipPromptTTYCheck bool
 
 	// The location from which the template is installed, as provided by the
-	// user on the command line.
-	Source string
+	// user on the command line, or from the manifest. This is only used in
+	// log messages and for the _flag_source variable in print actions.
+	SourceForMessages string
 
 	// The output stream used by "print" actions.
 	Stdout io.Writer
@@ -128,22 +132,23 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
-	logger.DebugContext(ctx, "downloading/copying template")
-	dlMeta, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
-		CWD:         p.Cwd,
-		FS:          p.FS,
-		TempDirBase: p.TempDirBase,
-		Source:      p.Source,
-		GitProtocol: p.GitProtocol,
-	})
-	tempTracker.Track(templateDir) // templateDir might be set even if there's an error
+	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
 	if err != nil {
-		return err //nolint:wrapcheck
+		return fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
 	}
+	logger.DebugContext(ctx, "created temporary template directory",
+		"path", templateDir)
+
+	logger.DebugContext(ctx, "downloading/copying template")
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir)
+	if err != nil {
+		return fmt.Errorf("failed to download/copy template: %w", err)
+	}
+	logger.DebugContext(ctx, "downloaded source template to temporary directory",
+		"destination", templateDir)
 
 	logger.DebugContext(ctx, "loading spec file")
-
-	spec, err := specutil.Load(ctx, p.FS, templateDir, p.Source)
+	spec, err := specutil.Load(ctx, p.FS, templateDir, p.SourceForMessages)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -218,7 +223,7 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		)
 	}
 
-	logger.DebugContext(ctx, "render operation complete", "source", p.Source)
+	logger.DebugContext(ctx, "render operation complete", "source", p.SourceForMessages)
 
 	return nil
 }
@@ -226,8 +231,8 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 // scopes returns two things:
 //
 //   - a Scope object that has all variable bindings that are in scope for the
-//     spec.yaml. This
-//     includes vars for user inputs and also built-in vars like _git_tag.
+//     spec.yaml. This includes vars for user inputs and also built-in vars like
+//     _git_tag.
 //   - a map of extra variable bindings in addition to the above scope, for
 //     variables that are only in scope inside "print" actions. Print has access
 //     to e.g. the _flag_dest var that cannot be accessed elsewhere.
@@ -276,7 +281,7 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 
 	extraPrintVars = map[string]string{
 		builtinvar.FlagDest:   rp.DestDir,
-		builtinvar.FlagSource: rp.Source,
+		builtinvar.FlagSource: rp.SourceForMessages,
 	}
 
 	return scope, extraPrintVars, nil

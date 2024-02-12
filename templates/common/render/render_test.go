@@ -31,6 +31,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/tempdir"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
@@ -1099,6 +1100,7 @@ steps:
 				BackupDir:           backupDir,
 				Clock:               clk,
 				DestDir:             dest,
+				Downloader:          &templatesource.LocalDownloader{SrcPath: sourceDir},
 				ForceOverwrite:      tc.flagForceOverwrite,
 				Inputs:              tc.flagInputs,
 				InputFiles:          inputFilePaths,
@@ -1107,7 +1109,7 @@ steps:
 				OverrideBuiltinVars: tc.overrideBuiltinVars,
 				SkipInputValidation: tc.flagSkipInputValidation,
 				DebugStepDiffs:      tc.flagDebugStepDiffs,
-				Source:              sourceDir,
+				SourceForMessages:   sourceDir,
 				FS: &common.ErrorFS{
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
