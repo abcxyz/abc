@@ -16,7 +16,11 @@ package rules
 
 import (
 	"context"
+	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"strings"
 	"testing"
+	"text/tabwriter"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
@@ -68,6 +72,90 @@ func TestValidateRules(t *testing.T) {
 
 			got := ValidateRules(ctx, tc.scope, tc.rules)
 			if diff := testutil.DiffErrString(got, tc.want); diff != "" {
+				t.Errorf("unexpected result (-got, +want):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestValidateRulesWithMessage(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name     string
+		scope    *common.Scope
+		rules    []*spec.Rule
+		callBack func(*tabwriter.Writer)
+		want     string
+	}{
+		{
+			name: "rules_valid_no_op_callback",
+			scope: common.NewScope(map[string]string{
+				"my_var": "foo",
+			}),
+			rules: []*spec.Rule{
+				{
+					Rule:    model.String{Val: "size(my_var) < 5"},
+					Message: model.String{Val: "Length must be less than 5"},
+				},
+			},
+			callBack: func(tw *tabwriter.Writer) {},
+			want:     "",
+		},
+		{
+			name: "rules_valid_call_back",
+			scope: common.NewScope(map[string]string{
+				"my_var": "foo",
+			}),
+			rules: []*spec.Rule{
+				{
+					Rule:    model.String{Val: "size(my_var) < 5"},
+					Message: model.String{Val: "Length must be less than 5"},
+				},
+			},
+			callBack: func(tw *tabwriter.Writer) {
+				fmt.Fprintln(tw, "this will not be written since rules are valid")
+			},
+			want: "",
+		},
+		{
+			name: "rules_invalid_no_op_callback",
+			scope: common.NewScope(map[string]string{
+				"name": "bar123",
+				"age":  "1054",
+			}),
+			rules: []*spec.Rule{
+				{
+					Rule:    model.String{Val: "name.matches('^[A-Za-z]+$')"},
+					Message: model.String{Val: "name must only contain alphabetic characters"},
+				},
+				{
+					Rule:    model.String{Val: "int(age) < 130"},
+					Message: model.String{Val: "age must be less than 130"},
+				},
+			},
+			callBack: func(tw *tabwriter.Writer) {
+				fmt.Fprintln(tw, "Rule Violation:")
+			},
+			want: "Rule Violation:\n\nRule:      name.matches('^[A-Za-z]+$')\nRule msg:  name must only contain alphabetic characters\nRule Violation:\n\nRule:      int(age) < 130\nRule msg:  age must be less than 130\n",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+
+			sb := &strings.Builder{}
+			tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
+
+			ValidateRulesWithMessage(ctx, tc.scope, tc.rules, tw, func() {
+				tc.callBack(tw)
+			})
+
+			tw.Flush()
+			got := sb.String()
+			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("unexpected result (-got, +want):\n%s", diff)
 			}
 		})
