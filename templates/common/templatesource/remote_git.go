@@ -66,7 +66,7 @@ type remoteGitSourceParser struct {
 }
 
 func (g *remoteGitSourceParser) sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error) {
-	return newRemoteGitDownloader(&ngdParams{
+	return newRemoteGitDownloader(&newRemoteGitDownloaderParams{
 		re:             g.re,
 		input:          params.Source,
 		gitProtocol:    params.GitProtocol,
@@ -74,19 +74,14 @@ func (g *remoteGitSourceParser) sourceParse(ctx context.Context, params *ParseSo
 	})
 }
 
-// TODO name
-type ngdParams struct {
-	re    *regexp.Regexp
-	input string
-	// match       []int
-	// reInput     string
-
-	gitProtocol string
-	// regexHasVersion bool
+type newRemoteGitDownloaderParams struct {
 	defaultVersion string // TODO comment
+	gitProtocol    string
+	input          string
+	re             *regexp.Regexp
 }
 
-func newRemoteGitDownloader(p *ngdParams) (Downloader, bool, error) {
+func newRemoteGitDownloader(p *newRemoteGitDownloaderParams) (Downloader, bool, error) {
 	match := p.re.FindStringSubmatchIndex(p.input)
 	if match == nil {
 		return nil, false, nil
@@ -346,14 +341,14 @@ func (r *realTagser) Tags(ctx context.Context, remote string) ([]string, error) 
 	return git.RemoteTags(ctx, remote) //nolint:wrapcheck
 }
 
-// TODO relocate?
+// TODO test
 // TODO doc, re must have groups for "host", "org", and "repo".
 func gitRemote(re *regexp.Regexp, match []int, reInput, gitProtocol string) (string, error) {
-	// Sanity check that the match has the necessary named subgroups.
-	wantNames := []string{"host", "org", "repo"}
-	missingKeys := sets.Subtract(wantNames, re.SubexpNames())
-	if len(missingKeys) > 0 {
-		return "", fmt.Errorf("internal error: regexp expansion didn't have a named subgroup for: %v", missingKeys)
+	// Sanity check that the regular expression has the necessary named subgroups.
+	wantSubexps := []string{"host", "org", "repo"}
+	missingSubexps := sets.Subtract(wantSubexps, re.SubexpNames())
+	if len(missingSubexps) > 0 {
+		return "", fmt.Errorf("internal error: regexp expansion didn't have a named subgroup for: %v", missingSubexps)
 	}
 
 	switch gitProtocol {

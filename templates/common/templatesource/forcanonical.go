@@ -15,14 +15,20 @@
 package templatesource
 
 import (
+	"context"
 	"fmt"
 	"regexp"
+
+	"github.com/abcxyz/abc/templates/common/git"
 )
 
-// TODO rename, doc
+// TODO tests
+// TODO rename to indicate upgrade? And change error messages to be upgrade specific?
 var (
-	m = map[string]upgradeDownloaderFactory{
-		LocTypeRemoteGit: remoteGitUpgradeFactory,
+	// TODO doc
+	canonicalDownloaderFactories = map[string]canonicalDownloaderFactory{
+		LocTypeRemoteGit: remoteGitCanonicalFactory,
+		LocTypeLocalGit:  localGitCanonicalFactory,
 	}
 
 	remoteGitCanonicalLocationRE = regexp.MustCompile(
@@ -37,19 +43,18 @@ var (
 			`$`) // Anchor the end, must match the entire input
 )
 
-func ForCanonical(canonicalLocation, locType, gitProtocol string) (Downloader, error) {
-	factory, ok := m[locType]
+type canonicalDownloaderFactory func(_ context.Context, canonicalLocation, gitProtocol, destDir string) (Downloader, error)
+
+func ForCanonical(ctx context.Context, canonicalLocation, locType, gitProtocol, destDir string) (Downloader, error) {
+	factory, ok := canonicalDownloaderFactories[locType]
 	if !ok {
 		return nil, fmt.Errorf("unknown location type %q", locType)
 	}
-	return factory(canonicalLocation, gitProtocol)
+	return factory(ctx, canonicalLocation, gitProtocol, destDir)
 }
 
-// TODO name: "canonical" instead of "upgrade"?
-type upgradeDownloaderFactory func(canonicalLocation, gitProtocol string) (Downloader, error)
-
-func remoteGitUpgradeFactory(canonicalLocation, gitProtocol string) (Downloader, error) {
-	downloader, ok, err := newRemoteGitDownloader(&ngdParams{
+func remoteGitCanonicalFactory(ctx context.Context, canonicalLocation, gitProtocol, destDir string) (Downloader, error) {
+	downloader, ok, err := newRemoteGitDownloader(&newRemoteGitDownloaderParams{
 		re:             remoteGitCanonicalLocationRE,
 		input:          canonicalLocation,
 		gitProtocol:    gitProtocol,
@@ -59,9 +64,42 @@ func remoteGitUpgradeFactory(canonicalLocation, gitProtocol string) (Downloader,
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf(`failed parsing upgrade location %q with regex "%s"`,
+		return nil, fmt.Errorf(`failed parsing canonical location %q with regex "%s"`,
 			canonicalLocation, remoteGitCanonicalLocationRE)
 	}
 
 	return downloader, nil
+}
+
+func localGitCanonicalFactory(ctx context.Context, canonicalLocation, gitProtocol, destDir string) (Downloader, error) {
+	// TODO test
+
+	// When upgrading from a local directory, we enforce that the upgrade source
+	// and destination dirs are in the same git workspace. This is a security
+	// consideration: if you clone a git workspace that contains a malicious
+	// manifest, that manifest shouldn't be able to touch any files outside of
+	// the git workspace that it's in.
+	//
+	// We could relax this in the future if we encounter a legitimate use case.
+	sourceGitWorkspace, ok, err := git.Workspace(ctx, canonicalLocation)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+	if !ok {
+		return nil, fmt.Errorf("for now, upgrading is currently only supported in a git workspace, and %q is not in a git workspace", canonicalLocation)
+	}
+	destGitWorkspace, ok, err := git.Workspace(ctx, destDir)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+	if !ok {
+		return nil, fmt.Errorf("for now, when upgrading, the upgrade template source must in a git workspace, and %q is not in a git workspace", destDir)
+	}
+	if sourceGitWorkspace != destGitWorkspace {
+		return nil, fmt.Errorf("for now, when upgrading, the template source and destination directories must be in the same git workspace, but they are %q and %q respectively", sourceGitWorkspace, destGitWorkspace)
+	}
+
+	return &LocalDownloader{
+		SrcPath: canonicalLocation,
+	}, nil
 }
