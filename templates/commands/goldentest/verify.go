@@ -104,8 +104,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	for _, tc := range testCases {
 		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
-		goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
-		tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+		goldenstdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+		tempstdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 
 		fileSet := make(map[string]struct{})
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
@@ -165,13 +165,13 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		stdOutDiff, err := getStdoutDiff(goldenStdoutFile, tempStdoutFile, dmp)
+		stdoutDiff, err := getstdoutDiff(goldenstdoutFile, tempstdoutFile, dmp)
 		if err != nil {
 			return fmt.Errorf("failed to compare stdout:%w", err)
 		}
-		if hasDiff(stdOutDiff) {
+		if hasDiff(stdoutDiff) {
 			failureText := red("the printed messages differ between the recorded golden output and the actual output")
-			err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(stdOutDiff))
+			err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(stdoutDiff))
 			tcErr = errors.Join(tcErr, err)
 			outputMismatch = true
 		}
@@ -249,27 +249,25 @@ func hasDiff(diffs []diffmatchpatch.Diff) bool {
 	return false
 }
 
-func getStdoutDiff(goldenStdoutPath, tempStdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
-	goldenStdout, err := os.ReadFile(goldenStdoutPath)
+func getstdoutDiff(goldenstdoutPath, tempstdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
+	goldenstdout, err := os.ReadFile(goldenstdoutPath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			goldenStdout = []byte("")
-		} else {
-			return nil, fmt.Errorf("failed to read (%s): %w", goldenStdoutPath, err)
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read (%s): %w", tempstdoutPath, err)
 		}
+		goldenstdout = []byte("")
 	}
 
-	tempStdout, err := os.ReadFile(tempStdoutPath)
+	tempstdout, err := os.ReadFile(tempstdoutPath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			tempStdout = []byte("")
-		} else {
-			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read (%s): %w", tempstdoutPath, err)
 		}
+		tempstdout = []byte("")
 	}
 	// Set checklines to false: avoid a line-level diff which is faster
 	// however less optimal.
-	diffs := dmp.DiffMain(string(tempStdout), string(goldenStdout), false)
+	diffs := dmp.DiffMain(string(tempstdout), string(goldenstdout), false)
 
 	return diffs, nil
 }
