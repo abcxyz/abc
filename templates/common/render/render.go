@@ -181,10 +181,8 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		return err
 	}
 
-	if !spec.Features.SkipIndependentRules {
-		if err := rules.ValidateRules(ctx, scope, spec.Rules); err != nil {
-			return err //nolint:wrapcheck
-		}
+	if err := rules.ValidateRules(ctx, scope, spec.Rules); err != nil {
+		return err //nolint:wrapcheck
 	}
 
 	sp := &stepParams{

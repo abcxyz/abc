@@ -38,8 +38,5 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	// that weren't supported in its declared api_version.
 	out.Features = s.Features
 
-	// Features introduced in v1beta4:
-	out.Features.SkipIndependentRules = true
-
 	return &out, nil
 }
