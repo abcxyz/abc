@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
@@ -91,6 +92,10 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	}
 	tempTracker.Track(tempDir)
 
+	if err := renameGitDirsAndFiles(tempDir); err != nil {
+		return fmt.Errorf("failed renaming git related dirs and files: %w", err)
+	}
+
 	var merr error
 
 	// Highlight error message color, given diff text might be hundreds lines long.
@@ -110,6 +115,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	for _, tc := range testCases {
 		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
+		goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+		tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 
 		fileSet := make(map[string]struct{})
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
@@ -133,28 +140,30 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		for _, relPath := range relPaths {
 			goldenFile := filepath.Join(goldenDataDir, relPath)
 			tempFile := filepath.Join(tempDataDir, relPath)
+			abcRenameTrimedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
+			abcRenameTrimedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
 
 			goldenContent, err := os.ReadFile(goldenFile)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", goldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimedGoldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					outputMismatch = true
 					continue
 				}
-				return fmt.Errorf("failed to read (%s): %w", goldenFile, err)
+				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimedGoldenFile, err)
 			}
 
 			tempContent, err := os.ReadFile(tempFile)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", goldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimedGoldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					continue
 				}
-				return fmt.Errorf("failed to read (%s): %w", tempFile, err)
+				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimedTempFile, err)
 			}
 
 			// Set checklines to false: avoid a line-level diff which is faster
@@ -162,11 +171,22 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 			diffs := dmp.DiffMain(string(tempContent), string(goldenContent), false)
 
 			if hasDiff(diffs) {
-				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", goldenFile))
+				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", abcRenameTrimedGoldenFile))
 				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
 				tcErr = errors.Join(tcErr, err)
 				outputMismatch = true
 			}
+		}
+
+		stdoutDiff, err := getStdoutDiff(goldenStdoutFile, tempStdoutFile, dmp)
+		if err != nil {
+			return fmt.Errorf("failed to compare stdout:%w", err)
+		}
+		if hasDiff(stdoutDiff) {
+			failureText := red("the printed messages differ between the recorded golden output and the actual output")
+			err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(stdoutDiff))
+			tcErr = errors.Join(tcErr, err)
+			outputMismatch = true
 		}
 
 		if outputMismatch {
@@ -210,14 +230,14 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 			return fmt.Errorf("filepath.Rel(%s,%s): %w", testDataDir, path, err)
 		}
 
-		// Don't assert the contents of ".abc" except ".abc/.stdout".
-		// As of this writing, the .abc dir except ".abc/.stdout" contains things that are specific to recorded tests and not part
+		// Don't assert the contents of ".abc". As of this writing, the .abc
+		// dir contains things that are specific to recorded tests and not part
 		// of the expected template output.
 		if common.IsReservedInDest(relToSrc) {
-			// skip files under ".abc" directory except ".abc/.stdout".
-			if !common.IsReservedStdout(relToSrc) {
-				return nil
+			if de.IsDir() {
+				return fs.SkipDir
 			}
+			return nil
 		}
 		if de.IsDir() {
 			return nil
@@ -240,4 +260,27 @@ func hasDiff(diffs []diffmatchpatch.Diff) bool {
 		}
 	}
 	return false
+}
+
+func getStdoutDiff(goldenStdoutPath, tempStdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
+	goldenStdout, err := os.ReadFile(goldenStdoutPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
+		}
+		goldenStdout = []byte("")
+	}
+
+	tempStdout, err := os.ReadFile(tempStdoutPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
+		}
+		tempStdout = []byte("")
+	}
+	// Set checklines to false: avoid a line-level diff which is faster
+	// however less optimal.
+	diffs := dmp.DiffMain(string(tempStdout), string(goldenStdout), false)
+
+	return diffs, nil
 }

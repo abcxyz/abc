@@ -194,7 +194,26 @@ steps:
 			expectedGoldenContent: map[string]string{
 				"test/test.yaml":          testYaml,
 				"test/data/.abc/.gitkeep": "",
-				"test/data/.abc/.stdout":  "Hello\n",
+				"test/data/.abc/stdout":   "Hello\n",
+			},
+		},
+		{
+			name: "test_with_git_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml":                      specYaml,
+				"a.txt":                          "file A content",
+				"b.txt":                          "file B content",
+				"testdata/golden/test/test.yaml": testYaml,
+				".gitignore":                     "gitignore contents",
+				".gitfoo/file1.txt":              "file1",
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml":                          testYaml,
+				"test/data/.abc/.gitkeep":                 "",
+				"test/data/a.txt":                         "file A content",
+				"test/data/b.txt":                         "file B content",
+				"test/data/.gitignore.abc_renamed":        "gitignore contents",
+				"test/data/.gitfoo.abc_renamed/file1.txt": "file1",
 			},
 		},
 	}
