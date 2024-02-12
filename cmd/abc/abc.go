@@ -21,11 +21,10 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"sync"
 	"syscall"
 	"time"
 
-	"github.com/abcxyz/abc-updater/sdk/go/abc-updater"
+	abcupdater "github.com/abcxyz/abc-updater/sdk/go/abc-updater"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
@@ -111,46 +110,53 @@ func setLogEnvVars() {
 // checkForUpdates asynchronously checks for updates and prints results to
 // returned buffer.
 // A sync.WaitGroup is returned so main can wait for completion before exiting.
-func checkForUpdates(ctx context.Context) (*sync.WaitGroup, bytes.Buffer) {
-	var out bytes.Buffer
+func checkForUpdates(ctx context.Context) func() {
+	updatesCh := make(chan string, 1)
 
-	updaterParams := abcupdater.CheckVersionParams{
-		AppID: version.Name,
-		// Version: version.Version,
-		Version: "0.4.0", // intentionally older than cur version to test
-		Writer:  &out,
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
-		defer (&wg).Done()
-		// todo: timeout context?
-		logger := logging.FromContext(ctx)
-		updateTime := time.Now()
-		err := abcupdater.CheckAppVersion(ctx, &updaterParams)
-		logger.WarnContext(ctx, "*dev* version check time", "ms", time.Now().Sub(updateTime).Milliseconds())
-		if err != nil {
-			logger.WarnContext(ctx, "failed to check for new versions of abc", "error", err)
+		defer close(updatesCh)
+
+		var b bytes.Buffer
+		if err := abcupdater.CheckAppVersion(ctx, &abcupdater.CheckVersionParams{
+			AppID: version.Name,
+			// Version: version.Version,
+			Version: "0.4.0", // intentionally older than cur version to test
+			Writer:  &b,
+		}); err != nil {
+			logging.FromContext(ctx).WarnContext(ctx, "failed to check for new versions",
+				"error", err)
+		}
+
+		select {
+		case updatesCh <- b.String():
+		default:
 		}
 	}()
-	return &wg, out
+
+	return func() {
+		select {
+		case <-ctx.Done():
+			// Context was cancelled
+		case msg := <-updatesCh:
+			logging.FromContext(ctx).WarnContext(ctx, msg)
+		case <-time.After(time.Second):
+			// Give up after some time. This is how long to wait after termination has
+			// finished. The command has most likely be running for a few seconds, and
+			// we don't want to block the control flow for an exceedingly long time.
+			//
+			// This technicall leaks both the timer and the channel, but we're about
+			// to terminate, so the memory will free anyway.
+		}
+	}
 }
 
 func realMain(ctx context.Context) error {
+	report := checkForUpdates(ctx)
+	defer report()
+
 	if runtime.GOOS == "windows" {
 		return fmt.Errorf("windows os is not supported in abc cli")
 	}
-
-	// Version check
-	wg, versionInfo := checkForUpdates(ctx)
-	defer func() {
-		wg.Wait()
-		if versionMsg := versionInfo.String(); len(versionMsg) > 0 {
-			logger := logging.FromContext(ctx)
-			logger.WarnContext(ctx, versionMsg)
-		}
-	}()
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }
