@@ -15,7 +15,6 @@
 package common
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/abcxyz/pkg/testutil"
@@ -88,10 +87,9 @@ func TestSafeRelPath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := SafeRelPath(nil, filepath.FromSlash(tc.in))
-			want := filepath.FromSlash(tc.want)
-			if got != want {
-				t.Errorf("SafeRelPath(%s): expected %q to be %q", tc.in, got, want)
+			got, err := SafeRelPath(nil, tc.in)
+			if got != tc.want {
+				t.Errorf("SafeRelPath(%s): expected %q to be %q", tc.in, got, tc.want)
 			}
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)

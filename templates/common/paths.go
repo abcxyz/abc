@@ -24,7 +24,7 @@ import (
 // golden-test data/ directories.
 const (
 	ABCInternalDir    = ".abc"
-	ABCInternalStdout = ".stdout"
+	ABCInternalStdout = "stdout"
 )
 
 // IsReservedInDest returns true if the given path cannot be created in the

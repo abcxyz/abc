@@ -451,7 +451,7 @@ func TestProcessPaths(t *testing.T) {
 			name:      "verify_paths_unchanged",
 			paths:     modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
 			scope:     common.NewScope(map[string]string{}),
-			wantPaths: modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", filepath.FromSlash("subfolder2/file3.txt")}),
+			wantPaths: modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
 		},
 		{
 			name:  "go_template_in_path",
@@ -465,7 +465,7 @@ func TestProcessPaths(t *testing.T) {
 			name:    "fail_dot_dot_relative_path",
 			paths:   modelStrings([]string{"../foo.txt"}),
 			scope:   common.NewScope(map[string]string{}),
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../foo.txt")),
+			wantErr: `path "../foo.txt" must not contain ".."`,
 		},
 	}
 
@@ -525,7 +525,7 @@ func TestProcessGlobs(t *testing.T) {
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
-				filepath.FromSlash("subfolder2/file4.txt"),
+				"subfolder2/file4.txt",
 			}),
 		},
 		{
@@ -544,8 +544,8 @@ func TestProcessGlobs(t *testing.T) {
 			wantPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
-				filepath.FromSlash("subfolder2/file4.txt"),
-				filepath.FromSlash("subfolder2/file5.txt"),
+				"subfolder2/file4.txt",
+				"subfolder2/file5.txt",
 			}),
 		},
 		{
@@ -613,8 +613,8 @@ func TestProcessGlobs(t *testing.T) {
 			wantPaths: modelStrings([]string{
 				"file1.txt",
 				"file2.txt",
-				filepath.FromSlash("subfolder2/file4.txt"),
-				filepath.FromSlash("subfolder2/file5.txt"),
+				"subfolder2/file4.txt",
+				"subfolder2/file5.txt",
 			}),
 		},
 		{

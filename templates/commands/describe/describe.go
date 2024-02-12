@@ -17,13 +17,13 @@ package describe
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	"github.com/abcxyz/pkg/cli"
@@ -90,12 +90,8 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 // readRun provides fakable interface to test Run.
 func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
-	var tempDirs []string
-	defer func() {
-		for _, d := range tempDirs {
-			rErr = errors.Join(rErr, rp.fs.RemoveAll(d))
-		}
-	}()
+	tempTracker := tempdir.NewDirTracker(rp.fs, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -108,9 +104,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		GitProtocol: c.flags.GitProtocol,
 		CWD:         cwd,
 	})
-	if templateDir != "" { // templateDir might be set even if there's an error
-		tempDirs = append(tempDirs, templateDir)
-	}
+	tempTracker.Track(templateDir)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}

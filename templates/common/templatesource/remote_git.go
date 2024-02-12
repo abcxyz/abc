@@ -27,6 +27,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/git"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -132,7 +133,7 @@ type remoteGitDownloader struct {
 }
 
 // Download implements Downloader.
-func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
+func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string) (_ *DownloadMetadata, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "remoteGitDownloader.Download")
 
 	// Validate first before doing expensive work
@@ -152,12 +153,13 @@ func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string)
 	// Rather than cloning directly into destDir, we clone into a temp dir. It would
 	// be incorrect to clone the whole repo into destDir if the caller only asked
 	// for a subdirectory, e.g. "github.com/my-org/my-repo/my-subdir@v1.2.3".
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "git-clone-")
+	tempTracker := tempdir.NewDirTracker(&common.RealFS{}, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+	tmpDir, err := tempTracker.MkdirTempTracked("", "git-clone-")
 	if err != nil {
 		return nil, fmt.Errorf("MkdirTemp: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
-	subdirToCopy := filepath.Join(tmpDir, filepath.FromSlash(subdir))
+	subdirToCopy := filepath.Join(tmpDir, subdir)
 
 	if err := g.cloner.Clone(ctx, g.remote, versionToDownload, tmpDir); err != nil {
 		return nil, fmt.Errorf("Clone(): %w", err)

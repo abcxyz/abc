@@ -23,7 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/common/paths"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
@@ -87,7 +87,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../file.txt")),
+			wantErr: `path "../file.txt" must not contain ".."`,
 		},
 		{
 			name: "reject_dot_dot_glob",
@@ -98,7 +98,7 @@ func TestActionInclude(t *testing.T) {
 					},
 				},
 			},
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../*.txt")),
+			wantErr: `path "../*.txt" must not contain ".."`,
 		},
 		{
 			name: "templated_filename_success",
@@ -890,12 +890,9 @@ func TestActionInclude(t *testing.T) {
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
-			// Convert to OS-specific paths
-			toPlatformPaths(tc.wantIncludedFromDest)
-
 			tempDir := t.TempDir()
-			templateDir := filepath.Join(tempDir, paths.TemplateDirNamePart)
-			scratchDir := filepath.Join(tempDir, paths.ScratchDirNamePart)
+			templateDir := filepath.Join(tempDir, tempdir.TemplateDirNamePart)
+			scratchDir := filepath.Join(tempDir, tempdir.ScratchDirNamePart)
 			destDir := filepath.Join(tempDir, "dest")
 
 			abctestutil.WriteAll(t, templateDir, tc.templateContents)
@@ -923,12 +920,12 @@ func TestActionInclude(t *testing.T) {
 				t.Error(diff)
 			}
 
-			gotTemplateContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, paths.TemplateDirNamePart))
+			gotTemplateContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart))
 			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
-			gotScratchContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, paths.ScratchDirNamePart))
+			gotScratchContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart))
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -937,16 +934,5 @@ func TestActionInclude(t *testing.T) {
 				t.Errorf("includedFromDest was not as expected (-got,+want): %s", diff)
 			}
 		})
-	}
-}
-
-// toPlatformPaths converts each element of each input slice from a/b/c style
-// forward slash paths to platform-specific file paths. The slices are modified
-// in place.
-func toPlatformPaths(slices ...[]string) {
-	for _, s := range slices {
-		for i, elem := range s {
-			s[i] = filepath.FromSlash(elem)
-		}
 	}
 }

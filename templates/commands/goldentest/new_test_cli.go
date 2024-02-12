@@ -75,20 +75,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-
-	tempDir, err := os.MkdirTemp("", "abc-new-test-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer func() {
-		rErr = errors.Join(rErr, os.RemoveAll(tempDir))
-	}()
-
 	fs := &common.RealFS{}
-
-	if err != nil {
-		return err //nolint:wrapcheck
-	}
 
 	spec, err := specutil.Load(ctx, fs, c.flags.Location, c.flags.Location)
 	if err != nil {

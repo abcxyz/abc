@@ -183,13 +183,12 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 	out := make([]model.String, 0, len(paths))
 
 	for _, p := range paths {
-		goParsed, err := parseAndExecuteGoTmpl(p.Pos, p.Val, scope)
+		tmplOutput, err := parseAndExecuteGoTmpl(p.Pos, p.Val, scope)
 		if err != nil {
 			return nil, err
 		}
 
-		slashParsed := filepath.FromSlash(goParsed)
-		relParsed, err := common.SafeRelPath(p.Pos, slashParsed)
+		relParsed, err := common.SafeRelPath(p.Pos, tmplOutput)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}

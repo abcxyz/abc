@@ -32,6 +32,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -69,7 +70,7 @@ func (c *VerifyCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
+func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
@@ -79,12 +80,17 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse golden tests: %w", err)
 	}
 
+	fs := &common.RealFS{}
+
+	tempTracker := tempdir.NewDirTracker(fs, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+
 	// Create a temporary directory to render golden tests
 	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
-	defer os.RemoveAll(tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
+	tempTracker.Track(tempDir)
 	if err := renameGitDirsAndFiles(tempDir); err != nil {
 		return fmt.Errorf("failed renaming git related dirs and files: %w", err)
 	}
@@ -108,6 +114,8 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 	for _, tc := range testCases {
 		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
+		goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+		tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 
 		fileSet := make(map[string]struct{})
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
@@ -169,6 +177,17 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) error {
 			}
 		}
 
+		stdoutDiff, err := getStdoutDiff(goldenStdoutFile, tempStdoutFile, dmp)
+		if err != nil {
+			return fmt.Errorf("failed to compare stdout:%w", err)
+		}
+		if hasDiff(stdoutDiff) {
+			failureText := red("the printed messages differ between the recorded golden output and the actual output")
+			err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(stdoutDiff))
+			tcErr = errors.Join(tcErr, err)
+			outputMismatch = true
+		}
+
 		if outputMismatch {
 			failureText := red(fmt.Sprintf("golden test [%s] didn't match actual output, you might "+
 				"need to run 'record' command to capture it as the new expected output", tc.TestName))
@@ -210,14 +229,14 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 			return fmt.Errorf("filepath.Rel(%s,%s): %w", testDataDir, path, err)
 		}
 
-		// Don't assert the contents of ".abc" except ".abc/.stdout".
-		// As of this writing, the .abc dir except ".abc/.stdout" contains things that are specific to recorded tests and not part
+		// Don't assert the contents of ".abc". As of this writing, the .abc
+		// dir contains things that are specific to recorded tests and not part
 		// of the expected template output.
 		if common.IsReservedInDest(relToSrc) {
-			// skip files under ".abc" directory except ".abc/.stdout".
-			if !common.IsReservedStdout(relToSrc) {
-				return nil
+			if de.IsDir() {
+				return fs.SkipDir
 			}
+			return nil
 		}
 		if de.IsDir() {
 			return nil
@@ -240,4 +259,27 @@ func hasDiff(diffs []diffmatchpatch.Diff) bool {
 		}
 	}
 	return false
+}
+
+func getStdoutDiff(goldenStdoutPath, tempStdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
+	goldenStdout, err := os.ReadFile(goldenStdoutPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
+		}
+		goldenStdout = []byte("")
+	}
+
+	tempStdout, err := os.ReadFile(tempStdoutPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
+		}
+		tempStdout = []byte("")
+	}
+	// Set checklines to false: avoid a line-level diff which is faster
+	// however less optimal.
+	diffs := dmp.DiffMain(string(tempStdout), string(goldenStdout), false)
+
+	return diffs, nil
 }

@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package paths
+package tempdir
 
 const (
 	// These will be used as part of the names of the temporary directories to
 	// make them identifiable.
-	TemplateDirNamePart       = "template-copy-"
-	ScratchDirNamePart        = "scratch-"
 	DebugStepDiffsDirNamePart = "debug-step-diffs-"
+	GoldenTestRenderNamePart  = "golden-test-"
+	ScratchDirNamePart        = "scratch-"
+	TemplateDirNamePart       = "template-copy-"
 )
