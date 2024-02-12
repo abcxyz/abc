@@ -28,13 +28,8 @@ rules:
     message: 'git tag must not be empty'
 
 steps:
-  - desc: 'Include an empty file that we can append to'
-    action: 'include'
-    params:
-      paths: ['out.txt']
   - desc: 'Print a message if validation passed'
-    action: 'append'
+    action: 'print'
     params:
-      paths: ['out.txt']
-      with: |-
+      message: |-
         Rule validation passed.
