@@ -221,7 +221,7 @@ func mapToVarValues(m map[string]string) []*goldentest.VarValue {
 }
 
 func renameGitDirsAndFiles(dir string) error {
-	// including gitPath of git related directories and files.
+	// including path of git related directories and files.
 	var gitPaths []string
 	// Need to rename files first and then dirs, otherwise you will encounter dir not found error as the original dir has been renamed.
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -229,11 +229,7 @@ func renameGitDirsAndFiles(dir string) error {
 			return err
 		}
 
-		if !d.IsDir() && strings.HasPrefix(d.Name(), gitPrefix) {
-			gitPaths = append(gitPaths, path)
-			return nil
-		}
-		if d.IsDir() && d.Name() == gitPrefix {
+		if (d.IsDir() && d.Name() == gitPrefix) || (!d.IsDir() && strings.HasPrefix(d.Name(), gitPrefix)) {
 			gitPaths = append(gitPaths, path)
 			return nil
 		}
