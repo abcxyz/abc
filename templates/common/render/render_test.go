@@ -1071,6 +1071,85 @@ steps:
 				"foo/.abc/bar.txt": "",
 			},
 		},
+		{
+			name: "independent_rule_validation_valid_rules",
+			templateContents: abctestutil.WithGitRepoAt("", map[string]string{
+				".git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta4'
+kind: 'Template'
+desc: 'My template'
+
+rules:
+  - rule: 'int(2) < int(10)'
+    message: 'rule validation'
+
+steps:
+  - desc: 'print a message' 
+    action: 'print'
+    params:
+      message: 'rule validation passed'
+`,
+			}),
+			wantStdout:       "rule validation passed\n",
+			wantDestContents: map[string]string{},
+		},
+		{
+			name: "independent_rule_validation_invalid_rules",
+			templateContents: abctestutil.WithGitRepoAt("", map[string]string{
+				".git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta4'
+kind: 'Template'
+desc: 'My template'
+
+rules:
+  - rule: 'int(2) > int(10)'
+    message: 'invalid rule: 2 cannot be greater than 10'
+  - rule: '"abc".startsWith("z")'
+    message: 'invalid rule: abc does not start with z'
+
+steps:
+  - desc: 'print a message' 
+    action: 'print'
+    params:
+      message: 'rule validation passed'
+`,
+			}),
+			wantErr: "rules validation failed:\n\nRule:      int(2) > int(10)\nRule msg:  invalid rule: 2 cannot be greater than 10\n\nRule:      \"abc\".startsWith(\"z\")\nRule msg:  invalid rule: abc does not start with z\n",
+		},
+		{
+			name: "independent_rule_validation_built_in_vars_in_scope",
+			templateContents: abctestutil.WithGitRepoAt("", map[string]string{
+				".git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta4'
+kind: 'Template'
+desc: 'My template'
+
+rules:
+  - rule: '_git_sha == "ahl8foqboh8ktqzxnymuvdcg91hvim0cfszlcstl"'
+    message: 'git sha must have specific value'
+  - rule: '_git_short_sha == "ahl8foq"'
+    message: 'git short sha must have specific value'
+  - rule: '_git_tag == "v1.2.3"'
+    message: 'git tag must have specific value'
+
+steps:
+  - desc: 'print a message' 
+    action: 'print'
+    params:
+      message: |-
+        git sha: {{._git_sha}}
+        git short sha: {{._git_short_sha}}
+        git tag: {{._git_tag}}
+`,
+			}),
+			overrideBuiltinVars: map[string]string{
+				"_git_sha":       "ahl8foqboh8ktqzxnymuvdcg91hvim0cfszlcstl",
+				"_git_short_sha": "ahl8foq",
+				"_git_tag":       "v1.2.3",
+			},
+			wantStdout:       "git sha: ahl8foqboh8ktqzxnymuvdcg91hvim0cfszlcstl\ngit short sha: ahl8foq\ngit tag: v1.2.3\n",
+			wantDestContents: map[string]string{},
+		},
 	}
 
 	for _, tc := range cases {
