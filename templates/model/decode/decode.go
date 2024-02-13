@@ -24,6 +24,7 @@ import (
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
@@ -40,13 +41,12 @@ var (
 	KindTemplate   = "Template"   // the value of the "kind" field in a spec.yaml file
 	KindGoldenTest = "GoldenTest" // ... a test.yaml file
 	KindManifest   = "Manifest"   // ... a manifest.yaml file
-
-	// LatestAPIVersion is the most up-to-date API version.
-	LatestAPIVersion = apiVersions[len(apiVersions)-1].apiVersion
 )
 
 type apiVersionDef struct {
 	apiVersion string
+
+	unreleased bool
 
 	// Map keys are the "kind" values found in the YAML files.
 	kinds map[string]model.ValidatorUpgrader
@@ -96,6 +96,7 @@ var apiVersions = []apiVersionDef{
 	},
 	{
 		apiVersion: "cli.abcxyz.dev/v1beta4",
+		unreleased: true,
 		kinds: map[string]model.ValidatorUpgrader{
 			KindTemplate:   &specv1beta4.Spec{},
 			KindGoldenTest: &goldentestv1beta3.Test{},
@@ -205,6 +206,9 @@ func decodeFromVersionKind(filename, apiVersion, kind string, buf []byte) (model
 	}
 
 	versionDef := apiVersions[idx]
+	if versionDef.unreleased && version.IsReleaseBuild() {
+		return nil, fmt.Errorf("api_version %q is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation", apiVersion)
+	}
 
 	archetype, ok := versionDef.kinds[kind]
 	if !ok {
@@ -227,4 +231,28 @@ func decodeFromVersionKind(filename, apiVersion, kind string, buf []byte) (model
 	}
 
 	return vu, nil
+}
+
+// LatestSupportedAPIVersion is the most up-to-date API version. It's
+// in the format "cli.abcxyz.dev/v1beta4".
+//
+// isReleaseBuild is the value of version.IsReleaseBuild(), but for testing
+// purposes we make it an argument rather than hardcoding.
+func LatestSupportedAPIVersion(isReleaseBuild bool) string {
+	// Release builds (like "I am the official release of version 1.2.3")
+	// will read and write only only officially released, finalized
+	// api_versions. Other builds (e.g. CI builds, local dev builds, devs
+	// running "go test" on workstations) are more permissive and will read
+	// and write the most recent unreleased work-in-progress api_version.
+	if !isReleaseBuild {
+		return apiVersions[len(apiVersions)-1].apiVersion
+	}
+	for i := len(apiVersions) - 1; i > 0; i-- {
+		if !apiVersions[i].unreleased {
+			return apiVersions[i].apiVersion
+		}
+	}
+	// Justification for why it's OK to panic here: if this passes unit tests,
+	// it will never fail on a user's machine.
+	panic("internal error: there are no apiVersions that are marked as released")
 }

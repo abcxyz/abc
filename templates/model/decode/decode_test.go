@@ -538,3 +538,38 @@ func TestAPIVersions_ArchetypesArePointers(t *testing.T) {
 		}
 	}
 }
+
+func TestLatestSupportedAPIVersion(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		isReleaseBuild bool
+		want           string
+	}{
+		{
+			name:           "is_release_build",
+			isReleaseBuild: true,
+			want:           "cli.abcxyz.dev/v1beta3", // update for each api_version release
+		},
+		{
+			name:           "not_release_build",
+			isReleaseBuild: false,
+			want:           "cli.abcxyz.dev/v1beta4", // update for creation of a new api_version
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := LatestSupportedAPIVersion(tc.isReleaseBuild)
+			if got != tc.want {
+				t.Errorf("LatestSupportedAPIVersion(%t)=%q, want %q",
+					tc.isReleaseBuild, got, tc.want)
+			}
+		})
+	}
+}
