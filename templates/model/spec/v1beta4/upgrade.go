@@ -12,16 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1beta3
+package v1beta4
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/jinzhu/copier"
 
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -30,13 +26,17 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	logger := logging.FromContext(ctx).With("logger", "Upgrade")
 	logger.DebugContext(ctx, "finished upgrading spec model, this is the most recent version")
 
-	var out v1beta4.Spec
-	if err := copier.Copy(&out, s); err != nil {
-		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta2 to v1beta3: %w", err)
-	}
-	// If this spec was upgraded from an older api_version, disable the features
-	// that weren't supported in its declared api_version.
-	out.Features = s.Features
+	// Uncomment this when there's a version after v1beta4.
+	// var out nextversion.Spec
+	// if err := copier.Copy(&out, s); err != nil {
+	// 	return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta2 to v1beta3: %w", err)
+	// }
+	// // If this spec was upgraded from an older api_version, disable the features
+	// // that weren't supported in its declared api_version.
+	// out.Features = s.Features
 
-	return &out, nil
+	// // Features introduced in v1beta4:
+	// out.Features.SkipFoo = true
+
+	return nil, model.ErrLatestVersion
 }

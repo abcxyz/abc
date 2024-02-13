@@ -32,6 +32,7 @@ import (
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	specv1beta4 "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -350,18 +351,18 @@ steps:
     desc: 'step desc'
     params:
       paths: ['.']`,
-			want: &specv1beta3.Spec{
+			want: &specv1beta4.Spec{
 				Desc: model.String{Val: "mydesc"},
 				Features: features.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
 				},
-				Steps: []*specv1beta3.Step{
+				Steps: []*specv1beta4.Step{
 					{
 						Action: model.String{Val: "include"},
 						Desc:   model.String{Val: "step desc"},
-						Include: &specv1beta3.Include{
-							Paths: []*specv1beta3.IncludePath{
+						Include: &specv1beta4.Include{
+							Paths: []*specv1beta4.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
@@ -411,6 +412,59 @@ kind: 'Template'`,
 			fileContents: `api_version: 'cli.abcxyz.dev/v1beta1'
 kind: 'Template'`,
 			wantErr: `validation failed in file.yaml: at line 1 column 1: field "desc" is required`,
+		},
+		{
+			name: "oldest_template_rules_survive_upgrade",
+			fileContents: `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'mydesc'
+
+inputs:
+  - name: 'foo'
+    desc: 'The name parameter'
+    rules:
+      - rule: 'size(foo) < 10'
+        message: 'name length must be less than 10'
+
+steps:
+  - action: 'include'
+    desc: 'step desc'
+    params:
+      paths: ['.']`,
+			want: &specv1beta4.Spec{
+				Desc: model.String{Val: "mydesc"},
+				Features: features.Features{
+					SkipGlobs:   true,
+					SkipGitVars: true,
+				},
+				Inputs: []*specv1beta4.Input{
+					{
+						Name: model.String{Val: "foo"},
+						Desc: model.String{Val: "The name parameter"},
+						Rules: []*specv1beta4.Rule{
+							{
+								Rule:    model.String{Val: "size(foo) < 10"},
+								Message: model.String{Val: "name length must be less than 10"},
+							},
+						},
+					},
+				},
+				Steps: []*specv1beta4.Step{
+					{
+						Action: model.String{Val: "include"},
+						Desc:   model.String{Val: "step desc"},
+						Include: &specv1beta4.Include{
+							Paths: []*specv1beta4.IncludePath{
+								{
+									Paths: []model.String{
+										{Val: "."},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -104,7 +104,7 @@ func TestValidateInputs(t *testing.T) {
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 5`},
 							Message: model.String{Val: "Length must be less than 5"},
@@ -121,7 +121,7 @@ func TestValidateInputs(t *testing.T) {
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
 							Message: model.String{Val: "Length must be less than 3"},
@@ -144,7 +144,7 @@ Rule msg:     Length must be less than 3`,
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 5`},
 							Message: model.String{Val: "Length must be less than 5"},
@@ -169,7 +169,7 @@ Rule msg:     Length must be less than 3`,
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
 							Message: model.String{Val: "Length must be less than 3"},
@@ -200,7 +200,7 @@ Rule msg:     Length must be less than 3`,
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
 							Message: model.String{Val: "Length must be less than 3"},
@@ -241,7 +241,7 @@ Rule msg:     Must contain "shoe"`,
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `(`},
 						},
@@ -263,7 +263,7 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:2: Syntax error:
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `bool(42)`},
 						},
@@ -285,7 +285,7 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:5: found no matc
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `42`},
 						},
@@ -307,7 +307,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 			inputModels: []*spec.Input{
 				{
 					Name: model.String{Val: "my_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `my_input + my_other_input == "sharknado"`},
 						},
@@ -315,7 +315,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 				},
 				{
 					Name: model.String{Val: "my_other_input"},
-					Rules: []*spec.InputRule{
+					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `"tor" + my_other_input + my_input == "tornadoshark"`},
 						},
@@ -335,7 +335,6 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// r := &Command{}
 			ctx := context.Background()
 			err := validateInputs(ctx, tc.inputModels, tc.inputVals)
 			if diff := testutil.DiffErrString(err, tc.want); diff != "" {
