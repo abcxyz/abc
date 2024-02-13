@@ -16,7 +16,6 @@ package templatesource
 
 import (
 	"context"
-	"regexp"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
