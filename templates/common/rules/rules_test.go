@@ -103,7 +103,7 @@ func TestValidateRulesWithMessage(t *testing.T) {
 			want:     "",
 		},
 		{
-			name: "rules_valid_call_back",
+			name: "rules_valid_call_back_with_message",
 			scope: common.NewScope(map[string]string{
 				"my_var": "foo",
 			}),
@@ -134,10 +134,43 @@ func TestValidateRulesWithMessage(t *testing.T) {
 					Message: model.String{Val: "age must be less than 130"},
 				},
 			},
-			callBack: func(tw *tabwriter.Writer) {
-				fmt.Fprintln(tw, "Rule Violation:")
+			callBack: func(tw *tabwriter.Writer) {},
+			want: `
+Rule:      name.matches('^[A-Za-z]+$')
+Rule msg:  name must only contain alphabetic characters
+
+Rule:      int(age) < 130
+Rule msg:  age must be less than 130
+`,
+		},
+		{
+			name: "rules_invalid_callback_with_message",
+			scope: common.NewScope(map[string]string{
+				"name": "bar123",
+				"age":  "1054",
+			}),
+			rules: []*spec.Rule{
+				{
+					Rule:    model.String{Val: "name.matches('^[A-Za-z]+$')"},
+					Message: model.String{Val: "name must only contain alphabetic characters"},
+				},
+				{
+					Rule:    model.String{Val: "int(age) < 130"},
+					Message: model.String{Val: "age must be less than 130"},
+				},
 			},
-			want: "Rule Violation:\n\nRule:      name.matches('^[A-Za-z]+$')\nRule msg:  name must only contain alphabetic characters\nRule Violation:\n\nRule:      int(age) < 130\nRule msg:  age must be less than 130\n",
+			callBack: func(tw *tabwriter.Writer) {
+				fmt.Fprint(tw, "\nRule Violation:")
+			},
+			want: `
+Rule Violation:
+Rule:      name.matches('^[A-Za-z]+$')
+Rule msg:  name must only contain alphabetic characters
+
+Rule Violation:
+Rule:      int(age) < 130
+Rule msg:  age must be less than 130
+`,
 		},
 	}
 
