@@ -251,3 +251,8 @@ func renameGitDirsAndFiles(dir string) error {
 	}
 	return nil
 }
+
+func foo() {
+	foo := "bar"
+	fmt.Println(foo)
+}
