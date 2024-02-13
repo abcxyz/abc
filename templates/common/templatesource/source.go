@@ -48,8 +48,8 @@ var realSourceParsers = []sourceParser{
 				`(/(?P<subdir>[^@]*))?` + // Optional subdir with leading slash; the leading slash is not part of capturing group ${subdir}
 				`@(?P<version>[a-zA-Z0-9_/.-]+)` + // The "@latest" or "@v1.2.3" or "@v1.2.3-foo" at the end; the "@" is not part of the capturing group
 				`$`), // Anchor the end, must match the entire input
-		subdirExpansion:      `${subdir}`,
-		versionExpansion:     `${version}`,
+		subdirExpansion:  `${subdir}`,
+		versionExpansion: `${version}`,
 	},
 
 	&localSourceParser{}, // Handles a template source that's a local directory.
@@ -72,10 +72,10 @@ var realSourceParsers = []sourceParser{
 				`(//(?P<subdir>[^?]*))?` + // Optional subdir
 				`(\?ref=(?P<version>[a-zA-Z0-9_/.-]+))?` + // optional ?ref=branch_or_tag
 				`$`), // Anchor the end, must match the entire input
-		subdirExpansion:      `${subdir}`,
-		versionExpansion:     `${version}`,
-		defaultVersion:       "latest",
-		warning:              `go-getter style URL support will be removed in mid-2024, please use the newer format instead, eg github.com/myorg/myrepo[/subdir]@v1.2.3 (or @latest)`,
+		subdirExpansion:  `${subdir}`,
+		versionExpansion: `${version}`,
+		defaultVersion:   "latest",
+		warning:          `go-getter style URL support will be removed in mid-2024, please use the newer format instead, eg github.com/myorg/myrepo[/subdir]@v1.2.3 (or @latest)`,
 	},
 }
 

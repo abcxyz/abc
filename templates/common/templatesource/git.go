@@ -19,6 +19,7 @@ import (
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
+
 	"github.com/abcxyz/abc/templates/common/git"
 	"github.com/abcxyz/pkg/logging"
 )

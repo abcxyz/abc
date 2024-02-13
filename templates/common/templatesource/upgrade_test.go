@@ -20,9 +20,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestForCanonical(t *testing.T) {
@@ -163,7 +164,7 @@ func TestForCanonical(t *testing.T) {
 
 			destDir := filepath.Join(tempDir, tc.destDir)
 
-			downloader, err := ForCanonical(ctx, location, tc.locType, tc.gitProtocol, destDir)
+			downloader, err := ForUpgrade(ctx, location, tc.locType, tc.gitProtocol, destDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
