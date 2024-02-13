@@ -90,7 +90,7 @@ func newRemoteGitDownloader(p *newRemoteGitDownloaderParams) (Downloader, bool, 
 		return nil, false, nil
 	}
 
-	remote, err := gitRemote(p.re, match, p.input, p.gitProtocol) // TODO inline?
+	remote, err := gitRemote(p.re, match, p.input, p.gitProtocol)
 	if err != nil {
 		return nil, false, err
 	}
@@ -344,8 +344,6 @@ func (r *realTagser) Tags(ctx context.Context, remote string) ([]string, error) 
 	return git.RemoteTags(ctx, remote) //nolint:wrapcheck
 }
 
-// TODO test TODO doc, re must have groups for "host", "org", and "repo".
-//
 // gitRemote returns a git remote string (see "man git-remote") for the given
 // remote git repo.
 //
