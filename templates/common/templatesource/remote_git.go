@@ -32,12 +32,7 @@ import (
 	"github.com/abcxyz/pkg/sets"
 )
 
-var (
-	_ sourceParser = (*remoteGitSourceParser)(nil)
-
-	gitHTTPSExpansion = `https://${host}/${org}/${repo}.git`
-	gitSSHExpansion   = `git@${host}:${org}/${repo}.git`
-)
+var _ sourceParser = (*remoteGitSourceParser)(nil)
 
 // remoteGitSourceParser implements sourceParser for downloading templates from a
 // remote git repo.
@@ -74,13 +69,21 @@ func (g *remoteGitSourceParser) sourceParse(ctx context.Context, params *ParseSo
 	})
 }
 
+// newRemoteGitDownloaderParams contains the parameters to
+// newRemoteGitDownloader.
 type newRemoteGitDownloaderParams struct {
-	defaultVersion string // TODO comment
+	// defaultVersion is the template version (e.g. "latest", "v1.2.3") that
+	// will be used if the "re" regular expression either doesn't have a
+	// matching group named "version", or
+	defaultVersion string
 	gitProtocol    string
 	input          string
 	re             *regexp.Regexp
 }
 
+// newRemoteGitDownloader is basically a fancy constructor for
+// remoteGitDownloader. It returns false if the provided input doesn't match the
+// provided regex.
 func newRemoteGitDownloader(p *newRemoteGitDownloaderParams) (Downloader, bool, error) {
 	match := p.re.FindStringSubmatchIndex(p.input)
 	if match == nil {
@@ -114,8 +117,8 @@ func newRemoteGitDownloader(p *newRemoteGitDownloaderParams) (Downloader, bool, 
 	}, true, nil
 }
 
-// remoteGitDownloader implements templateSource for templates hosted in a remote git
-// repo, regardless of which git hosting service it uses.
+// remoteGitDownloader implements templateSource for templates hosted in a
+// remote git repo, regardless of which git hosting service it uses.
 type remoteGitDownloader struct {
 	// An HTTPS or SSH connection string understood by "git clone".
 	remote string
@@ -341,8 +344,19 @@ func (r *realTagser) Tags(ctx context.Context, remote string) ([]string, error) 
 	return git.RemoteTags(ctx, remote) //nolint:wrapcheck
 }
 
-// TODO test
-// TODO doc, re must have groups for "host", "org", and "repo".
+// TODO test TODO doc, re must have groups for "host", "org", and "repo".
+//
+// gitRemote returns a git remote string (see "man git-remote") for the given
+// remote git repo.
+//
+// The host, org, and repo name are provided by the given regex match. The
+// "match" parameter must be the result of calling re.FindStringSubmatchIndex(),
+// and must not be nil. reInput must be the string passed to
+// re.FindStringSubmatchIndex(), this allows us to extract the matched host,
+// org, and repo names that were match by the regex.
+//
+// The given regex must have matching groups (i.e. P<foo>) named "host", "org",
+// and "repo".
 func gitRemote(re *regexp.Regexp, match []int, reInput, gitProtocol string) (string, error) {
 	// Sanity check that the regular expression has the necessary named subgroups.
 	wantSubexps := []string{"host", "org", "repo"}
@@ -353,9 +367,9 @@ func gitRemote(re *regexp.Regexp, match []int, reInput, gitProtocol string) (str
 
 	switch gitProtocol {
 	case "https", "":
-		return string(re.ExpandString(nil, gitHTTPSExpansion, reInput, match)), nil
+		return string(re.ExpandString(nil, "https://${host}/${org}/${repo}.git", reInput, match)), nil
 	case "ssh":
-		return string(re.ExpandString(nil, gitSSHExpansion, reInput, match)), nil
+		return string(re.ExpandString(nil, "git@${host}:${org}/${repo}.git", reInput, match)), nil
 	default:
 		return "", fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", gitProtocol)
 	}
