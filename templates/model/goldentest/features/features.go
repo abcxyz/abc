@@ -22,11 +22,7 @@ package features
 // undergoing any special transformation. Older schemas will have features
 // disabled (booleans set to true) in their Upgrade() method.
 type Features struct {
-	// SkipGlobs determines whether to interpret paths as file globs or not. New
-	// in v1beta2.
-	SkipGlobs bool
-
-	// SkipGitVars determines whether to create builtin variables for _git_sha,
-	// _git_short_sha, and _git_tag. New in v1beta3.
-	SkipGitVars bool
+	// SkipStdout determines whether to verify stdout or not.
+	// New in github.com/abcxyz/abc/templates/model/goldentest/v1beta4.
+	SkipStdout bool
 }

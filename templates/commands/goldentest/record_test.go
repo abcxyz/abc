@@ -180,7 +180,7 @@ kind: 'GoldenTest'`
 		{
 			name: "test_with_stdout_succeeds",
 			filesContent: map[string]string{
-				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A template that outputs no files and do print'
@@ -195,6 +195,27 @@ steps:
 				"test/test.yaml":          testYaml,
 				"test/data/.abc/.gitkeep": "",
 				"test/data/.abc/stdout":   "Hello\n",
+			},
+		},
+		{
+			name: "test_with_v1beta3_stdout_skip_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A template that outputs no files and do print'
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+        message: 'Hello'`,
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"test/data/.abc/.gitkeep": "",
 			},
 		},
 		{

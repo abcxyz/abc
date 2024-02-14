@@ -25,10 +25,11 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/model"
+	goldentestfeatures "github.com/abcxyz/abc/templates/model/goldentest/features"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	goldentestv1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
-	"github.com/abcxyz/abc/templates/model/spec/features"
+	specfeatures "github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
@@ -391,7 +392,7 @@ steps:
       paths: ['.']`,
 			want: &specv1beta4.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Features: features.Features{
+				Features: specfeatures.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
 				},
@@ -425,6 +426,9 @@ inputs:
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},
 					},
+				},
+				Features: goldentestfeatures.Features{
+					SkipStdout: true,
 				},
 			},
 		},
@@ -471,7 +475,7 @@ steps:
       paths: ['.']`,
 			want: &specv1beta4.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Features: features.Features{
+				Features: specfeatures.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
 				},
