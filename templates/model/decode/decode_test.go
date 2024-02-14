@@ -16,7 +16,6 @@ package decode
 
 import (
 	"context"
-	goldentestv1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	"reflect"
 	"strings"
 	"testing"
@@ -27,6 +26,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
+	goldentestv1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"

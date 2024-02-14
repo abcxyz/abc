@@ -18,9 +18,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jinzhu/copier"
+
 	"github.com/abcxyz/abc/templates/model"
 	v1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
-	"github.com/jinzhu/copier"
 )
 
 // Upgrade implements model.ValidatorUpgrader.
