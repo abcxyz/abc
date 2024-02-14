@@ -99,6 +99,15 @@ var apiVersions = []apiVersionDef{
 		},
 	},
 	{
+		apiVersion: "cli.abcxyz.dev/v1beta4",
+		unreleased: true,
+		kinds: map[string]model.ValidatorUpgrader{
+			KindTemplate:   &specv1beta4.Spec{},
+			KindGoldenTest: &goldentestv1beta3.Test{},
+			KindManifest:   &manifestv1alpha1.Manifest{},
+		},
+	},
+	{
 		apiVersion: "cli.abcxyz.dev/v1beta5",
 		unreleased: true,
 		kinds: map[string]model.ValidatorUpgrader{
