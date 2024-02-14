@@ -46,8 +46,8 @@ something isn't right. You can use
     `Upgrade()` method so that it stored the contents of the old field in the
     newly renamed field.
 - In `templates/model/decode/decode.go`, add a new entry to the end of
-  `apiVersions`(If new api version
-  is still WIP and is not ready to get released, mark the `unreleasd` filed to be true.).
+  `apiVersions` (If new api version
+  is still WIP and is not ready to get released, mark the `unreleased` filed to be true).
   See the instructions and examples there.
 - Do a global replace(skip upgrade test cases as older api version is expected in 
   those test cases) to point to your new abc cli version. For example, 
@@ -69,8 +69,8 @@ something isn't right. You can use
 - Modify the new version directory to make whatever struct changes you want to
     make (e.g. add a new field/feature), including tests.
 - Update the "list of api_versions" section in `/README.md`.
-- In `templates/model/decode/decode.go`, make the specific api version released 
-  to mark the `unreleased` field to be false in `apiVersions`
+  In `templates/model/decode/decode.go`, remove the line `unreleased: true` from 
+  your api version in the apiVersions list
 - Release a new version of the abc CLI (see `RELEASING.md`). If you've added a
   field, you only need to bump the minor version number. If you've changed the
   meaning of a field or removed a field, then you need to bump the major version
