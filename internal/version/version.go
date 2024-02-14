@@ -37,7 +37,7 @@ var (
 
 // IsReleaseBuild returns true if this binary was built by goreleaser as part of
 // the official release process (as opposed to a user just running "go build",
-// or running in a CI environment, or something else.
+// or running in a CI environment, or something else).
 func IsReleaseBuild() bool {
 	// "source" is a sentinel value returned from buildinfo.Version() when the
 	// build metadata is not present. The build metadata is filled in with the
