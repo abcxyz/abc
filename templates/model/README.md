@@ -46,7 +46,13 @@ something isn't right. You can use
     `Upgrade()` method so that it stored the contents of the old field in the
     newly renamed field.
 - In `templates/model/decode/decode.go`, add a new entry to the end of
-  `apiVersions`. See the instructions and examples there.
+  `apiVersions`(If new api version
+  is still WIP and is not ready to get released, mark the `unreleasd` filed to be true.).
+  See the instructions and examples there.
+- Do a global replace(skip upgrade test cases as older api version is expected in 
+  those test cases) to point to your new abc cli version. For example, 
+  if you add a new api version entry called `v1beta1`, you'd change relevant Go files
+  from old api version to new api version `apiVersion: 'cli.abcxyz.dev/v1beta1'`.
 - Do a global replace of imports to point to your new version. For example, if
   you made changes to the template spec, you'd change
   `\tspec "github.com/abcxyz/abc/templates/model/spec/v9"` with
@@ -54,17 +60,17 @@ something isn't right. You can use
   You only need to do this for the `kind`s you changed (if you only changed the
   template spec then you don't need to do this for goldentests and manifests).
 - Change the tests named `oldest_template_upgrades_to_newest` and
-  `speculative_upgrade` to change references from the formerly-newest schema to
+  `speculative_upgrade` and `newest` to change references from the formerly-newest schema to
   the schema you just created. (e.g. `specv9` -> `specv10`)
 - Submit your work so far as a PR. This will allow the binary to understand your
   new work-in-progress api_version, but since we didn't announce it yet, users
   shouldn't start using it yet.
   [Example PR](https://github.com/abcxyz/abc/pull/319).
 - Modify the new version directory to make whatever struct changes you want to
-  make (e.g. add a new field/feature), including tests.
+    make (e.g. add a new field/feature), including tests.
 - Update the "list of api_versions" section in `/README.md`.
-- Update the tests in decode_test.go that have "newest" in the subtest name.
-  They should now use your new version instead of the formerly-newest version.
+- In `templates/model/decode/decode.go`, make the specific api version released 
+  to mark the `unreleased` field to be false in `apiVersions`
 - Release a new version of the abc CLI (see `RELEASING.md`). If you've added a
   field, you only need to bump the minor version number. If you've changed the
   meaning of a field or removed a field, then you need to bump the major version
