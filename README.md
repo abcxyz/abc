@@ -292,6 +292,14 @@ There are two ways to install:
 2.  Alternatively, if you already have a Go programming environment set up, just
     run `go install github.com/abcxyz/abc/cmd/abc@latest`.
 
+### Tab Autocompletion
+
+Optionally, for tab autocompletion, run:
+
+`COMP_INSTALL=1 COMP_YES=1 abc`
+
+This will add a `complete` command to your .bashrc or corresponding file.
+
 ## Rendering a template
 
 The full user journey looks as follows. For this example, suppose you want to
