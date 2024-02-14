@@ -49,7 +49,7 @@ something isn't right. You can use
   `apiVersions` (If new api version
   is still WIP and is not ready to get released, mark the `unreleased` filed to be true).
   See the instructions and examples there.
-- Do a global replace(skip upgrade test cases as older api version is expected in 
+- Do a global replace (skip upgrade test cases as older api version is expected in 
   those test cases) to point to your new abc cli version. For example, 
   if you add a new api version entry called `v1beta1`, you'd change relevant Go files
   from old api version to new api version `apiVersion: 'cli.abcxyz.dev/v1beta1'`.
@@ -67,7 +67,7 @@ something isn't right. You can use
   shouldn't start using it yet.
   [Example PR](https://github.com/abcxyz/abc/pull/319).
 - Modify the new version directory to make whatever struct changes you want to
-    make (e.g. add a new field/feature), including tests.
+  make (e.g. add a new field/feature), including tests.
 - Update the "list of api_versions" section in `/README.md`.
   In `templates/model/decode/decode.go`, remove the line `unreleased: true` from 
   your api version in the apiVersions list
