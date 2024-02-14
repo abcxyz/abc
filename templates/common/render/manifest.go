@@ -30,6 +30,7 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
@@ -187,10 +188,11 @@ func buildManifest(ctx context.Context, p *writeManifestParams, dlMeta *template
 	})
 
 	now := p.clock.Now().UTC()
+	apiVersion := decode.LatestSupportedAPIVersion(version.IsReleaseBuild())
 
 	return &manifest.WithHeader{
 		Header: &header.Fields{
-			NewStyleAPIVersion: model.String{Val: decode.LatestAPIVersion},
+			NewStyleAPIVersion: model.String{Val: apiVersion},
 			Kind:               model.String{Val: decode.KindManifest},
 		},
 		Wrapped: &manifest.ForMarshaling{
