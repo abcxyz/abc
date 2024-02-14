@@ -128,7 +128,7 @@ var apiVersions = []apiVersionDef{
 // non-empty, then we'll also validate that the "kind" of the YAML file matches
 // requireKind, and return error if not. This also calls Validate() on
 // the returned struct and returns error if invalid.
-func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, string, error) {
+func Decode(r io.Reader, filename, requireKind string, isReleaseBuild bool) (model.ValidatorUpgrader, string, error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, "", fmt.Errorf("error reading file %s: %w", filename, err)
@@ -160,6 +160,10 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 		return nil, "", fmt.Errorf("file %s has kind %q, but %q is required", filename, cf.Kind.Val, requireKind)
 	}
 
+	if apiVersion > LatestSupportedAPIVersion(isReleaseBuild) {
+		return nil, "", fmt.Errorf("api_version %q is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation", apiVersion)
+	}
+
 	vu, err := decodeFromVersionKind(filename, apiVersion, cf.Kind.Val, buf)
 	if err == nil {
 		return vu, apiVersion, nil
@@ -188,7 +192,7 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 // then repeatedly calls Upgrade() and Validate() on it until it's the newest version, then
 // returns it. requireKind has the same meaning as in Decode().
 func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, error) {
-	vu, apiVersion, err := Decode(r, filename, requireKind)
+	vu, apiVersion, err := Decode(r, filename, requireKind, version.IsReleaseBuild())
 	if err != nil {
 		return nil, err
 	}
@@ -223,9 +227,6 @@ func decodeFromVersionKind(filename, apiVersion, kind string, buf []byte) (model
 	}
 
 	versionDef := apiVersions[idx]
-	if versionDef.unreleased && version.IsReleaseBuild() {
-		return nil, fmt.Errorf("api_version %q is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation", apiVersion)
-	}
 
 	archetype, ok := versionDef.kinds[kind]
 	if !ok {
