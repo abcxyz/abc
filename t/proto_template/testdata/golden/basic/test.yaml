@@ -1,4 +1,5 @@
 api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'
 inputs:
   - name: 'project_id'
     value: 'example.com:my-project'
