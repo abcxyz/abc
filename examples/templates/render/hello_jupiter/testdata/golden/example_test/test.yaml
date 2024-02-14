@@ -1,2 +1,2 @@
-api_version: 'cli.abcxyz.dev/v1alpha1'
+apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
