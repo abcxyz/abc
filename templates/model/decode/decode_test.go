@@ -555,7 +555,7 @@ func TestLatestSupportedAPIVersion(t *testing.T) {
 		{
 			name:           "not_release_build",
 			isReleaseBuild: false,
-			want:           "cli.abcxyz.dev/v1beta4", // update for creation of a new api_version
+			want:           "cli.abcxyz.dev/v1beta5", // update for creation of a new api_version
 		},
 	}
 
