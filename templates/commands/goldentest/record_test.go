@@ -32,7 +32,7 @@ import (
 func TestRecordCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	specYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -43,7 +43,7 @@ steps:
     params:
       paths: ['.']
 `
-	testYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	testYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`
 
 	cases := []struct {

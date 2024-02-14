@@ -34,7 +34,7 @@ import (
 func TestNewTestCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta4'
+	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'
@@ -51,7 +51,7 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
-	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta4'
+	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'

@@ -24,7 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/model"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -46,7 +46,7 @@ func TestParseTestCases(t *testing.T) {
 			name:      "specified_test_name_succeed",
 			testNames: []string{"test_case_1"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
@@ -60,11 +60,11 @@ kind: 'GoldenTest'`,
 			name:      "specified_multiple_test_names_succeed",
 			testNames: []string{"test_case_1", "test_case_2"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
-				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
-				"testdata/golden/test_case_3/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_3/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
@@ -81,9 +81,9 @@ kind: 'GoldenTest'`,
 		{
 			name: "all_tests_succeed",
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
-				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
@@ -133,7 +133,7 @@ kind: 'GoldenTest'`,
 			name:      "specified_test_name_not_found",
 			testNames: []string{"test_case_2"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want:    nil,

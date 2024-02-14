@@ -28,7 +28,7 @@ import (
 func TestVerifyCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `api_version: 'cli.abcxyz.dev/v1beta3'
+	specYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -40,7 +40,7 @@ steps:
       paths: ['.']
 `
 
-	printSpecYaml := `api_version: 'cli.abcxyz.dev/v1beta3'
+	printSpecYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -51,7 +51,7 @@ steps:
     params:
       message: 'Hello'
 `
-	testYaml := `api_version: 'cli.abcxyz.dev/v1beta3'
+	testYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`
 
 	cases := []struct {

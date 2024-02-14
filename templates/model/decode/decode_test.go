@@ -26,7 +26,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
-	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentestv1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
@@ -41,12 +41,13 @@ func TestDecode(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name         string
-		requireKind  string
-		fileContents string
-		want         model.ValidatorUpgrader
-		wantVersion  string
-		wantErr      string
+		name           string
+		requireKind    string
+		fileContents   string
+		isReleaseBuild bool
+		want           model.ValidatorUpgrader
+		wantVersion    string
+		wantErr        string
 	}{
 		{
 			name:        "oldest_template",
@@ -146,20 +147,29 @@ steps:
 		{
 			name:        "newest_golden_test",
 			requireKind: KindGoldenTest,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta1'
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 inputs:
   - name: 'foo'
-    value: 'bar'`,
-			want: &goldentestv1alpha1.Test{
-				Inputs: []*goldentestv1alpha1.VarValue{
+    value: 'bar'
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'`,
+			want: &goldentestv1beta4.Test{
+				Inputs: []*goldentestv1beta4.VarValue{
 					{
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},
 					},
 				},
+				BuiltinVars: []*goldentestv1beta4.VarValue{
+					{
+						Name:  model.String{Val: "_git_tag"},
+						Value: model.String{Val: "my-cool-tag"},
+					},
+				},
 			},
-			wantVersion: "cli.abcxyz.dev/v1beta1",
+			wantVersion: "cli.abcxyz.dev/v1beta5",
 		},
 		{
 			name:        "newest_manifest",
@@ -295,8 +305,8 @@ kind: 'GoldenTest'
 builtin_vars:
 - name: '_git_tag'
   value: 'foo'`,
-			want: &goldentestv1beta3.Test{
-				BuiltinVars: []*goldentestv1beta3.VarValue{
+			want: &goldentestv1beta4.Test{
+				BuiltinVars: []*goldentestv1beta4.VarValue{
 					{
 						Name:  model.String{Val: "_git_tag"},
 						Value: model.String{Val: "foo"},
@@ -304,6 +314,34 @@ builtin_vars:
 				},
 			},
 			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version`,
+		},
+		{
+			name:        "golden_test_v1beta5_exceeds_latest_support_api_version",
+			requireKind: KindGoldenTest,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta5'
+kind: 'GoldenTest'
+inputs:
+  - name: 'foo'
+    value: 'bar'
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'`,
+			isReleaseBuild: true,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta5" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+		},
+		{
+			name:        "golden_test_v1beta4_exceeds_latest_support_api_version",
+			requireKind: KindGoldenTest,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta4'
+kind: 'GoldenTest'
+inputs:
+  - name: 'foo'
+    value: 'bar'
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'`,
+			isReleaseBuild: true,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta4" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
 		},
 	}
 
@@ -313,7 +351,7 @@ builtin_vars:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, gotVersion, err := Decode(strings.NewReader(tc.fileContents), "file.yaml", tc.requireKind)
+			got, gotVersion, err := Decode(strings.NewReader(tc.fileContents), "file.yaml", tc.requireKind, tc.isReleaseBuild)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -381,8 +419,8 @@ kind: 'GoldenTest'
 inputs:
   - name: 'foo'
     value: 'bar'`,
-			want: &goldentestv1beta3.Test{
-				Inputs: []*goldentestv1beta3.VarValue{
+			want: &goldentestv1beta4.Test{
+				Inputs: []*goldentestv1beta4.VarValue{
 					{
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},

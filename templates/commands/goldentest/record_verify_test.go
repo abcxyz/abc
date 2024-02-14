@@ -30,7 +30,7 @@ func TestRecordVerify(t *testing.T) {
 	t.Parallel()
 
 	specYAMLContents := `
-api_version: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 desc: 'A simple template'
 inputs:
@@ -45,7 +45,7 @@ steps:
 `
 
 	testYAMLContents := `
-api_version: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 inputs:
 - name: 'path_to_include'
