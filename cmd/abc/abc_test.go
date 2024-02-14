@@ -54,6 +54,11 @@ func TestRootCmd(t *testing.T) {
 			args:    []string{"nonexistent"},
 			wantErr: `unknown command "nonexistent": run "abc -help" for a list of commands`,
 		},
+		{
+			name:    "render_unsupported_api_version",
+			args:    []string{"templates", "render", "../../examples/templates/render/hello_jupiter"},
+			wantErr: `api_version "cli.abcxyz.dev/v1beta5" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+		},
 	}
 
 	for _, tc := range cases {
