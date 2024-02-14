@@ -12,32 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package render
+package goldentest
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/pkg/logging"
 )
 
-func actionPrint(ctx context.Context, p *spec.Print, sp *stepParams) error {
-	scope := sp.scope.With(sp.extraPrintVars)
+// Upgrade implements model.ValidatorUpgrader.
+func (t *Test) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
+	logger := logging.FromContext(ctx).With("logger", "Upgrade")
+	logger.DebugContext(ctx, "finished upgrading goldentest model, this is the most recent version")
 
-	msg, err := parseAndExecuteGoTmpl(p.Message.Pos, p.Message.Val, scope)
-	if err != nil {
-		return err
-	}
-	if !strings.HasSuffix(msg, "\n") {
-		msg += "\n"
-	}
-
-	// We can ignore the int returned from Write() because the docs promise that
-	// incomplete writes always return error.
-	if _, err := sp.rp.Stdout.Write([]byte(msg)); err != nil {
-		return fmt.Errorf("error writing to stdout: %w", err)
-	}
-
-	return nil
+	return nil, model.ErrLatestVersion
 }

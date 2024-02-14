@@ -34,7 +34,7 @@ import (
 func TestNewTestCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta3'
+	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'
@@ -51,7 +51,7 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
-	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta3'
+	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'
@@ -67,7 +67,7 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
-	testYaml := `api_version: cli.abcxyz.dev/v1beta3
+	testYaml := `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 inputs:
     - name: name
@@ -168,7 +168,7 @@ builtin_vars:
 				"testdata/golden/new-test/test.yaml": testYaml,
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 inputs:
     - name: name
@@ -197,7 +197,7 @@ inputs:
 			name:        "template_with_no_inputs",
 			newTestName: "new-test",
 			templateContents: map[string]string{
-				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta3'
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta4'
 kind: 'Template'
 desc: 'A template with no inputs'
 steps:
@@ -208,7 +208,7 @@ steps:
 `,
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 `,
 			},
@@ -345,7 +345,7 @@ func TestNewTestPrompt(t *testing.T) {
 				"_git_tag": "my-cool-tag",
 			},
 			templateContents: map[string]string{
-				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta3'
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta4'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'
@@ -371,7 +371,7 @@ Enter value: `,
 				},
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta3
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 inputs:
     - name: name

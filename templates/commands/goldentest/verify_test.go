@@ -28,7 +28,7 @@ import (
 func TestVerifyCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	specYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -40,7 +40,7 @@ steps:
       paths: ['.']
 `
 
-	printSpecYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	printSpecYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -51,7 +51,7 @@ steps:
     params:
       message: 'Hello'
 `
-	testYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	testYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`
 
 	cases := []struct {
@@ -309,6 +309,17 @@ kind: 'GoldenTest'`
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
 				".gitignore] file content mismatch",
+			},
+		},
+		{
+			name: "simple_test_without_dot_abc_directory_succeeeds",
+			filesContent: map[string]string{
+				"spec.yaml":                        specYaml,
+				"a.txt":                            "file A content",
+				"b.txt":                            "file B content",
+				"testdata/golden/test1/test.yaml":  testYaml,
+				"testdata/golden/test1/data/a.txt": "file A content",
+				"testdata/golden/test1/data/b.txt": "file B content",
 			},
 		},
 	}

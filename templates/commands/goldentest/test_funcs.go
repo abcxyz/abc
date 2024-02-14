@@ -34,7 +34,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 )
 
 // TestCase describes a template golden test case.

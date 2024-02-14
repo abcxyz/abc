@@ -16,15 +16,21 @@ package goldentest
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/jinzhu/copier"
 
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/pkg/logging"
+	v1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 )
 
 // Upgrade implements model.ValidatorUpgrader.
 func (t *Test) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
-	logger := logging.FromContext(ctx).With("logger", "Upgrade")
-	logger.DebugContext(ctx, "finished upgrading goldentest model, this is the most recent version")
+	var out v1beta4.Test
 
-	return nil, model.ErrLatestVersion
+	if err := copier.Copy(&out, t); err != nil {
+		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta3 to v1beta4: %w", err)
+	}
+
+	return &out, nil
 }

@@ -26,13 +26,14 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	"github.com/abcxyz/abc/templates/model/header"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -135,9 +136,11 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 }
 
 func marshalTestCase(inputs, builtinVars map[string]string) ([]byte, error) {
+	apiVersion := decode.LatestSupportedAPIVersion(version.IsReleaseBuild())
+
 	testCase := &goldentest.WithHeader{
 		Header: &header.Fields{
-			NewStyleAPIVersion: model.String{Val: decode.LatestAPIVersion},
+			NewStyleAPIVersion: model.String{Val: apiVersion},
 			Kind:               model.String{Val: decode.KindGoldenTest},
 		},
 		Wrapped: &goldentest.ForMarshaling{
