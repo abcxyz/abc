@@ -46,6 +46,10 @@ var (
 type apiVersionDef struct {
 	apiVersion string
 
+	// Set this to true for api_versions that are still under construction and
+	// should not be supported in official release builds. We don't want real
+	// users using unreleased api_versions which are still under construction
+	// and may receive breaking changes.
 	unreleased bool
 
 	// Map keys are the "kind" values found in the YAML files.
