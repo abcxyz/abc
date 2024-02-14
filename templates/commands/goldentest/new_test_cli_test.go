@@ -67,7 +67,7 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
-	testYaml := `api_version: cli.abcxyz.dev/v1beta4
+	testYaml := `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 inputs:
     - name: name
@@ -168,7 +168,7 @@ builtin_vars:
 				"testdata/golden/new-test/test.yaml": testYaml,
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta4
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 inputs:
     - name: name
@@ -208,7 +208,7 @@ steps:
 `,
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta4
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 `,
 			},
@@ -371,7 +371,7 @@ Enter value: `,
 				},
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta4
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
 kind: GoldenTest
 inputs:
     - name: name

@@ -107,6 +107,9 @@ var apiVersions = []apiVersionDef{
 			KindManifest:   &manifestv1alpha1.Manifest{},
 		},
 	},
+	// Why is v1beta5 the same as v1beta4? It's a simple hack that works around
+	// a bug in abc versions <=0.5.0, for reasons that are very difficult to
+	// understand. See github.com/abcxyz/abc/pull/431 for rationale.
 	{
 		apiVersion: "cli.abcxyz.dev/v1beta5",
 		unreleased: true,
