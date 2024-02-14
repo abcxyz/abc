@@ -16,6 +16,7 @@ package decode
 
 import (
 	"context"
+	goldentestv1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	"reflect"
 	"strings"
 	"testing"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
-	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
@@ -146,20 +146,29 @@ steps:
 		{
 			name:        "newest_golden_test",
 			requireKind: KindGoldenTest,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta1'
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 inputs:
   - name: 'foo'
-    value: 'bar'`,
-			want: &goldentestv1alpha1.Test{
-				Inputs: []*goldentestv1alpha1.VarValue{
+    value: 'bar'
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'`,
+			want: &goldentestv1beta4.Test{
+				Inputs: []*goldentestv1beta4.VarValue{
 					{
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},
 					},
 				},
+				BuiltinVars: []*goldentestv1beta4.VarValue{
+					{
+						Name:  model.String{Val: "_git_tag"},
+						Value: model.String{Val: "my-cool-tag"},
+					},
+				},
 			},
-			wantVersion: "cli.abcxyz.dev/v1beta1",
+			wantVersion: "cli.abcxyz.dev/v1beta5",
 		},
 		{
 			name:        "newest_manifest",
@@ -295,8 +304,8 @@ kind: 'GoldenTest'
 builtin_vars:
 - name: '_git_tag'
   value: 'foo'`,
-			want: &goldentestv1beta3.Test{
-				BuiltinVars: []*goldentestv1beta3.VarValue{
+			want: &goldentestv1beta4.Test{
+				BuiltinVars: []*goldentestv1beta4.VarValue{
 					{
 						Name:  model.String{Val: "_git_tag"},
 						Value: model.String{Val: "foo"},
@@ -381,8 +390,8 @@ kind: 'GoldenTest'
 inputs:
   - name: 'foo'
     value: 'bar'`,
-			want: &goldentestv1beta3.Test{
-				Inputs: []*goldentestv1beta3.VarValue{
+			want: &goldentestv1beta4.Test{
+				Inputs: []*goldentestv1beta4.VarValue{
 					{
 						Name:  model.String{Val: "foo"},
 						Value: model.String{Val: "bar"},
