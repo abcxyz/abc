@@ -274,7 +274,7 @@ func TestHeadTags(t *testing.T) {
 		{
 			name: "git_repo_in_subdir",
 			dir:  "mysubdir",
-			files: abctestutil.WithGitRepoAt("mysubdir/",
+			files: abctestutil.WithGitRepoAt("mysubdir",
 				map[string]string{
 					"mysubdir/.git/refs/tags/v1.2.3": abctestutil.MinimalGitHeadSHA,
 				}),

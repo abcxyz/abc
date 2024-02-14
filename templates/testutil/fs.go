@@ -23,6 +23,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -155,6 +156,9 @@ func LoadDirWithoutMode(t *testing.T, dir string) map[string]string {
 // This is intended to be used with maps that will eventually be passed to
 // WriteAllDefaultMode().
 func WithGitRepoAt(prefix string, m map[string]string) map[string]string {
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
 	out := maps.Clone(m) // to be safe, don't mutate the input map.
 	if out == nil {
 		out = make(map[string]string, len(minimalGitRepoFiles))

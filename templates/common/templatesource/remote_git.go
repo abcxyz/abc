@@ -29,6 +29,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/git"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/sets"
 )
 
 var _ sourceParser = (*remoteGitSourceParser)(nil)
@@ -47,10 +48,6 @@ type remoteGitSourceParser struct {
 	// "${groupname}" to refer to the values captured by the groups of the regex
 	// above.
 
-	// Example: `https://${host}/${org}/${repo}.git`
-	httpsRemoteExpansion string
-	// Example: `git@${host}:${org}/${repo}.git`
-	sshRemoteExpansion string
 	// Example: `${subdir}`
 	subdirExpansion string
 	// Example: `${version}`
@@ -64,55 +61,64 @@ type remoteGitSourceParser struct {
 }
 
 func (g *remoteGitSourceParser) sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error) {
-	logger := logging.FromContext(ctx).With("logger", "remoteGitSourceParser.sourceParse")
+	return newRemoteGitDownloader(&newRemoteGitDownloaderParams{
+		re:             g.re,
+		input:          params.Source,
+		gitProtocol:    params.GitProtocol,
+		defaultVersion: g.defaultVersion,
+	})
+}
 
-	match := g.re.FindStringSubmatchIndex(params.Source)
+// newRemoteGitDownloaderParams contains the parameters to
+// newRemoteGitDownloader.
+type newRemoteGitDownloaderParams struct {
+	// defaultVersion is the template version (e.g. "latest", "v1.2.3") that
+	// will be used if the "re" regular expression either doesn't have a
+	// matching group named "version", or
+	defaultVersion string
+	gitProtocol    string
+	input          string
+	re             *regexp.Regexp
+}
+
+// newRemoteGitDownloader is basically a fancy constructor for
+// remoteGitDownloader. It returns false if the provided input doesn't match the
+// provided regex.
+func newRemoteGitDownloader(p *newRemoteGitDownloaderParams) (Downloader, bool, error) {
+	match := p.re.FindStringSubmatchIndex(p.input)
 	if match == nil {
-		// It's not an error if this regex match fails, it just means that src
-		// isn't formatted as the kind of template source that we're looking
-		// for. It's probably something else, like a local directory name, and
-		// the caller should continue and try a different sourceParser.
 		return nil, false, nil
 	}
 
-	var remote string
-	switch params.GitProtocol {
-	case "https", "":
-		remote = string(g.re.ExpandString(nil, g.httpsRemoteExpansion, params.Source, match))
-	case "ssh":
-		remote = string(g.re.ExpandString(nil, g.sshRemoteExpansion, params.Source, match))
-	default:
-		return nil, false, fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", params.GitProtocol)
+	remote, err := gitRemote(p.re, match, p.input, p.gitProtocol)
+	if err != nil {
+		return nil, false, err
 	}
 
-	if g.warning != "" {
-		logger.WarnContext(ctx, g.warning)
-	}
-
-	version := string(g.re.ExpandString(nil, g.versionExpansion, params.Source, match))
+	version := string(p.re.ExpandString(nil, "${version}", p.input, match))
 	if version == "" {
-		version = g.defaultVersion
+		version = p.defaultVersion
 	}
 
-	canonicalSource := string(g.re.ExpandString(nil, "${host}/${org}/${repo}", params.Source, match))
-	if subdir := string(g.re.ExpandString(nil, "${subdir}", params.Source, match)); subdir != "" {
+	canonicalSource := string(p.re.ExpandString(nil, "${host}/${org}/${repo}", p.input, match))
+	if subdir := string(p.re.ExpandString(nil, "${subdir}", p.input, match)); subdir != "" {
 		canonicalSource += "/" + subdir
 	}
 
-	out := &remoteGitDownloader{
-		remote:          remote,
-		subdir:          string(g.re.ExpandString(nil, g.subdirExpansion, params.Source, match)),
-		version:         version,
-		cloner:          &realCloner{},
-		tagser:          &realTagser{},
-		canonicalSource: canonicalSource,
-	}
+	subdir := string(p.re.ExpandString(nil, "${subdir}", p.input, match))
 
-	return out, true, nil
+	return &remoteGitDownloader{
+		canonicalSource: canonicalSource,
+		cloner:          &realCloner{},
+		remote:          remote,
+		subdir:          subdir,
+		tagser:          &realTagser{},
+		version:         version,
+	}, true, nil
 }
 
-// remoteGitDownloader implements templateSource for templates hosted in a remote git
-// repo, regardless of which git hosting service it uses.
+// remoteGitDownloader implements templateSource for templates hosted in a
+// remote git repo, regardless of which git hosting service it uses.
 type remoteGitDownloader struct {
 	// An HTTPS or SSH connection string understood by "git clone".
 	remote string
@@ -336,4 +342,33 @@ type realTagser struct{}
 
 func (r *realTagser) Tags(ctx context.Context, remote string) ([]string, error) {
 	return git.RemoteTags(ctx, remote) //nolint:wrapcheck
+}
+
+// gitRemote returns a git remote string (see "man git-remote") for the given
+// remote git repo.
+//
+// The host, org, and repo name are provided by the given regex match. The
+// "match" parameter must be the result of calling re.FindStringSubmatchIndex(),
+// and must not be nil. reInput must be the string passed to
+// re.FindStringSubmatchIndex(), this allows us to extract the matched host,
+// org, and repo names that were match by the regex.
+//
+// The given regex must have matching groups (i.e. P<foo>) named "host", "org",
+// and "repo".
+func gitRemote(re *regexp.Regexp, match []int, reInput, gitProtocol string) (string, error) {
+	// Sanity check that the regular expression has the necessary named subgroups.
+	wantSubexps := []string{"host", "org", "repo"}
+	missingSubexps := sets.Subtract(wantSubexps, re.SubexpNames())
+	if len(missingSubexps) > 0 {
+		return "", fmt.Errorf("internal error: regexp expansion didn't have a named subgroup for: %v", missingSubexps)
+	}
+
+	switch gitProtocol {
+	case "https", "":
+		return string(re.ExpandString(nil, "https://${host}/${org}/${repo}.git", reInput, match)), nil
+	case "ssh":
+		return string(re.ExpandString(nil, "git@${host}:${org}/${repo}.git", reInput, match)), nil
+	default:
+		return "", fmt.Errorf("protocol %q isn't usable with a template sourced from a remote git repo", gitProtocol)
+	}
 }
