@@ -1,4 +1,4 @@
-apiVersion: 'cli.abcxyz.dev/v1beta5'
+api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'GoldenTest'
 inputs:
   - name: 'auth0_domain'

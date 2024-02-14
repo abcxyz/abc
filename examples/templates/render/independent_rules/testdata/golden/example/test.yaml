@@ -1,4 +1,4 @@
-apiVersion: 'cli.abcxyz.dev/v1beta5'
+api_version: 'cli.abcxyz.dev/v1beta4'
 kind: 'GoldenTest'
 
 builtin_vars:
