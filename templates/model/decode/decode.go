@@ -243,11 +243,11 @@ func decodeFromVersionKind(filename, apiVersion, kind string, buf []byte) (model
 // isReleaseBuild is the value of version.IsReleaseBuild(), but for testing
 // purposes we make it an argument rather than hardcoding.
 func LatestSupportedAPIVersion(isReleaseBuild bool) string {
-	// Release builds (like "I am the official release of version 1.2.3")
-	// will read and write only only officially released, finalized
-	// api_versions. Other builds (e.g. CI builds, local dev builds, devs
-	// running "go test" on workstations) are more permissive and will read
-	// and write the most recent unreleased work-in-progress api_version.
+	// Release builds (like "I am the official release of version 1.2.3") will
+	// read and write only officially released, finalized api_versions. Other
+	// builds (e.g. CI builds, local dev builds, devs running "go test" on
+	// workstations) are more permissive and will read and write the most recent
+	// unreleased work-in-progress api_version.
 	if !isReleaseBuild {
 		return apiVersions[len(apiVersions)-1].apiVersion
 	}
