@@ -35,7 +35,7 @@ import (
 )
 
 // Called with the contents of a file, and returns the new contents of the file
-// to be written. Debug
+// to be written. Debug.
 type walkAndModifyVisitor func([]byte) ([]byte, error)
 
 // For each given path, recursively traverses the directory or file
