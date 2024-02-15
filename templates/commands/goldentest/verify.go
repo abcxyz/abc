@@ -92,10 +92,6 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	}
 	tempTracker.Track(tempDir)
 
-	if err := renameGitDirsAndFiles(tempDir); err != nil {
-		return fmt.Errorf("failed renaming git related dirs and files: %w", err)
-	}
-
 	var merr error
 
 	// Highlight error message color, given diff text might be hundreds lines long.
@@ -115,6 +111,12 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	for _, tc := range testCases {
 		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
+
+		if !tc.TestConfig.Features.SkipABCRenamed {
+			if err := renameGitDirsAndFiles(tempDataDir); err != nil {
+				return fmt.Errorf("failed renaming git related dirs and files for test case %s: %w", tc.TestName, err)
+			}
+		}
 
 		fileSet := make(map[string]struct{})
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {

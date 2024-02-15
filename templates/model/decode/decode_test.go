@@ -428,7 +428,8 @@ inputs:
 					},
 				},
 				Features: goldentestfeatures.Features{
-					SkipStdout: true,
+					SkipStdout:     true,
+					SkipABCRenamed: true,
 				},
 			},
 		},

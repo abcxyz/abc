@@ -33,7 +33,8 @@ func (t *Test) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta3 to v1beta4: %w", err)
 	}
 	out.Features = features.Features{
-		SkipStdout: true,
+		SkipStdout:     true,
+		SkipABCRenamed: true,
 	}
 
 	return &out, nil

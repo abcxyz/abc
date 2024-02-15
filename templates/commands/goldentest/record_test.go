@@ -237,6 +237,37 @@ kind: 'GoldenTest'`,
 				"test/data/.gitfoo.abc_renamed/file1.txt": "file1",
 			},
 		},
+		{
+			name: "test_with_v1beta3_git_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['.']
+`,
+				"a.txt": "file A content",
+				"b.txt": "file B content",
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				".gitignore":        "gitignore contents",
+				".gitfoo/file1.txt": "file1",
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"test/data/.abc/.gitkeep":     "",
+				"test/data/a.txt":             "file A content",
+				"test/data/b.txt":             "file B content",
+				"test/data/.gitignore":        "gitignore contents",
+				"test/data/.gitfoo/file1.txt": "file1",
+			},
+		},
 	}
 
 	for _, tc := range cases {

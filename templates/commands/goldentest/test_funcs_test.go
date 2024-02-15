@@ -172,7 +172,10 @@ builtin_vars:
 								Value: model.String{Val: "my-cool-tag"},
 							},
 						},
-						Features: features.Features{SkipStdout: true},
+						Features: features.Features{
+							SkipStdout:     true,
+							SkipABCRenamed: true,
+						},
 					},
 				},
 			},

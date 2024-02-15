@@ -341,6 +341,33 @@ kind: 'GoldenTest'`,
 				"testdata/golden/test1/data/b.txt": "file B content",
 			},
 		},
+		{
+			name: "simple_test_with_v1beat3_git_verify_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['.']
+`,
+				"a.txt":             "file A content",
+				"b.txt":             "file B content",
+				".gitignore":        "gitignore contents",
+				".gitfoo/file1.txt": "file1",
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"testdata/golden/test/data/.abc/.gitkeep":     "",
+				"testdata/golden/test/data/a.txt":             "file A content",
+				"testdata/golden/test/data/b.txt":             "file B content",
+				"testdata/golden/test/data/.gitignore":        "gitignore contents",
+				"testdata/golden/test/data/.gitfoo/file1.txt": "file1",
+			},
+		},
 	}
 
 	for _, tc := range cases {
