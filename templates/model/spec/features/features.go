@@ -14,7 +14,7 @@
 
 package features
 
-// Features controls which code paths are enabled in abc goldentest by a given api_version.
+// Features controls which code paths are enabled in abc spec by a given api_version.
 //
 // These should true for old api_versions that don't support the feature, and
 // false for new api_versions that do support the feature. This will allow the

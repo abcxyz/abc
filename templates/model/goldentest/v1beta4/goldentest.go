@@ -54,7 +54,7 @@ type Test struct {
 
 	Inputs      []*VarValue `yaml:"inputs,omitempty"`
 	BuiltinVars []*VarValue `yaml:"builtin_vars,omitempty"`
-	// Features configures which features to use depending on goldentest version.
+	// Features configures which features to use depending on goldentest API version.
 	Features features.Features `yaml:"-"`
 }
 

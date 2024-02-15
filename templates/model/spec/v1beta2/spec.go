@@ -40,7 +40,7 @@ type Spec struct {
 	// as: '.DS_Store, '.bin', '.ssh'.
 	Ignore []model.String `yaml:"ignore"`
 
-	// Features configures which features to use depending on spec version.
+	// Features configures which features to use depending on spec API version.
 	Features features.Features `yaml:"-"`
 }
 
