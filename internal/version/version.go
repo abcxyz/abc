@@ -14,7 +14,11 @@
 
 package version
 
-import "github.com/abcxyz/pkg/buildinfo"
+import (
+	"golang.org/x/mod/semver"
+
+	"github.com/abcxyz/pkg/buildinfo"
+)
 
 var (
 	// Name is the name of the binary. This can be overridden by the build
@@ -44,11 +48,12 @@ var (
 // the official release process (as opposed to a user just running "go build",
 // or running in a CI environment, or something else).
 func IsReleaseBuild() bool {
-	// "source" is a sentinel value returned from buildinfo.Version() when the
-	// build metadata is not present. The build metadata is filled in with the
-	// "-X" flag during release builds, so if it's not present, this binary is
-	// not a release build.
-	return Version != "source"
+	// Binary from release build should follow semver format.
+	// When installing via `go install github.com/abcxyz/abc/cmd/abc@vXXX`,
+	// `Version` is `vXXX` for example `v0.1.0` with `v` prefix.
+	// When installing via downloading artifacts in GitHub directly,
+	// `Version` is `XXX` for example `0.1.0` without `v` prefix.
+	return semver.IsValid("v"+Version) || semver.IsValid(Version)
 }
 
 func valueOrFallback(val string, fn func() string) string {
