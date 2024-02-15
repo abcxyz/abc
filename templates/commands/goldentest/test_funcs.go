@@ -192,7 +192,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 	}
 
 	// write stdout to ".abc/.stdout"
-	// when there is when the goldentest spec enables stdout verification and there is stdout.
+	// when the goldentest spec enables stdout verification and there is stdout.
 	if !tc.TestConfig.Features.SkipStdout && stdoutBuf.Len() > 0 {
 		abcInternal := filepath.Join(testDir, common.ABCInternalDir)
 		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
