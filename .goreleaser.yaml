@@ -33,9 +33,7 @@ builds:
     ldflags:
       - '-s'
       - '-w'
-      - '-X={{ .ModulePath }}/internal/version.name=abc'
-      - '-X={{ .ModulePath }}/internal/version.version={{ .Version }}'
-      - '-X={{ .ModulePath }}/internal/version.commit={{ .Commit }}'
+      - '-X=main.build={{.Version}}'
       - '-extldflags=-static'
     goos:
       - 'darwin'
