@@ -15,8 +15,9 @@
 package version
 
 import (
-	"github.com/abcxyz/pkg/buildinfo"
 	"golang.org/x/mod/semver"
+
+	"github.com/abcxyz/pkg/buildinfo"
 )
 
 var (
