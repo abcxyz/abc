@@ -73,8 +73,6 @@ type Input struct {
 	Desc    model.String  `yaml:"desc"`
 	Default *model.String `yaml:"default,omitempty"`
 	Rules   []*InputRule  `yaml:"rules"`
-
-	// TODO(tyroneclay): add your new field here
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

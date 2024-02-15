@@ -155,8 +155,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_dir_in_different_git_workspace",
 			srcDir:  "src/dir1",
 			destDir: "dst/dir1",
-			initialContents: abctestutil.WithGitRepoAt("src/",
-				abctestutil.WithGitRepoAt("dst/",
+			initialContents: abctestutil.WithGitRepoAt("src",
+				abctestutil.WithGitRepoAt("dst",
 					map[string]string{
 						"src/dir1/spec.yaml": "file1 contents",
 						"src/dir1/file1.txt": "file1 contents",
@@ -178,7 +178,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "source_in_git_but_dest_is_not",
 			srcDir:  "src/dir1",
 			destDir: "dst",
-			initialContents: abctestutil.WithGitRepoAt("src/",
+			initialContents: abctestutil.WithGitRepoAt("src",
 				map[string]string{
 					"src/dir1/spec.yaml": "file1 contents",
 					"src/dir1/file1.txt": "file1 contents",
@@ -200,7 +200,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			name:    "dest_in_git_but_src_is_not",
 			srcDir:  "src",
 			destDir: "dst",
-			initialContents: abctestutil.WithGitRepoAt("dst/",
+			initialContents: abctestutil.WithGitRepoAt("dst",
 				map[string]string{
 					"src/spec.yaml": "file1 contents",
 					"src/file1.txt": "file1 contents",
