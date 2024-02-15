@@ -191,8 +191,9 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		return err //nolint:wrapcheck
 	}
 
-	// write stdout to ".abc/.stdout".
-	if stdoutBuf.Len() > 0 {
+	// write stdout to ".abc/.stdout"
+	// when the goldentest spec enables stdout verification and there is stdout.
+	if !tc.TestConfig.Features.SkipStdout && stdoutBuf.Len() > 0 {
 		abcInternal := filepath.Join(testDir, common.ABCInternalDir)
 		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
 			return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)

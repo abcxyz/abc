@@ -21,6 +21,7 @@ import (
 	"github.com/jinzhu/copier"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/goldentest/features"
 	v1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 )
 
@@ -30,6 +31,9 @@ func (t *Test) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 
 	if err := copier.Copy(&out, t); err != nil {
 		return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta3 to v1beta4: %w", err)
+	}
+	out.Features = features.Features{
+		SkipStdout: true,
 	}
 
 	return &out, nil

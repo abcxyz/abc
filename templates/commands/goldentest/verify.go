@@ -115,8 +115,6 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	for _, tc := range testCases {
 		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
-		goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
-		tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 
 		fileSet := make(map[string]struct{})
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
@@ -178,15 +176,20 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 			}
 		}
 
-		stdoutDiff, err := getStdoutDiff(goldenStdoutFile, tempStdoutFile, dmp)
-		if err != nil {
-			return fmt.Errorf("failed to compare stdout:%w", err)
-		}
-		if hasDiff(stdoutDiff) {
-			failureText := red("the printed messages differ between the recorded golden output and the actual output")
-			err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(stdoutDiff))
-			tcErr = errors.Join(tcErr, err)
-			outputMismatch = true
+		// verify stdout only when SkipStdout flag is set to false.
+		if !tc.TestConfig.Features.SkipStdout {
+			goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+			tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+			stdoutDiff, err := getStdoutDiff(goldenStdoutFile, tempStdoutFile, dmp)
+			if err != nil {
+				return fmt.Errorf("failed to compare stdout:%w", err)
+			}
+			if hasDiff(stdoutDiff) {
+				failureText := red("the printed messages differ between the recorded golden output and the actual output")
+				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(stdoutDiff))
+				tcErr = errors.Join(tcErr, err)
+				outputMismatch = true
+			}
 		}
 
 		if outputMismatch {

@@ -276,6 +276,25 @@ kind: 'GoldenTest'`
 			},
 		},
 		{
+			name: "simple_test_with_v1beta3_skipstdout_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+      message: 'Hello'
+`,
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"testdata/golden/test/data/.abc/.gitkeep": "",
+			},
+		},
+		{
 			name: "simple_test_with_git_verify_succeeds",
 			filesContent: map[string]string{
 				"spec.yaml":                      specYaml,

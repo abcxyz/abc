@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/goldentest/features"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
@@ -171,6 +172,7 @@ builtin_vars:
 								Value: model.String{Val: "my-cool-tag"},
 							},
 						},
+						Features: features.Features{SkipStdout: true},
 					},
 				},
 			},
