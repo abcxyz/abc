@@ -1,5 +1,0 @@
-protoc:
-  version: 'REPLACE_PROTOBUF_VERSION'
-
-lint:
-  group: 'google'

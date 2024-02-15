@@ -1,0 +1,10 @@
+# Learn more https://buf.build/docs/configuration/v1/buf-yaml
+version: 'v1'
+
+breaking:
+  use:
+    - 'FILE'
+
+lint:
+  use:
+    - 'DEFAULT'

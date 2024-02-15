@@ -27,14 +27,17 @@ inputs:
     desc: 'The protobuf version to use, see https://github.com/protocolbuffers/protobuf/releases'
     default: '24.3'
   - name: 'protoc_gen_go_version'
-    desc: 'The protoc go plugin version to use, see https://pkg.go.dev/google.golang.org/protobuf/cmd/protoc-gen-go'
+    desc: 'The protoc gen go version to use, see https://pkg.go.dev/github.com/golang/protobuf/protoc-gen-go'
     default: '1.31.0'
+  - name: 'buf_version'
+    desc: 'The buf version to use, see https://github.com/bufbuild/buf/releases'
+    default: '1.28.1'
+  - name: 'buf_checksum'
+    desc: 'Checksum to validate the buf binary, retrieved from https://github.com/bufbuild/buf/releases'
+    default: '278dd19ef5e6a504bdda16faf1488451'
   - name: 'go_version'
     desc: 'The go version to use'
     default: '1.21.1'
-  - name: 'go_gar_proto_version'
-    desc: 'prefix for the uploaded go GAR artifact'
-    default: 'v0.0.0'
   - name: 'wif_provider'
     desc: 'The WIF provider that has access to the GAR repositories'
   - name: 'wif_service_account'
@@ -52,7 +55,16 @@ steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['protos', 'scripts', '.github', 'prototool.yaml']
+      paths: [
+        'protos',
+        'scripts',
+        '.github',
+        'buf.gen.yaml',
+        'buf.work.yaml',
+        'buf.yaml',
+        'Makefile',
+        'README.md',
+      ]
   - desc: 'Replace proto related configurations'
     action: 'string_replace'
     params:
@@ -66,6 +78,10 @@ steps:
           with: '{{.protobuf_version}}'
         - to_replace: 'REPLACE_PROTOC_GEN_GO_VERSION'
           with: '{{.protoc_gen_go_version}}'
+        - to_replace: 'REPLACE_BUF_VERSION'
+          with: '{{.buf_version}}'
+        - to_replace: 'REPLACE_BUF_CHECKSUM'
+          with: '{{.buf_checksum}}'
         - to_replace: 'REPLACE_GO_VERSION'
           with: '{{.go_version}}'
         - to_replace: 'REPLACE_WIF_PROVIDER'
@@ -80,5 +96,3 @@ steps:
           with: '{{.go_gar_repository_location}}'
         - to_replace: 'REPLACE_GO_MODULE_PATH'
           with: '{{.go_module_path}}'
-        - to_replace: 'REPLACE_GO_GAR_PROTO_VERSION'
-          with: '{{.go_gar_proto_version}}'
