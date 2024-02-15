@@ -114,7 +114,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 
 		if !tc.TestConfig.Features.SkipABCRenamed {
 			if err := renameGitDirsAndFiles(tempDataDir); err != nil {
-				return fmt.Errorf("failed renaming git related dirs and files: %w", err)
+				return fmt.Errorf("failed renaming git related dirs and files for test case %s: %w", tc.TestName, err)
 			}
 		}
 
