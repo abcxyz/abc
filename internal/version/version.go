@@ -49,7 +49,7 @@ var (
 // or running in a CI environment, or something else).
 func IsReleaseBuild() bool {
 	// Binary from release build should follow semver format.
-	return semver.IsValid(Version)
+	return semver.IsValid("v" + Version)
 }
 
 func valueOrFallback(val string, fn func() string) string {
