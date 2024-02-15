@@ -1,4 +1,4 @@
-api_version: 'cli.abcxyz.dev/v1beta5'
+api_version: 'cli.abcxyz.dev/v1beta3'
 kind: 'GoldenTest'
 inputs:
   - name: 'automation_service_account'
