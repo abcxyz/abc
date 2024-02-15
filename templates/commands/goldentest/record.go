@@ -91,10 +91,6 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 	}
 	tempTracker.Track(tempDir)
 
-	if err := renameGitDirsAndFiles(tempDir); err != nil {
-		return fmt.Errorf("failed renaming git related dirs and files: %w", err)
-	}
-
 	var merr error
 	logger := logging.FromContext(ctx)
 
@@ -127,6 +123,13 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
 			return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)
 		}
+
+		if !tc.TestConfig.Features.SkipABCRenamed {
+			if err := renameGitDirsAndFiles(testDir); err != nil {
+				return fmt.Errorf("failed renaming git related dirs and files: %w", err)
+			}
+		}
+
 		// git won't commit an empty directory, so add a placeholder file.
 		gitKeep := filepath.Join(abcInternal, ".gitkeep")
 		if err := os.WriteFile(gitKeep, []byte{}, common.OwnerRWPerms); err != nil {

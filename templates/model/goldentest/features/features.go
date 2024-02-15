@@ -25,4 +25,8 @@ type Features struct {
 	// SkipStdout determines whether to verify stdout or not.
 	// New in github.com/abcxyz/abc/templates/model/goldentest/v1beta4.
 	SkipStdout bool
+
+	// SkipABCRenamed determines whether to rename git/github related dirs/files or not.
+	// New in github.com/abcxyz/abc/templates/model/goldentest/v1beta4.
+	SkipABCRenamed bool
 }
