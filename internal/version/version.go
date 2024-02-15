@@ -49,7 +49,11 @@ var (
 // or running in a CI environment, or something else).
 func IsReleaseBuild() bool {
 	// Binary from release build should follow semver format.
-	return semver.IsValid("v" + Version)
+	// When installing via `go install github.com/abcxyz/abc/cmd/abc@vXXX`,
+	// `Version` is `vXXX` for example `v0.1.0` with `v` prefix.
+	// When installing via downloading artifacts in GitHub directly,
+	// `Version` is `XXX` for example `0.1.0` without `v` prefix.
+	return semver.IsValid("v"+Version) || semver.IsValid(Version)
 }
 
 func valueOrFallback(val string, fn func() string) string {
