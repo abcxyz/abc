@@ -1,28 +1,29 @@
 name: 'upload'
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'main'
-  workflow_dispatch:
 
 permissions:
   contents: 'read'
   id-token: 'write'
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
-  cancel-in-progress: true
+  group: 'upload-${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: false
 
 env:
-  GO_VERSION: 'REPLACE_GO_VERSION'
+  PROJECT_ID: 'REPLACE_PROJECT_ID'
   WIF_PROVIDER: 'REPLACE_WIF_PROVIDER'
   WIF_SERVICE_ACCOUNT: 'REPLACE_WIF_SERVICE_ACCOUNT'
-  PROJECT_ID: 'REPLACE_PROJECT_ID'
+
+  GO_VERSION: 'REPLACE_GO_VERSION'
   GO_GAR_REPOSITORY_NAME: 'REPLACE_GO_GAR_REPOSITORY_NAME'
   GO_GAR_REPOSITORY_LOCATION: 'REPLACE_GO_GAR_REPOSITORY_LOCATION'
   GO_MODULE_PATH: 'REPLACE_GO_MODULE_PATH'
-  GO_GAR_PROTO_VERSION: 'REPLACE_GO_GAR_PROTO_VERSION'
+  GO_GAR_PROTO_SEMVER_PREFIX: 'v0.0.0'
 
 jobs:
   ci:
@@ -37,36 +38,37 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Checkout'
-        uses: 'actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9' # ratchet:actions/checkout@v3
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
+        uses: 'google-github-actions/auth@3a3c4c57d294ef65efaaee4ff17b22fa88dd3c69' # ratchet:google-github-actions/auth@v1
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          token_format: 'access_token'
 
       - name: 'Setup gcloud'
-        uses: 'google-github-actions/setup-gcloud@d51b5346f85640ec2aa2fa057354d2b82c2fcbce' # ratchet:google-github-actions/setup-gcloud@v1
+        uses: 'google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200' # ratchet:google-github-actions/setup-gcloud@v2
         with:
           install_components: 'package-go-module'
 
       - name: 'Setup Go'
-        uses: 'actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753' # ratchet:actions/setup-go@v4
+        uses: 'actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe' # ratchet:actions/setup-go@v4
         with:
           go-version: '${{ env.GO_VERSION }}'
 
-      - name: 'Upload to GAR (go)'
+      - name: 'Upload to go GAR'
         env:
           # version must be prefixed with vX.Y.Z https://cloud.google.com/artifact-registry/docs/go/store-go#package_and_upload_your_module
           # the sha suffix is easily associate a commit with a version.
-          VERSION: '${{ env.GO_GAR_PROTO_VERSION }}-${{ github.sha }}'
+          VERSION: '${{ env.GO_GAR_PROTO_SEMVER_PREFIX }}-${{ github.sha }}'
           GO_GEN_PROTOS_DIRECTORY: './gen/go'
         run: |-
           gcloud artifacts go upload \
-          --module-path='${{ env.GO_MODULE_PATH }}' \
+          --module-path=${{ env.GO_MODULE_PATH }} \
+          --project=${{ env.PROJECT_ID }} \
+          --location=${{ env.GO_GAR_REPOSITORY_LOCATION }} \
+          --repository=${{ env.GO_GAR_REPOSITORY_NAME }} \
           --source=$GO_GEN_PROTOS_DIRECTORY \
-          --project='${{ env.PROJECT_ID }}' \
-          --location='${{ env.GO_GAR_REPOSITORY_LOCATION }}' \
-          --repository='${{ env.GO_GAR_REPOSITORY_NAME }}' \
           --version=$VERSION
