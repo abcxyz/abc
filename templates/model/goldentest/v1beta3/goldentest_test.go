@@ -64,7 +64,7 @@ func TestTestUnmarshal(t *testing.T) {
 			in: `inputs:
 - name: 'person_name'
   value: ''`,
-  			want: &Test{
+			want: &Test{
 				Inputs: []*VarValue{
 					{
 						Name:  model.String{Val: "person_name"},
