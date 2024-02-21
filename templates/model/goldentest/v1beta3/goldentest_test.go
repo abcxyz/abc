@@ -60,10 +60,18 @@ func TestTestUnmarshal(t *testing.T) {
 			want: &Test{},
 		},
 		{
-			name: "missing_field_should_fail",
+			name: "empty_string_value",
 			in: `inputs:
-- name: 'person_name'`,
-			wantErr: `at line 2 column 3: field "value" is required`,
+- name: 'person_name'
+  value: ''`,
+  			want: &Test{
+				Inputs: []*VarValue{
+					{
+						Name:  model.String{Val: "person_name"},
+						Value: model.String{Val: ""},
+					},
+				},
+			},
 		},
 		{
 			name: "unknown_field_should_fail",

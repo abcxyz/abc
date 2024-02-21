@@ -42,7 +42,6 @@ func (i *VarValue) UnmarshalYAML(n *yaml.Node) error {
 func (i *VarValue) Validate() error {
 	return errors.Join(
 		model.NotZeroModel(&i.Pos, i.Name, "name"),
-		model.NotZeroModel(&i.Pos, i.Value, "value"),
 	)
 }
 
