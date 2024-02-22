@@ -101,7 +101,6 @@ var apiVersions = []apiVersionDef{
 	},
 	{
 		apiVersion: "cli.abcxyz.dev/v1beta4",
-		unreleased: true,
 		kinds: map[string]model.ValidatorUpgrader{
 			KindTemplate:   &specv1beta4.Spec{},
 			KindGoldenTest: &goldentestv1beta4.Test{},
@@ -113,7 +112,6 @@ var apiVersions = []apiVersionDef{
 	// understand. See github.com/abcxyz/abc/pull/431 for rationale.
 	{
 		apiVersion: "cli.abcxyz.dev/v1beta5",
-		unreleased: true,
 		kinds: map[string]model.ValidatorUpgrader{
 			KindTemplate:   &specv1beta4.Spec{},
 			KindGoldenTest: &goldentestv1beta4.Test{},
