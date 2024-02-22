@@ -316,34 +316,35 @@ builtin_vars:
 			},
 			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version`,
 		},
-		{
-			name:        "golden_test_v1beta5_exceeds_latest_support_api_version",
-			requireKind: KindGoldenTest,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta5'
-kind: 'GoldenTest'
-inputs:
-  - name: 'foo'
-    value: 'bar'
-builtin_vars:
-  - name: '_git_tag'
-    value: 'my-cool-tag'`,
-			isReleaseBuild: true,
-			wantErr:        `api_version "cli.abcxyz.dev/v1beta5" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
-		},
-		{
-			name:        "golden_test_v1beta4_exceeds_latest_support_api_version",
-			requireKind: KindGoldenTest,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta4'
-kind: 'GoldenTest'
-inputs:
-  - name: 'foo'
-    value: 'bar'
-builtin_vars:
-  - name: '_git_tag'
-    value: 'my-cool-tag'`,
-			isReleaseBuild: true,
-			wantErr:        `api_version "cli.abcxyz.dev/v1beta4" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
-		},
+		// Uncomment once we have an unreleased api_version again:
+		// 		{
+		// 			name:        "golden_test_v1beta5_exceeds_latest_support_api_version",
+		// 			requireKind: KindGoldenTest,
+		// 			fileContents: `api_version: 'cli.abcxyz.dev/v1beta5'
+		// kind: 'GoldenTest'
+		// inputs:
+		//   - name: 'foo'
+		//     value: 'bar'
+		// builtin_vars:
+		//   - name: '_git_tag'
+		//     value: 'my-cool-tag'`,
+		// 			isReleaseBuild: true,
+		// 			wantErr:        `api_version "cli.abcxyz.dev/v1beta5" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+		// 		},
+		// 		{
+		// 			name:        "golden_test_v1beta4_exceeds_latest_support_api_version",
+		// 			requireKind: KindGoldenTest,
+		// 			fileContents: `api_version: 'cli.abcxyz.dev/v1beta4'
+		// kind: 'GoldenTest'
+		// inputs:
+		//   - name: 'foo'
+		//     value: 'bar'
+		// builtin_vars:
+		//   - name: '_git_tag'
+		//     value: 'my-cool-tag'`,
+		// 			isReleaseBuild: true,
+		// 			wantErr:        `api_version "cli.abcxyz.dev/v1beta4" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+		// 		},
 	}
 
 	for _, tc := range cases {
@@ -593,7 +594,7 @@ func TestLatestSupportedAPIVersion(t *testing.T) {
 		{
 			name:           "is_release_build",
 			isReleaseBuild: true,
-			want:           "cli.abcxyz.dev/v1beta3", // update for each api_version release
+			want:           "cli.abcxyz.dev/v1beta5", // update for each api_version release
 		},
 		{
 			name:           "not_release_build",
