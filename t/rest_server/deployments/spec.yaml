@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 desc: 'REST server workflows template'
 inputs:
@@ -47,7 +47,7 @@ steps:
   - desc: 'Include workflow, deployment files'
     action: 'include'
     params:
-      paths: ['workflows', 'config/[environment]-rest-server.env', 'contents']
+      paths: ['workflows', 'config/environment-rest-server.env', 'contents']
       as: ['.github/workflows', '.github/config/{{.environment}}-rest-server.env', '.']
   - desc: 'Replace sentinel values with real input values'
     action: 'string_replace'
