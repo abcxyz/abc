@@ -4,7 +4,7 @@ on:
   issues:
     types: ['opened']
   release:
-    types: ['released']
+    types: ['created']
   workflow_dispatch:
 
 jobs:
