@@ -23,8 +23,43 @@ function post_gen_go {
   cd -
 }
 
+function pre_gen_node {
+  echo "running pre_gen_node"
+
+  # Create the new directory if it doesn't exist
+  if [ ! -d $1 ]; then
+    mkdir -p $1
+  fi
+
+  # Configure package manager to use with npm
+  cat > $1/.npmrc << EOF
+@npm-scope:registry=https://us-npm.pkg.dev/example.com:my-project/my-node-gar/
+//us-npm.pkg.dev/example.com:my-project/my-node-gar/:always-auth=true
+EOF
+
+  # Create the package.json with appropriate version -- same version can never be published twice
+  cat > $1/package.json << EOF
+{ 
+  "name": "@npm-scope/my-node-gar",
+  "version": "$PROTO_VERSION",
+  "main": "index.ts",
+  "scripts": {
+    "artifactregistry-login": "npx google-artifactregistry-auth --repo-config=\".npmrc\" --credential-config=\".npmrc\""
+  }
+}
+EOF
+}
+
+function post_gen_node {
+  echo "running post_gen_node"
+  cd $1
+  npm i
+  cd -
+}
+
 function main {
   pre_gen_go gen/go
+  pre_gen_node gen/node
 
   buf generate
   if [ $? -ne 0 ]; then
@@ -33,6 +68,7 @@ function main {
   fi
 
   post_gen_go gen/go
+  post_gen_node gen/node
 }
 
 main 
