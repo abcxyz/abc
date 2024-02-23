@@ -132,6 +132,9 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("write(%q): %w", testConfigFile, err)
 	}
 
+	fmt.Printf("new test (%q) created successfully, "+
+		"you can run `record` command to record the template rendering result to golden tests\n",
+		c.flags.NewTestName)
 	return nil
 }
 
