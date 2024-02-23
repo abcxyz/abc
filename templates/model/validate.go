@@ -144,6 +144,10 @@ func ValidateUnlessNil(v Validator) error {
 func ValidateEach[T Validator](s []T) error {
 	var merr error
 	for _, v := range s {
+		if rv := reflect.ValueOf(v); rv.Type().Kind() == reflect.Pointer && rv.IsNil() {
+			merr = errors.Join(merr, fmt.Errorf("list element was unexpectedly nil"))
+			continue
+		}
 		merr = errors.Join(merr, v.Validate())
 	}
 
