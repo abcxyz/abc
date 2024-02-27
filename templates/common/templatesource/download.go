@@ -23,8 +23,10 @@ import (
 // A Downloader is returned by a sourceParser. It offers the ability to
 // download a template, and provides some metadata.
 type Downloader interface {
-	// Download downloads this template into the given directory.
-	Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error)
+	// Download downloads this template into templateDir. templateDir should be
+	// a temporary directory. destDir is only used to determine if the template
+	// location is canonical, and is not written to.
+	Download(ctx context.Context, cwd, templateDir, destDir string) (*DownloadMetadata, error)
 }
 
 type DownloadMetadata struct {

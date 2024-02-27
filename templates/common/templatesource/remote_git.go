@@ -139,7 +139,7 @@ type remoteGitDownloader struct {
 }
 
 // Download implements Downloader.
-func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string) (_ *DownloadMetadata, rErr error) {
+func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ string) (_ *DownloadMetadata, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "remoteGitDownloader.Download")
 
 	// Validate first before doing expensive work
@@ -156,9 +156,10 @@ func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string)
 		"input", g.version,
 		"to", versionToDownload)
 
-	// Rather than cloning directly into destDir, we clone into a temp dir. It would
-	// be incorrect to clone the whole repo into destDir if the caller only asked
-	// for a subdirectory, e.g. "github.com/my-org/my-repo/my-subdir@v1.2.3".
+	// Rather than cloning directly into templateDir, we clone into a temp dir.
+	// It would be incorrect to clone the whole repo into templateDir if the
+	// caller only asked for a subdirectory, e.g.
+	// "github.com/my-org/my-repo/my-subdir@v1.2.3".
 	tempTracker := tempdir.NewDirTracker(&common.RealFS{}, false)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 	tmpDir, err := tempTracker.MkdirTempTracked("", "git-clone-")
@@ -186,9 +187,9 @@ func (g *remoteGitDownloader) Download(ctx context.Context, cwd, destDir string)
 		"remote", g.remote,
 		"version", versionToDownload)
 
-	// Copy only the requested subdir to destDir.
+	// Copy only the requested subdir to templateDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
-		DstRoot: destDir,
+		DstRoot: templateDir,
 		SrcRoot: subdirToCopy,
 		FS:      &common.RealFS{},
 		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {

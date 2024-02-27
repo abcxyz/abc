@@ -83,20 +83,22 @@ type LocalDownloader struct {
 	allowDirty bool
 }
 
-func (l *LocalDownloader) Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error) {
+// installedDir is only used to check for canonical-ness.
+func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDir string) (*DownloadMetadata, error) {
 	logger := logging.FromContext(ctx).With("logger", "localTemplateSource.Download")
+
+	templateDir = common.JoinIfRelative(cwd, templateDir)
 
 	logger.DebugContext(ctx, "copying local template source",
 		"srcPath", l.SrcPath,
-		"destDir", destDir)
+		"templateDir", templateDir)
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		SrcRoot: l.SrcPath,
-		DstRoot: destDir,
+		DstRoot: templateDir,
 		FS:      &common.RealFS{},
 	}); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
-
 	gitVars, err := gitTemplateVars(ctx, l.SrcPath)
 	if err != nil {
 		return nil, err
@@ -105,16 +107,13 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 	if err != nil {
 		return nil, err
 	}
-
 	dlMeta := &DownloadMetadata{
 		IsCanonical:     canonicalSource != "",
 		CanonicalSource: canonicalSource,
 		LocationType:    locType,
-
-		HasVersion: version != "",
-		Version:    version,
-
-		Vars: *gitVars,
+		HasVersion:      version != "",
+		Version:         version,
+		Vars:            *gitVars,
 	}
 	return dlMeta, nil
 }
@@ -123,46 +122,43 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, destDir string) (*D
 // directories qualify as a canonical source, and if so, returns the
 // canonicalized version of the source. See the docs on DownloadMetadata for an
 // explanation of canonical sources.
-func canonicalize(ctx context.Context, cwd, src, dest string, allowDirty bool) (canonicalSource, version, locType string, _ error) {
+func canonicalize(ctx context.Context, cwd, source, destDirUltimate string, allowDirty bool) (canonicalSource, version, locType string, _ error) {
 	logger := logging.FromContext(ctx).With("logger", "canonicalize")
 
-	absDest := dest
-	if !filepath.IsAbs(dest) {
-		absDest = filepath.Join(cwd, dest)
-	}
+	absSource := common.JoinIfRelative(cwd, source)
+	absDestDir := common.JoinIfRelative(cwd, destDirUltimate)
 
 	// See the docs on DownloadMetadata for an explanation of why we compare the git
 	// workspaces to decide if source is canonical.
-	sourceGitWorkspace, templateIsGit, err := git.Workspace(ctx, src)
+	sourceGitWorkspace, sourceIsGit, err := git.Workspace(ctx, absSource)
 	if err != nil {
 		return "", "", "", err //nolint:wrapcheck
 	}
-	destGitWorkspace, destIsGit, err := git.Workspace(ctx, absDest)
+	destGitWorkspace, destIsGit, err := git.Workspace(ctx, absDestDir)
 	if err != nil {
 		return "", "", "", err //nolint:wrapcheck
 	}
-	if !templateIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
+	if !sourceIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
 		logger.DebugContext(ctx, "local template source is not canonical, template dir and dest dir do not share a git workspace",
-			"source", src,
-			"dest", absDest,
+			"source_dir", absSource,
+			"dest_dir", absDestDir,
 			"source_git_workspace", sourceGitWorkspace,
 			"dest_git_workspace", destGitWorkspace)
 		return "", "", "", nil
 	}
 
 	logger.DebugContext(ctx, "local template source is canonical because template dir and dest dir are both in the same git workspace",
-		"source", src,
-		"dest", absDest,
+		"source_dir", absSource,
+		"dest", absDestDir,
 		"git_workspace", destGitWorkspace)
-	out, err := filepath.Rel(absDest, src)
+	out, err := filepath.Rel(absDestDir, absSource)
 	if err != nil {
-		return "", "", "", fmt.Errorf("filepath.Rel(%q,%q): %w", dest, src, err)
+		return "", "", "", fmt.Errorf("filepath.Rel(%q,%q): %w", absDestDir, absSource, err)
 	}
 
 	version, _, err = gitCanonicalVersion(ctx, sourceGitWorkspace, allowDirty)
 	if err != nil {
 		return "", "", "", err
 	}
-
 	return filepath.ToSlash(out), version, LocTypeLocalGit, nil
 }

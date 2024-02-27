@@ -23,7 +23,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
-	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -31,51 +30,52 @@ func TestLocalDownloader_Download(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name            string
-		srcDir          string
-		destDir         string
-		initialContents map[string]string
-		wantNewFiles    map[string]string
-		wantDLMeta      *DownloadMetadata
-		wantErr         string
+		name                     string
+		copyFromDir              string
+		destDirForCanonicalCheck string // not actually created or touched, treated as hypothetical render output dir when checking for canonical-ness.
+		initialTempDirContents   map[string]string
+		wantTemplateDirFiles     map[string]string
+		wantDLMeta               *DownloadMetadata
+		wantErr                  string
 	}{
 		{
-			name:    "simple_success",
-			srcDir:  "src",
-			destDir: "dst",
-			initialContents: map[string]string{
-				"src/file1.txt":   "file1 contents",
-				"src/a/file2.txt": "file2 contents",
+			name:        "simple_success",
+			copyFromDir: "copy_from",
+			// copyToDir:                "copy_to",
+			destDirForCanonicalCheck: "dest",
+			initialTempDirContents: map[string]string{
+				"copy_from/file1.txt":   "file1 contents",
+				"copy_from/a/file2.txt": "file2 contents",
 			},
-			wantNewFiles: map[string]string{
-				"dst/file1.txt":   "file1 contents",
-				"dst/a/file2.txt": "file2 contents",
+			wantTemplateDirFiles: map[string]string{
+				"file1.txt":   "file1 contents",
+				"a/file2.txt": "file2 contents",
 			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
 			},
 		},
 		{
-			name:    "nonexistent_source",
-			srcDir:  "nonexistent",
-			wantErr: "nonexistent",
+			name:        "nonexistent_source",
+			copyFromDir: "nonexistent",
+			wantErr:     "nonexistent",
 		},
 		{
-			name:    "dest_dir_in_same_git_workspace",
-			srcDir:  "src",
-			destDir: "dst",
-			initialContents: abctestutil.WithGitRepoAt("",
+			name:                     "dest_dir_in_same_git_workspace",
+			copyFromDir:              "copy_from",
+			destDirForCanonicalCheck: "dest",
+			initialTempDirContents: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					"src/spec.yaml": "file1 contents",
-					"src/file1.txt": "file1 contents",
+					"copy_from/spec.yaml": "spec contents",
+					"copy_from/file1.txt": "file1 contents",
 				}),
-			wantNewFiles: map[string]string{
-				"dst/spec.yaml": "file1 contents",
-				"dst/file1.txt": "file1 contents",
+			wantTemplateDirFiles: map[string]string{
+				"spec.yaml": "spec contents",
+				"file1.txt": "file1 contents",
 			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
-				CanonicalSource: "../src",
+				CanonicalSource: "../copy_from",
 				LocationType:    "local_git",
 				HasVersion:      true,
 				Version:         abctestutil.MinimalGitHeadSHA,
@@ -87,26 +87,26 @@ func TestLocalDownloader_Download(t *testing.T) {
 			},
 		},
 		{
-			name:    "dest_dir_in_same_git_workspace_with_tag",
-			srcDir:  "src",
-			destDir: "dst",
-			initialContents: abctestutil.WithGitRepoAt("",
+			name:                     "dest_dir_in_same_git_workspace_with_tag",
+			copyFromDir:              "copy_from",
+			destDirForCanonicalCheck: "dest",
+			initialTempDirContents: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					"src/spec.yaml": "file1 contents",
-					"src/file1.txt": "file1 contents",
+					"copy_from/spec.yaml": "spec contents",
+					"copy_from/file1.txt": "file1 contents",
 
 					// This assumes that we're using the git repo created by
 					// common.WithGitRepoAt(). We're tweaking the repo structure
 					// to add a tag. The named SHA already exists in the repo.
 					".git/refs/tags/mytag": abctestutil.MinimalGitHeadSHA,
 				}),
-			wantNewFiles: map[string]string{
-				"dst/spec.yaml": "file1 contents",
-				"dst/file1.txt": "file1 contents",
+			wantTemplateDirFiles: map[string]string{
+				"spec.yaml": "spec contents",
+				"file1.txt": "file1 contents",
 			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
-				CanonicalSource: "../src",
+				CanonicalSource: "../copy_from",
 				LocationType:    "local_git",
 				HasVersion:      true,
 				Version:         "mytag",
@@ -118,13 +118,13 @@ func TestLocalDownloader_Download(t *testing.T) {
 			},
 		},
 		{
-			name:    "dest_dir_in_same_git_workspace_with_detached_head",
-			srcDir:  "src",
-			destDir: "dst",
-			initialContents: abctestutil.WithGitRepoAt("",
+			name:                     "dest_dir_in_same_git_workspace_with_detached_head",
+			copyFromDir:              "copy_from",
+			destDirForCanonicalCheck: "dest",
+			initialTempDirContents: abctestutil.WithGitRepoAt("",
 				map[string]string{
-					"src/spec.yaml": "file1 contents",
-					"src/file1.txt": "file1 contents",
+					"copy_from/spec.yaml": "spec contents",
+					"copy_from/file1.txt": "file1 contents",
 
 					// This assumes that we're using the git repo created by
 					// common.WithGitRepoAt(). We're putting the repo in a
@@ -134,13 +134,13 @@ func TestLocalDownloader_Download(t *testing.T) {
 					// SHA in there in means you have a detached head.
 					".git/HEAD": abctestutil.MinimalGitHeadSHA,
 				}),
-			wantNewFiles: map[string]string{
-				"dst/spec.yaml": "file1 contents",
-				"dst/file1.txt": "file1 contents",
+			wantTemplateDirFiles: map[string]string{
+				"spec.yaml": "spec contents",
+				"file1.txt": "file1 contents",
 			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
-				CanonicalSource: "../src",
+				CanonicalSource: "../copy_from",
 				LocationType:    "local_git",
 				HasVersion:      true,
 				Version:         abctestutil.MinimalGitHeadSHA,
@@ -152,19 +152,23 @@ func TestLocalDownloader_Download(t *testing.T) {
 			},
 		},
 		{
-			name:    "dest_dir_in_different_git_workspace",
-			srcDir:  "src/dir1",
-			destDir: "dst/dir1",
-			initialContents: abctestutil.WithGitRepoAt("src",
-				abctestutil.WithGitRepoAt("dst",
+			name:                     "dest_dir_in_different_git_workspace",
+			copyFromDir:              "copy_from",
+			destDirForCanonicalCheck: "dest",
+			// There are two separate git workspaces: one rooted at "dest", and
+			// one at "copy_from". The template location should not be seen as
+			// canonical because we're copying across the boundary of the git
+			// workspace.
+			initialTempDirContents: abctestutil.WithGitRepoAt("dest",
+				abctestutil.WithGitRepoAt("copy_from",
 					map[string]string{
-						"src/dir1/spec.yaml": "file1 contents",
-						"src/dir1/file1.txt": "file1 contents",
+						"copy_from/spec.yaml": "spec contents",
+						"copy_from/file1.txt": "file1 contents",
 					})),
-			wantNewFiles: map[string]string{
-				"dst/dir1/spec.yaml": "file1 contents",
-				"dst/dir1/file1.txt": "file1 contents",
-			},
+			wantTemplateDirFiles: abctestutil.WithGitRepoAt("", map[string]string{
+				"spec.yaml": "spec contents",
+				"file1.txt": "file1 contents",
+			}),
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
 				Vars: DownloaderVars{
@@ -175,18 +179,18 @@ func TestLocalDownloader_Download(t *testing.T) {
 			},
 		},
 		{
-			name:    "source_in_git_but_dest_is_not",
-			srcDir:  "src/dir1",
-			destDir: "dst",
-			initialContents: abctestutil.WithGitRepoAt("src",
+			name:                     "source_in_git_but_dest_is_not",
+			copyFromDir:              "copy_from",
+			destDirForCanonicalCheck: "dest",
+			initialTempDirContents: abctestutil.WithGitRepoAt("copy_from",
 				map[string]string{
-					"src/dir1/spec.yaml": "file1 contents",
-					"src/dir1/file1.txt": "file1 contents",
+					"copy_from/spec.yaml": "spec contents",
+					"copy_from/file1.txt": "file1 contents",
 				}),
-			wantNewFiles: map[string]string{
-				"dst/spec.yaml": "file1 contents",
-				"dst/file1.txt": "file1 contents",
-			},
+			wantTemplateDirFiles: abctestutil.WithGitRepoAt("", map[string]string{
+				"spec.yaml": "spec contents",
+				"file1.txt": "file1 contents",
+			}),
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
 				Vars: DownloaderVars{
@@ -197,17 +201,16 @@ func TestLocalDownloader_Download(t *testing.T) {
 			},
 		},
 		{
-			name:    "dest_in_git_but_src_is_not",
-			srcDir:  "src",
-			destDir: "dst",
-			initialContents: abctestutil.WithGitRepoAt("dst",
+			name:        "source_is_not_in_git_but_dest_is",
+			copyFromDir: "copy_from",
+			initialTempDirContents: abctestutil.WithGitRepoAt("dest",
 				map[string]string{
-					"src/spec.yaml": "file1 contents",
-					"src/file1.txt": "file1 contents",
+					"copy_from/spec.yaml": "spec contents",
+					"copy_from/file1.txt": "file1 contents",
 				}),
-			wantNewFiles: map[string]string{
-				"dst/spec.yaml": "file1 contents",
-				"dst/file1.txt": "file1 contents",
+			wantTemplateDirFiles: map[string]string{
+				"spec.yaml": "spec contents",
+				"file1.txt": "file1 contents",
 			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical: false,
@@ -223,21 +226,21 @@ func TestLocalDownloader_Download(t *testing.T) {
 
 			ctx := context.Background()
 			tmp := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, tmp, tc.initialContents)
+			abctestutil.WriteAllDefaultMode(t, tmp, tc.initialTempDirContents)
 			dl := &LocalDownloader{
-				SrcPath:    filepath.Join(tmp, tc.srcDir),
+				SrcPath:    filepath.Join(tmp, tc.copyFromDir),
 				allowDirty: true,
 			}
-			dest := filepath.Join(tmp, tc.destDir)
-			gotMeta, err := dl.Download(ctx, tmp, dest)
+			dest := filepath.Join(tmp, tc.destDirForCanonicalCheck)
+			templateDir := t.TempDir()
+			gotMeta, err := dl.Download(ctx, tmp, templateDir, dest)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Error(diff)
+				t.Fatal(diff)
 			}
 
-			got := abctestutil.LoadDirWithoutMode(t, tmp)
-			want := sets.UnionMapKeys(tc.initialContents, tc.wantNewFiles)
-			if diff := cmp.Diff(got, want); diff != "" {
-				t.Errorf("output directory contents were not as expected (-got,+want): %s", diff)
+			gotTemplateDir := abctestutil.LoadDirWithoutMode(t, templateDir)
+			if diff := cmp.Diff(gotTemplateDir, tc.wantTemplateDirFiles, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}
 
 			if diff := cmp.Diff(gotMeta, tc.wantDLMeta, cmpopts.EquateEmpty()); diff != "" {

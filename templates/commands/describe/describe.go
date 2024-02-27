@@ -109,7 +109,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	if _, err = downloader.Download(ctx, cwd, templateDir); err != nil {
+	if _, err = downloader.Download(ctx, cwd, templateDir, ""); err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
 

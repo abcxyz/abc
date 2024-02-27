@@ -141,7 +141,7 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir)
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
