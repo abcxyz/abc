@@ -403,3 +403,12 @@ func IsStatNotExistErr(err error) bool {
 	return errors.Is(err, fs.ErrNotExist) ||
 		errors.Is(err, fs.ErrInvalid)
 }
+
+// JoinIfRelative returns path if it's an absolute path, otherwise
+// filepath.Join(cwd, path).
+func JoinIfRelative(cwd, path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(cwd, path)
+}
