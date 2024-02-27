@@ -115,12 +115,13 @@ The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 The golden-test feature is essentially unit testing for templates. You provide
 (1) a set of template input values and (2) the expected output directory
 contents. The test framework verifies that the actual output matches the
-expected output, using the `verify` subcommand. Separately, the `record` subcommand
-helps with capturing the current template output and saving it as the "expected"
-output for future test runs. This concept is similar to "snapshot testing" and
-"[rpc replay testing](https://pkg.go.dev/cloud.google.com/go/rpcreplay)." 
-In addition, the `new-test` subcommand create a new golden test to initialize the needed 
-golden test directory structure and `test.yaml`.
+expected output, using the `verify` subcommand. Separately, the `record`
+subcommand helps with capturing the current template output and saving it as the
+"expected" output for future test runs. This concept is similar to "snapshot
+testing" and
+"[rpc replay testing](https://pkg.go.dev/cloud.google.com/go/rpcreplay)." In
+addition, the `new-test` subcommand creates a new golden test to initialize the
+needed golden test directory structure and `test.yaml`.
 
 Each test is configured by placing a file named `test.yaml` in a subdirectory of
 the template named `testdata/golden/<your-test-name>`. See below for details on
@@ -129,14 +130,15 @@ this file.
 Usage:
 
 - `abc templates golden-test new-test [options] <test_name> [<location>]`
-   see `abc-templates golden-test new-test --help` for supported options.
+  see `abc-templates golden-test new-test --help` for supported options.
 - `abc templates golden-test record [--test-name=<test_name>] [<location>]`
 - `abc templates golden-test verify [--test-name=<test_name>] [<location>]`
 
 Examples:
 
 - `abc templates golden-test new-test basic examples/templates/render/hello_jupiter`
-  creates a new golden-test for the specific named test called `basic` for the given template
+  creates a new golden-test for the specific named test called `basic` for the
+  given template
 - `abc templates golden-test verify examples/templates/render/hello_jupiter`:
   runs all golden-tests for the given template
 - `abc templates golden-test record examples/templates/render/hello_jupiter`:
@@ -444,13 +446,14 @@ features are only available in more recent versions.
 
 The currently valid versions are:
 
-| api_version             | Supported in abc CLI versions | Notes                                                                 |
-|-------------------------|-------------------------------|-----------------------------------------------------------------------|
-| cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                                       |
-| cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step in soec.yaml          |
-| cli.abcxyz.dev/v1beta2  | 0.4.0 and up                  | Adds: <br>- the top-level `ignore` field in spec.yaml<br>- Path globs |
-| cli.abcxyz.dev/v1beta3  | 0.5.0                         | Adds: <br>- `_git_*` builtin variables                                |
-| cli.abcxyz.dev/v1beta4  | unreleased                    | Adds: <br>- indpendent rules                                          |
+| api_version             | Supported in abc CLI versions | Notes                                                                         |
+| ----------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| cli.abcxyz.dev/v1alpha1 | 0.0.0 and up                  | Initial version                                                               |
+| cli.abcxyz.dev/v1beta1  | 0.2.0 and up                  | Adds support for an `if` predicate on each step in soec.yaml                  |
+| cli.abcxyz.dev/v1beta2  | 0.4.0 and up                  | Adds: <br>- the top-level `ignore` field in spec.yaml<br>- Path globs         |
+| cli.abcxyz.dev/v1beta3  | 0.5.0                         | Adds: <br>- `_git_*` builtin variables                                        |
+| cli.abcxyz.dev/v1beta4  | 0.6.0                         | Adds: <br>- independent rules                                                 |
+| cli.abcxyz.dev/v1beta5  | 0.6.0                         | Same as v1beta4 for [complex reasons](https://github.com/abcxyz/abc/pull/431) |
 
 #### Template inputs
 
@@ -538,6 +541,26 @@ inputs:
     rules:
       - rule: 'int(min_size_bytes) <= int(max_size_bytes)'
         message: "the max can't be less than the min"
+```
+
+##### Top-level rules
+
+Most of the time, validation rules will be part of an `inputs` declaration as
+described above. But it's also possible to create validation rules that are
+independent of any input and go at the topmost scope of the spec file.
+
+To use this feature, your spec.yaml must declare
+`api_version: cli.abcxyz.dev/v1beta4` or greater.
+
+Example:
+
+```yaml
+apiVersion: "cli.abcxyz.dev/v1beta4"
+kind: "Template"
+desc: "An example of using independent rules"
+rules:
+  - rule: '_git_sha != ""'
+    message: "this template must be installed from a git repo"
 ```
 
 #### Built-in template variables
