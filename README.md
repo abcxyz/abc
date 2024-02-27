@@ -499,47 +499,47 @@ An example input without a default:
 
 ```yaml
 inputs:
-  - name: 'output_filename'
-    desc: 'The name of the file to create'
+  - name: "output_filename"
+    desc: "The name of the file to create"
 ```
 
 An example input _with_ a default:
 
 ```yaml
 inputs:
-  - name: 'output_filename'
-    description: 'The name of the file to create'
-    default: 'out.txt'
+  - name: "output_filename"
+    description: "The name of the file to create"
+    default: "out.txt"
 ```
 
 An example of parsing an input as an integer:
 
 ```yaml
 inputs:
-  - name: 'disk_size_bytes'
+  - name: "disk_size_bytes"
     rules:
-      - rule: 'int(disk_size_bytes)' # Will fail if disk_size_bytes (which is a string) can't be parsed as int
-        message: 'Must be an integer'
+      - rule: "int(disk_size_bytes)" # Will fail if disk_size_bytes (which is a string) can't be parsed as int
+        message: "Must be an integer"
 ```
 
 An example input with a validation rule:
 
 ```yaml
 inputs:
-  - name: 'project_id_to_use'
+  - name: "project_id_to_use"
     rules:
-      - rule: 'gcp_matches_project_id(project_id_to_use)'
-        message: 'Must be a GCP project ID'
+      - rule: "gcp_matches_project_id(project_id_to_use)"
+        message: "Must be a GCP project ID"
 ```
 
 An example of validating multiple inputs together:
 
 ```yaml
 inputs:
-  - name: 'min_size_bytes'
-  - name: 'max_size_bytes'
+  - name: "min_size_bytes"
+  - name: "max_size_bytes"
     rules:
-      - rule: 'int(min_size_bytes) <= int(max_size_bytes)'
+      - rule: "int(min_size_bytes) <= int(max_size_bytes)"
         message: "the max can't be less than the min"
 ```
 
