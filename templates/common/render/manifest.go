@@ -99,7 +99,6 @@ func writeManifest(ctx context.Context, p *writeManifestParams) (rErr error) {
 
 	if p.dryRun {
 		if _, err := p.fs.Stat(manifestPath); err != nil {
-			// TODO what about force-overwrite?
 			if common.IsStatNotExistErr(err) {
 				// This is good. We don't want to overwrite an existing manifest file,
 				// so that fact that it doesn't already exist is good news.

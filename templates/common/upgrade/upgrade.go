@@ -46,6 +46,8 @@ type Params struct {
 	Prompter     input.Prompter
 	Stdout       io.Writer
 	TempDirBase  string
+
+	AllowDirtyTestOnly bool
 }
 
 // Upgrade TODO
@@ -73,7 +75,13 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 	// the directory where they were installed.
 	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
 
-	downloader, err := templatesource.ForUpgrade(ctx, installedDir, manifest.TemplateLocation.Val, manifest.LocationType.Val, p.GitProtocol)
+	downloader, err := templatesource.ForUpgrade(ctx, &templatesource.ForUpgradeParams{
+		InstalledDir:       installedDir,
+		CanonicalLocation:  manifest.TemplateLocation.Val,
+		LocType:            manifest.LocationType.Val,
+		GitProtocol:        p.GitProtocol,
+		AllowDirtyTestOnly: p.AllowDirtyTestOnly,
+	})
 	if err != nil {
 		return fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
 			manifest.TemplateLocation.Val, manifest.LocationType.Val, p.GitProtocol, err)

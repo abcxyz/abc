@@ -55,7 +55,7 @@ template was originally rendered.
 
 // Hidden implements cli.Command.
 func (c *Command) Hidden() bool {
-	// TODO(#191): unhide the upgrade command when it's ready.
+	// TODO(upgrade): unhide the upgrade command when it's ready.
 	return true
 }
 

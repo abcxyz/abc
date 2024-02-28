@@ -47,7 +47,7 @@ var (
 			`$`) // Anchor the end, must match the entire input
 )
 
-type upgradeDownloaderFactory func(_ context.Context, installedDir, canonicalLocation, gitProtocol string) (Downloader, error)
+type upgradeDownloaderFactory func(context.Context, *ForUpgradeParams) (Downloader, error)
 
 // ForUpgrade takes a location type and canonical location from a manifest file,
 // and returns a downloader that will download the latest version of that
@@ -55,28 +55,28 @@ type upgradeDownloaderFactory func(_ context.Context, installedDir, canonicalLoc
 //
 // destDir is only used for detecting whether the template destination and
 // source are in the same git workspace. It is not written to.
-func ForUpgrade(ctx context.Context, installedDir, canonicalLocation, locType, gitProtocol string) (Downloader, error) {
-	factory, ok := upgradeDownloaderFactories[locType]
+func ForUpgrade(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
+	factory, ok := upgradeDownloaderFactories[f.LocType]
 	if !ok {
-		return nil, fmt.Errorf("unknown location type %q", locType)
+		return nil, fmt.Errorf("unknown location type %q", f.LocType)
 	}
-	return factory(ctx, installedDir, canonicalLocation, gitProtocol)
+	return factory(ctx, f)
 }
 
 type ForUpgradeParams struct {
 	// TODO doc
-	installedDir      string
-	canonicalLocation string
-	locType           string
-	gitProtocol       string
-	allowDirty        bool
+	InstalledDir       string
+	CanonicalLocation  string
+	LocType            string
+	GitProtocol        string
+	AllowDirtyTestOnly bool
 }
 
-func remoteGitUpgradeDownloaderFactory(ctx context.Context, _, canonicalLocation, gitProtocol string) (Downloader, error) {
+func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	downloader, ok, err := newRemoteGitDownloader(&newRemoteGitDownloaderParams{
 		re:             remoteGitUpgradeLocationRE,
-		input:          canonicalLocation,
-		gitProtocol:    gitProtocol,
+		input:          f.CanonicalLocation,
+		gitProtocol:    f.GitProtocol,
 		defaultVersion: "latest",
 	})
 	if err != nil {
@@ -84,13 +84,13 @@ func remoteGitUpgradeDownloaderFactory(ctx context.Context, _, canonicalLocation
 	}
 	if !ok {
 		return nil, fmt.Errorf(`failed parsing canonical location %q with regex "%s"`,
-			canonicalLocation, remoteGitUpgradeLocationRE)
+			f.CanonicalLocation, remoteGitUpgradeLocationRE)
 	}
 
 	return downloader, nil
 }
 
-func localGitUpgradeDownloaderFactory(ctx context.Context, installedDir, canonicalLocation, _ string) (Downloader, error) {
+func localGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	// When upgrading from a local directory, we enforce that the upgrade source
 	// and destination dirs are in the same git workspace. This is a security
 	// consideration: if you clone a git workspace that contains a malicious
@@ -98,11 +98,11 @@ func localGitUpgradeDownloaderFactory(ctx context.Context, installedDir, canonic
 	// the git workspace that it's in.
 	//
 	// We could relax this in the future if we encounter a legitimate use case.
-	absInstalledDir, err := filepath.Abs(installedDir)
+	absInstalledDir, err := filepath.Abs(f.InstalledDir)
 	if err != nil {
 		return nil, err
 	}
-	absSrcPath := filepath.Join(absInstalledDir, canonicalLocation)
+	absSrcPath := filepath.Join(absInstalledDir, f.CanonicalLocation)
 
 	sourceGitWorkspace, ok, err := git.Workspace(ctx, absSrcPath)
 	if err != nil {
@@ -123,6 +123,7 @@ func localGitUpgradeDownloaderFactory(ctx context.Context, installedDir, canonic
 	}
 
 	return &LocalDownloader{
-		SrcPath: absSrcPath,
+		SrcPath:            absSrcPath,
+		allowDirtyTestOnly: f.AllowDirtyTestOnly,
 	}, nil
 }

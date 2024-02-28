@@ -43,7 +43,7 @@ func TestUpgrade(t *testing.T) {
 		wantDestDirContentsAfter map[string]string
 		wantErr                  string
 	}{
-		// TODO: tests to add:
+		// TODO(upgrade): tests to add:
 		//  dirhash unchanged
 		//  file hash mismatches require conflict resolution
 		//  added files/dirs
@@ -112,7 +112,7 @@ creation_time: 1970-01-01T00:00:00Z
 modification_time: 1970-01-01T00:00:00Z
 template_location: ../template_dir
 location_type: local_git
-template_version: 695583c75f480b97dcc6752b8545240d709a802d
+template_version: 5597fc600ead69ad92c81a22b58c9e551cd86b9a
 template_dirhash: h1:d3vExSz6l85xYUPxN2r4p2hq8OgeoOHEzGEhLH873HU=
 inputs:
     - name: foo
@@ -155,11 +155,12 @@ output_hashes:
 			// }
 
 			params := &Params{
-				Clock:        clock.NewMock(),
-				CWD:          destDir,
-				FS:           &common.RealFS{},
-				ManifestPath: filepath.Join(manifestDir, tc.manifestBaseName),
-				Stdout:       &stdoutBuf,
+				Clock:              clock.NewMock(),
+				CWD:                destDir,
+				FS:                 &common.RealFS{},
+				ManifestPath:       filepath.Join(manifestDir, tc.manifestBaseName),
+				Stdout:             &stdoutBuf,
+				AllowDirtyTestOnly: true,
 			}
 			err := Upgrade(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
