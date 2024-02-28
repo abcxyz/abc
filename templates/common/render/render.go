@@ -70,6 +70,12 @@ type Params struct {
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
 
+	// ForceManifestBaseName, if set, will make the output manifest have this
+	// exact filename. It must not contain a slash. This is used during template
+	// upgrades, because we want the new manifest to replace the old manifest,
+	// so we give the new manifest same filename as the old manifest.
+	ForceManifestBaseName string
+
 	// The value of --force-overwrite.
 	ForceOverwrite bool
 
@@ -500,15 +506,16 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 
 		if p.Manifest {
 			if err := writeManifest(ctx, &writeManifestParams{
-				clock:        p.Clock,
-				cwd:          p.Cwd,
-				dlMeta:       cp.dlMeta,
-				destDir:      p.DestDir,
-				dryRun:       dryRun,
-				fs:           p.FS,
-				inputs:       cp.inputs,
-				outputHashes: outputHashes,
-				templateDir:  cp.templateDir,
+				clock:         p.Clock,
+				cwd:           p.Cwd,
+				dlMeta:        cp.dlMeta,
+				destDir:       p.DestDir,
+				dryRun:        dryRun,
+				forceBaseName: p.ForceManifestBaseName,
+				fs:            p.FS,
+				inputs:        cp.inputs,
+				outputHashes:  outputHashes,
+				templateDir:   cp.templateDir,
 			}); err != nil {
 				return err
 			}
