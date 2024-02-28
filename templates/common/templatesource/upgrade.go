@@ -17,6 +17,7 @@ package templatesource
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"regexp"
 
 	"github.com/abcxyz/abc/templates/common/git"
@@ -46,20 +47,32 @@ var (
 			`$`) // Anchor the end, must match the entire input
 )
 
-type upgradeDownloaderFactory func(_ context.Context, canonicalLocation, gitProtocol, destDir string) (Downloader, error)
+type upgradeDownloaderFactory func(_ context.Context, installedDir, canonicalLocation, gitProtocol string) (Downloader, error)
 
 // ForUpgrade takes a location type and canonical location from a manifest file,
 // and returns a downloader that will download the latest version of that
 // template.
-func ForUpgrade(ctx context.Context, canonicalLocation, locType, gitProtocol, destDir string) (Downloader, error) {
+//
+// destDir is only used for detecting whether the template destination and
+// source are in the same git workspace. It is not written to.
+func ForUpgrade(ctx context.Context, installedDir, canonicalLocation, locType, gitProtocol string) (Downloader, error) {
 	factory, ok := upgradeDownloaderFactories[locType]
 	if !ok {
 		return nil, fmt.Errorf("unknown location type %q", locType)
 	}
-	return factory(ctx, canonicalLocation, gitProtocol, destDir)
+	return factory(ctx, installedDir, canonicalLocation, gitProtocol)
 }
 
-func remoteGitUpgradeDownloaderFactory(ctx context.Context, canonicalLocation, gitProtocol, destDir string) (Downloader, error) {
+type ForUpgradeParams struct {
+	// TODO doc
+	installedDir      string
+	canonicalLocation string
+	locType           string
+	gitProtocol       string
+	allowDirty        bool
+}
+
+func remoteGitUpgradeDownloaderFactory(ctx context.Context, _, canonicalLocation, gitProtocol string) (Downloader, error) {
 	downloader, ok, err := newRemoteGitDownloader(&newRemoteGitDownloaderParams{
 		re:             remoteGitUpgradeLocationRE,
 		input:          canonicalLocation,
@@ -77,7 +90,7 @@ func remoteGitUpgradeDownloaderFactory(ctx context.Context, canonicalLocation, g
 	return downloader, nil
 }
 
-func localGitUpgradeDownloaderFactory(ctx context.Context, canonicalLocation, gitProtocol, destDir string) (Downloader, error) {
+func localGitUpgradeDownloaderFactory(ctx context.Context, installedDir, canonicalLocation, _ string) (Downloader, error) {
 	// When upgrading from a local directory, we enforce that the upgrade source
 	// and destination dirs are in the same git workspace. This is a security
 	// consideration: if you clone a git workspace that contains a malicious
@@ -85,25 +98,31 @@ func localGitUpgradeDownloaderFactory(ctx context.Context, canonicalLocation, gi
 	// the git workspace that it's in.
 	//
 	// We could relax this in the future if we encounter a legitimate use case.
-	sourceGitWorkspace, ok, err := git.Workspace(ctx, canonicalLocation)
+	absInstalledDir, err := filepath.Abs(installedDir)
+	if err != nil {
+		return nil, err
+	}
+	absSrcPath := filepath.Join(absInstalledDir, canonicalLocation)
+
+	sourceGitWorkspace, ok, err := git.Workspace(ctx, absSrcPath)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 	if !ok {
-		return nil, fmt.Errorf("for now, upgrading is currently only supported in a git workspace, and %q is not in a git workspace", canonicalLocation)
+		return nil, fmt.Errorf("for now, upgrading is currently only supported in a git workspace, and %q is not in a git workspace", absSrcPath)
 	}
-	destGitWorkspace, ok, err := git.Workspace(ctx, destDir)
+	destGitWorkspace, ok, err := git.Workspace(ctx, absInstalledDir)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 	if !ok {
-		return nil, fmt.Errorf("for now, when upgrading, the upgrade template source must in a git workspace, and %q is not in a git workspace", destDir)
+		return nil, fmt.Errorf("for now, when upgrading, the upgrade template source must in a git workspace, and %q is not in a git workspace", absInstalledDir)
 	}
 	if sourceGitWorkspace != destGitWorkspace {
 		return nil, fmt.Errorf("for now, when upgrading, the template source and destination directories must be in the same git workspace, but they are %q and %q respectively", sourceGitWorkspace, destGitWorkspace)
 	}
 
 	return &LocalDownloader{
-		SrcPath: canonicalLocation,
+		SrcPath: absSrcPath,
 	}, nil
 }

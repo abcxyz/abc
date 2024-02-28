@@ -139,7 +139,7 @@ type remoteGitDownloader struct {
 }
 
 // Download implements Downloader.
-func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ string) (_ *DownloadMetadata, rErr error) {
+func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _, _ string) (_ *DownloadMetadata, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "remoteGitDownloader.Download")
 
 	// Validate first before doing expensive work

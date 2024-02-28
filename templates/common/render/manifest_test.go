@@ -44,6 +44,7 @@ func TestWriteManifest(t *testing.T) {
 		want             map[string]string
 		wantErr          string
 	}{
+		// TODO: test forcing the manifest file name
 		{
 			name: "simple_success_non_canonical",
 			templateContents: map[string]string{

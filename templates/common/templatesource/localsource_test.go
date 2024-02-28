@@ -216,6 +216,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 				IsCanonical: false,
 			},
 		},
+		// TODO test destDirUltimate cases
 	}
 
 	for _, tc := range cases {
@@ -233,7 +234,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			}
 			dest := filepath.Join(tmp, tc.destDirForCanonicalCheck)
 			templateDir := t.TempDir()
-			gotMeta, err := dl.Download(ctx, tmp, templateDir, dest)
+			gotMeta, err := dl.Download(ctx, tmp, templateDir, dest, dest)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

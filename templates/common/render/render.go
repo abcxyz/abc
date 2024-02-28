@@ -65,13 +65,18 @@ type Params struct {
 	DebugStepDiffs bool
 
 	// The value of --dest.
-	DestDir string
+	DestDir         string
+	DestDirUltimate string // TODO
 
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
 
 	// The value of --force-overwrite.
 	ForceOverwrite bool
+
+	// ForceManifestBaseName, if set, will make the output manifest have this
+	// exact filename. It must not contain a slash.
+	ForceManifestBaseName string
 
 	// A fakeable filesystem for error injection in tests.
 	FS common.FS
@@ -141,7 +146,11 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
+	destDirUltimate := p.DestDirUltimate
+	if destDirUltimate == "" {
+		destDirUltimate = p.DestDir
+	}
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir, destDirUltimate)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
@@ -500,15 +509,16 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 
 		if p.Manifest {
 			if err := writeManifest(ctx, &writeManifestParams{
-				clock:        p.Clock,
-				cwd:          p.Cwd,
-				dlMeta:       cp.dlMeta,
-				destDir:      p.DestDir,
-				dryRun:       dryRun,
-				fs:           p.FS,
-				inputs:       cp.inputs,
-				outputHashes: outputHashes,
-				templateDir:  cp.templateDir,
+				clock:         p.Clock,
+				cwd:           p.Cwd,
+				dlMeta:        cp.dlMeta,
+				destDir:       p.DestDir,
+				dryRun:        dryRun,
+				forceBaseName: p.ForceManifestBaseName,
+				fs:            p.FS,
+				inputs:        cp.inputs,
+				outputHashes:  outputHashes,
+				templateDir:   cp.templateDir,
 			}); err != nil {
 				return err
 			}

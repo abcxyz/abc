@@ -18,8 +18,10 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/upgrade"
 	"github.com/abcxyz/abc/templates/model/decode"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/cli"
@@ -68,13 +70,17 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	fSys := c.testFS // allow filesystem interaction to be faked for testing
-	if fSys == nil {
-		fSys = &common.RealFS{}
+	fs := &common.RealFS{}
+
+	absManifestPath, err := filepath.Abs(c.flags.Manifest)
+	if err != nil {
+		return err
 	}
 
-	return c.realRun(ctx, &runParams{
-		fs: fSys,
+	return upgrade.Upgrade(ctx, &upgrade.Params{
+		FS:           fs,
+		ManifestPath: absManifestPath,
+		// TODO all args
 	})
 }
 
