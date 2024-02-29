@@ -40,20 +40,20 @@ inputs:
     desc: 'The project ID where the GARs are hosted'
   - name: 'go_gar_repository_name'
     desc: 'Name of the go GAR'
+    default: 'proto-go'
   - name: 'go_gar_repository_location'
     desc: 'Region of the go GAR'
-  - name: 'go_module_path'
-    desc: 'Module path of the go protos module'
   - name: 'npm_scope'
     desc: 'The npm scope to be used when configuring npm for publishing'
+    default: 'protos'
   - name: 'node_version'
     desc: 'The node version to use'
     default: '20.11.1'
   - name: 'node_gar_repository_name'
     desc: 'Name of the node GAR'
+    default: 'proto-node'
   - name: 'node_gar_repository_location'
     desc: 'Location of the node GAR'
-
 
 steps:
   - desc: 'Include some files and directories'
