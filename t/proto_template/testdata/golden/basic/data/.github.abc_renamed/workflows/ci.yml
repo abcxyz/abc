@@ -20,8 +20,6 @@ concurrency:
 
 env:
   GO_VERSION: '1.21.1'
-  PROTOBUF_VERSION: '24.3'
-  PROTOC_GEN_GO_VERSION: '1.31.0'
   BUF_VERSION: '1.28.1'
   BUF_CHECKSUM: 'buf-checksum'
 
@@ -47,7 +45,7 @@ jobs:
           ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Buf CLI'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
         with:
           download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
           install_path: '${{ runner.temp }}/.buf'
@@ -76,7 +74,7 @@ jobs:
           ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Buf CLI'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
         with:
           download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
           install_path: '${{ runner.temp }}/.buf'
@@ -102,7 +100,7 @@ jobs:
       - 'version'
     steps:
       - name: 'Checkout PR branch'
-        uses: 'actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744' # ratchet:actions/checkout@v3
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
         with:
           ref: '${{ github.event.pull_request.head.ref }}'
 
@@ -112,7 +110,7 @@ jobs:
           go-version: '${{ env.GO_VERSION }}'
 
       - name: 'Setup Buf CLI'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
         with:
           download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
           install_path: '${{ runner.temp }}/.buf'
@@ -120,20 +118,6 @@ jobs:
           checksum: '${{ env.BUF_CHECKSUM }}'
           cache_key: '${{ runner.os }}_${{ runner.arch }}_buf_${{ env.BUF_VERSION }}'
           add_to_path: true
-
-      - name: 'Install protobuf'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
-        with:
-          download_url: 'https://github.com/protocolbuffers/protobuf/releases/download/v${{ env.PROTOBUF_VERSION }}/protoc-${{ env.PROTOBUF_VERSION }}-linux-x86_64.zip'
-          install_path: '${{ runner.temp }}/.protoc'
-          binary_subpath: '.'
-          checksum: 'fc793561283d9ea6813fb757ae54f1afea6770afcd930904bdf3e590910420aa'
-          cache_key: '${{ runner.os }}_${{ runner.arch }}_protoc_${{ env.PROTOBUF_VERSION }}'
-          add_to_path: true
-
-      - name: 'Install protoc-gen-go'
-        run: |
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@v${{ env.PROTOC_GEN_GO_VERSION }}
 
       - name: 'Run Generate'
         env:
@@ -154,12 +138,12 @@ jobs:
     needs: 'build'
     steps:
       - name: 'Checkout PR branch'
-        uses: 'actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744' # ratchet:actions/checkout@v3
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
         with:
           ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Buf CLI'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
         with:
           download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
           install_path: '${{ runner.temp }}/.buf'
