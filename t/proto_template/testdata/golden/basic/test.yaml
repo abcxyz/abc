@@ -11,8 +11,6 @@ inputs:
     value: 'my-org'
   - name: 'github_repo_name'
     value: 'my-repo'
-  - name: 'go_module_path'
-    value: 'mymodule'
   - name: 'go_version'
     value: '1.21.1'
   - name: 'wif_provider'
