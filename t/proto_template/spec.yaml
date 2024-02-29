@@ -50,21 +50,41 @@ inputs:
     desc: 'Region of the go GAR'
   - name: 'go_module_path'
     desc: 'Module path of the go protos module'
+  - name: 'npm_scope'
+    desc: 'The npm scope to be used when configuring npm for publishing'
+  - name: 'node_version'
+    desc: 'The node version to use'
+    default: '20.11.1'
+  - name: 'node_gar_repository_name'
+    desc: 'Name of the node GAR'
+  - name: 'node_gar_repository_location'
+    desc: 'Location of the node GAR'
+
 
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: [
+        '.github',
         'protos',
         'scripts',
-        '.github',
         'buf.gen.yaml',
         'buf.work.yaml',
         'buf.yaml',
         'Makefile',
         'README.md',
+        'version.yaml',
       ]
+      skip:
+        - '.gitignore'
+  - desc: 'Include .gitignore under a different name'
+    action: 'include'
+    params:
+      paths:
+        - '.gitignore_template_rename' # A bare .gitignore file will break the hosting repo
+      as:
+        - '.gitignore'
   - desc: 'Replace proto related configurations'
     action: 'string_replace'
     params:
@@ -96,3 +116,11 @@ steps:
           with: '{{.go_gar_repository_location}}'
         - to_replace: 'REPLACE_GO_MODULE_PATH'
           with: '{{.go_module_path}}'
+        - to_replace: 'REPLACE_NPM_SCOPE'
+          with: '{{.npm_scope}}'
+        - to_replace: 'REPLACE_NODE_VERSION'
+          with: '{{.node_version}}'
+        - to_replace: 'REPLACE_NODE_GAR_REPOSITORY_NAME'
+          with: '{{.node_gar_repository_name}}'
+        - to_replace: 'REPLACE_NODE_GAR_REPOSITORY_LOCATION'
+          with: '{{.node_gar_repository_location}}'

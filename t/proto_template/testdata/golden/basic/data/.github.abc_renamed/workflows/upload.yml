@@ -1,7 +1,6 @@
 name: 'upload'
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - 'main'
@@ -15,6 +14,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  PROTOBUF_VERSION: '24.3'
+  PROTOC_GEN_GO_VERSION: '1.31.0'
+  BUF_VERSION: '1.28.1'
+  BUF_CHECKSUM: 'buf-checksum'
+
   PROJECT_ID: 'example.com:my-project'
   WIF_PROVIDER: 'projects/my-project/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
   WIF_SERVICE_ACCOUNT: 'platform-ops@abcxyz-my-project.iam.gserviceaccount.com'
@@ -23,7 +27,10 @@ env:
   GO_GAR_REPOSITORY_NAME: 'my-go-gar'
   GO_GAR_REPOSITORY_LOCATION: 'us'
   GO_MODULE_PATH: 'mymodule'
-  GO_GAR_PROTO_SEMVER_PREFIX: 'v0.0.0'
+
+  NODE_VERSION: '20.11.1'
+  NODE_GAR_REPOSITORY_NAME: 'my-node-gar'
+  NODE_GAR_REPOSITORY_LOCATION: 'us'
 
 jobs:
   ci:
@@ -32,9 +39,77 @@ jobs:
       contents: 'read'
       id-token: 'write'
 
+  create_artifacts:
+    needs:
+      - 'ci'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+
+      - name: 'Setup Go'
+        uses: 'actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe' # ratchet:actions/setup-go@v4
+        with:
+          go-version: '${{ env.GO_VERSION }}'
+
+      - name: 'Setup Buf CLI'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        with:
+          download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
+          install_path: '${{ runner.temp }}/.buf'
+          binary_subpath: 'buf/bin/buf'
+          checksum: '${{ env.BUF_CHECKSUM }}'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_buf_${{ env.BUF_VERSION }}'
+          add_to_path: true
+
+      - name: 'Install protobuf'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        with:
+          download_url: 'https://github.com/protocolbuffers/protobuf/releases/download/v${{ env.PROTOBUF_VERSION }}/protoc-${{ env.PROTOBUF_VERSION }}-linux-x86_64.zip'
+          install_path: '${{ runner.temp }}/.protoc'
+          binary_subpath: '.'
+          checksum: 'fc793561283d9ea6813fb757ae54f1afea6770afcd930904bdf3e590910420aa'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_protoc_${{ env.PROTOBUF_VERSION }}'
+          add_to_path: true
+
+      - name: 'Install protoc-gen-go'
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v${{ env.PROTOC_GEN_GO_VERSION }}
+
+      - name: 'Run Generate'
+        env:
+          PROTO_VERSION: '${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
+        shell: 'bash'
+        run: |
+          set +e
+          make generate
+          DIFF=$(git status --porcelain)
+          echo $DIFF
+          if [[ -z "${DIFF}" ]]; then
+            echo "::error::Expected a diff but did not find one, proto version must be in semver format."
+            exit 1
+          fi
+
+      - name: 'Upload Go GitHub Artifact'
+        uses: 'actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3' # ratchet:actions/upload-artifact@v4
+        with:
+          name: 'go-${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
+          path: './gen/go'
+          if-no-files-found: 'error'
+          retention-days: 3
+
+      - name: 'Upload Node GitHub Artifact'
+        uses: 'actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3' # ratchet:actions/upload-artifact@v4
+        with:
+          name: 'node-${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
+          path: './gen/node'
+          if-no-files-found: 'error'
+          retention-days: 3
+
   deploy_go:
     needs:
       - 'ci'
+      - 'create_artifacts'
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Checkout'
@@ -58,12 +133,18 @@ jobs:
         with:
           go-version: '${{ env.GO_VERSION }}'
 
+      - name: 'Download go artifact'
+        uses: 'actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe' # ratchet:actions/download-artifact@v4
+        with:
+          pattern: 'go-${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
+          merge-multiple: true
+
       - name: 'Upload to go GAR'
         env:
           # version must be prefixed with vX.Y.Z https://cloud.google.com/artifact-registry/docs/go/store-go#package_and_upload_your_module
           # the sha suffix is easily associate a commit with a version.
-          VERSION: '${{ env.GO_GAR_PROTO_SEMVER_PREFIX }}-${{ github.sha }}'
-          GO_GEN_PROTOS_DIRECTORY: './gen/go'
+          VERSION: 'v${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
+          GO_GEN_PROTOS_DIRECTORY: '.'
         run: |-
           gcloud artifacts go upload \
           --module-path=${{ env.GO_MODULE_PATH }} \
@@ -72,3 +153,41 @@ jobs:
           --repository=${{ env.GO_GAR_REPOSITORY_NAME }} \
           --source=$GO_GEN_PROTOS_DIRECTORY \
           --version=$VERSION
+
+  deploy_npm:
+    needs:
+      - 'ci'
+      - 'create_artifacts'
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@3a3c4c57d294ef65efaaee4ff17b22fa88dd3c69' # ratchet:google-github-actions/auth@v1
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          token_format: 'access_token'
+
+      - name: 'Download node artifact'
+        uses: 'actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe' # ratchet:actions/download-artifact@v4
+        with:
+          pattern: 'node-${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
+          merge-multiple: true
+
+      - name: 'Setup node'
+        uses: 'actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8' # ratchet:actions/setup-node@v4
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+
+      - name: 'Upload to Node GAR'
+        env:
+          VERSION: 'v${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
+        run: |-
+          npm run artifactregistry-login
+          npm publish
