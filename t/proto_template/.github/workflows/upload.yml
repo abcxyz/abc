@@ -48,12 +48,12 @@ jobs:
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
       - name: 'Setup Go'
-        uses: 'actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe' # ratchet:actions/setup-go@v4
+        uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
           go-version: '${{ env.GO_VERSION }}'
 
       - name: 'Setup Buf CLI'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
         with:
           download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
           install_path: '${{ runner.temp }}/.buf'
@@ -63,7 +63,7 @@ jobs:
           add_to_path: true
 
       - name: 'Install protobuf'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
         with:
           download_url: 'https://github.com/protocolbuffers/protobuf/releases/download/v${{ env.PROTOBUF_VERSION }}/protoc-${{ env.PROTOBUF_VERSION }}-linux-x86_64.zip'
           install_path: '${{ runner.temp }}/.protoc'
@@ -115,9 +115,14 @@ jobs:
       - name: 'Checkout'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
+      - name: 'Setup Go'
+        uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
+        with:
+          go-version: '${{ env.GO_VERSION }}'
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@3a3c4c57d294ef65efaaee4ff17b22fa88dd3c69' # ratchet:google-github-actions/auth@v1
+        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
@@ -128,13 +133,8 @@ jobs:
         with:
           install_components: 'package-go-module'
 
-      - name: 'Setup Go'
-        uses: 'actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe' # ratchet:actions/setup-go@v4
-        with:
-          go-version: '${{ env.GO_VERSION }}'
-
       - name: 'Download go artifact'
-        uses: 'actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe' # ratchet:actions/download-artifact@v4
+        uses: 'actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85' # ratchet:actions/download-artifact@v4
         with:
           pattern: 'go-${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
           merge-multiple: true
@@ -166,24 +166,24 @@ jobs:
       - name: 'Checkout'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
+      - name: 'Setup Node'
+        uses: 'actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8' # ratchet:actions/setup-node@v4
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@3a3c4c57d294ef65efaaee4ff17b22fa88dd3c69' # ratchet:google-github-actions/auth@v1
+        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
 
       - name: 'Download node artifact'
-        uses: 'actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe' # ratchet:actions/download-artifact@v4
+        uses: 'actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85' # ratchet:actions/download-artifact@v4
         with:
           pattern: 'node-${{ needs.ci.outputs.proto_version }}-${{ github.sha }}'
           merge-multiple: true
-
-      - name: 'Setup node'
-        uses: 'actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8' # ratchet:actions/setup-node@v4
-        with:
-          node-version: '${{ env.NODE_VERSION }}'
 
       - name: 'Upload to Node GAR'
         env:
