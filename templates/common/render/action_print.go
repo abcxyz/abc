@@ -22,7 +22,7 @@ import (
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
 )
 
-func actionPrint(ctx context.Context, p *spec.Print, sp *stepParams) error {
+func actionPrint(_  context.Context, p *spec.Print, sp *stepParams) error {
 	scope := sp.scope.With(sp.extraPrintVars)
 
 	msg, err := parseAndExecuteGoTmpl(p.Message.Pos, p.Message.Val, scope)

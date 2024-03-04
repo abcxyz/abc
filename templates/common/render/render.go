@@ -65,7 +65,8 @@ type Params struct {
 	DebugStepDiffs bool
 
 	// The value of --dest.
-	DestDir string
+	DestDir         string
+	DestDirUltimate string // TODO
 
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
@@ -147,7 +148,11 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
+	destDirUltimate := p.DestDirUltimate
+	if destDirUltimate == "" {
+		destDirUltimate = p.DestDir
+	}
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir, destDirUltimate)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
@@ -457,7 +462,7 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 
 // scratchContents returns the contents of the scratch dir for debugging purposes; it's
 // only used if --debug-scratch-contents=true.
-func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *stepParams) (string, error) {
+func scratchContents(_ context.Context, stepIdx int, step *spec.Step, sp *stepParams) (string, error) {
 	sb := &strings.Builder{}
 	fmt.Fprintf(sb, "Scratch dir contents after step %d (starting from 0), which is action type %q, defined at spec file line %d:\n",
 		stepIdx, step.Action.Val, step.Action.Pos.Line)

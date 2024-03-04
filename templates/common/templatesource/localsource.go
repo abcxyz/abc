@@ -80,11 +80,11 @@ type LocalDownloader struct {
 
 	// It's too hard in tests to generate a clean git repo, so we provide
 	// this option to just ignore the fact that the git repo is dirty.
-	allowDirty bool
+	allowDirtyTestOnly bool
 }
 
 // installedDir is only used to check for canonical-ness.
-func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDir string) (*DownloadMetadata, error) {
+func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDir, destDirUltimate string) (*DownloadMetadata, error) {
 	logger := logging.FromContext(ctx).With("logger", "localTemplateSource.Download")
 
 	templateDir = common.JoinIfRelative(cwd, templateDir)
@@ -103,7 +103,7 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 	if err != nil {
 		return nil, err
 	}
-	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.SrcPath, destDir, l.allowDirty)
+	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.SrcPath, destDirUltimate, l.allowDirtyTestOnly)
 	if err != nil {
 		return nil, err
 	}

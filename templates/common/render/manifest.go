@@ -156,7 +156,7 @@ func manifestBaseName(p *writeManifestParams, dlMeta *templatesource.DownloadMet
 // buildManifest constructs the manifest struct for the given parameters.
 // canonicalSource is optional, it will be empty in the case where the template
 // location is non-canonical (i.e. installing from ~/mytemplate).
-func buildManifest(ctx context.Context, p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.WithHeader, error) {
+func buildManifest(_ context.Context, p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.WithHeader, error) {
 	templateDirhash, err := dirhash.HashDir(p.templateDir, "", dirhash.Hash1)
 	if err != nil {
 		return nil, fmt.Errorf("dirhash.HashDir: %w", err)

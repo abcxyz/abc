@@ -24,9 +24,10 @@ import (
 // download a template, and provides some metadata.
 type Downloader interface {
 	// Download downloads this template into templateDir. templateDir should be
-	// a temporary directory. destDir is only used to determine if the template
-	// location is canonical, and is not written to.
-	Download(ctx context.Context, cwd, templateDir, destDir string) (*DownloadMetadata, error)
+	// a temporary directory. destDir is the value of the --dest flag; it's
+	// only used to determine if the template location is canonical, and is not
+	// written to. TODO doc destdirultimate
+	Download(ctx context.Context, cwd, templateDir, destDir, destDirUltimate string) (*DownloadMetadata, error)
 }
 
 type DownloadMetadata struct {

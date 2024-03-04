@@ -139,7 +139,7 @@ type remoteGitDownloader struct {
 }
 
 // Download implements Downloader.
-func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ string) (_ *DownloadMetadata, rErr error) {
+func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _, _ string) (_ *DownloadMetadata, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "remoteGitDownloader.Download")
 
 	// Validate first before doing expensive work
@@ -277,7 +277,7 @@ func resolveVersion(ctx context.Context, t tagser, remote, version string) (stri
 	case "":
 		return "", fmt.Errorf("the template source version cannot be empty")
 	case "latest":
-		return resolveLatest(ctx, t, remote, version)
+		return resolveLatest(ctx, t, remote)
 	default:
 		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)
 		return version, nil
@@ -286,7 +286,7 @@ func resolveVersion(ctx context.Context, t tagser, remote, version string) (stri
 
 // resolveLatest retrieves the tags from the remote repository and returns the
 // highest semver tag. An error is thrown if no semver tags are found.
-func resolveLatest(ctx context.Context, t tagser, remote, version string) (string, error) {
+func resolveLatest(ctx context.Context, t tagser, remote string) (string, error) {
 	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
 
 	logger.DebugContext(ctx, `looking up semver tags to resolve "latest"`, "git_remote", remote)
