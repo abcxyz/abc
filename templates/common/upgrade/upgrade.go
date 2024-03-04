@@ -154,8 +154,6 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		SourceForMessages:     manifest.TemplateLocation.Val,
 		Stdout:                p.Stdout,
 		TempDirBase:           p.TempDirBase,
-
-		// TODO(upgrade): add more debug flags
 	}); err != nil {
 		return fmt.Errorf("TODO: %w", err)
 	}
@@ -163,6 +161,7 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 	// TODO(upgrade): much of the upgrade logic is missing here:
 	//   - checking file hashes
 	//   - checking diffs
+	//   - others
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		SrcRoot: mergeDir,
 		DstRoot: installedDir,

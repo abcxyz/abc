@@ -103,6 +103,7 @@ func DebugStepDiffs(d *bool) *cli.BoolVar {
 	}
 }
 
+// Prompt causes the user to be prompted for any needed input values.
 func Prompt(p *bool) *cli.BoolVar {
 	return &cli.BoolVar{
 		Name:   "prompt",

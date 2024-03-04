@@ -124,8 +124,6 @@ output_hashes:
 `,
 			},
 		},
-
-		// TODO(upgrade): many tests are needed
 	}
 
 	for _, tc := range cases {
