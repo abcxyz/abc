@@ -28,6 +28,9 @@ type Flags struct {
 	// See common/flags.DebugScratchContents().
 	DebugScratchContents bool
 
+	// See common/flags.DebugStepDiffs().
+	DebugStepDiffs bool
+
 	// See common/flags.GitProtocol().
 	GitProtocol string
 
@@ -54,6 +57,7 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.StringSliceVar(flags.InputFiles(&f.InputFiles))
 	r.BoolVar(flags.SkipInputValidation(&f.SkipInputValidation))
 	r.BoolVar(flags.DebugScratchContents(&f.DebugScratchContents))
+	r.BoolVar(flags.DebugStepDiffs(&f.DebugStepDiffs))
 	r.BoolVar(flags.KeepTempDirs(&f.KeepTempDirs))
 	r.BoolVar(flags.Prompt(&f.Prompt))
 

@@ -81,16 +81,20 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	return upgrade.Upgrade(ctx, &upgrade.Params{
-		Clock:        clock.New(),
-		CWD:          cwd,
-		FS:           fs,
-		GitProtocol:  c.flags.GitProtocol,
-		InputFiles:   c.flags.InputFiles,
-		Inputs:       c.flags.Inputs,
-		KeepTempDirs: c.flags.KeepTempDirs,
-		ManifestPath: absManifestPath,
-		Prompt:       c.flags.Prompt,
-		Prompter:     c,
-		Stdout:       c.Stdout(),
+		Clock:                clock.New(),
+		CWD:                  cwd,
+		DebugStepDiffs:       c.flags.DebugStepDiffs,
+		DebugScratchContents: c.flags.DebugScratchContents,
+		FS:                   fs,
+		GitProtocol:          c.flags.GitProtocol,
+		InputFiles:           c.flags.InputFiles,
+		Inputs:               c.flags.Inputs,
+		KeepTempDirs:         c.flags.KeepTempDirs,
+		ManifestPath:         absManifestPath,
+		Prompt:               c.flags.Prompt,
+		Prompter:             c,
+		SkipInputValidation:  c.flags.SkipInputValidation,
+
+		Stdout: c.Stdout(),
 	})
 }

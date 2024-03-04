@@ -216,7 +216,6 @@ func TestLocalDownloader_Download(t *testing.T) {
 				IsCanonical: false,
 			},
 		},
-		// TODO test destDirUltimate cases
 	}
 
 	for _, tc := range cases {

@@ -124,6 +124,8 @@ output_hashes:
 `,
 			},
 		},
+
+		// TODO(upgrade): many tests are needed
 	}
 
 	for _, tc := range cases {
@@ -145,16 +147,6 @@ output_hashes:
 
 			ctx := context.Background()
 
-			// // TODO is this necessary or even helpful?
-			// if !tc.gitIsDirty {
-			// 	if _, _, err := common.Run(ctx, "git", "-C", tempBase, "add", "-A"); err != nil {
-			// 		t.Fatal(err)
-			// 	}
-			// 	if _, _, err := common.Run(ctx, "git", "-C", tempBase, "commit", "--no-gpg-sign", "-m", "commit everything for a clean workspace"); err != nil {
-			// 		t.Fatal(err)
-			// 	}
-			// }
-
 			params := &Params{
 				Clock:              clock.NewMock(),
 				CWD:                destDir,
@@ -172,15 +164,6 @@ output_hashes:
 			if diff := cmp.Diff(gotInstalledDirContentsAfter, tc.wantDestDirContentsAfter); diff != "" {
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 			}
-
-			// var gotMergeDirContents map[string]string
-			// mergeDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempBase, tempdir.UpgradeMergeDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
-			// if ok {
-			// 	gotMergeDirContents = abctestutil.LoadDirWithoutMode(t, mergeDir)
-			// }
-			// if diff := cmp.Diff(gotMergeDirContents, tc.wantMergeDirContents); diff != "" {
-			// 	t.Errorf("merge directory contents were not as expected (-got,+want): %s", diff)
-			// }
 		})
 	}
 }

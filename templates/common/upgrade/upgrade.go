@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package upgrade implements template upgrading: taking a directory containing
+// a rendered template and updating it with the latest version of the template.
 package upgrade
 
 import (
@@ -40,6 +42,12 @@ type Params struct {
 	// CWD is the value of os.Getwd(), or in testing, a temp directory.
 	CWD string
 
+	// The value of --debug-scratch-contents.
+	DebugScratchContents bool
+
+	// The value of --debug-step-diffs.
+	DebugStepDiffs bool
+
 	// FS abstracts filesystem operations for error injection testing.
 	FS common.FS
 
@@ -62,6 +70,13 @@ type Params struct {
 	// The value of --prompt.
 	Prompt   bool
 	Prompter input.Prompter
+
+	// The value of --skip-input-validation.
+	SkipInputValidation bool
+
+	// Used in tests to do prompting for inputs even though the input is not a
+	// TTY.
+	skipPromptTTYCheck bool
 
 	// The output stream used to print prompts when Prompt==true.
 	Stdout io.Writer
@@ -87,11 +102,12 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		return err
 	}
 
+	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+
 	// The "merge directory" is yet another temp directory in addition to
 	// the template dir and scratch dir. It holds the output of template
 	// rendering before we merge it with the real template output directory.
-	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
-	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 	mergeDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.UpgradeMergeDirNamePart)
 	if err != nil {
 		return fmt.Errorf("failed creating temp dir: %w", err)
@@ -120,17 +136,23 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 	if err := render.Render(ctx, &render.Params{
 		Clock:                 p.Clock,
 		Cwd:                   p.CWD,
-		OutDir:                mergeDir,
+		DebugStepDiffs:        p.DebugStepDiffs,
 		DestDir:               installedDir,
 		Downloader:            downloader,
 		ForceManifestBaseName: filepath.Base(p.ManifestPath),
 		FS:                    p.FS,
-		Inputs:                inputsToMap(manifest.Inputs),
-		InputFiles:            p.InputFiles,
 		GitProtocol:           p.GitProtocol,
+		InputFiles:            p.InputFiles,
+		Inputs:                inputsToMap(manifest.Inputs),
+		KeepTempDirs:          p.KeepTempDirs,
 		Manifest:              true,
+		OutDir:                mergeDir,
 		Prompt:                p.Prompt,
 		Prompter:              p.Prompter,
+		SkipInputValidation:   p.SkipInputValidation,
+		SkipPromptTTYCheck:    p.skipPromptTTYCheck,
+		SourceForMessages:     manifest.TemplateLocation.Val,
+		Stdout:                p.Stdout,
 		TempDirBase:           p.TempDirBase,
 
 		// TODO(upgrade): add more debug flags

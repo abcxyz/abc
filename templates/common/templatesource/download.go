@@ -20,15 +20,6 @@ import (
 	"context"
 )
 
-// type DownloadParams struct {
-// 	// TODO doc
-
-// 	CWD string
-// 	TemplateDir string
-// 	DestDir string
-// 	UltimateDestDir string
-// }
-
 // A Downloader is returned by a sourceParser. It offers the ability to
 // download a template, and provides some metadata.
 type Downloader interface {
