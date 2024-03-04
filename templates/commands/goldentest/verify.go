@@ -119,6 +119,16 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		}
 
 		fileSet := make(map[string]struct{})
+
+		_, err = os.Stat(goldenDataDir)
+		if err != nil {
+			if common.IsStatNotExistErr(err) {
+				return fmt.Errorf("no recorded test data in %q, "+
+					"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
+			}
+			return fmt.Errorf("failed to stat %q, %w", goldenDataDir, err)
+		}
+
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
 			return err
 		}

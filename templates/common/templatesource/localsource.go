@@ -84,7 +84,7 @@ type LocalDownloader struct {
 }
 
 // installedDir is only used to check for canonical-ness.
-func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDir, destDirUltimate string) (*DownloadMetadata, error) {
+func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDir string) (*DownloadMetadata, error) {
 	logger := logging.FromContext(ctx).With("logger", "localTemplateSource.Download")
 
 	templateDir = common.JoinIfRelative(cwd, templateDir)
@@ -103,7 +103,7 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 	if err != nil {
 		return nil, err
 	}
-	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.SrcPath, destDirUltimate, l.allowDirtyTestOnly)
+	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.SrcPath, destDir, l.allowDirtyTestOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -122,11 +122,11 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 // directories qualify as a canonical source, and if so, returns the
 // canonicalized version of the source. See the docs on DownloadMetadata for an
 // explanation of canonical sources.
-func canonicalize(ctx context.Context, cwd, source, destDirUltimate string, allowDirty bool) (canonicalSource, version, locType string, _ error) {
+func canonicalize(ctx context.Context, cwd, source, destDir string, allowDirty bool) (canonicalSource, version, locType string, _ error) {
 	logger := logging.FromContext(ctx).With("logger", "canonicalize")
 
 	absSource := common.JoinIfRelative(cwd, source)
-	absDestDir := common.JoinIfRelative(cwd, destDirUltimate)
+	absDestDir := common.JoinIfRelative(cwd, destDir)
 
 	// See the docs on DownloadMetadata for an explanation of why we compare the git
 	// workspaces to decide if source is canonical.

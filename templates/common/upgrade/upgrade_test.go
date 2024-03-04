@@ -20,11 +20,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/benbjohnson/clock"
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/benbjohnson/clock"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestUpgrade(t *testing.T) {

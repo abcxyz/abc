@@ -1178,7 +1178,7 @@ steps:
 				Backups:             true,
 				BackupDir:           backupDir,
 				Clock:               clk,
-				DestDir:             dest,
+				OutDir:              dest,
 				Downloader:          &templatesource.LocalDownloader{SrcPath: sourceDir},
 				ForceOverwrite:      tc.flagForceOverwrite,
 				Inputs:              tc.flagInputs,

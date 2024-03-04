@@ -289,7 +289,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 
 			ctx := context.Background()
 			tempDir := t.TempDir()
-			gotDLMeta, err := tc.dl.Download(ctx, "", tempDir, "", "")
+			gotDLMeta, err := tc.dl.Download(ctx, "", tempDir, "")
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

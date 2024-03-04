@@ -64,9 +64,16 @@ type Params struct {
 	// The value of --debug-step-diffs.
 	DebugStepDiffs bool
 
-	// The value of --dest.
-	DestDir         string
-	DestDirUltimate string // TODO
+	// The directory that this operation is targeting, from the user's point of
+	// view. It's sometimes the same as OutDir:
+	//   - When Render() is being called as part of `abc templates render`,
+	//     this is the same as OutDir.
+	//   - When Render() is being called as part of `abc templates upgrade`,
+	//     this is the directory that the template is installed to, and NOT the
+	//     temp dir that receives the output of Render().
+	//
+	// This is optional. If unset, the value of OutDir will be used.
+	DestDir string
 
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
@@ -98,6 +105,9 @@ type Params struct {
 
 	// The value of --manifest.
 	Manifest bool
+
+	// The directory where the rendered output will be written.
+	OutDir string
 
 	// Whether to prompt the user for inputs on stdin in the case where they're
 	// not all provided in Inputs or InputFiles.
@@ -148,11 +158,11 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	destDirUltimate := p.DestDirUltimate
-	if destDirUltimate == "" {
-		destDirUltimate = p.DestDir
+	destDir := p.DestDir
+	if destDir == "" {
+		destDir = p.OutDir
 	}
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir, destDirUltimate)
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, destDir)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
@@ -296,7 +306,7 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 	}
 
 	extraPrintVars = map[string]string{
-		builtinvar.FlagDest:   rp.DestDir,
+		builtinvar.FlagDest:   rp.OutDir,
 		builtinvar.FlagSource: rp.SourceForMessages,
 	}
 
@@ -462,7 +472,7 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 
 // scratchContents returns the contents of the scratch dir for debugging purposes; it's
 // only used if --debug-scratch-contents=true.
-func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *stepParams) (string, error) {
+func scratchContents(_ context.Context, stepIdx int, step *spec.Step, sp *stepParams) (string, error) {
 	sb := &strings.Builder{}
 	fmt.Fprintf(sb, "Scratch dir contents after step %d (starting from 0), which is action type %q, defined at spec file line %d:\n",
 		stepIdx, step.Action.Val, step.Action.Pos.Line)
@@ -510,11 +520,11 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 		}
 
 		if p.Manifest {
-			if err := writeManifest(ctx, &writeManifestParams{
+			if err := writeManifest(&writeManifestParams{
 				clock:         p.Clock,
 				cwd:           p.Cwd,
 				dlMeta:        cp.dlMeta,
-				destDir:       p.DestDir,
+				destDir:       p.OutDir,
 				dryRun:        dryRun,
 				forceBaseName: p.ForceManifestBaseName,
 				fs:            p.FS,
@@ -545,7 +555,7 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		// output dir here to handle the edge case where the template generates
 		// no output files. In that case, the output directory should be created
 		// but empty.
-		if err := p.FS.MkdirAll(p.DestDir, common.OwnerRWXPerms); err != nil {
+		if err := p.FS.MkdirAll(p.OutDir, common.OwnerRWXPerms); err != nil {
 			return nil, fmt.Errorf("failed creating template output directory: %w", err)
 		}
 	}
@@ -591,7 +601,7 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 	params := &common.CopyParams{
 		BackupDirMaker: backupDirMaker,
 		DryRun:         dryRun,
-		DstRoot:        p.DestDir,
+		DstRoot:        p.OutDir,
 		Hasher:         sha256.New,
 		OutHashes:      map[string][]byte{},
 		SrcRoot:        scratchDir,

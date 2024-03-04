@@ -18,13 +18,13 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/upgrade"
-	"github.com/abcxyz/abc/templates/model/decode"
-	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/benbjohnson/clock"
 )
 
 // Command implements cli.Command for template upgrades.
@@ -77,43 +77,26 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("os.Getwd(): %w", err)
+	}
+
 	return upgrade.Upgrade(ctx, &upgrade.Params{
+		Clock: clock.New(),
+		CWD: cwd,
 		FS:           fs,
+		GitProtocol:  c.flags.GitProtocol,
+		InputFiles: c.flags.InputFiles,
+		Inputs: c.flags.Inputs,
+		KeepTempDirs: c.flags.KeepTempDirs,
 		ManifestPath: absManifestPath,
-		// TODO all args
+		Prompt: c.flags.Prompt,
+		Prompter: c,
+		Stdout: c.Stdout(),
 	})
 }
 
 type runParams struct {
 	fs common.FS
-}
-
-func (c *Command) realRun(ctx context.Context, rp *runParams) error {
-	manifest, err := loadManifest(ctx, rp.fs, c.flags.Manifest)
-	if err != nil {
-		return err
-	}
-	_ = manifest
-
-	return nil
-}
-
-func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
-	f, err := fs.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
-	}
-	defer f.Close()
-
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
-	if err != nil {
-		return nil, fmt.Errorf("error reading manifest file: %w", err)
-	}
-
-	out, ok := manifestI.(*manifest.Manifest)
-	if !ok {
-		return nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
-	}
-
-	return out, nil
 }

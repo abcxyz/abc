@@ -114,7 +114,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Cwd:                  wd,
 		DebugScratchContents: c.flags.DebugScratchContents,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
-		DestDir:              c.flags.Dest,
+		OutDir:               c.flags.Dest,
 		Downloader:           downloader,
 		ForceOverwrite:       c.flags.ForceOverwrite,
 		FS:                   fs,

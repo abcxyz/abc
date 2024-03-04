@@ -63,12 +63,26 @@ func ForUpgrade(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	return factory(ctx, f)
 }
 
+// ForUpgradeParams contains the arguments to ForUpgrade().
 type ForUpgradeParams struct {
-	// TODO doc
-	InstalledDir       string
-	CanonicalLocation  string
-	LocType            string
-	GitProtocol        string
+	// InstalledDir is the directory where the template was rendered to, and is
+	// now being upgraded.
+	InstalledDir string
+
+	// CanonicalLocation is the location of the template source, e.g.
+	// github.com/abcxyz/abc/t/foo .
+	CanonicalLocation string
+
+	// One of local_git, remote_git, etc.
+	LocType string
+
+	// The value of --git-protocol.
+	GitProtocol string
+
+	// Normally, when determining if a template location is canonical, any
+	// directory that has uncommitted git changes is not canonical. However,
+	// for testing purposes we sometimes bypass this check and allow dirty git
+	// workspaces to be treated as canonical.
 	AllowDirtyTestOnly bool
 }
 
@@ -100,7 +114,7 @@ func localGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) 
 	// We could relax this in the future if we encounter a legitimate use case.
 	absInstalledDir, err := filepath.Abs(f.InstalledDir)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	absSrcPath := filepath.Join(absInstalledDir, f.CanonicalLocation)
 

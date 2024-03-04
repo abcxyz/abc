@@ -165,17 +165,14 @@ func renderTestCases(ctx context.Context, testCases []*TestCase, location string
 func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *TestCase) error {
 	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName, testDataDir)
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("os.Getwd(): %w", err)
-	}
+ 
 
 	stdoutBuf := &strings.Builder{}
 
 	err = render.Render(ctx, &render.Params{
 		Clock:               clock.New(),
 		Cwd:                 cwd,
-		DestDir:             testDir,
+		OutDir:              testDir,
 		Downloader:          &templatesource.LocalDownloader{SrcPath: templateDir},
 		FS:                  &common.RealFS{},
 		Inputs:              varValuesToMap(tc.TestConfig.Inputs),

@@ -22,6 +22,8 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"github.com/benbjohnson/clock"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render"
@@ -29,28 +31,52 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model/decode"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
-	"github.com/benbjohnson/clock"
 )
 
 // Params contains all the arguments to Upgrade().
 type Params struct {
-	Clock        clock.Clock
-	CWD          string
-	FS           common.FS
-	GitProtocol  string
-	InputFiles   []string
-	Inputs       map[string]string
-	KeepTempDirs bool
-	ManifestPath string // Must be an absolute path.
-	Prompt       bool
-	Prompter     input.Prompter
-	Stdout       io.Writer
-	TempDirBase  string
+	Clock clock.Clock
 
+	// CWD is the value of os.Getwd(), or in testing, a temp directory.
+	CWD string
+
+	// FS abstracts filesystem operations for error injection testing.
+	FS common.FS
+
+	// The value of --git-protocol.
+	GitProtocol string
+
+	// The value of --input-file.
+	InputFiles []string
+
+	// The value of --input.
+	Inputs map[string]string
+
+	// The value of --keep-temp-dirs.
+	KeepTempDirs bool
+
+	// The path to the manifest file where the template was previously installed
+	// to that will now be upgraded.
+	ManifestPath string // Must be an absolute path.
+
+	// The value of --prompt.
+	Prompt   bool
+	Prompter input.Prompter
+
+	// The output stream used to print prompts when Prompt==true.
+	Stdout io.Writer
+
+	// Empty string, except in tests. Will be used as the parent of temp dirs.
+	TempDirBase string
+
+	// For testing, allow template directories in dirty git workspaces to be
+	// treated as canonical.
 	AllowDirtyTestOnly bool
 }
 
-// Upgrade TODO
+// Upgrade takes a directory containing previously rendered template output and
+// updates it using the newest version of the template, which is pointed to by
+// the manifest file.
 func Upgrade(ctx context.Context, p *Params) (rErr error) {
 	if !filepath.IsAbs(p.ManifestPath) {
 		return fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
@@ -87,12 +113,15 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 			manifest.TemplateLocation.Val, manifest.LocationType.Val, p.GitProtocol, err)
 	}
 
-	// TODO: handle "include from destination"
+	// TODO(upgrade): check the dirhash of the downloaded template, and
+	// short-circuit if the the installed version is already the newest.
+
+	// TODO(upgrade): handle "include from destination" as a special case
 	if err := render.Render(ctx, &render.Params{
 		Clock:                 p.Clock,
 		Cwd:                   p.CWD,
-		DestDir:               mergeDir,
-		DestDirUltimate:       installedDir,
+		OutDir:                mergeDir,
+		DestDir:               installedDir,
 		Downloader:            downloader,
 		ForceManifestBaseName: filepath.Base(p.ManifestPath),
 		FS:                    p.FS,
@@ -104,13 +133,15 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		Prompter:              p.Prompter,
 		TempDirBase:           p.TempDirBase,
 
-		// TODO: debug flags?
+		// TODO(upgrade): add more debug flags
 	}); err != nil {
 		return fmt.Errorf("TODO: %w", err)
 	}
 
-	// TODO: more sophisticated: check hashes, etc
-	common.CopyRecursive(ctx, nil, &common.CopyParams{
+	// TODO(upgrade): much of the upgrade logic is missing here:
+	//   - checking file hashes
+	//   - checking diffs
+	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		SrcRoot: mergeDir,
 		DstRoot: installedDir,
 		DryRun:  false,
@@ -121,7 +152,9 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		},
 		FS:     p.FS,
 		Hasher: sha256.New,
-	})
+	}); err != nil {
+		return err // nolint:wrapcheck
+	}
 
 	return nil
 }
