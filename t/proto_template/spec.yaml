@@ -23,12 +23,6 @@ inputs:
     desc: 'The name of the github org the repo will belong to'
   - name: 'github_repo_name'
     desc: 'The name of the github repo'
-  - name: 'protobuf_version'
-    desc: 'The protobuf version to use, see https://github.com/protocolbuffers/protobuf/releases'
-    default: '24.3'
-  - name: 'protoc_gen_go_version'
-    desc: 'The protoc gen go version to use, see https://pkg.go.dev/github.com/golang/protobuf/protoc-gen-go'
-    default: '1.31.0'
   - name: 'buf_version'
     desc: 'The buf version to use, see https://github.com/bufbuild/buf/releases'
     default: '1.28.1'
@@ -46,25 +40,45 @@ inputs:
     desc: 'The project ID where the GARs are hosted'
   - name: 'go_gar_repository_name'
     desc: 'Name of the go GAR'
+    default: 'proto-go'
   - name: 'go_gar_repository_location'
     desc: 'Region of the go GAR'
-  - name: 'go_module_path'
-    desc: 'Module path of the go protos module'
+  - name: 'npm_scope'
+    desc: 'The npm scope to be used when configuring npm for publishing'
+    default: 'protos'
+  - name: 'node_version'
+    desc: 'The node version to use'
+    default: '20.11.1'
+  - name: 'node_gar_repository_name'
+    desc: 'Name of the node GAR'
+    default: 'proto-node'
+  - name: 'node_gar_repository_location'
+    desc: 'Location of the node GAR'
 
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
       paths: [
+        '.github',
         'protos',
         'scripts',
-        '.github',
         'buf.gen.yaml',
         'buf.work.yaml',
         'buf.yaml',
         'Makefile',
         'README.md',
+        'version.yaml',
       ]
+      skip:
+        - '.gitignore'
+  - desc: 'Include .gitignore under a different name'
+    action: 'include'
+    params:
+      paths:
+        - '.gitignore_template_rename' # A bare .gitignore file will break the hosting repo
+      as:
+        - '.gitignore'
   - desc: 'Replace proto related configurations'
     action: 'string_replace'
     params:
@@ -74,10 +88,6 @@ steps:
           with: '{{.github_org_name}}'
         - to_replace: 'REPLACE_GITHUB_REPO_NAME'
           with: '{{.github_repo_name}}'
-        - to_replace: 'REPLACE_PROTOBUF_VERSION'
-          with: '{{.protobuf_version}}'
-        - to_replace: 'REPLACE_PROTOC_GEN_GO_VERSION'
-          with: '{{.protoc_gen_go_version}}'
         - to_replace: 'REPLACE_BUF_VERSION'
           with: '{{.buf_version}}'
         - to_replace: 'REPLACE_BUF_CHECKSUM'
@@ -94,5 +104,11 @@ steps:
           with: '{{.go_gar_repository_name}}'
         - to_replace: 'REPLACE_GO_GAR_REPOSITORY_LOCATION'
           with: '{{.go_gar_repository_location}}'
-        - to_replace: 'REPLACE_GO_MODULE_PATH'
-          with: '{{.go_module_path}}'
+        - to_replace: 'REPLACE_NPM_SCOPE'
+          with: '{{.npm_scope}}'
+        - to_replace: 'REPLACE_NODE_VERSION'
+          with: '{{.node_version}}'
+        - to_replace: 'REPLACE_NODE_GAR_REPOSITORY_NAME'
+          with: '{{.node_gar_repository_name}}'
+        - to_replace: 'REPLACE_NODE_GAR_REPOSITORY_LOCATION'
+          with: '{{.node_gar_repository_location}}'

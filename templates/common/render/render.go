@@ -71,12 +71,14 @@ type Params struct {
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
 
+	// ForceManifestBaseName, if set, will make the output manifest have this
+	// exact filename. It must not contain a slash. This is used during template
+	// upgrades, because we want the new manifest to replace the old manifest,
+	// so we give the new manifest same filename as the old manifest.
+	ForceManifestBaseName string
+
 	// The value of --force-overwrite.
 	ForceOverwrite bool
-
-	// ForceManifestBaseName, if set, will make the output manifest have this
-	// exact filename. It must not contain a slash.
-	ForceManifestBaseName string
 
 	// A fakeable filesystem for error injection in tests.
 	FS common.FS

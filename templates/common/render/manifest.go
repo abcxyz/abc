@@ -60,9 +60,10 @@ type writeManifestParams struct {
 	// dryRun creates the manifest in memory but doesn't write it to a file.
 	dryRun bool
 
-	// forceBaseName, if set, will override all other fields and set the
-	// filename of the manifest to this exact value. It must not contain a
-	// slash.
+	// forceBaseName, if set, will make the output manifest have this
+	// exact filename. It must not contain a slash. This is used during template
+	// upgrades, because we want the new manifest to replace the old manifest,
+	// so we give the new manifest same filename as the old manifest.
 	forceBaseName string
 
 	// A fakeable filesystem for testing errors.
