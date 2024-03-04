@@ -21,10 +21,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/benbjohnson/clock"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/upgrade"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/benbjohnson/clock"
 )
 
 // Command implements cli.Command for template upgrades.
@@ -72,7 +73,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 	absManifestPath, err := filepath.Abs(c.flags.Manifest)
 	if err != nil {
-		return err
+		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Manifest, err)
 	}
 
 	cwd, err := os.Getwd()
@@ -80,7 +81,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
-	return upgrade.Upgrade(ctx, &upgrade.Params{
+	return upgrade.Upgrade(ctx, &upgrade.Params{ //nolint:wrapcheck
 		Clock:                clock.New(),
 		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,

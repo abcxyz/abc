@@ -130,7 +130,7 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 	}
 
 	// TODO(upgrade): check the dirhash of the downloaded template, and
-	// short-circuit if the the installed version is already the newest.
+	// short-circuit if the installed version is already the newest.
 
 	// TODO(upgrade): handle "include from destination" as a special case
 	if err := render.Render(ctx, &render.Params{
@@ -174,7 +174,7 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		FS:     p.FS,
 		Hasher: sha256.New,
 	}); err != nil {
-		return err // nolint:wrapcheck
+		return err //nolint:wrapcheck
 	}
 
 	return nil
