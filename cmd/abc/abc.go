@@ -25,6 +25,7 @@ import (
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
+	"github.com/abcxyz/abc/templates/commands/llm"
 	"github.com/abcxyz/abc/templates/commands/render"
 	"github.com/abcxyz/abc/templates/commands/upgrade"
 	"github.com/abcxyz/pkg/cli"
@@ -65,6 +66,9 @@ var rootCmd = func() *cli.RootCommand {
 									},
 								},
 							}
+						},
+						"llm": func() cli.Command {
+							return &llm.Command{}
 						},
 						"render": func() cli.Command {
 							return &render.Command{}
