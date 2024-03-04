@@ -906,7 +906,7 @@ func TestActionInclude(t *testing.T) {
 				scratchDir:     scratchDir,
 				templateDir:    templateDir,
 				rp: &Params{
-					DestDir: destDir,
+					OutDir: destDir,
 
 					FS: &common.ErrorFS{
 						FS:      &common.RealFS{},

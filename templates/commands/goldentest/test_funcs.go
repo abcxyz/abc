@@ -175,7 +175,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 	err = render.Render(ctx, &render.Params{
 		Clock:               clock.New(),
 		Cwd:                 cwd,
-		DestDir:             testDir,
+		OutDir:              testDir,
 		Downloader:          &templatesource.LocalDownloader{SrcPath: templateDir},
 		FS:                  &common.RealFS{},
 		Inputs:              varValuesToMap(tc.TestConfig.Inputs),
