@@ -110,7 +110,7 @@ func localGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) 
 	// We could relax this in the future if we encounter a legitimate use case.
 	absInstalledDir, err := filepath.Abs(f.InstalledDir)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	absSrcPath := filepath.Join(absInstalledDir, f.CanonicalLocation)
 
