@@ -84,7 +84,7 @@ type LocalDownloader struct {
 }
 
 // installedDir is only used to check for canonical-ness.
-func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDir, destDirUltimate string) (*DownloadMetadata, error) {
+func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDirUltimate string) (*DownloadMetadata, error) {
 	logger := logging.FromContext(ctx).With("logger", "localTemplateSource.Download")
 
 	templateDir = common.JoinIfRelative(cwd, templateDir)

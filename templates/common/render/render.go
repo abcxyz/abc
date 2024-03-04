@@ -64,9 +64,19 @@ type Params struct {
 	// The value of --debug-step-diffs.
 	DebugStepDiffs bool
 
-	// The value of --dest.
-	DestDir         string
-	DestDirUltimate string // TODO
+	// The directory where the rendered output will be written.
+	DestDir string
+
+	// The directory that this operation is targeting, from the user's point of
+	// view. It's sometimes the same as DestDir:
+	//   - When Render() is being called as part of `abc templates render`,
+	//     this is the same as DestDir.
+	//   - When Render() is being called as part of `abc templates upgrade`,
+	//     this is the directory that the template is installed to, and NOT the
+	//     temp dir that receives the output of Render().
+	//
+	// This is optional. If unset, the value of DestDir will be used.
+	DestDirUltimate string
 
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
@@ -152,7 +162,7 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	if destDirUltimate == "" {
 		destDirUltimate = p.DestDir
 	}
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir, destDirUltimate)
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, destDirUltimate)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
@@ -510,7 +520,7 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 		}
 
 		if p.Manifest {
-			if err := writeManifest(ctx, &writeManifestParams{
+			if err := writeManifest(&writeManifestParams{
 				clock:         p.Clock,
 				cwd:           p.Cwd,
 				dlMeta:        cp.dlMeta,
