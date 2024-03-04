@@ -49,12 +49,8 @@ var (
 
 type upgradeDownloaderFactory func(context.Context, *ForUpgradeParams) (Downloader, error)
 
-// ForUpgrade takes a location type and canonical location from a manifest file,
-// and returns a downloader that will download the latest version of that
-// template.
-//
-// destDir is only used for detecting whether the template destination and
-// source are in the same git workspace. It is not written to.
+// ForUpgrade takes information from the flags and manifest file, and returns a
+// downloader that will download the latest version of that template.
 func ForUpgrade(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	factory, ok := upgradeDownloaderFactories[f.LocType]
 	if !ok {
@@ -63,12 +59,26 @@ func ForUpgrade(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	return factory(ctx, f)
 }
 
+// ForUpgradeParams contains the arguments to ForUpgrade().
 type ForUpgradeParams struct {
-	// TODO doc
-	InstalledDir       string
-	CanonicalLocation  string
-	LocType            string
-	GitProtocol        string
+	// InstalledDir is the directory where the template was rendered to, and is
+	// now being upgraded.
+	InstalledDir string
+
+	// CanonicalLocation is the location of the template source, e.g.
+	// github.com/abcxyz/abc/t/foo .
+	CanonicalLocation string
+
+	// One of local_git, remote_git, etc.
+	LocType string
+
+	// The value of --git-protocol.
+	GitProtocol string
+
+	// Normally, when determining if a template location is canonical, any
+	// directory that has uncommitted git changes is not canonical. However,
+	// for testing purposes we sometimes bypass this check and allow dirty git
+	// workspaces to be treated as canonical.
 	AllowDirtyTestOnly bool
 }
 
