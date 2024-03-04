@@ -368,6 +368,17 @@ kind: 'GoldenTest'`,
 				"testdata/golden/test/data/.gitfoo/file1.txt": "file1",
 			},
 		},
+		{
+			name: "no test recorded data",
+			filesContent: map[string]string{
+				"spec.yaml": printSpecYaml,
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+			},
+			wantErrs: []string{
+				"please run `record` command to record the template rendering result to golden tests",
+			},
+		},
 	}
 
 	for _, tc := range cases {
