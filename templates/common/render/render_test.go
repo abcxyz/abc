@@ -1159,8 +1159,8 @@ steps:
 			t.Parallel()
 
 			tempDir := t.TempDir()
-			dest := filepath.Join(tempDir, "dest")
-			abctestutil.WriteAllDefaultMode(t, dest, tc.existingDestContents)
+			outDir := filepath.Join(tempDir, "out_dir")
+			abctestutil.WriteAllDefaultMode(t, outDir, tc.existingDestContents)
 
 			inputFilePaths := make([]string, 0, len(tc.inputFileNames))
 			for _, f := range tc.inputFileNames {
@@ -1178,7 +1178,7 @@ steps:
 				Backups:             true,
 				BackupDir:           backupDir,
 				Clock:               clk,
-				DestDir:             dest,
+				OutDir:              outDir,
 				Downloader:          &templatesource.LocalDownloader{SrcPath: sourceDir},
 				ForceOverwrite:      tc.flagForceOverwrite,
 				Inputs:              tc.flagInputs,
@@ -1231,7 +1231,7 @@ steps:
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotDestContents := abctestutil.LoadDirWithoutMode(t, dest)
+			gotDestContents := abctestutil.LoadDirWithoutMode(t, outDir)
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

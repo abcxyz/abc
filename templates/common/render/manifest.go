@@ -15,7 +15,6 @@
 package render
 
 import (
-	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -83,8 +82,8 @@ type writeManifestParams struct {
 
 // writeManifest creates a manifest struct, marshals it as YAML, and writes it
 // to destDir/.abc/ .
-func writeManifest(ctx context.Context, p *writeManifestParams) (rErr error) {
-	m, err := buildManifest(ctx, p, p.dlMeta)
+func writeManifest(p *writeManifestParams) (rErr error) {
+	m, err := buildManifest(p, p.dlMeta)
 	if err != nil {
 		return err
 	}
@@ -156,7 +155,7 @@ func manifestBaseName(p *writeManifestParams, dlMeta *templatesource.DownloadMet
 // buildManifest constructs the manifest struct for the given parameters.
 // canonicalSource is optional, it will be empty in the case where the template
 // location is non-canonical (i.e. installing from ~/mytemplate).
-func buildManifest(ctx context.Context, p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.WithHeader, error) {
+func buildManifest(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.WithHeader, error) {
 	templateDirhash, err := dirhash.HashDir(p.templateDir, "", dirhash.Hash1)
 	if err != nil {
 		return nil, fmt.Errorf("dirhash.HashDir: %w", err)

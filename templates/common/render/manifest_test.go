@@ -15,7 +15,6 @@
 package render
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -280,8 +279,7 @@ output_hashes:
 			abctestutil.WriteAllDefaultMode(t, templateDir, tc.templateContents)
 			abctestutil.WriteAllDefaultMode(t, destDir, tc.destDirContents)
 
-			ctx := context.Background()
-			err := writeManifest(ctx, &writeManifestParams{
+			err := writeManifest(&writeManifestParams{
 				clock:         clk,
 				destDir:       destDir,
 				dlMeta:        tc.dlMeta,

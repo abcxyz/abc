@@ -26,25 +26,24 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-func TestForCanonical(t *testing.T) {
+func TestForUpgrade(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name                     string
-		location                 string
-		locType                  string
-		gitProtocol              string
-		destDir                  string
-		prependTempDirToLocation bool // set this for tests where location is a local path
-		dirContents              map[string]string
-		wantDownloader           Downloader
-		wantErr                  string
+		name              string
+		canonicalLocation string
+		locType           string
+		gitProtocol       string
+		installedInSubdir string
+		dirContents       map[string]string
+		wantDownloader    Downloader
+		wantErr           string
 	}{
 		{
-			name:        "remote_git_https_no_subdir",
-			location:    "github.com/abcxyz/abc",
-			locType:     "remote_git",
-			gitProtocol: "https",
+			name:              "remote_git_https_no_subdir",
+			canonicalLocation: "github.com/abcxyz/abc",
+			locType:           "remote_git",
+			gitProtocol:       "https",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc",
 				cloner:          &realCloner{},
@@ -54,10 +53,10 @@ func TestForCanonical(t *testing.T) {
 			},
 		},
 		{
-			name:        "remote_git_ssh_no_subdir",
-			location:    "github.com/abcxyz/abc",
-			locType:     "remote_git",
-			gitProtocol: "ssh",
+			name:              "remote_git_ssh_no_subdir",
+			canonicalLocation: "github.com/abcxyz/abc",
+			locType:           "remote_git",
+			gitProtocol:       "ssh",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc",
 				cloner:          &realCloner{},
@@ -67,10 +66,10 @@ func TestForCanonical(t *testing.T) {
 			},
 		},
 		{
-			name:        "remote_git_https_subdir",
-			location:    "github.com/abcxyz/abc/sub",
-			locType:     "remote_git",
-			gitProtocol: "https",
+			name:              "remote_git_https_subdir",
+			canonicalLocation: "github.com/abcxyz/abc/sub",
+			locType:           "remote_git",
+			gitProtocol:       "https",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc/sub",
 				cloner:          &realCloner{},
@@ -81,10 +80,10 @@ func TestForCanonical(t *testing.T) {
 			},
 		},
 		{
-			name:        "remote_git_ssh_subdir",
-			location:    "github.com/abcxyz/abc/sub",
-			locType:     "remote_git",
-			gitProtocol: "ssh",
+			name:              "remote_git_ssh_subdir",
+			canonicalLocation: "github.com/abcxyz/abc/sub",
+			locType:           "remote_git",
+			gitProtocol:       "ssh",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc/sub",
 				cloner:          &realCloner{},
@@ -95,52 +94,49 @@ func TestForCanonical(t *testing.T) {
 			},
 		},
 		{
-			name:        "malformed_remote_git",
-			location:    "asdfasdfasdf",
-			locType:     "remote_git",
-			gitProtocol: "https",
-			wantErr:     `failed parsing canonical location "asdfasdfasdf"`,
+			name:              "malformed_remote_git",
+			canonicalLocation: "asdfasdfasdf",
+			locType:           "remote_git",
+			gitProtocol:       "https",
+			wantErr:           `failed parsing canonical location "asdfasdfasdf"`,
 		},
 		{
-			name:                     "local_dir_no_git_repo",
-			location:                 "./my/dir",
-			locType:                  "local_git",
-			prependTempDirToLocation: true,
-			wantErr:                  `/my/dir" is not in a git workspace`,
+			name:              "local_dir_no_git_repo",
+			canonicalLocation: "my/dir",
+			locType:           "local_git",
+			wantErr:           `my/dir" is not in a git workspace`,
 		},
 		{
-			name:                     "simple_local_git_repo",
-			location:                 "./my/dir",
-			locType:                  "local_git",
-			prependTempDirToLocation: true,
-			dirContents:              abctestutil.WithGitRepoAt("", nil),
+			name:              "simple_local_git_repo",
+			canonicalLocation: "my/dir",
+			locType:           "local_git",
+			dirContents:       abctestutil.WithGitRepoAt("", nil),
 			wantDownloader: &LocalDownloader{
 				SrcPath: "my/dir",
 			},
 		},
 		{
-			name:                     "different_git_workspaces",
-			location:                 "git1",
-			locType:                  "local_git",
-			destDir:                  "git2",
-			prependTempDirToLocation: true,
-			dirContents: abctestutil.WithGitRepoAt("git1",
-				abctestutil.WithGitRepoAt("git2", nil)),
+			name:              "different_git_workspaces",
+			canonicalLocation: "../template_dir",
+			locType:           "local_git",
+			installedInSubdir: "installed_dir",
+			dirContents: abctestutil.WithGitRepoAt("template_dir",
+				abctestutil.WithGitRepoAt("installed_dir", nil)),
 			wantErr: "must be in the same git workspace",
 		},
 		{
-			name:        "unknown_loc_type",
-			locType:     "nonexistent",
-			location:    "asdf",
-			gitProtocol: "https",
-			wantErr:     `unknown location type "nonexistent"`,
+			name:              "unknown_loc_type",
+			locType:           "nonexistent",
+			canonicalLocation: "asdf",
+			gitProtocol:       "https",
+			wantErr:           `unknown location type "nonexistent"`,
 		},
 		{
-			name:        "unknown_git_protocol",
-			location:    "github.com/abcxyz/abc",
-			locType:     "remote_git",
-			gitProtocol: "nonexistent",
-			wantErr:     `protocol "nonexistent" isn't usable with a template sourced from a remote git repo`,
+			name:              "unknown_git_protocol",
+			canonicalLocation: "github.com/abcxyz/abc",
+			locType:           "remote_git",
+			gitProtocol:       "nonexistent",
+			wantErr:           `protocol "nonexistent" isn't usable with a template sourced from a remote git repo`,
 		},
 	}
 
@@ -155,14 +151,16 @@ func TestForCanonical(t *testing.T) {
 
 			abctestutil.WriteAllDefaultMode(t, tempDir, tc.dirContents)
 
-			location := tc.location
-			if tc.prependTempDirToLocation {
-				location = filepath.Join(tempDir, location)
-			}
+			location := tc.canonicalLocation
 
-			destDir := filepath.Join(tempDir, tc.destDir)
+			installedInDir := filepath.Join(tempDir, tc.installedInSubdir)
 
-			downloader, err := ForUpgrade(ctx, location, tc.locType, tc.gitProtocol, destDir)
+			downloader, err := ForUpgrade(ctx, &ForUpgradeParams{
+				LocType:           tc.locType,
+				CanonicalLocation: location,
+				InstalledDir:      installedInDir,
+				GitProtocol:       tc.gitProtocol,
+			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

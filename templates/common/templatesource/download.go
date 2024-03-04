@@ -24,8 +24,16 @@ import (
 // download a template, and provides some metadata.
 type Downloader interface {
 	// Download downloads this template into templateDir. templateDir should be
-	// a temporary directory. destDir is only used to determine if the template
-	// location is canonical, and is not written to.
+	// a temporary directory.
+	//
+	// destDir is the directory that this operation is targeting, from the
+	// user's point of view. This is only used to determine whether a template
+	// installed from a local directory is canonical or not; it's not written to
+	// as part of the download operation. When we're being called as part of
+	// `abc templates render`, then this is the render output directory. When
+	// we're being called as part of `abc templates upgrade`, this is the
+	// directory that the template is installed to, and NOT the temp dir that
+	// receives the output of Render().
 	Download(ctx context.Context, cwd, templateDir, destDir string) (*DownloadMetadata, error)
 }
 
