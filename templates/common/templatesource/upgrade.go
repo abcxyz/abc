@@ -52,9 +52,6 @@ type upgradeDownloaderFactory func(context.Context, *ForUpgradeParams) (Download
 // ForUpgrade takes a location type and canonical location from a manifest file,
 // and returns a downloader that will download the latest version of that
 // template.
-//
-// destDir is only used for detecting whether the template destination and
-// source are in the same git workspace. It is not written to.
 func ForUpgrade(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	factory, ok := upgradeDownloaderFactories[f.LocType]
 	if !ok {
