@@ -102,3 +102,25 @@ func DebugStepDiffs(d *bool) *cli.BoolVar {
 		Usage:   "Commit the diffs between steps for debugging.",
 	}
 }
+
+func Prompt(p *bool) *cli.BoolVar {
+	return &cli.BoolVar{
+		Name:   "prompt",
+		Target: p,
+
+		// Design decision: --prompt defaults to false because we don't want to
+		// confuse the user with an unexpected prompt.
+		//
+		// Consider this motivating use case: there's a playbook abc command
+		// that the user is copy-pasting, and this command has always worked
+		// with the  --input values provided in the playbook. There is no need
+		// for prompting. Then the upstream template developer adds a new input
+		// that is not anticipated by the playbook. In this case, we'd rather
+		// just fail outright than have the CLI prompt for the missing input. If
+		// we prompted the user, they'd be tempted to enter something creative
+		// rather than realize that their playbook needs to be updated.
+		Default: false,
+
+		Usage: "Prompt the user for template inputs that weren't provided as flags.",
+	}
+}

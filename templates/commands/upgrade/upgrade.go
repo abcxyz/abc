@@ -31,8 +31,6 @@ import (
 type Command struct {
 	cli.BaseCommand
 	flags Flags
-
-	testFS common.FS
 }
 
 // Desc implements cli.Command.
@@ -48,8 +46,8 @@ Usage: {{ COMMAND }} [options] <manifest>
 The {{ COMMAND }} command upgrades an already-rendered template output to use
 the latest version of a template.
 
-The "<manifest>" is the path to the *.lock.yaml file that was created when the
-template was originally rendered.
+The "<manifest>" is the path to the manifest_*.lock.yaml file that was created when the
+template was originally rendered, usually found in the .abc subdirectory.
 `
 }
 
@@ -83,20 +81,16 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	return upgrade.Upgrade(ctx, &upgrade.Params{
-		Clock: clock.New(),
-		CWD: cwd,
+		Clock:        clock.New(),
+		CWD:          cwd,
 		FS:           fs,
 		GitProtocol:  c.flags.GitProtocol,
-		InputFiles: c.flags.InputFiles,
-		Inputs: c.flags.Inputs,
+		InputFiles:   c.flags.InputFiles,
+		Inputs:       c.flags.Inputs,
 		KeepTempDirs: c.flags.KeepTempDirs,
 		ManifestPath: absManifestPath,
-		Prompt: c.flags.Prompt,
-		Prompter: c,
-		Stdout: c.Stdout(),
+		Prompt:       c.flags.Prompt,
+		Prompter:     c,
+		Stdout:       c.Stdout(),
 	})
-}
-
-type runParams struct {
-	fs common.FS
 }
