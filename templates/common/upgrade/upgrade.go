@@ -41,9 +41,6 @@ import (
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 )
 
-// // TODO doc
-// const newManifestBaseName = "manifest.lock.yaml"
-
 // Params contains all the arguments to Upgrade().
 type Params struct {
 	Clock clock.Clock
@@ -175,8 +172,6 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 }
 
 func mergeTentatively(ctx context.Context, fs common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest *manifest.Manifest) error {
-	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
-
 	for _, dryRun := range []bool{true, false} {
 		if err := commit(ctx, dryRun, fs, installedDir, mergeDir, oldManifestPath, oldManifest); err != nil {
 			return err
@@ -187,13 +182,15 @@ func mergeTentatively(ctx context.Context, fs common.FS, installedDir, mergeDir,
 }
 
 func commit(ctx context.Context, dryRun bool, f common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest *manifest.Manifest) error {
+	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		DryRun:  dryRun,
 		DstRoot: installedDir,
 		SrcRoot: mergeDir,
 		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
 			if de.IsDir() && relPath == common.ABCInternalDir {
-				// The metadata needs special merging, so skip it for now.
+				// The metadata needs special merging, so skip it for now and
+				// handle it separately.
 				return common.CopyHint{
 					Skip: true,
 				}, nil
