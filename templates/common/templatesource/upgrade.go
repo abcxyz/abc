@@ -49,8 +49,9 @@ var (
 
 type upgradeDownloaderFactory func(context.Context, *ForUpgradeParams) (Downloader, error)
 
-// ForUpgrade takes information from the flags and manifest file, and returns a
-// downloader that will download the latest version of that template.
+// ForUpgrade takes a location type and canonical location from a manifest file,
+// and returns a downloader that will download the latest version of that
+// template.
 func ForUpgrade(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	factory, ok := upgradeDownloaderFactories[f.LocType]
 	if !ok {

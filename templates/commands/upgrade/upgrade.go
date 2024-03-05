@@ -18,10 +18,13 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/benbjohnson/clock"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model/decode"
-	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
+	"github.com/abcxyz/abc/templates/common/upgrade"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -29,8 +32,6 @@ import (
 type Command struct {
 	cli.BaseCommand
 	flags Flags
-
-	testFS common.FS
 }
 
 // Desc implements cli.Command.
@@ -46,14 +47,14 @@ Usage: {{ COMMAND }} [options] <manifest>
 The {{ COMMAND }} command upgrades an already-rendered template output to use
 the latest version of a template.
 
-The "<manifest>" is the path to the *.lock.yaml file that was created when the
-template was originally rendered.
+The "<manifest>" is the path to the manifest_*.lock.yaml file that was created when the
+template was originally rendered, usually found in the .abc subdirectory.
 `
 }
 
 // Hidden implements cli.Command.
 func (c *Command) Hidden() bool {
-	// TODO(#191): unhide the upgrade command when it's ready.
+	// TODO(upgrade): unhide the upgrade command when it's ready.
 	return true
 }
 
@@ -68,46 +69,33 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	fSys := c.testFS // allow filesystem interaction to be faked for testing
-	if fSys == nil {
-		fSys = &common.RealFS{}
+	fs := &common.RealFS{}
+
+	absManifestPath, err := filepath.Abs(c.flags.Manifest)
+	if err != nil {
+		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Manifest, err)
 	}
 
-	return c.realRun(ctx, &runParams{
-		fs: fSys,
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("os.Getwd(): %w", err)
+	}
+
+	return upgrade.Upgrade(ctx, &upgrade.Params{ //nolint:wrapcheck
+		Clock:                clock.New(),
+		CWD:                  cwd,
+		DebugStepDiffs:       c.flags.DebugStepDiffs,
+		DebugScratchContents: c.flags.DebugScratchContents,
+		FS:                   fs,
+		GitProtocol:          c.flags.GitProtocol,
+		InputFiles:           c.flags.InputFiles,
+		Inputs:               c.flags.Inputs,
+		KeepTempDirs:         c.flags.KeepTempDirs,
+		ManifestPath:         absManifestPath,
+		Prompt:               c.flags.Prompt,
+		Prompter:             c,
+		SkipInputValidation:  c.flags.SkipInputValidation,
+
+		Stdout: c.Stdout(),
 	})
-}
-
-type runParams struct {
-	fs common.FS
-}
-
-func (c *Command) realRun(ctx context.Context, rp *runParams) error {
-	manifest, err := loadManifest(ctx, rp.fs, c.flags.Manifest)
-	if err != nil {
-		return err
-	}
-	_ = manifest
-
-	return nil
-}
-
-func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
-	f, err := fs.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
-	}
-	defer f.Close()
-
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
-	if err != nil {
-		return nil, fmt.Errorf("error reading manifest file: %w", err)
-	}
-
-	out, ok := manifestI.(*manifest.Manifest)
-	if !ok {
-		return nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
-	}
-
-	return out, nil
 }

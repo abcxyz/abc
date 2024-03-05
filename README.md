@@ -765,7 +765,7 @@ Params:
   `Template rendering is done, now please to go the {{._flag_dest}} directory and run a certain command.`
   The available values are:
 
-  - `{{._flag_dest}}`: the value of the the `--dest` flag, e.g. `.`
+  - `{{._flag_dest}}`: the value of the `--dest` flag, e.g. `.`
   - `{{._flag_source}}`: the template location that's being rendered, e.g.
     `github.com/abcxyz/abc/t/my_template@latest`
 

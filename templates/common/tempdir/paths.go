@@ -21,4 +21,5 @@ const (
 	GoldenTestRenderNamePart  = "golden-test-"
 	ScratchDirNamePart        = "scratch-"
 	TemplateDirNamePart       = "template-copy-"
+	UpgradeMergeDirNamePart   = "upgrade-merge-"
 )
