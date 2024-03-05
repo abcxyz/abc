@@ -12,32 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: "ci rest server"
+name: 'ci rest server'
 
 on:
   push:
     branches:
-      - "main"
+      - 'main'
   pull_request:
     branches:
-      - "main"
+      - 'main'
   workflow_dispatch:
   workflow_call:
 
 concurrency:
-  group: "${{ github.workflow }}-${{ github.head_ref || github.ref }}"
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 
 jobs:
   go_lint:
-    uses: "abcxyz/pkg/.github/workflows/go-lint.yml@main"
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
-      go_version: "1.22"
+      go_version: '1.22'
 
   go_test:
-    uses: "abcxyz/pkg/.github/workflows/go-test.yml@main"
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
     with:
-      go_version: "1.22"
+      go_version: '1.22'
 
   yaml_lint:
-    uses: "abcxyz/pkg/.github/workflows/yaml-lint.yml@main" # ratchet:exclude
+    uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
