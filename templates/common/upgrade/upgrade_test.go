@@ -166,7 +166,7 @@ output_hashes:
 			ctx := context.Background()
 
 			abctestutil.WriteAllDefaultMode(t, templateDir, tc.origTemplateDirContents)
-			renderAndVerify(ctx, t, clk, tempBase, templateDir, destDir, tc.wantDestDirContentsBefore)
+			renderAndVerify(t, ctx, clk, tempBase, templateDir, destDir, tc.wantDestDirContentsBefore)
 
 			clk.Add(time.Hour) // simulate time passing between initial installation and upgrade
 
@@ -201,31 +201,33 @@ output_hashes:
 	}
 }
 
-func renderAndVerify(ctx context.Context, t *testing.T, clk clock.Clock, tempBase, templateDir, destDir string, wantContents map[string]string) {
+func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string, wantContents map[string]string) {
+	tb.Helper()
+
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
 		AllowDirtyTestOnly: true,
 		CWD:                tempBase,
 		Source:             templateDir,
 	})
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 
 	if err := render.Render(ctx, &render.Params{
-		Clock:      clk,
-		Cwd:        tempBase,
-		DestDir:    destDir,
-		Downloader: downloader,
-		FS:         &common.RealFS{},
+		Clock:       clk,
+		Cwd:         tempBase,
+		DestDir:     destDir,
+		Downloader:  downloader,
+		FS:          &common.RealFS{},
 		Manifest:    true,
 		OutDir:      destDir,
 		TempDirBase: tempBase,
 	}); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 
-	got := abctestutil.LoadDirWithoutMode(t, destDir)
+	got := abctestutil.LoadDirWithoutMode(tb, destDir)
 	if diff := cmp.Diff(got, wantContents); diff != "" {
-		t.Fatalf("installed directory contents before upgrading were not as expected, there's something wrong with test setup (-got,+want): %s", diff)
+		tb.Fatalf("installed directory contents before upgrading were not as expected, there's something wrong with test setup (-got,+want): %s", diff)
 	}
 }

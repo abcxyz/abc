@@ -26,6 +26,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/benbjohnson/clock"
+	"gopkg.in/yaml.v3"
+
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
@@ -36,8 +39,6 @@ import (
 	"github.com/abcxyz/abc/templates/model/decode"
 	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
-	"github.com/benbjohnson/clock"
-	"gopkg.in/yaml.v3"
 )
 
 // // TODO doc
@@ -229,7 +230,11 @@ func commit(ctx context.Context, dryRun bool, f common.FS, installedDir, mergeDi
 		return nil
 	}
 
-	return os.WriteFile(oldManifestPath, buf, common.OwnerRWPerms)
+	if err := os.WriteFile(oldManifestPath, buf, common.OwnerRWPerms); err != nil {
+		return fmt.Errorf("WriteFile(%q): %w", oldManifestPath, err)
+	}
+
+	return nil
 }
 
 func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {

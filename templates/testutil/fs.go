@@ -51,8 +51,8 @@ type ModeAndContents struct {
 }
 
 // WriteAllDefaultMode wraps writeAll and sets file permissions to 0600.
-func WriteAllDefaultMode(t *testing.T, root string, files map[string]string) {
-	t.Helper()
+func WriteAllDefaultMode(tb testing.TB, root string, files map[string]string) {
+	tb.Helper()
 
 	withMode := map[string]ModeAndContents{}
 	for name, contents := range files {
@@ -61,26 +61,26 @@ func WriteAllDefaultMode(t *testing.T, root string, files map[string]string) {
 			Contents: contents,
 		}
 	}
-	WriteAll(t, root, withMode)
+	WriteAll(tb, root, withMode)
 }
 
 // WriteAll saves the given file contents with the given permissions.
-func WriteAll(t *testing.T, root string, files map[string]ModeAndContents) {
-	t.Helper()
+func WriteAll(tb testing.TB, root string, files map[string]ModeAndContents) {
+	tb.Helper()
 
 	for path, mc := range files {
 		fullPath := filepath.Join(root, path)
 		dir := filepath.Dir(fullPath)
 		if err := os.MkdirAll(dir, 0o700); err != nil {
-			t.Fatalf("MkdirAll(%q): %v", dir, err)
+			tb.Fatalf("MkdirAll(%q): %v", dir, err)
 		}
 		if err := os.WriteFile(fullPath, []byte(mc.Contents), mc.Mode); err != nil {
-			t.Fatalf("WriteFile(%q): %v", fullPath, err)
+			tb.Fatalf("WriteFile(%q): %v", fullPath, err)
 		}
 		// The user's may have prevented the file from being created with the
 		// desired permissions. Use chmod to really set the desired permissions.
 		if err := os.Chmod(fullPath, mc.Mode); err != nil {
-			t.Fatalf("Chmod(): %v", err)
+			tb.Fatalf("Chmod(): %v", err)
 		}
 	}
 }
@@ -88,14 +88,14 @@ func WriteAll(t *testing.T, root string, files map[string]ModeAndContents) {
 // LoadDirContents reads all the files recursively under "dir", returning their contents as a
 // map[filename]->contents. Returns nil if dir doesn't exist. Keys use slash separators, not
 // native.
-func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
-	t.Helper()
+func LoadDirContents(tb testing.TB, dir string) map[string]ModeAndContents {
+	tb.Helper()
 
 	if _, err := os.Stat(dir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
 			return nil
 		}
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	out := map[string]ModeAndContents{}
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -115,7 +115,7 @@ func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 		}
 		fi, err := d.Info()
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		out[rel] = ModeAndContents{
 			Mode:     fi.Mode(),
@@ -124,7 +124,7 @@ func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("WalkDir(): %v", err)
+		tb.Fatalf("WalkDir(): %v", err)
 	}
 	return out
 }
@@ -132,10 +132,10 @@ func LoadDirContents(t *testing.T, dir string) map[string]ModeAndContents {
 // Read all the files recursively under "dir", returning their contents as a
 // map[filename]->contents but without file mode. Returns nil if dir doesn't
 // exist. Keys use slash separators, not native.
-func LoadDirWithoutMode(t *testing.T, dir string) map[string]string {
-	t.Helper()
+func LoadDirWithoutMode(tb testing.TB, dir string) map[string]string {
+	tb.Helper()
 
-	withMode := LoadDirContents(t, dir)
+	withMode := LoadDirContents(tb, dir)
 	if withMode == nil {
 		return nil
 	}
@@ -181,12 +181,12 @@ func mustHexDecode(s string) []byte {
 	return out
 }
 
-func TestMustGlob(t *testing.T, glob string) (string, bool) {
-	t.Helper()
+func TestMustGlob(tb testing.TB, glob string) (string, bool) {
+	tb.Helper()
 
 	matches, err := filepath.Glob(glob)
 	if err != nil {
-		t.Fatalf("couldn't find template directory: %v", err)
+		tb.Fatalf("couldn't find template directory: %v", err)
 	}
 	switch len(matches) {
 	case 0:
@@ -194,6 +194,6 @@ func TestMustGlob(t *testing.T, glob string) (string, bool) {
 	case 1:
 		return matches[0], true
 	}
-	t.Fatalf("got %d matches for glob %q, wanted 1: %s", len(matches), glob, matches)
+	tb.Fatalf("got %d matches for glob %q, wanted 1: %s", len(matches), glob, matches)
 	panic("unreachable") // silence compiler warning for "missing return"
 }
