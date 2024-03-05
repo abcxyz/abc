@@ -69,7 +69,8 @@ func (l *localSourceParser) sourceParse(ctx context.Context, params *ParseSource
 	logger.InfoContext(ctx, "treating src as a local path", "src", absSource)
 
 	return &LocalDownloader{
-		SrcPath: absSource,
+		SrcPath:            absSource,
+		allowDirtyTestOnly: params.AllowDirtyTestOnly,
 	}, true, nil
 }
 
