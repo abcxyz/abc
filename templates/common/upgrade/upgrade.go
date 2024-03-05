@@ -22,16 +22,22 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/benbjohnson/clock"
+	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
+	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
+	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 )
 
@@ -97,7 +103,7 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		return fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
 	}
 
-	manifest, err := loadManifest(ctx, p)
+	oldManifest, err := loadManifest(ctx, p.FS, p.ManifestPath)
 	if err != nil {
 		return err
 	}
@@ -119,14 +125,14 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 
 	downloader, err := templatesource.ForUpgrade(ctx, &templatesource.ForUpgradeParams{
 		InstalledDir:       installedDir,
-		CanonicalLocation:  manifest.TemplateLocation.Val,
-		LocType:            manifest.LocationType.Val,
+		CanonicalLocation:  oldManifest.TemplateLocation.Val,
+		LocType:            oldManifest.LocationType.Val,
 		GitProtocol:        p.GitProtocol,
 		AllowDirtyTestOnly: p.AllowDirtyTestOnly,
 	})
 	if err != nil {
 		return fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
-			manifest.TemplateLocation.Val, manifest.LocationType.Val, p.GitProtocol, err)
+			oldManifest.TemplateLocation.Val, oldManifest.LocationType.Val, p.GitProtocol, err)
 	}
 
 	// TODO(upgrade): check the dirhash of the downloaded template, and
@@ -134,60 +140,123 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 
 	// TODO(upgrade): handle "include from destination" as a special case
 	if err := render.Render(ctx, &render.Params{
-		Clock:                 p.Clock,
-		Cwd:                   p.CWD,
-		DebugStepDiffs:        p.DebugStepDiffs,
-		DestDir:               installedDir,
-		Downloader:            downloader,
-		ForceManifestBaseName: filepath.Base(p.ManifestPath),
-		FS:                    p.FS,
-		GitProtocol:           p.GitProtocol,
-		InputFiles:            p.InputFiles,
-		Inputs:                inputsToMap(manifest.Inputs),
-		KeepTempDirs:          p.KeepTempDirs,
-		Manifest:              true,
-		OutDir:                mergeDir,
-		Prompt:                p.Prompt,
-		Prompter:              p.Prompter,
-		SkipInputValidation:   p.SkipInputValidation,
-		SkipPromptTTYCheck:    p.skipPromptTTYCheck,
-		SourceForMessages:     manifest.TemplateLocation.Val,
-		Stdout:                p.Stdout,
-		TempDirBase:           p.TempDirBase,
+		Clock:               p.Clock,
+		Cwd:                 p.CWD,
+		DebugStepDiffs:      p.DebugStepDiffs,
+		DestDir:             installedDir,
+		Downloader:          downloader,
+		FS:                  p.FS,
+		GitProtocol:         p.GitProtocol,
+		InputFiles:          p.InputFiles,
+		Inputs:              inputsToMap(oldManifest.Inputs),
+		KeepTempDirs:        p.KeepTempDirs,
+		Manifest:            true,
+		OutDir:              mergeDir,
+		Prompt:              p.Prompt,
+		Prompter:            p.Prompter,
+		SkipInputValidation: p.SkipInputValidation,
+		SkipPromptTTYCheck:  p.skipPromptTTYCheck,
+		SourceForMessages:   oldManifest.TemplateLocation.Val,
+		Stdout:              p.Stdout,
+		TempDirBase:         p.TempDirBase,
 	}); err != nil {
-		return fmt.Errorf("TODO: %w", err)
+		return fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
 
 	// TODO(upgrade): much of the upgrade logic is missing here:
 	//   - checking file hashes
 	//   - checking diffs
 	//   - others
-	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
-		SrcRoot: mergeDir,
-		DstRoot: installedDir,
-		DryRun:  false,
-		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
-			return common.CopyHint{
-				Overwrite: true,
-			}, nil
-		},
-		FS:     p.FS,
-		Hasher: sha256.New,
-	}); err != nil {
-		return err //nolint:wrapcheck
+
+	return mergeTentatively(ctx, p.FS, installedDir, mergeDir, p.ManifestPath, oldManifest)
+}
+
+func mergeTentatively(ctx context.Context, fs common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest *manifest.Manifest) error {
+	for _, dryRun := range []bool{true, false} {
+		if err := commit(ctx, dryRun, fs, installedDir, mergeDir, oldManifestPath, oldManifest); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func loadManifest(ctx context.Context, p *Params) (*manifest.Manifest, error) {
-	f, err := p.FS.Open(p.ManifestPath)
+func commit(ctx context.Context, dryRun bool, f common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest *manifest.Manifest) error {
+	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
+	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
+		DryRun:  dryRun,
+		DstRoot: installedDir,
+		SrcRoot: mergeDir,
+		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+			if de.IsDir() && relPath == common.ABCInternalDir {
+				// The metadata needs special merging, so skip it for now and
+				// handle it separately.
+				return common.CopyHint{
+					Skip: true,
+				}, nil
+			}
+			return common.CopyHint{
+				Overwrite: true,
+			}, nil
+		},
+		FS:     f,
+		Hasher: sha256.New,
+	}); err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	abcDir := filepath.Join(mergeDir, common.ABCInternalDir)
+	newManifestBaseName, err := findManifest(abcDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open manifest file at %q: %w", p.ManifestPath, err)
+		return err
+	}
+	newManifest, err := loadManifest(ctx, f, filepath.Join(abcDir, newManifestBaseName))
+	if err != nil {
+		return err
+	}
+
+	mergedManifest := mergeManifest(oldManifest, newManifest)
+
+	buf, err := yaml.Marshal(mergedManifest)
+	if err != nil {
+		return fmt.Errorf("failed marshaling Manifest when writing: %w", err)
+	}
+	buf = append(common.DoNotModifyHeader, buf...)
+
+	if dryRun {
+		return nil
+	}
+
+	if err := os.WriteFile(oldManifestPath, buf, common.OwnerRWPerms); err != nil {
+		return fmt.Errorf("WriteFile(%q): %w", oldManifestPath, err)
+	}
+
+	return nil
+}
+
+func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
+	// Most fields come from the new manifest, except for the creation time
+	// which comes from the old manifest.
+	forMarshaling := manifest.ForMarshaling(*newManifest)
+	forMarshaling.CreationTime = old.CreationTime
+
+	return &manifest.WithHeader{
+		Header: &header.Fields{
+			NewStyleAPIVersion: model.String{Val: decode.LatestSupportedAPIVersion(version.IsReleaseBuild())},
+			Kind:               model.String{Val: decode.KindManifest},
+		},
+		Wrapped: &forMarshaling,
+	}
+}
+
+func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
+	f, err := fs.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, p.ManifestPath, decode.KindManifest)
+	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
 		return nil, fmt.Errorf("error reading manifest file: %w", err)
 	}
@@ -206,4 +275,25 @@ func inputsToMap(inputs []*manifest.Input) map[string]string {
 		out[input.Name.Val] = input.Value.Val
 	}
 	return out
+}
+
+// Finds a manifest file in the given directory by globbing. If there's not
+// exactly one match, that's an error. The returned string is just the basename,
+// with no directory.
+func findManifest(dir string) (string, error) {
+	joined := filepath.Join(dir, "manifest*.yaml")
+	matches, err := filepath.Glob(joined)
+	if err != nil {
+		return "", fmt.Errorf("filepath.Glob(%q): %w", joined, err)
+	}
+
+	if len(matches) == 0 {
+		return "", fmt.Errorf("no manifest was found in %q", dir)
+	}
+	if len(matches) > 1 {
+		return "", fmt.Errorf("multiple manifests were found in %q: %s",
+			dir, strings.Join(matches, ", "))
+	}
+
+	return filepath.Base(matches[0]), nil
 }

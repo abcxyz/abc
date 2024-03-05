@@ -65,7 +65,7 @@ type Manifest struct {
 }
 
 // This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
-// in the YAML library. We want to inline a ManifTest in a WithHeader when
+// in the YAML library. We want to inline a Manifest in a WithHeader when
 // marshaling. But the bug prevents that, because anything that implements
 // Unmarshaler cannot be inlined. As a workaround, we create a new type with the
 // same fields but without the Unmarshal method.

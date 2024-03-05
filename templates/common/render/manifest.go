@@ -59,12 +59,6 @@ type writeManifestParams struct {
 	// dryRun creates the manifest in memory but doesn't write it to a file.
 	dryRun bool
 
-	// forceBaseName, if set, will make the output manifest have this
-	// exact filename. It must not contain a slash. This is used during template
-	// upgrades, because we want the new manifest to replace the old manifest,
-	// so we give the new manifest same filename as the old manifest.
-	forceBaseName string
-
 	// A fakeable filesystem for testing errors.
 	fs common.FS
 
@@ -133,10 +127,6 @@ func writeManifest(p *writeManifestParams) (rErr error) {
 }
 
 func manifestBaseName(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) string {
-	if p.forceBaseName != "" {
-		return p.forceBaseName
-	}
-
 	namePart := "nolocation"
 	if dlMeta.IsCanonical {
 		namePart = url.PathEscape(dlMeta.CanonicalSource)

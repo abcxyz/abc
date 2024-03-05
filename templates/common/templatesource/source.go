@@ -81,6 +81,12 @@ var realSourceParsers = []sourceParser{
 
 // ParseSourceParams contains the arguments to ParseSource.
 type ParseSourceParams struct {
+	// Normally, when determining if a template location is canonical, any
+	// directory that has uncommitted git changes is not canonical. However,
+	// for testing purposes we sometimes bypass this check and allow dirty git
+	// workspaces to be treated as canonical.
+	AllowDirtyTestOnly bool
+
 	// The working directory that we're in. Used to resolve relative paths.
 	CWD string
 
