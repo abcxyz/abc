@@ -39,7 +39,7 @@ func TestUpgrade(t *testing.T) {
 
 		// We're simulating an `abc templates render` followed by an `abc
 		// templates upgrade`. origTemplateDirContents is used as the template
-		// for the intitial render operation. Then, the the files in
+		// for the intitial render operation. Then, the files in
 		// templateChangesForUpgrade are added to the template before executing
 		// the upgrade operation.
 		origTemplateDirContents       map[string]string
