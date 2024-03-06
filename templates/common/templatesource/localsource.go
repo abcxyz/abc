@@ -91,8 +91,8 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 	templateDir = common.JoinIfRelative(cwd, templateDir)
 
 	logger.DebugContext(ctx, "copying local template source",
-		"srcPath", l.SrcPath,
-		"templateDir", templateDir)
+		"src_path", l.SrcPath,
+		"template_dir", templateDir)
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
 		SrcRoot: l.SrcPath,
 		DstRoot: templateDir,

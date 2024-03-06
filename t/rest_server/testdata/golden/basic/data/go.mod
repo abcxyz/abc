@@ -2,6 +2,8 @@ module github.com/abcxyz/abc/t/rest_server
 
 go 1.22
 
+toolchain go1.22.1
+
 require (
 	github.com/abcxyz/pkg v0.7.1
 	github.com/go-chi/chi/v5 v5.0.8

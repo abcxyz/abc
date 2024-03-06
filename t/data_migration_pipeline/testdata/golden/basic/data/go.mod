@@ -2,6 +2,8 @@ module github.com/abcxyz/abc/t/data_migration_pipeline
 
 go 1.22
 
+toolchain go1.22.1
+
 require github.com/apache/beam/sdks/v2 v2.48.2
 
 require (
