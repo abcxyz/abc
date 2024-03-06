@@ -164,7 +164,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 	tmpDir, err := tempTracker.MkdirTempTracked("", "git-clone-")
 	if err != nil {
-		return nil, fmt.Errorf("MkdirTemp: %w", err)
+		return nil, err //nolint:wrapcheck
 	}
 	subdirToCopy := filepath.Join(tmpDir, subdir)
 

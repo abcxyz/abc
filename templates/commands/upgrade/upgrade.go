@@ -81,7 +81,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
-	return upgrade.Upgrade(ctx, &upgrade.Params{ //nolint:wrapcheck
+	ok, err := upgrade.Upgrade(ctx, &upgrade.Params{ //nolint:wrapcheck
 		Clock:                clock.New(),
 		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
@@ -98,4 +98,12 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 
 		Stdout: c.Stdout(),
 	})
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		fmt.Fprintf(c.Stdout(), "already up to date with latest template version\n")
+	}
+	return nil
 }

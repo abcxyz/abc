@@ -98,7 +98,7 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 
 	templateDir, err := tempTracker.MkdirTempTracked("", tempdir.TemplateDirNamePart)
 	if err != nil {
-		return fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
+		return err //nolint:wrapcheck
 	}
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
 		CWD:         cwd,
