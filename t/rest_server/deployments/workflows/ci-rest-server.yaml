@@ -30,14 +30,10 @@ concurrency:
 
 jobs:
   go_lint:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
-    with:
-      go_version: '1.21'
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@e8ce6e3f1af546bb30008af2322b1fd6dd62c1e2' # ratchet:abcxyz/pkg/.github/workflows/go-lint.yml@main
 
   go_test:
-    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
-    with:
-      go_version: '1.21'
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@e8ce6e3f1af546bb30008af2322b1fd6dd62c1e2' # ratchet:abcxyz/pkg/.github/workflows/go-test.yml@main
 
   yaml_lint:
     uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
