@@ -71,12 +71,12 @@ func TestVerify(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name      string
-		files     map[string]string
-		compareTo string
-		subdir    string
-		want      bool
-		wantErr   string
+		name          string
+		files         map[string]string
+		compareToHash string
+		subdir        string
+		want          bool
+		wantErr       string
 	}{
 		{
 			name: "match",
@@ -84,8 +84,8 @@ func TestVerify(t *testing.T) {
 				"a.txt":    "hello",
 				"b/c.yaml": "foo: bar",
 			},
-			compareTo: "h1:QDmRYeMVG4rHN0RWwV7vqJxksmtiHI+JHBKeBPJUd1U=",
-			want:      true,
+			compareToHash: "h1:QDmRYeMVG4rHN0RWwV7vqJxksmtiHI+JHBKeBPJUd1U=",
+			want:          true,
 		},
 		{
 			name: "mismatch",
@@ -93,8 +93,8 @@ func TestVerify(t *testing.T) {
 				"a.txt":    "hello",
 				"b/c.yaml": "foo: bar",
 			},
-			compareTo: "h1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=",
-			want:      false,
+			compareToHash: "h1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=",
+			want:          false,
 		},
 		{
 			name: "filesystem_error",
@@ -102,9 +102,9 @@ func TestVerify(t *testing.T) {
 				"a.txt":    "hello",
 				"b/c.yaml": "foo: bar",
 			},
-			subdir:    "nonexistent",
-			compareTo: "h1:whatever",
-			wantErr:   "no such file or directory",
+			subdir:        "nonexistent",
+			compareToHash: "h1:whatever",
+			wantErr:       "no such file or directory",
 		},
 	}
 
@@ -116,7 +116,7 @@ func TestVerify(t *testing.T) {
 
 			tempDir := t.TempDir()
 			abctestutil.WriteAllDefaultMode(t, tempDir, tc.files)
-			got, err := Verify(tc.compareTo, filepath.Join(tempDir, tc.subdir))
+			got, err := Verify(tc.compareToHash, filepath.Join(tempDir, tc.subdir))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
