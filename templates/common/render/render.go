@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/benbjohnson/clock"
 	"golang.org/x/exp/maps"
@@ -259,7 +258,11 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 //     variables that are only in scope inside "print" actions. Print has access
 //     to e.g. the _flag_dest var that cannot be accessed elsewhere.
 func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_ *common.Scope, extraPrintVars map[string]string, _ error) {
-	now := strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)
+	now := strconv.FormatInt(rp.Clock.Now().UTC().UnixMilli(), 10)
+	if v, ok := rp.OverrideBuiltinVars[builtinvar.NowMilliseconds]; ok {
+		now = v
+	}
+
 	scope := common.NewScope(resolvedInputs)
 
 	if rp.OverrideBuiltinVars != nil { // The caller is overriding the builtin underscore-prefixed vars.
@@ -277,7 +280,6 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 		printOnlyVarNames := map[string]string{
 			builtinvar.FlagDest:   "",
 			builtinvar.FlagSource: "",
-			builtinvar.Now:        now,
 		}
 		extraPrintVars = sets.IntersectMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames)
 		scope = scope.With(sets.SubtractMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames))
@@ -304,9 +306,9 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 	}
 
 	extraPrintVars = map[string]string{
-		builtinvar.FlagDest:   rp.OutDir,
-		builtinvar.FlagSource: rp.SourceForMessages,
-		builtinvar.Now:        now,
+		builtinvar.FlagDest:        rp.OutDir,
+		builtinvar.FlagSource:      rp.SourceForMessages,
+		builtinvar.NowMilliseconds: now,
 	}
 
 	return scope, extraPrintVars, nil

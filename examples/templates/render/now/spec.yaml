@@ -15,15 +15,15 @@
 apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
-desc: 'An example template that demonstrates the "_now" input'
+desc: 'An example template that demonstrates the "_now_ms" input'
 
 steps:
   - desc: 'Prints the current time'
     action: 'print'
     params:
-      message: 'It is currently {{._now}}'
+      message: 'It is currently {{._now_ms}}'
 
   - desc: 'Prints a formatted time'
     action: 'print'
     params:
-      message: '{{formatTime ._now "2006-01-02T15:04:05"}}'
+      message: '{{formatTime ._now_ms "2006-01-02T15:04:05"}}'

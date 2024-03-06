@@ -2,5 +2,5 @@ api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 
 builtin_vars:
-  - name: '_now'
-    value: '0'
+  - name: '_now_ms'
+    value: '42892000194'

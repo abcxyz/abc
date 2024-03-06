@@ -215,6 +215,12 @@ func TestFormatTime(t *testing.T) {
 			want:   "1970-01-01",
 		},
 		{
+			name:   "real_time",
+			time:   "1803901319090",
+			layout: "2006-01-02",
+			want:   "2027-03-01",
+		},
+		{
 			name:    "not_int",
 			time:    "banana",
 			layout:  "2006-01-02",
