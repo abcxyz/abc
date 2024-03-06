@@ -212,6 +212,7 @@ func templateFuncs() template.FuncMap {
 		"toLower":           strings.ToLower,
 		"toUpper":           strings.ToUpper,
 		"trimPrefix":        strings.TrimPrefix,
+		"formatTime":        common.FormatTime,
 		"trimSuffix":        strings.TrimSuffix,
 		"trimSpace":         strings.TrimSpace,
 		"toSnakeCase":       common.ToSnakeCase,

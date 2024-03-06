@@ -19,6 +19,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/slices"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestToSnakeCase(t *testing.T) {
@@ -185,6 +187,54 @@ func TestSortStrings(t *testing.T) {
 
 			if diff := cmp.Diff(tc.input, original); diff != "" {
 				t.Errorf("original input was modified (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestFormatTime(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		time    string
+		layout  string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "empty",
+			time:   "",
+			layout: "2006-01-02",
+			want:   "",
+		},
+		{
+			name:   "zero",
+			time:   "0",
+			layout: "2006-01-02",
+			want:   "1970-01-01",
+		},
+		{
+			name:    "not_int",
+			time:    "banana",
+			layout:  "2006-01-02",
+			wantErr: "time is not an integer",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := FormatTime(tc.time, tc.layout)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("incorrect strings (-got, +want):\n%s", diff)
 			}
 		})
 	}

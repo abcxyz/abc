@@ -17,8 +17,11 @@
 package common
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/exp/slices"
 )
@@ -94,4 +97,20 @@ func SortStrings(in []string) []string {
 	cp := slices.Clone(in)
 	slices.Sort(cp)
 	return cp
+}
+
+// FormatTime formats the input (which is expected to be a Unix timestamp in
+// milliseconds as a string using the given layout. It follows the format of
+// time.Format).
+func FormatTime(in, layout string) (string, error) {
+	if in == "" {
+		return "", nil
+	}
+
+	ms, err := strconv.ParseInt(in, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("time is not an integer: %w", err)
+	}
+
+	return time.UnixMilli(ms).UTC().Format(layout), nil
 }

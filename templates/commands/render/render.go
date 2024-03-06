@@ -96,7 +96,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		homeDir,
 		".abc",
 		"backups",
-		fmt.Sprint(time.Now().Unix()))
+		fmt.Sprint(time.Now().UTC().Unix()))
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
 		CWD:         wd,

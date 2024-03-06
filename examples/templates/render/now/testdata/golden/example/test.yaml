@@ -1,0 +1,6 @@
+api_version: 'cli.abcxyz.dev/v1beta5'
+kind: 'GoldenTest'
+
+builtin_vars:
+  - name: '_now'
+    value: '0'
