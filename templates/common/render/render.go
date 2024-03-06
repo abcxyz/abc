@@ -146,7 +146,7 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 
 	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
 	if err != nil {
-		return fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
+		return err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "created temporary template directory",
 		"path", templateDir)
@@ -162,6 +162,17 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	}
 	logger.DebugContext(ctx, "downloaded source template to temporary directory",
 		"destination", templateDir)
+
+	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
+}
+
+// RenderAlreadyDownloaded is for the unusual case where the template has
+// already been downloaded to the local filesystem. Most callers should prefer
+// to call Render() instead.
+//
+// The Params.Downloader field is ignored by this function.
+func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.DownloadMetadata, templateDir string, p *Params) (rErr error) {
+	logger := logging.FromContext(ctx).With("logger", "RenderAlreadyDownloaded")
 
 	logger.DebugContext(ctx, "loading spec file")
 	spec, err := specutil.Load(ctx, p.FS, templateDir, p.SourceForMessages)
@@ -184,9 +195,12 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 
+	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+
 	scratchDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.ScratchDirNamePart)
 	if err != nil {
-		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
+		return err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "created temporary scratch directory",
 		"path", scratchDir)

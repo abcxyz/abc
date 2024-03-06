@@ -31,6 +31,7 @@ import (
 
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/dirhash"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/tempdir"
@@ -98,26 +99,21 @@ type Params struct {
 // Upgrade takes a directory containing previously rendered template output and
 // updates it using the newest version of the template, which is pointed to by
 // the manifest file.
-func Upgrade(ctx context.Context, p *Params) (rErr error) {
+//
+// Returns true if the upgrade occurred, or false if the upgrade was skipped
+// because we're already on the latest version of the template.
+func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 	if !filepath.IsAbs(p.ManifestPath) {
-		return fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
+		return false, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
 	}
 
 	oldManifest, err := loadManifest(ctx, p.FS, p.ManifestPath)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
-
-	// The "merge directory" is yet another temp directory in addition to
-	// the template dir and scratch dir. It holds the output of template
-	// rendering before we merge it with the real template output directory.
-	mergeDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.UpgradeMergeDirNamePart)
-	if err != nil {
-		return fmt.Errorf("failed creating temp dir: %w", err)
-	}
 
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
@@ -131,15 +127,39 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		AllowDirtyTestOnly: p.AllowDirtyTestOnly,
 	})
 	if err != nil {
-		return fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
+		return false, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
 			oldManifest.TemplateLocation.Val, oldManifest.LocationType.Val, p.GitProtocol, err)
 	}
 
-	// TODO(upgrade): check the dirhash of the downloaded template, and
-	// short-circuit if the installed version is already the newest.
+	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
+	if err != nil {
+		return false, err //nolint:wrapcheck
+	}
+
+	dlMeta, err := downloader.Download(ctx, p.CWD, templateDir, installedDir)
+	if err != nil {
+		return false, fmt.Errorf("failed downloading template: %w", err)
+	}
+
+	hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
+	if err != nil {
+		return false, err //nolint:wrapcheck
+	}
+	if hashMatch {
+		// No need to upgrade. We already have the latest template version.
+		return false, nil
+	}
+
+	// The "merge directory" is yet another temp directory in addition to
+	// the template dir and scratch dir. It holds the output of template
+	// rendering before we merge it with the real template output directory.
+	mergeDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.UpgradeMergeDirNamePart)
+	if err != nil {
+		return false, err //nolint:wrapcheck
+	}
 
 	// TODO(upgrade): handle "include from destination" as a special case
-	if err := render.Render(ctx, &render.Params{
+	if err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
 		Clock:               p.Clock,
 		Cwd:                 p.CWD,
 		DebugStepDiffs:      p.DebugStepDiffs,
@@ -160,7 +180,7 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 		Stdout:              p.Stdout,
 		TempDirBase:         p.TempDirBase,
 	}); err != nil {
-		return fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
+		return false, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
 
 	// TODO(upgrade): much of the upgrade logic is missing here:
@@ -168,7 +188,11 @@ func Upgrade(ctx context.Context, p *Params) (rErr error) {
 	//   - checking diffs
 	//   - others
 
-	return mergeTentatively(ctx, p.FS, installedDir, mergeDir, p.ManifestPath, oldManifest)
+	if err := mergeTentatively(ctx, p.FS, installedDir, mergeDir, p.ManifestPath, oldManifest); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func mergeTentatively(ctx context.Context, fs common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest *manifest.Manifest) error {
