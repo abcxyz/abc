@@ -11,10 +11,10 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Checkout repository'
-        uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
       - name: 'Use Node.js 16'
-        uses: 'actions/setup-node@main'
+        uses: 'actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8' # ratchet:actions/setup-node@v4
         with:
           node-version: '16'
 
@@ -31,7 +31,7 @@ jobs:
         run: 'DOCKER_BUILDKIT=1 docker build --build-arg app_version=$(git describe --tags --always) . -t services/react-template'
 
       - name: 'Cypress run'
-        uses: 'cypress-io/github-action@master'
+        uses: 'cypress-io/github-action@4cedef59b86ca68d5698ff837ccd0933e91ac316' # ratchet:cypress-io/github-action@master
         with:
           start: 'npm start'
           wait-on: 'http://localhost:3000'

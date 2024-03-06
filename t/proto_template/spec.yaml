@@ -31,7 +31,7 @@ inputs:
     default: '278dd19ef5e6a504bdda16faf1488451'
   - name: 'go_version'
     desc: 'The go version to use'
-    default: '1.21.1'
+    default: '1.22.1'
   - name: 'wif_provider'
     desc: 'The WIF provider that has access to the GAR repositories'
   - name: 'wif_service_account'
