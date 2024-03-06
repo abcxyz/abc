@@ -31,9 +31,7 @@ import (
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	specfeatures "github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
-	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
-	specv1beta4 "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	specv1beta6 "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -115,7 +113,7 @@ template_dirhash: 'bar'`,
 		{
 			name:        "newest_template",
 			requireKind: KindTemplate,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta1'
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
 desc: 'mydesc'
 steps:
@@ -124,15 +122,15 @@ steps:
     if: 'true'
     params:
       paths: ['.']`,
-			want: &specv1beta1.Spec{
+			want: &specv1beta6.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta1.Step{
+				Steps: []*specv1beta6.Step{
 					{
 						Action: model.String{Val: "include"},
 						If:     model.String{Val: "true"},
 						Desc:   model.String{Val: "include all files"},
-						Include: &specv1beta1.Include{
-							Paths: []*specv1beta1.IncludePath{
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
@@ -143,7 +141,7 @@ steps:
 					},
 				},
 			},
-			wantVersion: "cli.abcxyz.dev/v1beta1",
+			wantVersion: "cli.abcxyz.dev/v1beta6",
 		},
 		{
 			name:        "newest_golden_test",
@@ -277,15 +275,15 @@ steps:
     if: 'true'
     params:
       paths: ['.']`,
-			want: &specv1beta3.Spec{
+			want: &specv1beta6.Spec{
 				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta3.Step{
+				Steps: []*specv1beta6.Step{
 					{
 						Action: model.String{Val: "include"},
 						If:     model.String{Val: "true"},
 						Desc:   model.String{Val: "include all files"},
-						Include: &specv1beta3.Include{
-							Paths: []*specv1beta3.IncludePath{
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
@@ -316,35 +314,35 @@ builtin_vars:
 			},
 			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version`,
 		},
-		// Uncomment once we have an unreleased api_version again:
-		// 		{
-		// 			name:        "golden_test_v1beta5_exceeds_latest_support_api_version",
-		// 			requireKind: KindGoldenTest,
-		// 			fileContents: `api_version: 'cli.abcxyz.dev/v1beta5'
-		// kind: 'GoldenTest'
-		// inputs:
-		//   - name: 'foo'
-		//     value: 'bar'
-		// builtin_vars:
-		//   - name: '_git_tag'
-		//     value: 'my-cool-tag'`,
-		// 			isReleaseBuild: true,
-		// 			wantErr:        `api_version "cli.abcxyz.dev/v1beta5" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
-		// 		},
-		// 		{
-		// 			name:        "golden_test_v1beta4_exceeds_latest_support_api_version",
-		// 			requireKind: KindGoldenTest,
-		// 			fileContents: `api_version: 'cli.abcxyz.dev/v1beta4'
-		// kind: 'GoldenTest'
-		// inputs:
-		//   - name: 'foo'
-		//     value: 'bar'
-		// builtin_vars:
-		//   - name: '_git_tag'
-		//     value: 'my-cool-tag'`,
-		// 			isReleaseBuild: true,
-		// 			wantErr:        `api_version "cli.abcxyz.dev/v1beta4" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
-		// 		},
+		{
+			name:        "template_exceeds_latest_supported_api_version",
+			requireKind: KindTemplate,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'mydesc'
+steps:
+  - action: 'include'
+    desc: 'include all files'
+    if: 'true'
+    params:
+      paths: ['.']`,
+			isReleaseBuild: true,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta6" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+		},
+		{
+			name:        "golden_test_exceeds_latest_support_api_version",
+			requireKind: KindGoldenTest,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'GoldenTest'
+inputs:
+    - name: 'foo'
+      value: 'bar'
+builtin_vars:
+    - name: '_git_tag'
+      value: 'my-cool-tag'`,
+			isReleaseBuild: true,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta6" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+		},
 	}
 
 	for _, tc := range cases {
@@ -391,18 +389,19 @@ steps:
     desc: 'step desc'
     params:
       paths: ['.']`,
-			want: &specv1beta4.Spec{
+			want: &specv1beta6.Spec{
 				Desc: model.String{Val: "mydesc"},
 				Features: specfeatures.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
+					SkipTime:    true,
 				},
-				Steps: []*specv1beta4.Step{
+				Steps: []*specv1beta6.Step{
 					{
 						Action: model.String{Val: "include"},
 						Desc:   model.String{Val: "step desc"},
-						Include: &specv1beta4.Include{
-							Paths: []*specv1beta4.IncludePath{
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
@@ -475,17 +474,18 @@ steps:
     desc: 'step desc'
     params:
       paths: ['.']`,
-			want: &specv1beta4.Spec{
+			want: &specv1beta6.Spec{
 				Desc: model.String{Val: "mydesc"},
 				Features: specfeatures.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
+					SkipTime:    true,
 				},
-				Inputs: []*specv1beta4.Input{
+				Inputs: []*specv1beta6.Input{
 					{
 						Name: model.String{Val: "foo"},
 						Desc: model.String{Val: "The name parameter"},
-						Rules: []*specv1beta4.Rule{
+						Rules: []*specv1beta6.Rule{
 							{
 								Rule:    model.String{Val: "size(foo) < 10"},
 								Message: model.String{Val: "name length must be less than 10"},
@@ -493,12 +493,12 @@ steps:
 						},
 					},
 				},
-				Steps: []*specv1beta4.Step{
+				Steps: []*specv1beta6.Step{
 					{
 						Action: model.String{Val: "include"},
 						Desc:   model.String{Val: "step desc"},
-						Include: &specv1beta4.Include{
-							Paths: []*specv1beta4.IncludePath{
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
 								{
 									Paths: []model.String{
 										{Val: "."},
@@ -599,7 +599,7 @@ func TestLatestSupportedAPIVersion(t *testing.T) {
 		{
 			name:           "not_release_build",
 			isReleaseBuild: false,
-			want:           "cli.abcxyz.dev/v1beta5", // update for creation of a new api_version
+			want:           "cli.abcxyz.dev/v1beta6", // update for creation of a new api_version
 		},
 	}
 

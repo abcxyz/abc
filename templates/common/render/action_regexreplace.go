@@ -20,7 +20,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 // The regex_replace action replaces a regex match (or a subgroup thereof) with

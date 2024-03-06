@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/testutil"
 )

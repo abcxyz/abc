@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 func actionPrint(_ context.Context, p *spec.Print, sp *stepParams) error {

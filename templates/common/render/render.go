@@ -36,7 +36,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec/features"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
 )
