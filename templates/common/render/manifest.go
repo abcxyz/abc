@@ -148,7 +148,7 @@ func manifestBaseName(p *writeManifestParams, dlMeta *templatesource.DownloadMet
 func buildManifest(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.WithHeader, error) {
 	templateDirhash, err := dirhash.HashLatest(p.templateDir)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	inputList := make([]*manifest.Input, 0, len(p.inputs))

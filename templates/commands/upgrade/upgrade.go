@@ -81,7 +81,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
-	ok, err := upgrade.Upgrade(ctx, &upgrade.Params{ //nolint:wrapcheck
+	ok, err := upgrade.Upgrade(ctx, &upgrade.Params{
 		Clock:                clock.New(),
 		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
@@ -99,7 +99,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Stdout: c.Stdout(),
 	})
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	if !ok {

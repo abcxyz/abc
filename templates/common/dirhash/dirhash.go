@@ -36,8 +36,8 @@ func HashLatest(dir string) (string, error) {
 
 // Verify returns whether the dirhash of the given directory matches the given
 // hash value. It detects which hash algorithm to use based on a prefix of
-// wantHash, e.g. "h1:0a1b2d3c..."
-func Verify(wantHash string, dir string) (bool, error) {
+// wantHash, e.g. "h1:0a1b2d3c..." .
+func Verify(wantHash, dir string) (bool, error) {
 	// The hash should start with a string like "h1:" indicating the hash algorithm
 	tokens := strings.SplitN(wantHash, ":", 2)
 	if len(tokens) != 2 {
