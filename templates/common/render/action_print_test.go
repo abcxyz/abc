@@ -83,7 +83,7 @@ func TestActionPrint(t *testing.T) {
 
 			sp := &stepParams{
 				rp:             &params,
-				scope:          common.NewScope(tc.inputs),
+				scope:          common.NewScope(tc.inputs, nil),
 				extraPrintVars: tc.extraPrintVars,
 			}
 			pr := &spec.Print{

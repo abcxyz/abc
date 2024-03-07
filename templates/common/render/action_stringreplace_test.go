@@ -238,7 +238,7 @@ func TestActionStringReplace(t *testing.T) {
 				Replacements: tc.replacements,
 			}
 			sp := &stepParams{
-				scope:      common.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs, nil),
 				scratchDir: scratchDir,
 				rp: &Params{
 					FS: &common.ErrorFS{

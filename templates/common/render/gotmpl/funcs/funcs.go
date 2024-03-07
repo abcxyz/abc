@@ -1,10 +1,10 @@
-// Copyright 2023 The Authors (see AUTHORS file)
+// Copyright 2024 The Authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package common contains the common utility functions for template commands.
-
-package common
+package funcs
 
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"golang.org/x/exp/slices"
+	"github.com/abcxyz/abc/templates/model/spec/features"
 )
 
 var (
@@ -40,10 +39,39 @@ var (
 	hyphenCaseReplace = regexp.MustCompile(`[_ ]+`)
 )
 
+// Funcs returns a function map for adding functions to go templates.
+func Funcs(f features.Features) map[string]any {
+	out := map[string]any{
+		"contains":          strings.Contains,
+		"replace":           strings.Replace,
+		"replaceAll":        strings.ReplaceAll,
+		"sortStrings":       sortStrings,
+		"split":             strings.Split,
+		"toLower":           strings.ToLower,
+		"toUpper":           strings.ToUpper,
+		"trimPrefix":        strings.TrimPrefix,
+		"trimSuffix":        strings.TrimSuffix,
+		"trimSpace":         strings.TrimSpace,
+		"toSnakeCase":       toSnakeCase,
+		"toLowerSnakeCase":  toLowerSnakeCase,
+		"toUpperSnakeCase":  toUpperSnakeCase,
+		"toHyphenCase":      toHyphenCase,
+		"toLowerHyphenCase": toLowerHyphenCase,
+		"toUpperHyphenCase": toUpperHyphenCase,
+	}
+
+	// This function was added in api_version v1beta6.
+	if !f.SkipTime {
+		out["formatTime"] = formatTime
+	}
+
+	return out
+}
+
 // toSnakeCase converts a string to snake_case by removing all characters
 // (except alphanumeric, hyphens, underscores and spaces) and replacing
 // any hyphens or spaces with underscores.
-func ToSnakeCase(v string) string {
+func toSnakeCase(v string) string {
 	response := hyphenOrSnakeCaseKeep.ReplaceAllString(v, "")
 	response = snakeCaseReplace.ReplaceAllString(response, "_")
 	return response
@@ -53,22 +81,22 @@ func ToSnakeCase(v string) string {
 // (except alphanumeric, hyphens, underscores and spaces) and replacing
 // any hyphens or spaces with underscores. The result is then returned
 // as a lower case string.
-func ToLowerSnakeCase(v string) string {
-	return strings.ToLower(ToSnakeCase(v))
+func toLowerSnakeCase(v string) string {
+	return strings.ToLower(toSnakeCase(v))
 }
 
 // toUpperSnakeCase converts a string to snake_case by removing all characters
 // (except alphanumeric, hyphens, underscores and spaces) and replacing
 // any hyphens or spaces with underscores. The result is then returned
 // as a upper case string.
-func ToUpperSnakeCase(v string) string {
-	return strings.ToUpper(ToSnakeCase(v))
+func toUpperSnakeCase(v string) string {
+	return strings.ToUpper(toSnakeCase(v))
 }
 
 // toHyphenCase converts a string to hyphen-case by removing all characters
 // (except alphanumeric, hyphens, underscores and spaces) and replacing
 // any hyphens or spaces with underscores.
-func ToHyphenCase(v string) string {
+func toHyphenCase(v string) string {
 	response := hyphenOrSnakeCaseKeep.ReplaceAllString(v, "")
 	response = hyphenCaseReplace.ReplaceAllString(response, "-")
 	return response
@@ -78,31 +106,31 @@ func ToHyphenCase(v string) string {
 // (except alphanumeric, hyphens, underscores and spaces) and replacing
 // any underscores or spaces with hyphens. The result is then returned
 // as a lower case string.
-func ToLowerHyphenCase(v string) string {
-	return strings.ToLower(ToHyphenCase(v))
+func toLowerHyphenCase(v string) string {
+	return strings.ToLower(toHyphenCase(v))
 }
 
 // toUpperSnakeCase converts a string to hyphen-case by removing all characters
 // (except alphanumeric, hyphens, underscores and spaces) and replacing
 // any underscores or spaces with hyphens. The result is then returned
 // as a upper case string.
-func ToUpperHyphenCase(v string) string {
-	return strings.ToUpper(ToHyphenCase(v))
+func toUpperHyphenCase(v string) string {
+	return strings.ToUpper(toHyphenCase(v))
 }
 
 // sortStrings sorts the given list of strings. Go's built-in sorting behavior
 // modifies the string in place. It would be very weird if rendering a template
 // changed the order of an input further down the stack.
-func SortStrings(in []string) []string {
+func sortStrings(in []string) []string {
 	cp := slices.Clone(in)
 	slices.Sort(cp)
 	return cp
 }
 
-// FormatTime formats the input (which is expected to be a Unix timestamp in
+// formatTime formats the input (which is expected to be a Unix timestamp in
 // milliseconds as a string using the given layout. It follows the format of
 // time.Format).
-func FormatTime(in, layout string) (string, error) {
+func formatTime(in, layout string) (string, error) {
 	if in == "" {
 		return "", nil
 	}

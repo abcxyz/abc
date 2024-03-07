@@ -22,14 +22,9 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
-	"sort"
-	"strings"
-	"text/template"
-
-	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/common/errs"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -120,7 +115,7 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 	compiled := make([]*regexp.Regexp, len(regexes))
 	var merr error
 	for i, re := range regexes {
-		templated, err := parseAndExecuteGoTmpl(re.Pos, re.Val, scope)
+		templated, err := gotmpl.ParseExec(re.Pos, re.Val, scope)
 		if err != nil {
 			merr = errors.Join(merr, err)
 			continue
@@ -183,7 +178,7 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 	out := make([]model.String, 0, len(paths))
 
 	for _, p := range paths {
-		tmplOutput, err := parseAndExecuteGoTmpl(p.Pos, p.Val, scope)
+		tmplOutput, err := gotmpl.ParseExec(p.Pos, p.Val, scope)
 		if err != nil {
 			return nil, err
 		}
@@ -198,85 +193,5 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 		})
 	}
 
-	return out, nil
-}
-
-// templateFuncs returns a function map for adding functions to go templates.
-func templateFuncs() template.FuncMap {
-	return map[string]any{
-		"contains":          strings.Contains,
-		"replace":           strings.Replace,
-		"replaceAll":        strings.ReplaceAll,
-		"sortStrings":       common.SortStrings,
-		"split":             strings.Split,
-		"toLower":           strings.ToLower,
-		"toUpper":           strings.ToUpper,
-		"trimPrefix":        strings.TrimPrefix,
-		"formatTime":        common.FormatTime,
-		"trimSuffix":        strings.TrimSuffix,
-		"trimSpace":         strings.TrimSpace,
-		"toSnakeCase":       common.ToSnakeCase,
-		"toLowerSnakeCase":  common.ToLowerSnakeCase,
-		"toUpperSnakeCase":  common.ToUpperSnakeCase,
-		"toHyphenCase":      common.ToHyphenCase,
-		"toLowerHyphenCase": common.ToLowerHyphenCase,
-		"toUpperHyphenCase": common.ToUpperHyphenCase,
-	}
-}
-
-// A template parser helper to remove the boilerplate of parsing with our
-// desired options.
-func parseGoTmpl(tpl string) (*template.Template, error) {
-	return template.New("").Funcs(templateFuncs()).Option("missingkey=error").Parse(tpl) //nolint:wrapcheck
-}
-
-var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)
-
-// pos may be nil if the template is not coming from the spec file and therefore
-// there's no reason to print out spec file location in an error message. If
-// template execution fails because of a missing input variable, the error will
-// be wrapped in a UnknownVarErr.
-func parseAndExecuteGoTmpl(pos *model.ConfigPos, tmpl string, scope *common.Scope) (string, error) {
-	parsedTmpl, err := parseGoTmpl(tmpl)
-	if err != nil {
-		return "", pos.Errorf(`error compiling as go-template: %w`, err)
-	}
-
-	// As of go1.20, if the template references a nonexistent variable, then the
-	// returned error will be of type *errors.errorString; unfortunately there's
-	// no distinctive error type we can use to detect this particular error.
-	//
-	// We only get this error because we asked for Option("missingkey=error")
-	// when parsing the template. Otherwise it would silently insert "<no
-	// value>".
-	var sb strings.Builder
-	vars := scope.All()
-	if err := parsedTmpl.Execute(&sb, vars); err != nil {
-		// If this error looks like a missing key error, then replace it with a
-		// more helpful error.
-		matches := templateKeyErrRegex.FindStringSubmatch(err.Error())
-		if matches != nil {
-			varNames := maps.Keys(vars)
-			sort.Strings(varNames)
-			err = &errs.UnknownVarError{
-				VarName:       matches[1],
-				AvailableVars: varNames,
-				Wrapped:       err,
-			}
-		}
-		return "", pos.Errorf("template.Execute() failed: %w", err)
-	}
-	return sb.String(), nil
-}
-
-func parseAndExecuteGoTmplAll(ss []model.String, scope *common.Scope) ([]string, error) {
-	out := make([]string, len(ss))
-	for i, in := range ss {
-		var err error
-		out[i], err = parseAndExecuteGoTmpl(in.Pos, in.Val, scope)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return out, nil
 }

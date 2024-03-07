@@ -19,6 +19,7 @@ import (
 	"regexp"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
@@ -100,7 +101,7 @@ func replaceWithTemplate(allMatches [][]int, b []byte, rr *spec.RegexReplaceEntr
 		// use regex subgroups to reference template variables to support people
 		// trying to be super clever with their templates. Like:
 		// {{.${mysubgroup}}}
-		replacementTemplateExpanded, err := parseAndExecuteGoTmpl(rr.With.Pos, string(replacementRegexExpanded), scope)
+		replacementTemplateExpanded, err := gotmpl.ParseExec(rr.With.Pos, string(replacementRegexExpanded), scope)
 		if err != nil {
 			return nil, err
 		}

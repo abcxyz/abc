@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -30,6 +29,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl/funcs"
 	"github.com/abcxyz/abc/templates/common/rules"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"
@@ -258,12 +258,18 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 //     variables that are only in scope inside "print" actions. Print has access
 //     to e.g. the _flag_dest var that cannot be accessed elsewhere.
 func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_ *common.Scope, extraPrintVars map[string]string, _ error) {
-	now := strconv.FormatInt(rp.Clock.Now().UTC().UnixMilli(), 10)
-	if v, ok := rp.OverrideBuiltinVars[builtinvar.NowMilliseconds]; ok {
-		now = v
+	vars, extraPrintVars, err := scopeVars(resolvedInputs, rp, f, dlVars)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	scope := common.NewScope(resolvedInputs)
+	goTmplFuncs := funcs.Funcs(f)
+
+	return common.NewScope(vars, goTmplFuncs), extraPrintVars, nil
+}
+
+func scopeVars(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_ map[string]string, extraPrintVars map[string]string, _ error) {
+	out := maps.Clone(resolvedInputs)
 
 	if rp.OverrideBuiltinVars != nil { // The caller is overriding the builtin underscore-prefixed vars.
 		if err := builtinvar.Validate(f, maps.Keys(rp.OverrideBuiltinVars)); err != nil {
@@ -282,8 +288,9 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 			builtinvar.FlagSource: "",
 		}
 		extraPrintVars = sets.IntersectMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames)
-		scope = scope.With(sets.SubtractMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames))
-		return scope, extraPrintVars, nil
+		nonPrintVars := sets.SubtractMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames)
+		out = sets.UnionMapKeys(nonPrintVars, out)
+		return out, extraPrintVars, nil
 	}
 
 	// The caller isn't overriding the builtin underscore-prefixed vars (this
@@ -295,23 +302,22 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 	for _, n := range builtinNames {
 		builtinsEmptyStringMap[n] = ""
 	}
-	scope = scope.With(builtinsEmptyStringMap)
+	out = sets.UnionMapKeys(builtinsEmptyStringMap, out)
 
 	if !f.SkipGitVars { // if this api_version supports _git_* vars, add them.
-		scope = scope.With(map[string]string{
+		out = sets.UnionMapKeys(map[string]string{
 			builtinvar.GitTag:      dlVars.GitTag,
 			builtinvar.GitSHA:      dlVars.GitSHA,
 			builtinvar.GitShortSHA: dlVars.GitShortSHA,
-		})
+		}, out)
 	}
 
 	extraPrintVars = map[string]string{
-		builtinvar.FlagDest:        rp.OutDir,
-		builtinvar.FlagSource:      rp.SourceForMessages,
-		builtinvar.NowMilliseconds: now,
+		builtinvar.FlagDest:   rp.OutDir,
+		builtinvar.FlagSource: rp.SourceForMessages,
 	}
 
-	return scope, extraPrintVars, nil
+	return out, extraPrintVars, nil
 }
 
 // Configure the git directory that will contain a commit per step for debugging

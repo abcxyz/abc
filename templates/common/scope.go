@@ -25,18 +25,15 @@ import "golang.org/x/exp/maps"
 // variable that may previously exist of the same name. When the for_each loop
 // is finished, then the outer scope's variable becomes available again.
 type Scope struct {
-	vars    map[string]string // never nil
-	inherit *Scope            // is nil if this is the outermost scope.
+	vars        map[string]string // never nil
+	goTmplFuncs map[string]any    // never nil
+	inherit     *Scope            // is nil if this is the outermost scope.
 }
 
-func NewScope(m map[string]string) *Scope {
-	if m == nil {
-		// This isn't strictly necessary, because a lookup in a nil map just
-		// returns false, but it saves complexity in the other methods.
-		m = map[string]string{}
-	}
+func NewScope(vars map[string]string, goTmplFuncs map[string]any) *Scope {
 	return &Scope{
-		vars: m,
+		vars:        cloneOrEmpty(vars),
+		goTmplFuncs: cloneOrEmpty(goTmplFuncs),
 	}
 }
 
@@ -64,19 +61,37 @@ func (s *Scope) With(m map[string]string) *Scope {
 	}
 }
 
-// All returns all variable bindings that are in scope. Inner/top-of-stack
+// AllVars returns all variable bindings that are in scope. Inner/top-of-stack
 // bindings take priority over outer bindings of the same name.
 //
 // The returned map is a copy that is owned by the caller; it can be changed
 // safely.
 //
 // The return value is never nil.
-func (s *Scope) All() map[string]string {
+func (s *Scope) AllVars() map[string]string {
 	if s.inherit == nil {
 		return maps.Clone(s.vars)
 	}
 
-	out := s.inherit.All()
+	out := s.inherit.AllVars()
 	maps.Copy(out, s.vars)
 	return out
+}
+
+// GoTmplFuncs returns all the Go-template functions that are in-scope. The
+// result is suitable for passing to text/template.Template.Funcs().
+func (s *Scope) GoTmplFuncs() map[string]any {
+	return maps.Clone(s.goTmplFuncs)
+}
+
+// cloneOrEmpty does two things:
+//   - it makes a copy of the input map, so we can "own" the copy without
+//     worrying about it being modified.
+//   - if the input is nil, then an empty map is returned, guaranteeing that we
+//     don't have to deal with a nil map in a Scope.
+func cloneOrEmpty[T any](m map[string]T) map[string]T {
+	if len(m) == 0 {
+		return map[string]T{}
+	}
+	return maps.Clone(m)
 }

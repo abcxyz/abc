@@ -18,11 +18,12 @@ import (
 	"context"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 func actionForEach(ctx context.Context, fe *spec.ForEach, sp *stepParams) error {
-	key, err := parseAndExecuteGoTmpl(fe.Iterator.Key.Pos, fe.Iterator.Key.Val, sp.scope)
+	key, err := gotmpl.ParseExec(fe.Iterator.Key.Pos, fe.Iterator.Key.Val, sp.scope)
 	if err != nil {
 		return err
 	}
@@ -30,7 +31,7 @@ func actionForEach(ctx context.Context, fe *spec.ForEach, sp *stepParams) error 
 	var values []string
 	if len(fe.Iterator.Values) > 0 {
 		var err error
-		values, err = parseAndExecuteGoTmplAll(fe.Iterator.Values, sp.scope)
+		values, err = gotmpl.ParseExecAll(fe.Iterator.Values, sp.scope)
 		if err != nil {
 			return err
 		}

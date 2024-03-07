@@ -18,11 +18,12 @@ import (
 	"context"
 	"strings"
 
+	"github.com/abcxyz/abc/templates/common/render/gotmpl"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
-	with, err := parseAndExecuteGoTmpl(ap.With.Pos, ap.With.Val, sp.scope)
+	with, err := gotmpl.ParseExec(ap.With.Pos, ap.With.Val, sp.scope)
 	if err != nil {
 		return err
 	}

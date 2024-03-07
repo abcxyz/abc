@@ -180,7 +180,7 @@ func TestActionAppend(t *testing.T) {
 				},
 			}
 			sp := &stepParams{
-				scope:      common.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs, nil),
 				scratchDir: scratchDir,
 				rp: &Params{
 					FS: &common.ErrorFS{

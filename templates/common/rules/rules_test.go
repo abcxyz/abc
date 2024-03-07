@@ -41,7 +41,7 @@ func TestValidateRules(t *testing.T) {
 			name: "rules_are_valid",
 			scope: common.NewScope(map[string]string{
 				"my_var": "foo",
-			}),
+			}, nil),
 			rules: []*spec.Rule{
 				{
 					Rule:    model.String{Val: "size(my_var) < 5"},
@@ -54,7 +54,7 @@ func TestValidateRules(t *testing.T) {
 			name: "rules_are_invalid",
 			scope: common.NewScope(map[string]string{
 				"my_var": "foobarbaz",
-			}),
+			}, nil),
 			rules: []*spec.Rule{
 				{
 					Rule:    model.String{Val: "size(my_var) < 5"},
@@ -92,7 +92,7 @@ func TestValidateRulesWithMessage(t *testing.T) {
 			name: "rules_valid_no_op_callback",
 			scope: common.NewScope(map[string]string{
 				"my_var": "foo",
-			}),
+			}, nil),
 			rules: []*spec.Rule{
 				{
 					Rule:    model.String{Val: "size(my_var) < 5"},
@@ -106,7 +106,7 @@ func TestValidateRulesWithMessage(t *testing.T) {
 			name: "rules_valid_call_back_with_message",
 			scope: common.NewScope(map[string]string{
 				"my_var": "foo",
-			}),
+			}, nil),
 			rules: []*spec.Rule{
 				{
 					Rule:    model.String{Val: "size(my_var) < 5"},
@@ -123,7 +123,7 @@ func TestValidateRulesWithMessage(t *testing.T) {
 			scope: common.NewScope(map[string]string{
 				"name": "bar123",
 				"age":  "1054",
-			}),
+			}, nil),
 			rules: []*spec.Rule{
 				{
 					Rule:    model.String{Val: "name.matches('^[A-Za-z]+$')"},
@@ -148,7 +148,7 @@ Rule msg:  age must be less than 130
 			scope: common.NewScope(map[string]string{
 				"name": "bar123",
 				"age":  "1054",
-			}),
+			}, nil),
 			rules: []*spec.Rule{
 				{
 					Rule:    model.String{Val: "name.matches('^[A-Za-z]+$')"},

@@ -902,7 +902,7 @@ func TestActionInclude(t *testing.T) {
 
 			sp := &stepParams{
 				ignorePatterns: tc.ignorePatterns,
-				scope:          common.NewScope(tc.inputs),
+				scope:          common.NewScope(tc.inputs, nil),
 				scratchDir:     scratchDir,
 				templateDir:    templateDir,
 				rp: &Params{

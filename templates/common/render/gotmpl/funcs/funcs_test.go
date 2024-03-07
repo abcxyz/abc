@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package funcs
 
 import (
 	"testing"
@@ -62,17 +62,17 @@ func TestToSnakeCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := ToSnakeCase(tc.input)
+			got := toSnakeCase(tc.input)
 			if got, want := got, tc.want; got != want {
 				t.Errorf("expected %s to be %s", got, want)
 			}
 
-			got = ToLowerSnakeCase(tc.input)
+			got = toLowerSnakeCase(tc.input)
 			if got, want := got, tc.wantLower; got != want {
 				t.Errorf("expected lower %s to be %s", got, want)
 			}
 
-			got = ToUpperSnakeCase(tc.input)
+			got = toUpperSnakeCase(tc.input)
 			if got, want := got, tc.wantUpper; got != want {
 				t.Errorf("expected upper %s to be %s", got, want)
 			}
@@ -119,17 +119,17 @@ func TestToHyphenCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := ToHyphenCase(tc.input)
+			got := toHyphenCase(tc.input)
 			if got, want := got, tc.want; got != want {
 				t.Errorf("expected %s to be %s", got, want)
 			}
 
-			got = ToLowerHyphenCase(tc.input)
+			got = toLowerHyphenCase(tc.input)
 			if got, want := got, tc.wantLower; got != want {
 				t.Errorf("expected lower %s to be %s", got, want)
 			}
 
-			got = ToUpperHyphenCase(tc.input)
+			got = toUpperHyphenCase(tc.input)
 			if got, want := got, tc.wantUpper; got != want {
 				t.Errorf("expected upper %s to be %s", got, want)
 			}
@@ -180,7 +180,7 @@ func TestSortStrings(t *testing.T) {
 
 			original := slices.Clone(tc.input)
 
-			got := SortStrings(tc.input)
+			got := sortStrings(tc.input)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("incorrect strings (-got,+want): %s", diff)
 			}
@@ -234,7 +234,7 @@ func TestFormatTime(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := FormatTime(tc.time, tc.layout)
+			got, err := formatTime(tc.time, tc.layout)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

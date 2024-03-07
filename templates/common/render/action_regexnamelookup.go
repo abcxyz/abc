@@ -84,7 +84,7 @@ func replaceWithNameLookup(allMatches [][]int, b []byte, rn *spec.RegexNameLooku
 			replacementVal, ok := scope.Lookup(subGroupName)
 			if !ok {
 				return nil, rn.Regex.Pos.Errorf("there was no template input variable matching the subgroup name %q; available variables are %v",
-					subGroupName, maps.Keys(scope.All()))
+					subGroupName, maps.Keys(scope.AllVars()))
 			}
 			replaceAtStartIdx := oneMatch[subGroupIdx*2]
 			replaceAtEndIdx := oneMatch[subGroupIdx*2+1]
