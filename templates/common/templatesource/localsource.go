@@ -161,5 +161,5 @@ func canonicalize(ctx context.Context, cwd, source, destDir string, allowDirty b
 	if err != nil {
 		return "", "", "", err
 	}
-	return filepath.ToSlash(out), version, LocTypeLocalGit, nil
+	return out, version, LocTypeLocalGit, nil
 }
