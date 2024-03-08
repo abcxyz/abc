@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
-	"golang.org/x/mod/sumdb/dirhash"
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/dirhash"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
@@ -146,9 +146,9 @@ func manifestBaseName(p *writeManifestParams, dlMeta *templatesource.DownloadMet
 // canonicalSource is optional, it will be empty in the case where the template
 // location is non-canonical (i.e. installing from ~/mytemplate).
 func buildManifest(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.WithHeader, error) {
-	templateDirhash, err := dirhash.HashDir(p.templateDir, "", dirhash.Hash1)
+	templateDirhash, err := dirhash.HashLatest(p.templateDir)
 	if err != nil {
-		return nil, fmt.Errorf("dirhash.HashDir: %w", err)
+		return nil, err //nolint:wrapcheck
 	}
 
 	inputList := make([]*manifest.Input, 0, len(p.inputs))

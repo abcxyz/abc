@@ -17,6 +17,7 @@ package tempdir
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/logging"
@@ -55,7 +56,7 @@ func (t *DirTracker) Track(dir string) {
 func (t *DirTracker) MkdirTempTracked(dir, pattern string) (string, error) {
 	tempDir, err := t.fs.MkdirTemp(dir, pattern)
 	if err != nil {
-		return "", err //nolint:wrapcheck
+		return "", fmt.Errorf("failed creating temp dir: %w", err)
 	}
 	t.Track(tempDir)
 	return tempDir, nil
