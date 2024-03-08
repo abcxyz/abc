@@ -317,7 +317,7 @@ builtin_vars:
 		{
 			name:        "template_exceeds_latest_supported_api_version",
 			requireKind: KindTemplate,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta6'
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta7'
 kind: 'Template'
 desc: 'mydesc'
 steps:
@@ -327,12 +327,12 @@ steps:
     params:
       paths: ['.']`,
 			isReleaseBuild: true,
-			wantErr:        `api_version "cli.abcxyz.dev/v1beta6" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta7" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
 		},
 		{
-			name:        "golden_test_exceeds_latest_support_api_version",
+			name:        "golden_test_exceeds_latest_supported_api_version",
 			requireKind: KindGoldenTest,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta6'
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta7'
 kind: 'GoldenTest'
 inputs:
     - name: 'foo'
@@ -341,7 +341,7 @@ builtin_vars:
     - name: '_git_tag'
       value: 'my-cool-tag'`,
 			isReleaseBuild: true,
-			wantErr:        `api_version "cli.abcxyz.dev/v1beta6" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta7" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
 		},
 	}
 
@@ -594,7 +594,7 @@ func TestLatestSupportedAPIVersion(t *testing.T) {
 		{
 			name:           "is_release_build",
 			isReleaseBuild: true,
-			want:           "cli.abcxyz.dev/v1beta5", // update for each api_version release
+			want:           "cli.abcxyz.dev/v1beta6", // update for each api_version release
 		},
 		{
 			name:           "not_release_build",

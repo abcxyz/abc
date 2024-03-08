@@ -158,22 +158,22 @@ For every test case, it is expected that a
 Each "input" in this file must correspond to a template input defined in the
 template's `spec.yaml`. Each required input in the template's spec.yaml must
 have a corresponding input value defined in the `test.yaml`. Typically, you will use
-`golden-test new-test` subcommand to initialize the 
+`golden-test new-test` subcommand to initialize the
 needed golden test directory structure and `test.yaml`,
-but it's also possible to create the 
+but it's also possible to create the
 desired goldentest directory structure and `test.yaml` by hand.
 
 Example test.yaml:
 
 ```yaml
-api_version: 'cli.abcxyz.dev/v1alpha1'
-kind: 'GoldenTest'
+api_version: "cli.abcxyz.dev/v1alpha1"
+kind: "GoldenTest"
 
 inputs:
-  - name: 'my-service-account'
-    value: 'platform-ops@abcxyz-my-project.iam.gserviceaccount.com'
-  - name: 'my-project-number'
-    value: '123456789'
+  - name: "my-service-account"
+    value: "platform-ops@abcxyz-my-project.iam.gserviceaccount.com"
+  - name: "my-project-number"
+    value: "123456789"
 ```
 
 The expected/desired test output for each test is stored in
@@ -192,17 +192,17 @@ To support this, the `test.yaml` file may have a top-level field `builtin_vars`
 that sets the value of built-in variables while running the test. For example:
 
 ```yaml
-api_version: 'cli.abcxyz.dev/v1beta2'
-kind: 'GoldenTest'
+api_version: "cli.abcxyz.dev/v1beta2"
+kind: "GoldenTest"
 
 inputs:
-  - name: 'some-normal-input'
-    value: 'some-value'
+  - name: "some-normal-input"
+    value: "some-value"
 
 # For the purposes of this golden test, provide a fake _git_tag value.
 builtin_vars:
-  - name: '_git_tag'
-    value: 'my-cool-tag'
+  - name: "_git_tag"
+    value: "my-cool-tag"
 ```
 
 Technicalities:
@@ -381,9 +381,9 @@ Template rendering has a few phases:
     the scratch directory. This is analogous to a Dockerfile COPY command. For
     example:
     ```yaml
-    - action: 'include'
+    - action: "include"
       params:
-        paths: ['main.go']
+        paths: ["main.go"]
     ```
   - The `append`, `string_replace`, `regex_replace`, `regex_name_lookup`, and
     `go_template` actions transform the files that are in the scratch directory
@@ -416,27 +416,27 @@ user-provided string. Thus "hello, world" is transformed into "hello, $whatever"
 in `main.go`.
 
 ```yaml
-api_version: 'cli.abcxyz.dev/v1alpha1'
-kind: 'Template'
+api_version: "cli.abcxyz.dev/v1alpha1"
+kind: "Template"
 
 desc:
   'An example template that changes a "hello world" program to a "hello whoever"
   program'
 inputs:
-  - name: 'whomever'
-    desc: 'The name of the person or thing to say hello to'
+  - name: "whomever"
+    desc: "The name of the person or thing to say hello to"
 steps:
-  - desc: 'Include some files and directories'
-    action: 'include'
+  - desc: "Include some files and directories"
+    action: "include"
     params:
-      paths: ['main.go']
+      paths: ["main.go"]
   - desc: 'Replace "world" with user-provided input'
-    action: 'string_replace'
+    action: "string_replace"
     params:
-      paths: ['main.go']
+      paths: ["main.go"]
       replacements:
-        - to_replace: 'world'
-          with: '{{.whomever}}'
+        - to_replace: "world"
+          with: "{{.whomever}}"
 ```
 
 #### List of api_versions
@@ -454,6 +454,7 @@ The currently valid versions are:
 | cli.abcxyz.dev/v1beta3  | 0.5.0                         | Adds: <br>- `_git_*` builtin variables                                        |
 | cli.abcxyz.dev/v1beta4  | 0.6.0                         | Adds: <br>- independent rules                                                 |
 | cli.abcxyz.dev/v1beta5  | 0.6.0                         | Same as v1beta4 for [complex reasons](https://github.com/abcxyz/abc/pull/431) |
+| cli.abcxyz.dev/v1beta6  | 0.7.0                         | Adds: the `_now_ms` variable and `formatTime` function in Go-templates        |
 
 #### Template inputs
 
@@ -499,47 +500,47 @@ An example input without a default:
 
 ```yaml
 inputs:
-  - name: 'output_filename'
-    desc: 'The name of the file to create'
+  - name: "output_filename"
+    desc: "The name of the file to create"
 ```
 
 An example input _with_ a default:
 
 ```yaml
 inputs:
-  - name: 'output_filename'
-    description: 'The name of the file to create'
-    default: 'out.txt'
+  - name: "output_filename"
+    description: "The name of the file to create"
+    default: "out.txt"
 ```
 
 An example of parsing an input as an integer:
 
 ```yaml
 inputs:
-  - name: 'disk_size_bytes'
+  - name: "disk_size_bytes"
     rules:
-      - rule: 'int(disk_size_bytes)' # Will fail if disk_size_bytes (which is a string) can't be parsed as int
-        message: 'Must be an integer'
+      - rule: "int(disk_size_bytes)" # Will fail if disk_size_bytes (which is a string) can't be parsed as int
+        message: "Must be an integer"
 ```
 
 An example input with a validation rule:
 
 ```yaml
 inputs:
-  - name: 'project_id_to_use'
+  - name: "project_id_to_use"
     rules:
-      - rule: 'gcp_matches_project_id(project_id_to_use)'
-        message: 'Must be a GCP project ID'
+      - rule: "gcp_matches_project_id(project_id_to_use)"
+        message: "Must be a GCP project ID"
 ```
 
 An example of validating multiple inputs together:
 
 ```yaml
 inputs:
-  - name: 'min_size_bytes'
-  - name: 'max_size_bytes'
+  - name: "min_size_bytes"
+  - name: "max_size_bytes"
     rules:
-      - rule: 'int(min_size_bytes) <= int(max_size_bytes)'
+      - rule: "int(min_size_bytes) <= int(max_size_bytes)"
         message: "the max can't be less than the min"
 ```
 
@@ -644,9 +645,9 @@ Each step of the spec file performs a single action. A single step consists of:
 Example:
 
 ```yaml
-desc: 'An optional human-readable description of what this step is for'
-action: 'action-name' # One of 'include', 'print', 'append', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template`, `for_each`
-if: 'bool(my_input) || int(my_other_input) > 42' # Optional CEL expression
+desc: "An optional human-readable description of what this step is for"
+action: "action-name" # One of 'include', 'print', 'append', 'string_replace', 'regex_replace', `regex_name_lookup`, `go_template`, `for_each`
+if: "bool(my_input) || int(my_other_input) > 42" # Optional CEL expression
 params:
   foo: bar # The params differ depending on the action
 ```
@@ -671,8 +672,8 @@ Params:
   `as` inputs will be treated as directories:
 
   ```yaml
-  - paths: ['*.txt', '*.md', 'nonglob.json']
-    as: ['dir1', 'dir2', 'newname.json']
+  - paths: ["*.txt", "*.md", "nonglob.json"]
+    as: ["dir1", "dir2", "newname.json"]
   ```
 
   ```
@@ -712,40 +713,40 @@ Examples:
 - A simple include, where each file keeps it location:
 
   ```yaml
-  - action: 'include'
+  - action: "include"
     params:
-      paths: ['main.go', '{{.user_requested_config}}/config.txt']
+      paths: ["main.go", "{{.user_requested_config}}/config.txt"]
   ```
 
 - Using `as` to relocate files:
 
   ```yaml
-  - action: 'include'
+  - action: "include"
     params:
-      paths: ['{{.dbname}}/db.go']
-      as: ['db.go']
+      paths: ["{{.dbname}}/db.go"]
+      as: ["db.go"]
   ```
 
 - Using `skip` to omit certain sub-paths:
 
   ```yaml
-  - action: 'include'
+  - action: "include"
     params:
-      paths: ['configs']
-      skip: ['unwanted_subdir', 'unwanted_file.txt']
+      paths: ["configs"]
+      skip: ["unwanted_subdir", "unwanted_file.txt"]
   ```
 
 - Appending to a file that already exists in the destination directory using
   `from: destination`:
 
   ```yaml
-  - action: 'include'
+  - action: "include"
     params:
-      from: 'destination'
-      paths: ['existing_file_in_dest_dir.txt']
-  - action: 'append'
+      from: "destination"
+      paths: ["existing_file_in_dest_dir.txt"]
+  - action: "append"
     params:
-      paths: ['existing_file_in_dest_dir.txt']
+      paths: ["existing_file_in_dest_dir.txt"]
       with: "I'm a new line at the end of the file"
   ```
 
@@ -772,11 +773,11 @@ Params:
 Example:
 
 ```yaml
-- action: 'print'
+- action: "print"
   params:
     message:
-      'Please go to the GCP console for project {{.project_id}} and click the
-      thing'
+      "Please go to the GCP console for project {{.project_id}} and click the
+      thing"
 ```
 
 #### Action: `append`
@@ -801,9 +802,9 @@ Params:
 Example:
 
 ```yaml
-- action: 'append'
+- action: "append"
   params:
-    paths: ['foo.html', 'web/']
+    paths: ["foo.html", "web/"]
     with: '</html>\n'
     skip_ensure_newline: false
 ```
@@ -827,14 +828,14 @@ Params:
 Example:
 
 ```yaml
-- action: 'string_replace'
+- action: "string_replace"
   params:
-    paths: ['main.go']
+    paths: ["main.go"]
     replacements:
-      - to_replace: 'Alice'
-        with: '{{.sender_name}}'
-      - to_replace: 'Bob'
-        with: '{{.receiver_name}}'
+      - to_replace: "Alice"
+        with: "{{.sender_name}}"
+      - to_replace: "Bob"
+        with: "{{.receiver_name}}"
 ```
 
 #### Action: `regex_replace`
@@ -882,49 +883,49 @@ Examples:
   named `project_id`:
 
   ```yaml
-  - action: 'regex_replace'
+  - action: "regex_replace"
     params:
-      paths: ['main.go']
+      paths: ["main.go"]
       replacements:
-        - regex: 'gcp_project_id=[a-z0-9-]+'
-          with: 'gcp_project_id={{.project_id}}'
+        - regex: "gcp_project_id=[a-z0-9-]+"
+          with: "gcp_project_id={{.project_id}}"
   ```
 
 - Do the same thing as above, in a different way:
 
   ```yaml
-  - action: 'regex_replace'
+  - action: "regex_replace"
     params:
-      paths: ['main.go']
+      paths: ["main.go"]
       replacements:
-        - regex: 'gcp_project_id=(?P<proj_id>[a-z0-9-]+)'
-          subgroup_to_replace: 'proj_id'
-          with: '{{.project_id}}'
+        - regex: "gcp_project_id=(?P<proj_id>[a-z0-9-]+)"
+          subgroup_to_replace: "proj_id"
+          with: "{{.project_id}}"
   ```
 
 - Even more fancy: replace all instances of `gcp_$foo=$bar` with
   `gcp_$foo=$user_provided_input_named_foo`:
 
   ```yaml
-  - action: 'regex_replace'
+  - action: "regex_replace"
     params:
-      paths: ['main.go']
+      paths: ["main.go"]
       replacements:
-        - regex: 'gcp_(?P<input_name>[a-z_]+)=(?P<value>[a-z0-9-]+)'
-          subgroup_to_replace: 'value'
-          with: '{{ .${input_name} }}'
+        - regex: "gcp_(?P<input_name>[a-z_]+)=(?P<value>[a-z0-9-]+)"
+          subgroup_to_replace: "value"
+          with: "{{ .${input_name} }}"
   ```
 
 - Replace all instances of `template_me_$foo=$bar` with
   `$foo=$user_provided_input_named_foo`:
 
   ```yaml
-  - action: 'regex_replace'
+  - action: "regex_replace"
     params:
-      paths: ['main.go']
+      paths: ["main.go"]
       replacements:
-        - regex: 'template_me_(?P<input_name>[a-z_]+)=(?P<value>[a-z0-9-]+)'
-          with: '${input_name}={{ .${input_name} }}'
+        - regex: "template_me_(?P<input_name>[a-z_]+)=(?P<value>[a-z0-9-]+)"
+          with: "${input_name}={{ .${input_name} }}"
   ```
 
 #### Action: `regex_name_lookup`
@@ -948,11 +949,11 @@ Example: replace all appearances of `template_me` with the input variable named
 `myinput`:
 
 ```yaml
-- action: 'regex_name_lookup'
+- action: "regex_name_lookup"
   params:
-    paths: ['main.go']
+    paths: ["main.go"]
     replacements:
-      - regex: '(?P<myinput>template_me)'
+      - regex: "(?P<myinput>template_me)"
 ```
 
 #### Action: `go_template`
@@ -986,9 +987,9 @@ This action will replace `{{.person_name}}` (and all other template expressions)
 with the corresponding inputs:
 
 ```yaml
-- action: 'go_template'
+- action: "go_template"
   params:
-    paths: ['hello.html']
+    paths: ["hello.html"]
 ```
 
 #### Action: `for_each`
@@ -1005,33 +1006,33 @@ expression in the `values_from` field that outputs a list of strings.
 Variant 1 example: hardcoded list of YAML values:
 
 ```yaml
-- desc: 'Iterate over each (hard-coded) environment'
-  action: 'for_each'
+- desc: "Iterate over each (hard-coded) environment"
+  action: "for_each"
   params:
     iterator:
-      key: 'environment'
-      values: ['production', 'dev']
+      key: "environment"
+      values: ["production", "dev"]
     steps:
-      - desc: 'Do some action for each environment'
-        action: 'print'
+      - desc: "Do some action for each environment"
+        action: "print"
         params:
-          message: 'Now processing environment named {{.environment}}'
+          message: "Now processing environment named {{.environment}}"
 ```
 
 Variant 2 example: a CEL expression that produces the list to iterate over:
 
 ```yaml
-- desc: 'Iterate over each environment, produced by CEL as a list'
-  action: 'for_each'
+- desc: "Iterate over each environment, produced by CEL as a list"
+  action: "for_each"
   params:
     iterator:
-      key: 'environment'
+      key: "environment"
       values_from: 'comma_separated_environments.split(",")'
     steps:
-      - desc: 'Do some action for each environment'
-        action: 'print'
+      - desc: "Do some action for each environment"
+        action: "print"
         params:
-          message: 'Now processing environment named {{.environment}}'
+          message: "Now processing environment named {{.environment}}"
 ```
 
 Params:
@@ -1067,24 +1068,24 @@ Example:
 ignore:
   # Ignore `.ssh` under root, root is the template dir or destination dir if the
   # included paths are from destination.
-  - '/.ssh'
+  - "/.ssh"
   # Ignore all txt files with name `tmp.txt` recursively (under root and its
   # sub-directories).
-  - 'tmp.txt'
+  - "tmp.txt"
   # Ignore all txt files in the sub-directories with folder depth of 2.
-  - '*/*.txt'
+  - "*/*.txt"
   # Ignore all cfg files recursively.
-  - '*.cfg'
+  - "*.cfg"
 steps:
-  - desc: 'Include some files and directories'
-    action: 'include'
+  - desc: "Include some files and directories"
+    action: "include"
     params:
-      paths: ['.ssh', 'src_dir']
-  - desc: 'Include some files and directories from destination'
-    action: 'include'
+      paths: [".ssh", "src_dir"]
+  - desc: "Include some files and directories from destination"
+    action: "include"
     params:
-      paths: ['dest_dir']
-      from: 'destination'
+      paths: ["dest_dir"]
+      from: "destination"
 ```
 
 ### Post-rendering validation test (golden test)
@@ -1101,14 +1102,14 @@ metadata and input parameters.
 The test.yaml for a post-rendering validation test may look like,
 
 ```yaml
-api_version: 'cli.abcxyz.dev/v1alpha1'
-kind: 'GoldenTest'
+api_version: "cli.abcxyz.dev/v1alpha1"
+kind: "GoldenTest"
 
 inputs:
-  - name: 'input_a'
-    value: 'a'
-  - name: 'input_b'
-    value: 'b'
+  - name: "input_a"
+    value: "a"
+  - name: "input_b"
+    value: "b"
 ```
 
 Then you can use `abc templates golden-test` to record (capture the anticipated
@@ -1137,11 +1138,11 @@ inputs, as in this example:
 For example:
 
 ```yaml
-- desc: 'Iterate over each environment, produced by CEL as a list'
-  action: 'for_each'
+- desc: "Iterate over each environment, produced by CEL as a list"
+  action: "for_each"
   params:
     iterator:
-      key: 'env'
+      key: "env"
       values: 'input.comma_separated_environments.split(",")'
 ```
 
