@@ -22,7 +22,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/abcxyz/abc/templates/common"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 // ValidateRules validates the given rules using the given context and scope.

@@ -18,19 +18,20 @@ import (
 	"context"
 	"strings"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 func actionStringReplace(ctx context.Context, sr *spec.StringReplace, sp *stepParams) error {
 	var replacerArgs []string //nolint:prealloc // strings.NewReplacer has a weird input slice, it's less confusing to append rather than preallocate.
 	for _, r := range sr.Replacements {
-		toReplace, err := parseAndExecuteGoTmpl(r.ToReplace.Pos, r.ToReplace.Val, sp.scope)
+		toReplace, err := gotmpl.ParseExec(r.ToReplace.Pos, r.ToReplace.Val, sp.scope)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
-		replaceWith, err := parseAndExecuteGoTmpl(r.With.Pos, r.With.Val, sp.scope)
+		replaceWith, err := gotmpl.ParseExec(r.With.Pos, r.With.Val, sp.scope)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 		replacerArgs = append(replacerArgs, toReplace, replaceWith)
 	}

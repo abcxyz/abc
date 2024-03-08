@@ -102,7 +102,7 @@ func TestCompileAndEvalCEL(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
-			scope := NewScope(tc.vars)
+			scope := NewScope(tc.vars, nil)
 
 			// Create a new "any" variable whose type is pointer-to-the-type-of-tc.want.
 			gotPtr := reflect.New(reflect.ValueOf(tc.want).Type()).Interface()
@@ -563,7 +563,7 @@ func compileEvalForTest(t *testing.T, expr string, want any, wantErr string) {
 
 	ctx := context.Background()
 
-	prog, err := celCompile(ctx, NewScope(nil), expr)
+	prog, err := celCompile(ctx, NewScope(nil, nil), expr)
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 		t.Fatal(diff)
 	}

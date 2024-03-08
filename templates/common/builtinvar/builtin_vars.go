@@ -34,6 +34,10 @@ const (
 	GitSHA      = "_git_sha"
 	GitShortSHA = "_git_short_sha"
 
+	// NowMilliseconds is the Unix millisecond timestamp (as a string) of
+	// template execution time (aka "today's datetime").
+	NowMilliseconds = "_now_ms"
+
 	// The value of the --dest flag (the render output directory).
 	FlagDest = "_flag_dest"
 
@@ -64,6 +68,11 @@ func NamesInScope(f features.Features) []string {
 	// v1beta3 added these new vars
 	if !f.SkipGitVars {
 		out = append(out, GitSHA, GitShortSHA, GitTag)
+	}
+
+	// v1beta6 added _now_ms.
+	if !f.SkipTime {
+		out = append(out, NowMilliseconds)
 	}
 
 	return out

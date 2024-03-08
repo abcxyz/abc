@@ -36,6 +36,7 @@ import (
 	specv1beta2 "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
 	specv1beta4 "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	specv1beta6 "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 var (
@@ -114,6 +115,15 @@ var apiVersions = []apiVersionDef{
 		apiVersion: "cli.abcxyz.dev/v1beta5",
 		kinds: map[string]model.ValidatorUpgrader{
 			KindTemplate:   &specv1beta4.Spec{},
+			KindGoldenTest: &goldentestv1beta4.Test{},
+			KindManifest:   &manifestv1alpha1.Manifest{},
+		},
+	},
+	{
+		apiVersion: "cli.abcxyz.dev/v1beta6",
+		unreleased: true,
+		kinds: map[string]model.ValidatorUpgrader{
+			KindTemplate:   &specv1beta6.Spec{},
 			KindGoldenTest: &goldentestv1beta4.Test{},
 			KindManifest:   &manifestv1alpha1.Manifest{},
 		},

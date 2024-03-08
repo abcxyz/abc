@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package funcs
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/slices"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestToSnakeCase(t *testing.T) {
@@ -60,17 +62,17 @@ func TestToSnakeCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := ToSnakeCase(tc.input)
+			got := toSnakeCase(tc.input)
 			if got, want := got, tc.want; got != want {
 				t.Errorf("expected %s to be %s", got, want)
 			}
 
-			got = ToLowerSnakeCase(tc.input)
+			got = toLowerSnakeCase(tc.input)
 			if got, want := got, tc.wantLower; got != want {
 				t.Errorf("expected lower %s to be %s", got, want)
 			}
 
-			got = ToUpperSnakeCase(tc.input)
+			got = toUpperSnakeCase(tc.input)
 			if got, want := got, tc.wantUpper; got != want {
 				t.Errorf("expected upper %s to be %s", got, want)
 			}
@@ -117,17 +119,17 @@ func TestToHyphenCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := ToHyphenCase(tc.input)
+			got := toHyphenCase(tc.input)
 			if got, want := got, tc.want; got != want {
 				t.Errorf("expected %s to be %s", got, want)
 			}
 
-			got = ToLowerHyphenCase(tc.input)
+			got = toLowerHyphenCase(tc.input)
 			if got, want := got, tc.wantLower; got != want {
 				t.Errorf("expected lower %s to be %s", got, want)
 			}
 
-			got = ToUpperHyphenCase(tc.input)
+			got = toUpperHyphenCase(tc.input)
 			if got, want := got, tc.wantUpper; got != want {
 				t.Errorf("expected upper %s to be %s", got, want)
 			}
@@ -178,13 +180,67 @@ func TestSortStrings(t *testing.T) {
 
 			original := slices.Clone(tc.input)
 
-			got := SortStrings(tc.input)
+			got := sortStrings(tc.input)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("incorrect strings (-got,+want): %s", diff)
 			}
 
 			if diff := cmp.Diff(tc.input, original); diff != "" {
 				t.Errorf("original input was modified (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestFormatTime(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		time    string
+		layout  string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "empty",
+			time:   "",
+			layout: "2006-01-02",
+			want:   "",
+		},
+		{
+			name:   "zero",
+			time:   "0",
+			layout: "2006-01-02",
+			want:   "1970-01-01",
+		},
+		{
+			name:   "real_time",
+			time:   "1803901319090",
+			layout: "2006-01-02",
+			want:   "2027-03-01",
+		},
+		{
+			name:    "not_int",
+			time:    "banana",
+			layout:  "2006-01-02",
+			wantErr: "time is not an integer",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := formatTime(tc.time, tc.layout)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("incorrect strings (-got, +want):\n%s", diff)
 			}
 		})
 	}

@@ -34,7 +34,7 @@ import (
 func TestNewTestCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta5'
+	specYaml := `apiVersion: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'
@@ -51,7 +51,7 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
-	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta5'
+	specYamlNoDefault := `apiVersion: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
 
 desc: 'An example template that demonstrates the "print" action'
@@ -67,7 +67,7 @@ steps:
       message: 'Hello, {{.name}}!'
 `
 
-	testYaml := `api_version: cli.abcxyz.dev/v1beta5
+	testYaml := `api_version: cli.abcxyz.dev/v1beta6
 kind: GoldenTest
 inputs:
     - name: name
@@ -168,7 +168,7 @@ builtin_vars:
 				"testdata/golden/new-test/test.yaml": testYaml,
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta6
 kind: GoldenTest
 inputs:
     - name: name
@@ -208,7 +208,7 @@ steps:
 `,
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta6
 kind: GoldenTest
 `,
 			},
@@ -371,7 +371,7 @@ Enter value: `,
 				},
 			},
 			expectedContents: map[string]string{
-				"test.yaml": `api_version: cli.abcxyz.dev/v1beta5
+				"test.yaml": `api_version: cli.abcxyz.dev/v1beta6
 kind: GoldenTest
 inputs:
     - name: name

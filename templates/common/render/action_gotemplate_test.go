@@ -21,7 +21,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl/funcs"
+	"github.com/abcxyz/abc/templates/model/spec/features"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -168,7 +170,7 @@ func TestActionGoTemplate(t *testing.T) {
 
 			ctx := context.Background()
 			sp := &stepParams{
-				scope:      common.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs, funcs.Funcs(features.Features{})),
 				scratchDir: scratchDir,
 				rp: &Params{
 					FS: &common.RealFS{},

@@ -29,4 +29,8 @@ type Features struct {
 	// SkipGitVars determines whether to create builtin variables for _git_sha,
 	// _git_short_sha, and _git_tag. New in v1beta3.
 	SkipGitVars bool
+
+	// SkipTime determines whether to support the _now_ms template variable and
+	// the formatTime template function. New in v1beta6.
+	SkipTime bool
 }

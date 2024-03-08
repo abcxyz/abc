@@ -29,7 +29,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/rules"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/sets"
 )
 
@@ -79,7 +79,7 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
 
-	fileInputs, err := loadInputFiles(ctx, rp.FS, rp.InputFiles)
+	fileInputs, err := loadInputFiles(rp.FS, rp.InputFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 }
 
 func validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map[string]string) error {
-	scope := common.NewScope(inputVals)
+	scope := common.NewScope(inputVals, nil)
 
 	sb := &strings.Builder{}
 	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
@@ -224,12 +224,12 @@ func filterUnknownInputs(spec *spec.Spec, inputs map[string]string) map[string]s
 }
 
 // loadInputFiles iterates over each --input-file and combines them all into a map.
-func loadInputFiles(ctx context.Context, fs common.FS, paths []string) (map[string]string, error) {
+func loadInputFiles(fs common.FS, paths []string) (map[string]string, error) {
 	out := make(map[string]string)
 	sourceFileForInput := make(map[string]string)
 
 	for _, f := range paths {
-		inputsThisFile, err := loadInputFile(ctx, fs, f)
+		inputsThisFile, err := loadInputFile(fs, f)
 		if err != nil {
 			return nil, err
 		}
@@ -273,8 +273,8 @@ func checkInputsMissing(spec *spec.Spec, inputs map[string]string) []string {
 }
 
 // loadInputFile loads a single --input-file into a map.
-func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]string, error) {
-	data, err := os.ReadFile(path)
+func loadInputFile(fs common.FS, path string) (map[string]string, error) {
+	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading input file: %w", err)
 	}
