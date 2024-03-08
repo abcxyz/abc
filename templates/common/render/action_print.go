@@ -28,7 +28,7 @@ func actionPrint(_ context.Context, p *spec.Print, sp *stepParams) error {
 
 	msg, err := gotmpl.ParseExec(p.Message.Pos, p.Message.Val, scope)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	if !strings.HasSuffix(msg, "\n") {
 		msg += "\n"

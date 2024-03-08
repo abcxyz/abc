@@ -27,11 +27,11 @@ func actionStringReplace(ctx context.Context, sr *spec.StringReplace, sp *stepPa
 	for _, r := range sr.Replacements {
 		toReplace, err := gotmpl.ParseExec(r.ToReplace.Pos, r.ToReplace.Val, sp.scope)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 		replaceWith, err := gotmpl.ParseExec(r.With.Pos, r.With.Val, sp.scope)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 		replacerArgs = append(replacerArgs, toReplace, replaceWith)
 	}

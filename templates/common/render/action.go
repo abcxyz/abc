@@ -180,7 +180,7 @@ func processPaths(paths []model.String, scope *common.Scope) ([]model.String, er
 	for _, p := range paths {
 		tmplOutput, err := gotmpl.ParseExec(p.Pos, p.Val, scope)
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:wrapcheck
 		}
 
 		relParsed, err := common.SafeRelPath(p.Pos, tmplOutput)

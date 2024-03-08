@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -268,7 +269,7 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 	return common.NewScope(vars, goTmplFuncs), extraPrintVars, nil
 }
 
-func scopeVars(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_ map[string]string, extraPrintVars map[string]string, _ error) {
+func scopeVars(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_, extraPrintVars map[string]string, _ error) {
 	out := maps.Clone(resolvedInputs)
 
 	if rp.OverrideBuiltinVars != nil { // The caller is overriding the builtin underscore-prefixed vars.
@@ -310,6 +311,10 @@ func scopeVars(resolvedInputs map[string]string, rp *Params, f features.Features
 			builtinvar.GitSHA:      dlVars.GitSHA,
 			builtinvar.GitShortSHA: dlVars.GitShortSHA,
 		}, out)
+	}
+
+	if !f.SkipTime {
+		out[builtinvar.NowMilliseconds] = strconv.FormatInt(rp.Clock.Now().UTC().UnixMilli(), 10)
 	}
 
 	extraPrintVars = map[string]string{

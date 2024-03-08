@@ -14,7 +14,11 @@
 
 package common
 
-import "golang.org/x/exp/maps"
+import (
+	"golang.org/x/exp/maps"
+
+	"github.com/abcxyz/pkg/sets"
+)
 
 // scope binds variable names to values. It has a stack-like structure that
 // allows inner scopes to inherit values from outer scopes. Variable names are
@@ -69,19 +73,21 @@ func (s *Scope) With(m map[string]string) *Scope {
 //
 // The return value is never nil.
 func (s *Scope) AllVars() map[string]string {
-	if s.inherit == nil {
-		return maps.Clone(s.vars)
+	var inheritVars map[string]string
+	if s.inherit != nil {
+		inheritVars = s.inherit.AllVars()
 	}
-
-	out := s.inherit.AllVars()
-	maps.Copy(out, s.vars)
-	return out
+	return sets.UnionMapKeys(s.vars, inheritVars)
 }
 
 // GoTmplFuncs returns all the Go-template functions that are in-scope. The
 // result is suitable for passing to text/template.Template.Funcs().
 func (s *Scope) GoTmplFuncs() map[string]any {
-	return maps.Clone(s.goTmplFuncs)
+	var inheritFuncs map[string]any
+	if s.inherit != nil {
+		inheritFuncs = s.inherit.GoTmplFuncs()
+	}
+	return sets.UnionMapKeys(s.goTmplFuncs, inheritFuncs)
 }
 
 // cloneOrEmpty does two things:

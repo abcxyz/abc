@@ -16,12 +16,13 @@ package gotmpl
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render/gotmpl/funcs"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 )
 
 // These are basic tests to ensure the template functions are mounted. More
@@ -124,7 +125,7 @@ func TestTemplateFuncs(t *testing.T) {
 			wantErr:  `function "formatTime" not defined`,
 		},
 		{
-			name: "formatTime_succeds_on_new_spec_file",
+			name: "formatTime_succeeds_on_new_spec_file",
 			tmpl: `{{ formatTime "1709846071000" "2006-01-02T15:04:05" }}`,
 			want: "2024-03-07T21:14:31",
 		},

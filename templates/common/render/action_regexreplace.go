@@ -103,7 +103,7 @@ func replaceWithTemplate(allMatches [][]int, b []byte, rr *spec.RegexReplaceEntr
 		// {{.${mysubgroup}}}
 		replacementTemplateExpanded, err := gotmpl.ParseExec(rr.With.Pos, string(replacementRegexExpanded), scope)
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:wrapcheck
 		}
 
 		subgroupNum := 0

@@ -25,7 +25,7 @@ import (
 func actionAppend(ctx context.Context, ap *spec.Append, sp *stepParams) error {
 	with, err := gotmpl.ParseExec(ap.With.Pos, ap.With.Val, sp.scope)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	if !ap.SkipEnsureNewline.Val {

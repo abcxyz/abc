@@ -1151,6 +1151,34 @@ steps:
 			wantStdout:       "git sha: ahl8foqboh8ktqzxnymuvdcg91hvim0cfszlcstl\ngit short sha: ahl8foq\ngit tag: v1.2.3\n",
 			wantDestContents: map[string]string{},
 		},
+		{
+			name: "formatTime_not_in_scope_on_old_spec",
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'The timestamp is {{formatTime ._now_ms "2006-01-02T15:04:05"}}'`,
+			},
+			wantErr: `function "formatTime" not defined`,
+		},
+		{
+			name: "formatTime_is_in_scope_on_new_spec",
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'The timestamp is {{formatTime ._now_ms "2006-01-02T15:04:05"}}'`,
+			},
+			wantStdout: "The timestamp is 2023-12-08T23:59:02\n",
+		},
 	}
 
 	for _, tc := range cases {
@@ -1232,7 +1260,7 @@ steps:
 			}
 
 			gotDestContents := abctestutil.LoadDirWithoutMode(t, outDir)
-			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 

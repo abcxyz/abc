@@ -20,10 +20,11 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/model"
-	"golang.org/x/exp/maps"
 )
 
 var templateKeyErrRegex = regexp.MustCompile(`map has no entry for key "([^"]*)"`)

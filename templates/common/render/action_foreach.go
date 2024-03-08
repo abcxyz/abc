@@ -25,7 +25,7 @@ import (
 func actionForEach(ctx context.Context, fe *spec.ForEach, sp *stepParams) error {
 	key, err := gotmpl.ParseExec(fe.Iterator.Key.Pos, fe.Iterator.Key.Val, sp.scope)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	var values []string
@@ -33,7 +33,7 @@ func actionForEach(ctx context.Context, fe *spec.ForEach, sp *stepParams) error 
 		var err error
 		values, err = gotmpl.ParseExecAll(fe.Iterator.Values, sp.scope)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	} else {
 		if err := common.CelCompileAndEval(ctx, sp.scope, *fe.Iterator.ValuesFrom, &values); err != nil {
