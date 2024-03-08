@@ -1154,7 +1154,7 @@ steps:
 		{
 			name: "formatTime_not_in_scope_on_old_spec",
 			templateContents: map[string]string{
-				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 desc: 'A template for the ages'
 steps:
@@ -1178,6 +1178,34 @@ steps:
     message: 'The timestamp is {{formatTime ._now_ms "2006-01-02T15:04:05"}}'`,
 			},
 			wantStdout: "The timestamp is 2023-12-08T23:59:02\n",
+		},
+		{
+			name: "_now_ms_not_in_scope_on_old_spec",
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'The timestamp is {{ ._now_ms }}'`,
+			},
+			wantErr: `nonexistent variable name "_now_ms"`,
+		},
+		{
+			name: "_now_ms_is_in_scope_on_new_spec",
+			templateContents: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'A template for the ages'
+steps:
+- desc: 'Print a message'
+  action: 'print'
+  params:
+    message: 'The timestamp is {{ ._now_ms }}'`,
+			},
+			wantStdout: "The timestamp is 1702079942000\n",
 		},
 	}
 

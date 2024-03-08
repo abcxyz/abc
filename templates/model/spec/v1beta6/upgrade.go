@@ -26,7 +26,7 @@ func (s *Spec) Upgrade(ctx context.Context) (model.ValidatorUpgrader, error) {
 	logger := logging.FromContext(ctx).With("logger", "Upgrade")
 	logger.DebugContext(ctx, "finished upgrading spec model, this is the most recent version")
 
-	// Uncomment this when there's a version after v1beta4.
+	// Uncomment this when there's a newer api_version.
 	// var out nextversion.Spec
 	// if err := copier.Copy(&out, s); err != nil {
 	// 	return nil, fmt.Errorf("internal error: failed upgrading spec from v1beta2 to v1beta3: %w", err)

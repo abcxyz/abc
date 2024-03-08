@@ -70,6 +70,7 @@ func NamesInScope(f features.Features) []string {
 		out = append(out, GitSHA, GitShortSHA, GitTag)
 	}
 
+	// v1beta6 added _now_ms.
 	if !f.SkipTime {
 		out = append(out, NowMilliseconds)
 	}

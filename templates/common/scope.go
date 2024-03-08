@@ -80,7 +80,7 @@ func (s *Scope) AllVars() map[string]string {
 	return sets.UnionMapKeys(s.vars, inheritVars)
 }
 
-// GoTmplFuncs returns all the Go-template functions that are in-scope. The
+// GoTmplFuncs returns all the Go-template functions that are in scope. The
 // result is suitable for passing to text/template.Template.Funcs().
 func (s *Scope) GoTmplFuncs() map[string]any {
 	var inheritFuncs map[string]any
@@ -95,6 +95,8 @@ func (s *Scope) GoTmplFuncs() map[string]any {
 //     worrying about it being modified.
 //   - if the input is nil, then an empty map is returned, guaranteeing that we
 //     don't have to deal with a nil map in a Scope.
+//
+// The return value is never nil.
 func cloneOrEmpty[T any](m map[string]T) map[string]T {
 	if len(m) == 0 {
 		return map[string]T{}
