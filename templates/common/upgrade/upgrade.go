@@ -18,11 +18,8 @@ package upgrade
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
-	"hash"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -190,7 +187,7 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 		return false, err
 	}
 
-	newManifest, err := loadManifest(ctx, p.FS, newManifestPath)
+	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, common.ABCInternalDir, newManifestPath))
 	if err != nil {
 		return false, err
 	}
@@ -217,89 +214,12 @@ func mergeTentatively(ctx context.Context, fs common.FS, installedDir, mergeDir,
 	return nil
 }
 
-// TODO compareToHash must start with e.g "h1:"
-// TODO test
-func hasUserModifiedSinceInstallation(path string, wantHash string) (bool, error) {
-	// The hash should start with a string like "h1:" indicating the hash algorithm
-	tokens := strings.SplitN(wantHash, ":", 2)
-	if len(tokens) != 2 {
-		return false, fmt.Errorf("malformed hash, expected it to begin with hash name followed by colon: %q", wantHash)
-	}
-
-	var hasher hash.Hash
-	switch tokens[0] {
-	case "h1":
-		hasher = sha256.New()
-	default:
-		return false, fmt.Errorf("unknown hash algorithm %q", tokens[0])
-	}
-
-	inFile, err := os.Open(path)
-	if err != nil {
-		return false, fmt.Errorf("Open(%q): %w", path, err)
-	}
-	if _, err := io.Copy(hasher, inFile); err != nil {
-		return false, fmt.Errorf("Copy(): %w", err)
-	}
-	gotHash := string(hasher.Sum(nil))
-
-	return gotHash == tokens[1], nil
-}
-
-func modifiedFiles(oldManifest *manifest.Manifest
-
 // TODO commitParams to encapsulate args?
-
 func commit(ctx context.Context, dryRun bool, f common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest, newManifest *manifest.Manifest) error {
-	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
+	// TODO(upgrade): detect any unresolved conflicts (.abc_merge_* files maybe?) and refuse to
+	//                upgrade if there are any.
 
-	oldManifestHashes := make(map[string]string, len(oldManifest.OutputHashes))
-	for _, entry := range oldManifest.OutputHashes {
-		oldManifestHashes[entry.File.Val] = entry.Hash.Val
-	}
-
-	if err := fs.WalkDir(f, mergeDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		relPath, err := filepath.Rel(mergeDir, path)
-		if err != nil {
-			return fmt.Errorf("filepath.Rel(%q, %q): %w", mergeDir, path, err)
-		}
-
-		hashFromOldManifest, ok := oldManifestHashes[relPath]
-	}); err != nil {
-		return err
-	}
-	// if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
-	// 	DryRun:  dryRun,
-	// 	DstRoot: installedDir,
-	// 	SrcRoot: mergeDir,
-	// 	Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
-	// 		if de.IsDir() && relPath == common.ABCInternalDir {
-	// 			// The metadata needs special merging, so skip it for now and
-	// 			// handle it separately.
-	// 			return common.CopyHint{
-	// 				Skip: true,
-	// 			}, nil
-	// 		}
-	// 		return common.CopyHint{
-	// 			Overwrite: true,
-	// 		}, nil
-	// 	},
-	// 	FS:     f,
-	// 	Hasher: sha256.New,
-	// }); err != nil {
-	// 	return err //nolint:wrapcheck
-	// }
-
-	abcDir := filepath.Join(mergeDir, common.ABCInternalDir)
-	newManifestBaseName, err := findManifest(abcDir)
-	if err != nil {
-		return err
-	}
-	newManifest, err := loadManifest(ctx, f, filepath.Join(abcDir, newManifestBaseName))
-	if err != nil {
+	if err := mergeAll(ctx, f, dryRun, installedDir, mergeDir, oldManifest, newManifest); err != nil {
 		return err
 	}
 

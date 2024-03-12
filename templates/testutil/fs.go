@@ -88,8 +88,10 @@ func WriteAll(tb testing.TB, root string, files map[string]ModeAndContents) {
 // LoadDirContents reads all the files recursively under "dir", returning their contents as a
 // map[filename]->contents. Returns nil if dir doesn't exist. Keys use slash separators, not
 // native.
-func LoadDirContents(tb testing.TB, dir string) map[string]ModeAndContents {
+func LoadDirContents(tb testing.TB, dir string, opts ...LoadDirOpt) map[string]ModeAndContents {
 	tb.Helper()
+
+	opt := combineLoadDirOpts(opts...)
 
 	if _, err := os.Stat(dir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
@@ -102,7 +104,18 @@ func LoadDirContents(tb testing.TB, dir string) map[string]ModeAndContents {
 		if err != nil {
 			return err
 		}
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			tb.Fatal(err)
+		}
+		skip := skippable(tb, relPath, opt.skipGlobs)
 		if d.IsDir() {
+			if skip {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if skip {
 			return nil
 		}
 		contents, err := os.ReadFile(path)
@@ -129,13 +142,26 @@ func LoadDirContents(tb testing.TB, dir string) map[string]ModeAndContents {
 	return out
 }
 
+func skippable(tb testing.TB, relPath string, globs []string) bool {
+	for _, glob := range globs {
+		ok, err := filepath.Match(glob, relPath)
+		if err != nil {
+			tb.Fatalf("invalid glob: %s", glob)
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
 // Read all the files recursively under "dir", returning their contents as a
 // map[filename]->contents but without file mode. Returns nil if dir doesn't
 // exist. Keys use slash separators, not native.
-func LoadDirWithoutMode(tb testing.TB, dir string) map[string]string {
+func LoadDirWithoutMode(tb testing.TB, dir string, opts ...LoadDirOpt) map[string]string {
 	tb.Helper()
 
-	withMode := LoadDirContents(tb, dir)
+	withMode := LoadDirContents(tb, dir, opts...)
 	if withMode == nil {
 		return nil
 	}
@@ -144,6 +170,24 @@ func LoadDirWithoutMode(tb testing.TB, dir string) map[string]string {
 		out[name] = mc.Contents
 	}
 	return out
+}
+
+type LoadDirOpt struct {
+	skipGlobs []string
+}
+
+func combineLoadDirOpts(opts ...LoadDirOpt) LoadDirOpt {
+	var out LoadDirOpt
+	for _, opt := range opts {
+		out.skipGlobs = append(out.skipGlobs, opt.skipGlobs...)
+	}
+	return out
+}
+
+func SkipGlob(glob string) LoadDirOpt {
+	return LoadDirOpt{
+		skipGlobs: []string{glob},
+	}
 }
 
 // WithGitRepoAt adds "files" to the given map containing a minimal git repo.
