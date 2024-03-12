@@ -295,7 +295,6 @@ steps:
 				abctestutil.WriteAllDefaultMode(t, templateDir, tc.templateUnionForUpgrade)
 			}
 			if len(tc.templateReplacementForUpgrade) > 0 {
-				
 				if err := os.RemoveAll(templateDir); err != nil {
 					t.Fatal(err)
 				}
