@@ -21,11 +21,12 @@ env:
   WIF_PROVIDER: 'REPLACE_WIF_PROVIDER'
   WIF_SERVICE_ACCOUNT: 'REPLACE_WIF_SERVICE_ACCOUNT'
 
+  GO_VERSION: 'REPLACE_PROTO_GO_VERSION'
   GO_GAR_REPOSITORY_NAME: 'REPLACE_GO_GAR_REPOSITORY_NAME'
   GO_GAR_REPOSITORY_LOCATION: 'REPLACE_GO_GAR_REPOSITORY_LOCATION'
   GO_MODULE_PATH: 'github.com/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME'
 
-  NODE_VERSION: 'REPLACE_NODE_VERSION'
+  NODE_VERSION: 'REPLACE_PROTO_NODE_VERSION'
   NODE_GAR_REPOSITORY_NAME: 'REPLACE_NODE_GAR_REPOSITORY_NAME'
   NODE_GAR_REPOSITORY_LOCATION: 'REPLACE_NODE_GAR_REPOSITORY_LOCATION'
 
@@ -47,7 +48,7 @@ jobs:
       - name: 'Setup Go'
         uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version: '${{ env.GO_VERSION }}'
 
       - name: 'Setup Buf CLI'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
@@ -101,7 +102,7 @@ jobs:
       - name: 'Setup Go'
         uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version: '${{ env.GO_VERSION }}'
 
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
