@@ -452,24 +452,24 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 }
 
 // executeOneStep runs one action from the spec.
-func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepParams) error {
+func executeOneStep(ctx context.Context, step_idx int, step *spec.Step, sp *stepParams) error {
 	logger := logging.FromContext(ctx).With("logger", "executeOneStep")
 
 	if step.If.Val != "" {
 		var celResult bool
 		if err := common.CelCompileAndEval(ctx, sp.scope, step.If, &celResult); err != nil {
 			return fmt.Errorf(`"if" expression "%s" failed at step index %d action %q: %w`,
-				step.If.Val, stepIdx, step.Action.Val, err)
+				step.If.Val, step_idx, step.Action.Val, err)
 		}
 		if !celResult {
 			logger.DebugContext(ctx, `skipping step because "if" expression evaluated to false`,
-				"step_index_from_0", stepIdx,
+				"step_index_from_0", step_idx,
 				"action", step.Action.Val,
 				"cel_expr", step.If.Val)
 			return nil
 		}
 		logger.DebugContext(ctx, `proceeding to execute step because "if" expression evaluated to true`,
-			"step_index_from_0", stepIdx,
+			"step_index_from_0", step_idx,
 			"action", step.Action.Val,
 			"cel_expr", step.If.Val)
 	}
