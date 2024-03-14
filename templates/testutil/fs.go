@@ -187,7 +187,7 @@ func combineLoadDirOpts(opts ...LoadDirOpt) LoadDirOpt {
 	return out
 }
 
-// SkipGlib is a LoadDirOpt that skips all directory entries matching the given
+// SkipGlob is a LoadDirOpt that skips all directory entries matching the given
 // glob (and their children, in the case of directories).
 func SkipGlob(glob string) LoadDirOpt {
 	return LoadDirOpt{
