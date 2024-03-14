@@ -463,13 +463,13 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 		}
 		if !celResult {
 			logger.DebugContext(ctx, `skipping step because "if" expression evaluated to false`,
-				"step_index_from_0", stepIdx,
+				"step_index_from_zero", stepIdx,
 				"action", step.Action.Val,
 				"cel_expr", step.If.Val)
 			return nil
 		}
 		logger.DebugContext(ctx, `proceeding to execute step because "if" expression evaluated to true`,
-			"step_index_from_0", stepIdx,
+			"step_index_from_zero", stepIdx,
 			"action", step.Action.Val,
 			"cel_expr", step.If.Val)
 	}

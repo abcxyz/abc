@@ -19,6 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  GO_VERSION: '1.22.1'
   BUF_VERSION: '1.28.1'
   BUF_CHECKSUM: 'buf-checksum'
 
@@ -34,6 +35,22 @@ jobs:
         id: 'capture'
         run: |
           echo "PROPOSED_PROTO_VERSION=$(yq eval '.proto_version' version.yaml)" >> $GITHUB_OUTPUT
+
+  upload_source_protos:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+        with:
+          ref: 'main'
+
+      - name: 'Upload Go GitHub Artifact'
+        uses: 'actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3' # ratchet:actions/upload-artifact@v4
+        with:
+          name: 'source-${{ github.sha }}'
+          path: '.'
+          if-no-files-found: 'error'
+          retention-days: 3
 
   build:
     runs-on: 'ubuntu-latest'
@@ -106,7 +123,7 @@ jobs:
       - name: 'Setup Go'
         uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version: '${{ env.GO_VERSION }}'
 
       - name: 'Setup Buf CLI'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
@@ -134,7 +151,9 @@ jobs:
 
   breaking:
     runs-on: 'ubuntu-latest'
-    needs: 'build'
+    needs:
+      - 'build'
+      - 'upload_source_protos'
     steps:
       - name: 'Checkout PR branch'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
@@ -151,11 +170,18 @@ jobs:
           cache_key: '${{ runner.os }}_${{ runner.arch }}_buf_${{ env.BUF_VERSION }}'
           add_to_path: true
 
+      - name: 'Download go artifact'
+        uses: 'actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85' # ratchet:actions/download-artifact@v4
+        with:
+          pattern: 'source-${{ github.sha }}'
+          path: '${{ runner.temp }}/.source'
+          merge-multiple: true
+
       - name: 'Run Break Check'
         shell: 'bash'
         run: |
           set +e
-          BREAK_CHECK=$(buf lint --against https://github.com/my-org/my-repo.git#branch=main,ref=HEAD~1)
+          BREAK_CHECK=$(buf breaking --against ${{ runner.temp }}/.source)
           if ! [[ -z "${BREAK_CHECK}" ]]; then
             echo "::error::$BREAK_CHECK"
             exit 1

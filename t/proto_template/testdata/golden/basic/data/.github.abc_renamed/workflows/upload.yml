@@ -21,6 +21,7 @@ env:
   WIF_PROVIDER: 'projects/my-project/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
   WIF_SERVICE_ACCOUNT: 'platform-ops@abcxyz-my-project.iam.gserviceaccount.com'
 
+  GO_VERSION: '1.22.1'
   GO_GAR_REPOSITORY_NAME: 'my-go-gar'
   GO_GAR_REPOSITORY_LOCATION: 'us'
   GO_MODULE_PATH: 'github.com/my-org/my-repo'
@@ -47,7 +48,7 @@ jobs:
       - name: 'Setup Go'
         uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version: '${{ env.GO_VERSION }}'
 
       - name: 'Setup Buf CLI'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
@@ -101,7 +102,7 @@ jobs:
       - name: 'Setup Go'
         uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version: '${{ env.GO_VERSION }}'
 
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
