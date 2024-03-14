@@ -100,9 +100,7 @@ steps:
 		// delta).
 		templateReplacementForUpgrade map[string]string
 
-		// TODO doc remaining fields
-		wantDestContentsBeforeUpgrade map[string]string // excludes manifest contents
-		wantManifestBeforeUpgrade     *manifest.Manifest
+		wantManifestBeforeUpgrade *manifest.Manifest
 
 		localEdits                   func(tb testing.TB, installedDir string)
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -124,10 +122,7 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			wantOK: true,
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt": "hello\n",
-			},
+			wantOK:                    true,
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
 				"spec.yaml": includeDotSpec + `
@@ -151,10 +146,7 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			templateUnionForUpgrade: map[string]string{},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt": "hello\n",
-			},
+			templateUnionForUpgrade:   map[string]string{},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
@@ -167,9 +159,6 @@ steps:
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
-			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt": "hello\n",
 			},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
@@ -202,10 +191,6 @@ steps:
 				"out.txt":          "hello\n",
 				"another_file.txt": "I'm another file\n",
 				"spec.yaml":        includeDotSpec,
-			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt":          "hello\n",
-				"another_file.txt": "I'm another file\n",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.OutputHashes = []*manifest.OutputHash{
@@ -240,10 +225,6 @@ steps:
 				"out.txt":          "hello\n",
 				"another_file.txt": "I'm another file\n",
 				"spec.yaml":        includeDotSpec,
-			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt":          "hello\n",
-				"another_file.txt": "I'm another file\n",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.OutputHashes = []*manifest.OutputHash{
@@ -287,10 +268,6 @@ steps:
 				"another_file.txt": "I'm another file\n",
 				"spec.yaml":        includeDotSpec,
 			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt":          "hello\n",
-				"another_file.txt": "I'm another file\n",
-			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.OutputHashes = []*manifest.OutputHash{
 					{
@@ -330,9 +307,6 @@ steps:
 				"out.txt":   "hello",
 				"spec.yaml": includeDotSpec,
 			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt": "hello",
-			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.OutputHashes = []*manifest.OutputHash{
 					{
@@ -370,9 +344,6 @@ steps:
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello",
 				"spec.yaml": includeDotSpec,
-			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt": "hello",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.OutputHashes = []*manifest.OutputHash{
@@ -412,10 +383,6 @@ steps:
 				"user_deletes_this_file.txt":     "hello",
 				"template_changes_this_file.txt": "initial contents",
 				"spec.yaml":                      includeDotSpec,
-			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"user_deletes_this_file.txt":     "hello",
-				"template_changes_this_file.txt": "initial contents",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.OutputHashes = []*manifest.OutputHash{
@@ -462,10 +429,6 @@ steps:
 				// We need another file in the template that changes on upgrade,
 				// otherwise the dirhash will match and the template upgrade
 				// will be short-circuited as "no need for upgrade".
-				"some_other_file.txt": "foo",
-			},
-			wantDestContentsBeforeUpgrade: map[string]string{
-				"out.txt":             "initial contents",
 				"some_other_file.txt": "foo",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
@@ -527,7 +490,7 @@ steps:
 			abctestutil.WriteAllDefaultMode(t, templateDir, tc.origTemplateDirContents)
 			clk := clock.NewMock()
 			clk.Set(beforeUpgradeTime)
-			renderAndVerify(t, ctx, clk, tempBase, templateDir, destDir, tc.wantDestContentsBeforeUpgrade)
+			renderAndVerify(t, ctx, clk, tempBase, templateDir, destDir)
 
 			assertManifest(ctx, t, "before upgrade", tc.wantManifestBeforeUpgrade, manifestDir)
 
@@ -623,7 +586,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 	}
 }
 
-func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string, wantContents map[string]string) {
+func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) {
 	tb.Helper()
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
@@ -648,6 +611,7 @@ func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBa
 		tb.Fatal(err)
 	}
 
+	wantContents := abctestutil.LoadDirWithoutMode(tb, templateDir, abctestutil.SkipGlob("spec.yaml"))
 	got := abctestutil.LoadDirWithoutMode(tb, destDir, abctestutil.SkipGlob(".abc/manifest*"))
 	if diff := cmp.Diff(got, wantContents); diff != "" {
 		tb.Fatalf("installed directory contents before upgrading were not as expected, there's something wrong with test setup (-got,+want): %s", diff)
