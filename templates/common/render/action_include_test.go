@@ -895,10 +895,10 @@ func TestActionInclude(t *testing.T) {
 			scratchDir := filepath.Join(tempDir, tempdir.ScratchDirNamePart)
 			destDir := filepath.Join(tempDir, "dest")
 
-			abctestutil.WriteAll(t, templateDir, tc.templateContents)
+			abctestutil.WriteAllMode(t, templateDir, tc.templateContents)
 
 			// For testing "include from destination"
-			abctestutil.WriteAll(t, destDir, tc.destDirContents)
+			abctestutil.WriteAllMode(t, destDir, tc.destDirContents)
 
 			sp := &stepParams{
 				ignorePatterns: tc.ignorePatterns,
@@ -920,12 +920,12 @@ func TestActionInclude(t *testing.T) {
 				t.Error(diff)
 			}
 
-			gotTemplateContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart))
+			gotTemplateContents := abctestutil.LoadDirMode(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart))
 			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
-			gotScratchContents := abctestutil.LoadDirContents(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart))
+			gotScratchContents := abctestutil.LoadDirMode(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart))
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}

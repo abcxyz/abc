@@ -1216,18 +1216,18 @@ steps:
 
 			tempDir := t.TempDir()
 			outDir := filepath.Join(tempDir, "out_dir")
-			abctestutil.WriteAllDefaultMode(t, outDir, tc.existingDestContents)
+			abctestutil.WriteAll(t, outDir, tc.existingDestContents)
 
 			inputFilePaths := make([]string, 0, len(tc.inputFileNames))
 			for _, f := range tc.inputFileNames {
 				inputFileDir := filepath.Join(tempDir, "inputs")
-				abctestutil.WriteAllDefaultMode(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
+				abctestutil.WriteAll(t, inputFileDir, map[string]string{f: tc.inputFileContents[f]})
 				inputFilePaths = append(inputFilePaths, filepath.Join(inputFileDir, f))
 			}
 
 			backupDir := filepath.Join(tempDir, "backups")
 			sourceDir := filepath.Join(tempDir, "source")
-			abctestutil.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+			abctestutil.WriteAll(t, sourceDir, tc.templateContents)
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
@@ -1272,7 +1272,7 @@ steps:
 			var gotTemplateContents map[string]string
 			templateDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart+"*")) // the * accounts for the random cookie added by mkdirtemp
 			if ok {
-				gotTemplateContents = abctestutil.LoadDirWithoutMode(t, templateDir)
+				gotTemplateContents = abctestutil.LoadDir(t, templateDir)
 			}
 			if diff := cmp.Diff(gotTemplateContents, tc.wantTemplateContents); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
@@ -1281,13 +1281,13 @@ steps:
 			var gotScratchContents map[string]string
 			scratchDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart+"*"))
 			if ok {
-				gotScratchContents = abctestutil.LoadDirWithoutMode(t, scratchDir)
+				gotScratchContents = abctestutil.LoadDir(t, scratchDir)
 			}
 			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			gotDestContents := abctestutil.LoadDirWithoutMode(t, outDir)
+			gotDestContents := abctestutil.LoadDir(t, outDir)
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -1295,7 +1295,7 @@ steps:
 			var gotBackupContents map[string]string
 			backupSubdir, ok := abctestutil.TestMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
 			if ok {
-				gotBackupContents = abctestutil.LoadDirWithoutMode(t, backupSubdir)
+				gotBackupContents = abctestutil.LoadDir(t, backupSubdir)
 			}
 			if diff := cmp.Diff(gotBackupContents, tc.wantBackupContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory contents were not as expected (-got,+want): %s", diff)
@@ -1304,7 +1304,7 @@ steps:
 			var gotDebugContents map[string]string
 			debugDir, ok := abctestutil.TestMustGlob(t, filepath.Join(tempDir, tempdir.DebugStepDiffsDirNamePart+"*"))
 			if ok {
-				gotDebugContents = abctestutil.LoadDirWithoutMode(t, debugDir)
+				gotDebugContents = abctestutil.LoadDir(t, debugDir)
 			}
 			gotDebugDirExists := len(gotDebugContents) > 0
 			if tc.flagDebugStepDiffs != gotDebugDirExists {

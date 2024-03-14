@@ -295,7 +295,7 @@ func TestHeadTags(t *testing.T) {
 			ctx := context.Background()
 
 			tmpDir := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, tmpDir, tc.files)
+			abctestutil.WriteAll(t, tmpDir, tc.files)
 
 			dir := filepath.Join(tmpDir, tc.dir)
 

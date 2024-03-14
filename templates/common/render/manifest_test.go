@@ -233,8 +233,8 @@ output_hashes: []
 			templateDir := t.TempDir()
 			destDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, templateDir, tc.templateContents)
-			abctestutil.WriteAllDefaultMode(t, destDir, tc.destDirContents)
+			abctestutil.WriteAll(t, templateDir, tc.templateContents)
+			abctestutil.WriteAll(t, destDir, tc.destDirContents)
 
 			err := writeManifest(&writeManifestParams{
 				clock:        clk,
@@ -251,7 +251,7 @@ output_hashes: []
 				t.Fatal(diff)
 			}
 
-			got := abctestutil.LoadDirWithoutMode(t, destDir)
+			got := abctestutil.LoadDir(t, destDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("destination directory contents were not as expected (-got,+want): %s", diff)
 			}

@@ -274,7 +274,7 @@ func TestParseSource(t *testing.T) {
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.tempDirContents)
+			abctestutil.WriteAll(t, tempDir, tc.tempDirContents)
 
 			params := &ParseSourceParams{
 				CWD:         tempDir,
@@ -407,7 +407,7 @@ func TestGitCanonicalVersion(t *testing.T) {
 			t.Parallel()
 
 			tmp := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, tmp, tc.files)
+			abctestutil.WriteAll(t, tmp, tc.files)
 			ctx := context.Background()
 			got, gotOK, err := gitCanonicalVersion(ctx, filepath.Join(tmp, tc.dir), tc.allowDirty)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

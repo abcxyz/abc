@@ -399,7 +399,7 @@ gamma`,
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, scratchDir, tc.initContents)
+			abctestutil.WriteAll(t, scratchDir, tc.initContents)
 
 			ctx := context.Background()
 			sp := &stepParams{
@@ -414,7 +414,7 @@ gamma`,
 				t.Error(diff)
 			}
 
-			got := abctestutil.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDir(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output differed from expected, (-got,+want): %s", diff)
 			}

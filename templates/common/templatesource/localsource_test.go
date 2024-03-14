@@ -226,7 +226,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 
 			ctx := context.Background()
 			tmp := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, tmp, tc.initialTempDirContents)
+			abctestutil.WriteAll(t, tmp, tc.initialTempDirContents)
 			dl := &LocalDownloader{
 				SrcPath:            filepath.Join(tmp, tc.copyFromDir),
 				allowDirtyTestOnly: true,
@@ -238,7 +238,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 				t.Fatal(diff)
 			}
 
-			gotTemplateDir := abctestutil.LoadDirWithoutMode(t, templateDir)
+			gotTemplateDir := abctestutil.LoadDir(t, templateDir)
 			if diff := cmp.Diff(gotTemplateDir, tc.wantTemplateDirFiles, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("template directory contents were not as expected (-got,+want): %s", diff)
 			}

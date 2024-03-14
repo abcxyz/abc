@@ -190,7 +190,7 @@ builtin_vars:
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			got, err := parseTestCases(ctx, tempDir, tc.testNames)
@@ -318,7 +318,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
@@ -329,7 +329,7 @@ steps:
 				return
 			}
 
-			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/test"))
 			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -577,7 +577,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
@@ -588,7 +588,7 @@ steps:
 				return
 			}
 
-			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/test"))
 			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -660,14 +660,14 @@ func TestRenameGitDirsAndFiles(t *testing.T) {
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			err := renameGitDirsAndFiles(tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
-			gotDestContents := abctestutil.LoadDirWithoutMode(t, tempDir)
+			gotDestContents := abctestutil.LoadDir(t, tempDir)
 			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

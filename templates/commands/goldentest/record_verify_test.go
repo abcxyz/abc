@@ -74,7 +74,7 @@ inputs:
 			name: "mismatch_should_fail",
 			messWith: func(t *testing.T, dir string) {
 				t.Helper()
-				abctestutil.WriteAllDefaultMode(t, dir, map[string]string{
+				abctestutil.WriteAll(t, dir, map[string]string{
 					"a.txt": "mismatched content",
 				})
 			},
@@ -89,7 +89,7 @@ inputs:
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, templateContent)
+			abctestutil.WriteAll(t, tempDir, templateContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
