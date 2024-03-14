@@ -228,7 +228,7 @@ Enter value: `,
 			dest := filepath.Join(tempDir, "dest")
 			sourceDir := filepath.Join(tempDir, "source")
 
-			abctestutil.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+			abctestutil.WriteAll(t, sourceDir, tc.templateContents)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -269,7 +269,7 @@ Enter value: `,
 				t.Fatal("timed out waiting for background goroutine to finish")
 			}
 
-			gotDestContents := abctestutil.LoadDirWithoutMode(t, dest)
+			gotDestContents := abctestutil.LoadDir(t, dest)
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

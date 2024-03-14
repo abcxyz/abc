@@ -218,7 +218,7 @@ func TestWalkAndModify(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
+			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sp := &stepParams{
 				scope:      common.NewScope(nil, nil),
@@ -244,7 +244,7 @@ func TestWalkAndModify(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := abctestutil.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDir(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}
@@ -532,7 +532,7 @@ func TestProcessGlobs(t *testing.T) {
 
 			// pre-populate dir contents
 			tempDir := t.TempDir()
-			abctestutil.WriteAll(t, tempDir, tc.dirContents)
+			abctestutil.WriteAllMode(t, tempDir, tc.dirContents)
 			ctx := context.Background()
 
 			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false) // with globbing enabled

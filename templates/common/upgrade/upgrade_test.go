@@ -167,7 +167,7 @@ output_hashes:
 			templateDir := filepath.Join(tempBase, "template_dir")
 
 			// Make tempBase into a valid git repo.
-			abctestutil.WriteAllDefaultMode(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
 			// We don't use UTC time here because we want to make sure local time
 			// gets converted to UTC time before saving.
@@ -180,7 +180,7 @@ output_hashes:
 
 			ctx := context.Background()
 
-			abctestutil.WriteAllDefaultMode(t, templateDir, tc.origTemplateDirContents)
+			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 			renderAndVerify(t, ctx, clk, tempBase, templateDir, destDir, tc.wantDestContentsBeforeUpgrade)
 
 			clk.Add(time.Hour) // simulate time passing between initial installation and upgrade
@@ -201,7 +201,7 @@ output_hashes:
 
 			// Now create the "new" template that we'll upgrade to. This is
 			// implemented as a patch over the previous version.
-			abctestutil.WriteAllDefaultMode(t, templateDir, tc.templateChangesForUpgrade)
+			abctestutil.WriteAll(t, templateDir, tc.templateChangesForUpgrade)
 
 			ok, err := Upgrade(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
@@ -212,7 +212,7 @@ output_hashes:
 				t.Errorf("got ok=%t, want %t", ok, tc.wantOK)
 			}
 
-			gotInstalledDirContentsAfter := abctestutil.LoadDirWithoutMode(t, destDir)
+			gotInstalledDirContentsAfter := abctestutil.LoadDir(t, destDir)
 			if diff := cmp.Diff(gotInstalledDirContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 			}
@@ -245,7 +245,7 @@ func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBa
 		tb.Fatal(err)
 	}
 
-	got := abctestutil.LoadDirWithoutMode(tb, destDir)
+	got := abctestutil.LoadDir(tb, destDir)
 	if diff := cmp.Diff(got, wantContents); diff != "" {
 		tb.Fatalf("installed directory contents before upgrading were not as expected, there's something wrong with test setup (-got,+want): %s", diff)
 	}

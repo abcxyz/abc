@@ -149,7 +149,7 @@ func TestForUpgrade(t *testing.T) {
 			ctx := context.Background()
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.dirContents)
+			abctestutil.WriteAll(t, tempDir, tc.dirContents)
 
 			location := tc.canonicalLocation
 

@@ -50,8 +50,8 @@ type ModeAndContents struct {
 	Contents string
 }
 
-// WriteAllDefaultMode wraps writeAll and sets file permissions to 0600.
-func WriteAllDefaultMode(tb testing.TB, root string, files map[string]string) {
+// WriteAll wraps writeAll and sets file permissions to 0600.
+func WriteAll(tb testing.TB, root string, files map[string]string) {
 	tb.Helper()
 
 	withMode := map[string]ModeAndContents{}
@@ -61,11 +61,11 @@ func WriteAllDefaultMode(tb testing.TB, root string, files map[string]string) {
 			Contents: contents,
 		}
 	}
-	WriteAll(tb, root, withMode)
+	WriteAllMode(tb, root, withMode)
 }
 
-// WriteAll saves the given file contents with the given permissions.
-func WriteAll(tb testing.TB, root string, files map[string]ModeAndContents) {
+// WriteAllMode saves the given file contents with the given permissions.
+func WriteAllMode(tb testing.TB, root string, files map[string]ModeAndContents) {
 	tb.Helper()
 
 	for path, mc := range files {
@@ -85,10 +85,10 @@ func WriteAll(tb testing.TB, root string, files map[string]ModeAndContents) {
 	}
 }
 
-// LoadDirContents reads all the files recursively under "dir", returning their contents as a
+// LoadDirMode reads all the files recursively under "dir", returning their contents as a
 // map[filename]->contents. Returns nil if dir doesn't exist. Keys use slash separators, not
 // native.
-func LoadDirContents(tb testing.TB, dir string) map[string]ModeAndContents {
+func LoadDirMode(tb testing.TB, dir string) map[string]ModeAndContents {
 	tb.Helper()
 
 	if _, err := os.Stat(dir); err != nil {
@@ -132,10 +132,10 @@ func LoadDirContents(tb testing.TB, dir string) map[string]ModeAndContents {
 // Read all the files recursively under "dir", returning their contents as a
 // map[filename]->contents but without file mode. Returns nil if dir doesn't
 // exist. Keys use slash separators, not native.
-func LoadDirWithoutMode(tb testing.TB, dir string) map[string]string {
+func LoadDir(tb testing.TB, dir string) map[string]string {
 	tb.Helper()
 
-	withMode := LoadDirContents(tb, dir)
+	withMode := LoadDirMode(tb, dir)
 	if withMode == nil {
 		return nil
 	}

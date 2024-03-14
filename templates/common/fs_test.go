@@ -412,7 +412,7 @@ func TestCopyRecursive(t *testing.T) {
 			toDir := filepath.Join(tempDir, "to_dir")
 			backupDir := filepath.Join(tempDir, "backups")
 
-			abctestutil.WriteAll(t, fromDir, tc.srcDirContents)
+			abctestutil.WriteAllMode(t, fromDir, tc.srcDirContents)
 
 			from := fromDir
 			to := toDir
@@ -420,7 +420,7 @@ func TestCopyRecursive(t *testing.T) {
 				from = filepath.Join(fromDir, tc.suffix)
 				to = filepath.Join(toDir, tc.suffix)
 			}
-			abctestutil.WriteAll(t, toDir, tc.dstDirInitialContents)
+			abctestutil.WriteAllMode(t, toDir, tc.dstDirInitialContents)
 			fs := &ErrorFS{
 				FS: &RealFS{},
 
@@ -454,12 +454,12 @@ func TestCopyRecursive(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := abctestutil.LoadDirContents(t, toDir)
+			got := abctestutil.LoadDirMode(t, toDir)
 			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("destination directory was not as expected (-got,+want): %s", diff)
 			}
 
-			gotBackups := abctestutil.LoadDirContents(t, backupDir)
+			gotBackups := abctestutil.LoadDirMode(t, backupDir)
 			if diff := cmp.Diff(gotBackups, tc.wantBackups, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("backups directory was not as expected (-got,+want): %s", diff)
 			}
