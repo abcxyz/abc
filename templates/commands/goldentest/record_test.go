@@ -278,7 +278,7 @@ kind: 'GoldenTest'`,
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -295,7 +295,7 @@ kind: 'GoldenTest'`,
 				}
 			}
 
-			gotDestContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden"))
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden"))
 			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

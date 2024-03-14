@@ -231,7 +231,7 @@ func TestActionStringReplace(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
+			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sr := &spec.StringReplace{
 				Paths:        modelStrings(tc.paths),
@@ -252,7 +252,7 @@ func TestActionStringReplace(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := abctestutil.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDir(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}

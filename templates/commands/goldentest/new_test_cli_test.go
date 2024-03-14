@@ -223,7 +223,7 @@ kind: GoldenTest
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.templateContents)
+			abctestutil.WriteAll(t, tempDir, tc.templateContents)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -248,7 +248,7 @@ kind: GoldenTest
 				return
 			}
 
-			gotContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
+			gotContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
 			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
@@ -392,7 +392,7 @@ builtin_vars:
 
 			tempDir := t.TempDir()
 
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.templateContents)
+			abctestutil.WriteAll(t, tempDir, tc.templateContents)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -436,7 +436,7 @@ builtin_vars:
 			case <-time.After(time.Second):
 				t.Fatal("timed out waiting for background goroutine to finish")
 			}
-			gotContents := abctestutil.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
+			gotContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
 			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

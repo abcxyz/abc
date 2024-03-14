@@ -55,7 +55,7 @@ func TestHashLatest(t *testing.T) {
 			t.Parallel()
 
 			tempDir := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.files)
+			abctestutil.WriteAll(t, tempDir, tc.files)
 			got, err := HashLatest(filepath.Join(tempDir, tc.subdir))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
@@ -115,7 +115,7 @@ func TestVerify(t *testing.T) {
 			t.Parallel()
 
 			tempDir := t.TempDir()
-			abctestutil.WriteAllDefaultMode(t, tempDir, tc.files)
+			abctestutil.WriteAll(t, tempDir, tc.files)
 			got, err := Verify(tc.compareToHash, filepath.Join(tempDir, tc.subdir))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)

@@ -293,7 +293,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
-			got := abctestutil.LoadDirWithoutMode(t, tempDir)
+			got := abctestutil.LoadDir(t, tempDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output files were not as expected (-got, +want): %s", diff)
 			}
@@ -450,7 +450,7 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, version, outDir string) 
 		files[".git/refs/tags/"+f.addTag] = abctestutil.MinimalGitHeadSHA
 	}
 
-	abctestutil.WriteAllDefaultMode(f.t, outDir, files)
+	abctestutil.WriteAll(f.t, outDir, files)
 	return nil
 }
 

@@ -161,7 +161,7 @@ steps:
 
 			tempDir := t.TempDir()
 			sourceDir := filepath.Join(tempDir, "source")
-			abctestutil.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+			abctestutil.WriteAll(t, sourceDir, tc.templateContents)
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			r := &Command{
