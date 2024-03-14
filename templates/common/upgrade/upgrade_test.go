@@ -47,17 +47,17 @@ func TestUpgrade(t *testing.T) {
 	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
 	afterUpgradeTime := beforeUpgradeTime.Add(time.Hour)
 
-	outTxtSpec := `
+	includeDotSpec := `
 api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
 
 desc: 'my template'
 
 steps:
-  - desc: 'include out.txt'
+  - desc: 'include .'
     action: 'include'
     params:
-      paths: ['out.txt']
+      paths: ['.']
 `
 
 	outTxtOnlyManifest := &manifest.Manifest{
@@ -100,15 +100,17 @@ steps:
 		// delta).
 		templateReplacementForUpgrade map[string]string
 
+		// TODO doc remaining fields
 		wantDestContentsBeforeUpgrade map[string]string // excludes manifest contents
 		wantManifestBeforeUpgrade     *manifest.Manifest
-		wantDestContentsAfterUpgrade  map[string]string // excludes manifest contents
-		wantManifestAfterUpgrade      *manifest.Manifest
-		wantOK                        bool
-		wantErr                       string
+
+		localEdits                   func(tb testing.TB, installedDir string)
+		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
+		wantManifestAfterUpgrade     *manifest.Manifest
+		wantOK                       bool
+		wantErr                      string
 	}{
 		// TODO(upgrade): tests to add:
-		//  All merge cases
 		//  remote git template
 		//  manifest name is preserved
 		//  extra inputs needed:
@@ -120,7 +122,7 @@ steps:
 			name: "new_template_has_updated_file_without_local_edits",
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
-				"spec.yaml": outTxtSpec,
+				"spec.yaml": includeDotSpec,
 			},
 			wantOK: true,
 			wantDestContentsBeforeUpgrade: map[string]string{
@@ -128,7 +130,7 @@ steps:
 			},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
-				"spec.yaml": outTxtSpec + `
+				"spec.yaml": includeDotSpec + `
   - desc: 'append ", world"" to the file'
     action: 'append'
     params:
@@ -138,26 +140,16 @@ steps:
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\nworld\n",
 			},
-			wantManifestAfterUpgrade: &manifest.Manifest{
-				CreationTime:     beforeUpgradeTime.UTC(),
-				ModificationTime: afterUpgradeTime.UTC(),
-				TemplateLocation: mdl.S("../template_dir"),
-				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
-				LocationType:     mdl.S("local_git"),
-				Inputs:           []*manifest.Input{},
-				OutputHashes: []*manifest.OutputHash{
-					{
-						File: mdl.S("out.txt"),
-					},
-				},
-			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+			}),
 		},
 		{
 			name:   "short_circuit_if_already_latest_version",
 			wantOK: false,
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
-				"spec.yaml": outTxtSpec,
+				"spec.yaml": includeDotSpec,
 			},
 			templateUnionForUpgrade: map[string]string{},
 			wantDestContentsBeforeUpgrade: map[string]string{
@@ -174,7 +166,7 @@ steps:
 			wantOK: true,
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
-				"spec.yaml": outTxtSpec,
+				"spec.yaml": includeDotSpec,
 			},
 			wantDestContentsBeforeUpgrade: map[string]string{
 				"out.txt": "hello\n",
@@ -182,69 +174,338 @@ steps:
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
 				"another_file.txt": "I'm another file\n",
-				"spec.yaml": outTxtSpec + `
-  - desc: 'include another_file.txt'
-    action: 'include'
-    params:
-      paths: ['another_file.txt']`,
+				"spec.yaml":        includeDotSpec,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":          "hello\n",
 				"another_file.txt": "I'm another file\n",
 			},
-			wantManifestAfterUpgrade: &manifest.Manifest{
-				CreationTime:     beforeUpgradeTime.UTC(),
-				ModificationTime: afterUpgradeTime.UTC(),
-				TemplateLocation: mdl.S("../template_dir"),
-				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
-				LocationType:     mdl.S("local_git"),
-				Inputs:           []*manifest.Input{},
-				OutputHashes: []*manifest.OutputHash{
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+				m.OutputHashes = []*manifest.OutputHash{
 					{
 						File: mdl.S("another_file.txt"),
 					},
 					{
 						File: mdl.S("out.txt"),
 					},
-				},
-			},
+				}
+			}),
 		},
-
-		// 		{
-		// 			name: "old_template_has_file_not_in_new_template_with_no_local_edits",
-		// 			wantOK: true,
-		// 			origTemplateDirContents: map[string]string{
-		// 				"out.txt":   "hello\n",
-		// 				"another_file.txt":   "I'm another file\n",
-		// 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
-		// kind: 'Template'
-
-		// desc: 'my template'
-
-		// steps:
-		//   - desc: 'include files'
-		//     action: 'include'
-		//     params:
-		//       paths: ['.']`,
-		// 			},
-		// 			wantDestContentsBeforeUpgrade: map[string]string{
-		// 				"out.txt": "hello\n",
-		// 			},
-		// 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
-		// 			templateChangesForUpgrade: map[string]string{
-		// 				"another_file.txt": "I'm another file\n",
-		// 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
-		// kind: 'Template'
-
-		// desc: 'my template'
-
-		// steps:
-		//   - desc: 'include out.txt'
-		//     action: 'include'
-		//     params:
-		//       paths: ['out.txt']`,
-		// 			},
-		// 		},
+		{
+			// This test case starts with a template outputting two files, and
+			// upgrades to a template that only outputs one file. The other file
+			// should be removed from the destination directory.
+			name:   "old_template_has_file_not_in_new_template_with_no_local_edits",
+			wantOK: true,
+			origTemplateDirContents: map[string]string{
+				"out.txt":          "hello\n",
+				"another_file.txt": "I'm another file\n",
+				"spec.yaml":        includeDotSpec,
+			},
+			wantDestContentsBeforeUpgrade: map[string]string{
+				"out.txt":          "hello\n",
+				"another_file.txt": "I'm another file\n",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("another_file.txt"),
+					},
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			templateReplacementForUpgrade: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+			}),
+		},
+		{
+			// This test simulates a situation where:
+			//  - A template outputs two files
+			//  - The user edits one of the files
+			//  - We upgrade to a template that no longer outputs the file that was edited
+			//  - There should be an edit/delete conflict.
+			name:   "new_template_removes_file_that_has_user_edits",
+			wantOK: true,
+			origTemplateDirContents: map[string]string{
+				"out.txt":          "hello\n",
+				"another_file.txt": "I'm another file\n",
+				"spec.yaml":        includeDotSpec,
+			},
+			wantDestContentsBeforeUpgrade: map[string]string{
+				"out.txt":          "hello\n",
+				"another_file.txt": "I'm another file\n",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("another_file.txt"),
+					},
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) {
+				filename := filepath.Join(installedDir, "another_file.txt")
+				newContents := []byte("my edited contents")
+				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
+					t.Fatal(err)
+				}
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"another_file.txt.abcmerge_template_wants_to_delete": "my edited contents",
+				"out.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+			}),
+		},
+		{
+			// This test simulates a situation where:
+			//  - The template outputs two files
+			//  - The user deletes one of them
+			//  - We upgrade to a new verson of the template that no longer outputs that file
+			//  - This "delete vs delete" should not be a conflict, we just accept the absence of the file.
+			name:   "upgraded_template_no_longer_outputs_a_file_that_was_locally_deleted",
+			wantOK: true,
+			origTemplateDirContents: map[string]string{
+				"out.txt":          "hello\n",
+				"another_file.txt": "I'm another file\n",
+				"spec.yaml":        includeDotSpec,
+			},
+			wantDestContentsBeforeUpgrade: map[string]string{
+				"out.txt":          "hello\n",
+				"another_file.txt": "I'm another file\n",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("another_file.txt"),
+					},
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) {
+				filename := filepath.Join(installedDir, "another_file.txt")
+				if err := os.Remove(filename); err != nil {
+					t.Fatal(err)
+				}
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+			}),
+		},
+		{
+			// This test simulates a situation where:
+			//  - A template outputs a file
+			//  - The user edits that file
+			//  - We upgrade to a template that also changes that same file
+			//  - There should be an edit/edit conflict.
+			name:   "upgraded_template_changes_file_that_has_user_edits",
+			wantOK: true,
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello",
+				"spec.yaml": includeDotSpec,
+			},
+			wantDestContentsBeforeUpgrade: map[string]string{
+				"out.txt": "hello",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) {
+				filename := filepath.Join(installedDir, "out.txt")
+				newContents := []byte("my edited contents")
+				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
+					t.Fatal(err)
+				}
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"out.txt":   "goodbye",
+				"spec.yaml": includeDotSpec,
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt.abcmerge_locally_edited":    "my edited contents",
+				"out.txt.abcmerge_from_new_template": "goodbye",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+			}),
+		},
+		{
+			// This test simulates a situation where:
+			//  - A template outputs a file
+			//  - The user deletes the file
+			//  - The upgraded template version has new contents for that file
+			//  - There should be a delete-vs-edit conflict
+			name:   "user_deleted_and_template_has_updated_version",
+			wantOK: true,
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello",
+				"spec.yaml": includeDotSpec,
+			},
+			wantDestContentsBeforeUpgrade: map[string]string{
+				"out.txt": "hello",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) {
+				filename := filepath.Join(installedDir, "out.txt")
+				if err := os.Remove(filename); err != nil {
+					t.Fatal(err)
+				}
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"out.txt":   "goodbye",
+				"spec.yaml": includeDotSpec,
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt.abcmerge_conflict_locally_deleted_vs_new_template_version": "goodbye",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+			}),
+		},
+		{
+			// This test simulates a situation where:
+			//  - A template outputs two files
+			//  - The user deletes one of the files
+			//  - The upgraded template version doesn't change the deleted file,
+			//    but does change an unrelated file (so the template dirhash is
+			//    different)
+			//  - There's no conflict. The user's deletion takes priority.
+			name:   "user_deleted_and_template_is_unchanged",
+			wantOK: true,
+			origTemplateDirContents: map[string]string{
+				"user_deletes_this_file.txt":     "hello",
+				"template_changes_this_file.txt": "initial contents",
+				"spec.yaml":                      includeDotSpec,
+			},
+			wantDestContentsBeforeUpgrade: map[string]string{
+				"user_deletes_this_file.txt":     "hello",
+				"template_changes_this_file.txt": "initial contents",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("template_changes_this_file.txt"),
+					},
+					{
+						File: mdl.S("user_deletes_this_file.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) {
+				deleteFile := filepath.Join(installedDir, "user_deletes_this_file.txt")
+				if err := os.Remove(deleteFile); err != nil {
+					t.Fatal(err)
+				}
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"user_deletes_this_file.txt":     "hello",
+				"template_changes_this_file.txt": "modified contents",
+				"spec.yaml":                      includeDotSpec,
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"template_changes_this_file.txt": "modified contents",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("template_changes_this_file.txt"),
+					},
+					{
+						File: mdl.S("user_deletes_this_file.txt"),
+					},
+				}
+			}),
+		},
+		{
+			name:   "user_edited_and_template_unchanged",
+			wantOK: true,
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "initial contents",
+				"spec.yaml": includeDotSpec,
+				// We need another file in the template that changes on upgrade,
+				// otherwise the dirhash will match and the template upgrade
+				// will be short-circuited as "no need for upgrade".
+				"some_other_file.txt": "foo",
+			},
+			wantDestContentsBeforeUpgrade: map[string]string{
+				"out.txt":             "initial contents",
+				"some_other_file.txt": "foo",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("out.txt"),
+					},
+					{
+						File: mdl.S("some_other_file.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) {
+				filename := filepath.Join(installedDir, "out.txt")
+				newContents := []byte("modified contents")
+				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
+					t.Fatal(err)
+				}
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"out.txt":             "initial contents",
+				"some_other_file.txt": "bar",
+				"spec.yaml":           includeDotSpec,
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt":             "modified contents",
+				"some_other_file.txt": "bar",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.OutputHashes = []*manifest.OutputHash{
+					{
+						File: mdl.S("out.txt"),
+					},
+					{
+						File: mdl.S("some_other_file.txt"),
+					},
+				}
+			}),
+		},
 	}
 
 	for _, tc := range cases {
@@ -284,6 +545,10 @@ steps:
 				ManifestPath:       filepath.Join(manifestDir, manifestBaseName),
 				Stdout:             os.Stdout,
 				AllowDirtyTestOnly: true,
+			}
+
+			if tc.localEdits != nil {
+				tc.localEdits(t, destDir)
 			}
 
 			// Create the new template version that we'll upgrade to, in
@@ -387,4 +652,14 @@ func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBa
 	if diff := cmp.Diff(got, wantContents); diff != "" {
 		tb.Fatalf("installed directory contents before upgrading were not as expected, there's something wrong with test setup (-got,+want): %s", diff)
 	}
+}
+
+// A convenience function for "I want a copy of this manifest but with one small
+// change". This isn't a deep copy, so callers should only modify the top-level
+// fields of the given manifest if the input manifest m is shared across test
+// cases.
+func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manifest.Manifest {
+	out := *m
+	change(&out)
+	return &out
 }

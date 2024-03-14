@@ -56,16 +56,16 @@ type decideMergeParams struct {
 
 // Truth table for merge decisions:
 //
-// isInOld | isInNew | userLocalEdits | oldHashMatchedNewFile
-// ---------------------------------------------------
-// False     True      *                *          Case 1: write new, the new template version added this file
-// True      False     Unchanged        *          Case 2: delete the file, the user never touched it and the new template no longer outputs it
-// True      False     Edited           *          Case 3: user must resolve their edit vs template's deletion
-// True      False     Deleted          *          Case 4: no-op: user deleted locally and template no longer outputs the file
-// True      True      Unchanged        False      Case 5: write new, user has no edits, and the template has as new version
-// True      True      Edited           False      Case 6: user must resolve their edits vs template's new file version
-// True      True      Deleted          False      Case 7: user must resolve their deletion vs template's new file version
-// True      True      *                True       Case 8: no-op: user's local edits can remain, new template didn't change this file
+// | isInOld | isInNew | userLocalEdits | oldHashMatchedNewFile | Action                                                                            |
+// | --------|---------|----------------|-----------------------|-----------------------------------------------------------------------------------|
+// | False   | True    | *              | *                     | Case 1: write new, the new template version added this file |
+// | True    | False   | Unchanged      | *                     | Case 2: delete the file, the user never touched it and the new template no longer outputs it |
+// | True    | False   | Edited         | *                     | Case 3: user must resolve their edit vs template's deletion |
+// | True    | False   | Deleted        | *                     | Case 4: no-op: user deleted locally and template no longer outputs the file |
+// | True    | True    | Unchanged      | False                 | Case 5: write new, user has no edits, and the template has a new version |
+// | True    | True    | Edited         | False                 | Case 6: user must resolve their edits vs template's new file version |
+// | True    | True    | Deleted        | False                 | Case 7: user must resolve their deletion vs template's new file version |
+// | True    | True    | *              | True                  | Case 8: no-op: user's local edits can remain, new template didn't change this file |
 //
 // Maintainers: please keep the above table and the code in sync!
 func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
@@ -85,7 +85,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 			}, nil
 		case HashMismatch:
 			return &mergeDecision{
-				action:           MergeUserMustResolveMerge,
+				action:           MergeUserEditedButWantToDelete,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were local edits",
 			}, nil
 		case Deleted:
@@ -182,9 +182,10 @@ func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, merg
 }
 
 const (
-	suffixLocallyEdited   = ".abcmerge_locally_edited"
-	suffixFromNewTemplate = ".abcmerge_from_new_template"
-	suffixWantToDelete    = ".abcmerge_template_wants_to_delete"
+	suffixLocallyEdited                 = ".abcmerge_locally_edited"
+	suffixFromNewTemplate               = ".abcmerge_from_new_template"
+	suffixFromNewTemplateLocallyDeleted = ".abcmerge_conflict_locally_deleted_vs_new_template_version"
+	suffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
 )
 
 // TODO return a detailed report of what action was taken?
@@ -210,7 +211,7 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 	case MergeNoop:
 		return nil
 	case MergeUserDeletedButWantToUpdate:
-		dstPath += suffixFromNewTemplate
+		dstPath += suffixFromNewTemplateLocallyDeleted
 		return common.CopyFile(ctx, nil, fs, srcPath, dstPath, dryRun, nil)
 	case MergeUserEditedButWantToDelete:
 		if dryRun {
@@ -221,7 +222,7 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 		if dryRun {
 			return nil
 		}
-		if err := fs.Rename(dstPath, dstPath + suffixLocallyEdited); err != nil {
+		if err := fs.Rename(dstPath, dstPath+suffixLocallyEdited); err != nil {
 			return err
 		}
 		dstWithSuffix := dstPath + suffixFromNewTemplate
