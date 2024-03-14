@@ -129,7 +129,7 @@ func LoadDirMode(tb testing.TB, dir string) map[string]ModeAndContents {
 	return out
 }
 
-// Read all the files recursively under "dir", returning their contents as a
+// LoadDir reads all the files recursively under "dir", returning their contents as a
 // map[filename]->contents but without file mode. Returns nil if dir doesn't
 // exist. Keys use slash separators, not native.
 func LoadDir(tb testing.TB, dir string) map[string]string {
