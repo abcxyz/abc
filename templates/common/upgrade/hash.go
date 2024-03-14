@@ -27,8 +27,8 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 )
 
-// TODO(upgrade): delete this once the rest of the upgrade code exists. The
-// compiler is complaning about unused variables.
+// ExportToAvoidWarnings avoids compiler warnings complaning about unused
+// variables. TODO(upgrade): remove this when no longer necessary.
 var ExportToAvoidWarnings = []any{hashAndCompare, notComputed}
 
 // hashResult is the result from hashAndCompare().
@@ -40,21 +40,21 @@ const (
 	notComputed hashResult = ""
 
 	// match means "the file contents were hashed, and the value of the hash
-	// matched the expected value."
+	// matched the expected value".
 	match hashResult = "hash_matched"
 
 	// mismatch means "the file contents were hashed, and the value of the
-	// hash didn't match the expected value."
+	// hash didn't match the expected value".
 	mismatch hashResult = "edited"
 
 	// deleted means "the file contents couldn't be hashed because the file
-	// doesn't exist."
+	// doesn't exist".
 	deleted hashResult = "deleted"
 )
 
 // hashAndCompare extracts the hash algorithm (e.g. "h1:" from wantHash, then
 // hashes the given path with that algorithm.
-func hashAndCompare(path string, wantHash string) (hashResult, error) {
+func hashAndCompare(path, wantHash string) (hashResult, error) {
 	// The hash should start with a string like "h1:" indicating the hash algorithm
 	tokens := strings.SplitN(wantHash, ":", 2)
 	if len(tokens) != 2 {
