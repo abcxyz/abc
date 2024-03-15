@@ -69,7 +69,8 @@ type Params struct {
 	KeepTempDirs bool
 
 	// The path to the manifest file where the template was previously installed
-	// to that will now be upgraded.
+	// to that will now be upgraded. This is also overwritten with the new
+	// manifest after a successful upgrade.
 	ManifestPath string // Must be an absolute path.
 
 	// The value of --prompt.
@@ -192,16 +193,29 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 		return false, err
 	}
 
-	if err := mergeTentatively(ctx, p.FS, installedDir, mergeDir, p.ManifestPath, oldManifest, newManifest); err != nil {
+	commitParams := &commitParams{
+		fs:              p.FS,
+		installedDir:    installedDir,
+		mergeDir:        mergeDir,
+		oldManifestPath: p.ManifestPath,
+		oldManifest:     oldManifest,
+		newManifest:     newManifest,
+	}
+	if err := mergeTentatively(ctx, commitParams); err != nil {
 		return false, err
 	}
 
 	return true, nil
 }
 
-func mergeTentatively(ctx context.Context, fs common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest, newManifest *manifest.Manifest) error {
+// mergeTentatively does a dry-run commit followed by a real commit.
+//
+// We do a dry run first to try to detect any problems before we start mutating
+// the output directory. We'd like to avoid leaving a mess in the output
+// directory if the operation fails.
+func mergeTentatively(ctx context.Context, p *commitParams) error {
 	for _, dryRun := range []bool{true, false} {
-		if err := commit(ctx, dryRun, fs, installedDir, mergeDir, oldManifestPath, oldManifest, newManifest); err != nil {
+		if err := commit(ctx, p, dryRun); err != nil {
 			return err
 		}
 	}
@@ -209,16 +223,41 @@ func mergeTentatively(ctx context.Context, fs common.FS, installedDir, mergeDir,
 	return nil
 }
 
-// TODO commitParams to encapsulate args?
-func commit(ctx context.Context, dryRun bool, f common.FS, installedDir, mergeDir, oldManifestPath string, oldManifest, newManifest *manifest.Manifest) error {
+// commitParams contains the inputs to commit().
+type commitParams struct {
+	fs common.FS
+
+	// The directory into which the old template version was originally
+	// rendered.
+	installedDir string
+
+	// The temp directory into which the new/upgraded template version was
+	// rendered.
+	mergeDir string
+
+	// The path to the manifest describing the original template installation
+	// that we're upgrading from. This is also overwritten with the new
+	// manifest.
+	oldManifestPath string
+
+	// The parsed contents of the old manifest that we're upgrading from.
+	oldManifest *manifest.Manifest
+
+	// The new contents of the manifest, loaded from mergeDir.
+	newManifest *manifest.Manifest
+}
+
+// commit merges the contents of the merge directory into the installed
+// directory and writes the new manifest.
+func commit(ctx context.Context, p *commitParams, dryRun bool) error {
 	// TODO(upgrade): detect any unresolved conflicts (.abc_merge_* files maybe?) and refuse to
 	//                upgrade if there are any.
 
-	if err := mergeAll(ctx, f, dryRun, installedDir, mergeDir, oldManifest, newManifest); err != nil {
+	if err := mergeAll(ctx, p, dryRun); err != nil {
 		return err
 	}
 
-	mergedManifest := mergeManifest(oldManifest, newManifest)
+	mergedManifest := mergeManifest(p.oldManifest, p.newManifest)
 
 	buf, err := yaml.Marshal(mergedManifest)
 	if err != nil {
@@ -230,13 +269,21 @@ func commit(ctx context.Context, dryRun bool, f common.FS, installedDir, mergeDi
 		return nil
 	}
 
-	if err := os.WriteFile(oldManifestPath, buf, common.OwnerRWPerms); err != nil {
-		return fmt.Errorf("WriteFile(%q): %w", oldManifestPath, err)
+	if err := os.WriteFile(p.oldManifestPath, buf, common.OwnerRWPerms); err != nil {
+		return fmt.Errorf("WriteFile(%q): %w", p.oldManifestPath, err)
 	}
 
 	return nil
 }
 
+// mergeManifest creates a new manifest for writing to the filesystem. It takes
+// mostly the fields from the new manifest, with a little bit from the old
+// manifest.
+//
+// A subtle point here: we always use the file hash values from the new
+// manifest, even if the merge algorithm decided not to use the new file. This
+// is so the *next* time we upgrade this template, we'll realize that there have
+// been local customizations.
 func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
 	// Most fields come from the new manifest, except for the creation time
 	// which comes from the old manifest.
@@ -252,6 +299,7 @@ func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
 	}
 }
 
+// loadManifest reads and unmarshals the manifest at the given path.
 func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
 	f, err := fs.Open(path)
 	if err != nil {
@@ -272,6 +320,8 @@ func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Man
 	return out, nil
 }
 
+// inputsToMap takes the list of input values (e.g. "service_account" was "my-service-account")
+// and converts to a map for easier lookup.
 func inputsToMap(inputs []*manifest.Input) map[string]string {
 	out := make(map[string]string, len(inputs))
 	for _, input := range inputs {
