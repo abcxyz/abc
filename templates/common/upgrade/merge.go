@@ -20,11 +20,12 @@ import (
 	"path/filepath"
 	"sort"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	manifestutil "github.com/abcxyz/abc/templates/model/manifest"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/sets"
-	"golang.org/x/exp/maps"
 )
 
 // ExportToAvoidWarnings avoids compiler warnings complaning about unused
@@ -44,8 +45,9 @@ const (
 	// Just write the contents of the file from the new template.
 	writeNew mergeAction = "writeNew"
 
-	// Just delete the preexisting file in the template output directory.
-	delete mergeAction = "delete"
+	// Just deleteAction the preexisting file in the template output directory.
+	// We can't just call this "delete" because that's a Go builtin.
+	deleteAction mergeAction = "delete"
 
 	// Take no action, the current contents of the output directory are correct.
 	noop mergeAction = "noop"
@@ -130,7 +132,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 				action:           addAddConflict,
 				humanExplanation: "the new template adds this file, but you already had a file of this name, not from this template",
 			}, nil
-		default:
+		case absent:
 			return &mergeDecision{
 				action:           writeNew,
 				humanExplanation: "the new template version added this file, which wasn't in the old template version",
@@ -142,7 +144,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		switch o.OldFileMatchesOldHash {
 		case match:
 			return &mergeDecision{
-				action:           delete,
+				action:           deleteAction,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
 			}, nil
 		case mismatch:
