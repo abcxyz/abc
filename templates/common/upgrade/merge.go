@@ -29,15 +29,28 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type mergeAction int
+type mergeAction string
 
 const (
-	actionWriteNew mergeAction = iota
-	actionUserMustResolveMerge
-	actionUserEditedButWantToDelete
-	actionUserDeletedButWantToUpdate
-	actionDelete
-	actionNoop
+	// For the mergeActions named e.g. "editDelete", the first thing is what
+	// the user did locally ("edit") and the second thing is want the template
+	// wants to do ("delete").
+
+	// Just write the contents of the file from the new template.
+	writeNew mergeAction = "writeNew"
+
+	// Just delete the preexisting file in the template output directory.
+	delete mergeAction = "delete"
+
+	// Take no action, the current contents of the output directory are correct.
+	noop mergeAction = "noop"
+
+	// Add dot-suffixes (like .abc_merge_resolve_this) to file names indicating
+	// that the user needs to merge manually.
+	addAddConflict     mergeAction = "addAddConflict"
+	editEditConflict   mergeAction = "editEditConflict"
+	editDeleteConflict mergeAction = "editDeleteConflict"
+	deleteEditConflict mergeAction = "deleteEditConflict"
 )
 
 type mergeDecision struct {
@@ -45,85 +58,75 @@ type mergeDecision struct {
 	humanExplanation string
 }
 
-// decideMergeParams is the input to decideMerge. It provides all the info
-// that's needed to decide which mergeAction to take for a given file.
+// TODO a million tests
+// TODO document that if a field is irrelevant it can be left as zero
 type decideMergeParams struct {
-	// Is this file
-	IsInOldManifest bool
-	IsInNewManifest bool
-
-	// Since the last time the template was upgraded or rendered (before the
-	// current upgrade operation), did the user make edit or delete the file?
-	// Or does it still match the hash that it had when abc touched it last?
-	LocalEdit hashResult
-
-	// Whether the hash recorded in the old/pre-upgrade manifest matches the
-	// computed hash of the new template output file. In the cases where there's
-	// no such file because the template doesn't output this file anymore, then
-	// this should be left as the zero value.
-	OldManifestHashMatchedNewFile bool
+	IsInOldManifest       bool
+	IsInNewManifest       bool
+	OldFileMatchesOldHash HashResult // TODO make this a bool?
+	NewFileMatchesOldHash HashResult // TODO make this a hashresult?
+	OldFileMatchesNewHash HashResult
 }
 
-// Truth table for merge decisions:
-//
-// | isInOld | isInNew | userLocalEdits | oldHashMatchedNewFile | Action                                                                            |
-// | --------|---------|----------------|-----------------------|-----------------------------------------------------------------------------------|
-// | False   | True    | *              | *                     | Case 1: write new, the new template version added this file |
-// | True    | False   | Unchanged      | *                     | Case 2: delete the file, the user never touched it and the new template no longer outputs it |
-// | True    | False   | Edited         | *                     | Case 3: user must resolve their edit vs template's deletion |
-// | True    | False   | Deleted        | *                     | Case 4: no-op: user deleted locally and template no longer outputs the file |
-// | True    | True    | Unchanged      | False                 | Case 5: write new, user has no edits, and the template has a new version |
-// | True    | True    | Edited         | False                 | Case 6: user must resolve their edits vs template's new file version |
-// | True    | True    | Deleted        | False                 | Case 7: user must resolve their deletion vs template's new file version |
-// | True    | True    | *              | True                  | Case 8: no-op: user's local edits can remain, new template didn't change this file |
-//
-// Maintainers: please keep the above table and the code in sync!
 func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	switch {
 	case !o.IsInOldManifest && o.IsInNewManifest:
-		return &mergeDecision{
-			action:           actionWriteNew,
-			humanExplanation: "the new template version added this file, which wasn't in the old template version",
-		}, nil
-
-	case o.IsInOldManifest && !o.IsInNewManifest:
-		switch o.LocalEdit {
+		switch o.OldFileMatchesNewHash {
 		case HashMatch:
 			return &mergeDecision{
-				action:           actionDelete,
+				action:           noop,
+				humanExplanation: "the new template adds a file which wasn't previously part of the template, and there is a locally-created file having the same contents, so taking no action",
+			}, nil
+		case HashMismatch:
+			return &mergeDecision{
+				action:           addAddConflict,
+				humanExplanation: "the new template adds this file, but you already had a file of this name, not from this template",
+			}, nil
+		default:
+			return &mergeDecision{
+				action:           writeNew,
+				humanExplanation: "the new template version added this file, which wasn't in the old template version",
+			}, nil
+		}
+
+	case o.IsInOldManifest && !o.IsInNewManifest:
+		switch o.OldFileMatchesOldHash {
+		case HashMatch:
+			return &mergeDecision{
+				action:           delete,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
 			}, nil
 		case HashMismatch:
 			return &mergeDecision{
-				action:           actionUserEditedButWantToDelete,
+				action:           editDeleteConflict,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were local edits",
 			}, nil
-		case Deleted:
+		case Absent:
 			return &mergeDecision{
-				action:           actionNoop,
+				action:           noop,
 				humanExplanation: "this file was deleted locally by the user, and the new template no longer outputs this file, so we can leave it deleted",
 			}, nil
 		}
 
 	case o.IsInOldManifest && o.IsInNewManifest:
-		if o.OldManifestHashMatchedNewFile {
+		if o.NewFileMatchesOldHash == HashMatch {
 			return &mergeDecision{
-				action:           actionNoop,
+				action:           noop,
 				humanExplanation: "the new template outputs the same contents as the old template, therefore local edits (if any) can remain without needing resolution",
 			}, nil
 		}
-		switch o.LocalEdit {
+		switch o.OldFileMatchesOldHash {
 		case HashMatch:
 			return &mergeDecision{
-				action:           actionWriteNew,
+				action:           writeNew,
 				humanExplanation: "this file was not modified by the user, and the new template has changes to this file",
 			}, nil
 		case HashMismatch:
 			return &mergeDecision{
-				action:           actionUserMustResolveMerge,
+				action:           editEditConflict,
 				humanExplanation: "this file was modified by the user, and the template wants to update it, so manual conflict resolution is required",
 			}, nil
-		case Deleted:
+		case Absent:
 			// This is the case where the new template has a version of this
 			// file that's different than the previous template version, but the
 			// user deleted their copy. It's *probably* safe to just leave the
@@ -131,14 +134,14 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 			// conflict just in case the new version of the file in the updated
 			// template has something really important.
 			return &mergeDecision{
-				action:           actionUserDeletedButWantToUpdate,
+				action:           deleteEditConflict,
 				humanExplanation: "this file was deleted by the user, and the new template has updates, so manual conflict resolution is required",
 			}, nil
 		}
 	}
 
-	return nil, fmt.Errorf("this is a bug in abc, please report it at https://github.com/abcxyz/abc/issues/new?template=bug.yaml: IsInOldManifest=%t IsInNewManifest=%t LocalEdit=%q OldManifestHashMatchedNewFile=%t",
-		o.IsInOldManifest, o.IsInNewManifest, o.LocalEdit, o.OldManifestHashMatchedNewFile)
+	return nil, fmt.Errorf("this is a bug in abc, please report it at https://github.com/abcxyz/abc/issues/new?template=bug.yaml: IsInOldManifest=%t IsInNewManifest=%t OldFileMatchesOldHash=%q NewFileMatchesOldHash=%q OldFileMatchesNewHash=%q",
+		o.IsInOldManifest, o.IsInNewManifest, o.OldFileMatchesOldHash, o.NewFileMatchesOldHash, o.OldFileMatchesNewHash)
 }
 
 func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, mergeDir string, oldManifest, newManifest *manifest.Manifest) error {
@@ -149,34 +152,37 @@ func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, merg
 
 	for _, relPath := range filesUnion {
 		oldHash, isInOldManifest := oldHashes[relPath]
-		_, isInNewManifest := newHashes[relPath]
+		newHash, isInNewManifest := newHashes[relPath]
 
-		var localEdit HashResult
-		var hashMatchedNewFile bool
+		pathOld := filepath.Join(installedDir, relPath)
+
+		// Files are presumed missing until we see them
+		oldFileMatchesNewHash, oldFileMatchesOldHash, newFileMatchesOldHash := Absent, Absent, Absent
+
+		var err error
 		if isInOldManifest {
-			var err error
-			localEdit, err = hashAndCompare(filepath.Join(installedDir, relPath), oldHash)
+			oldFileMatchesOldHash, err = hashAndCompare(pathOld, oldHash)
 			if err != nil {
 				return err
 			}
-
-			if isInNewManifest {
-				var err error
-				editType, err := hashAndCompare(filepath.Join(mergeDir, relPath), oldHash)
-				if err != nil {
-					return err
-				}
-				if editType == HashMatch {
-					hashMatchedNewFile = true
-				}
+			newFileMatchesOldHash, err = hashAndCompare(filepath.Join(mergeDir, relPath), oldHash)
+			if err != nil {
+				return err
+			}
+		}
+		if isInNewManifest {
+			oldFileMatchesNewHash, err = hashAndCompare(pathOld, newHash)
+			if err != nil {
+				return err
 			}
 		}
 
 		hr := &decideMergeParams{
-			IsInOldManifest:               isInOldManifest,
-			IsInNewManifest:               isInNewManifest,
-			LocalEdit:                     localEdit,
-			OldManifestHashMatchedNewFile: hashMatchedNewFile,
+			IsInOldManifest:       isInOldManifest,
+			IsInNewManifest:       isInNewManifest,
+			OldFileMatchesOldHash: oldFileMatchesOldHash,
+			NewFileMatchesOldHash: newFileMatchesOldHash,
+			OldFileMatchesNewHash: oldFileMatchesNewHash,
 		}
 
 		decision, err := decideMerge(hr)
@@ -192,6 +198,7 @@ func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, merg
 }
 
 const (
+	suffixLocallyAdded                  = ".abcmerge_locally_added"
 	suffixLocallyEdited                 = ".abcmerge_locally_edited"
 	suffixFromNewTemplate               = ".abcmerge_from_new_template"
 	suffixFromNewTemplateLocallyDeleted = ".abcmerge_conflict_locally_deleted_vs_new_template_version"
@@ -213,22 +220,22 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 	srcPath := filepath.Join(mergeDir, relPath)
 
 	switch decision.action {
-	case actionDelete:
+	case delete:
 		if dryRun {
 			return nil
 		}
 		return os.Remove(dstPath)
-	case actionNoop:
+	case noop:
 		return nil
-	case actionUserDeletedButWantToUpdate:
+	case deleteEditConflict:
 		dstPath += suffixFromNewTemplateLocallyDeleted
 		return common.CopyFile(ctx, nil, fs, srcPath, dstPath, dryRun, nil)
-	case actionUserEditedButWantToDelete:
+	case editDeleteConflict:
 		if dryRun {
 			return nil
 		}
 		return fs.Rename(dstPath, dstPath+suffixWantToDelete)
-	case actionUserMustResolveMerge:
+	case editEditConflict:
 		if dryRun {
 			return nil
 		}
@@ -238,8 +245,16 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 		dstWithSuffix := dstPath + suffixFromNewTemplate
 		return common.CopyFile(ctx, nil, fs, srcPath, dstWithSuffix, dryRun, nil)
 
-	case actionWriteNew:
+	case writeNew:
 		return common.CopyFile(ctx, nil, fs, srcPath, dstPath, dryRun, nil)
+	case addAddConflict:
+		if dryRun {
+			return nil
+		}
+		if err := fs.Rename(dstPath, dstPath+suffixLocallyAdded); err != nil {
+			return err
+		}
+		return common.CopyFile(ctx, nil, fs, srcPath, dstPath+suffixFromNewTemplate, dryRun, nil)
 	default:
 		return fmt.Errorf("internal error: unrecognized merged action %v", decision.action)
 	}
