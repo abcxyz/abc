@@ -46,13 +46,13 @@ func TestCompileAndEvalCEL(t *testing.T) {
 		},
 		{
 			name:    "bad_int_to_string",
-			in:      model.String{Val: `42`},
+			in:      mdl.S(`42`),
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to []string`,
 		},
 		{
 			name:    "bad_list_of_int_to_list_of_string",
-			in:      model.String{Val: `[42]`},
+			in:      mdl.S(`[42]`),
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
@@ -75,7 +75,7 @@ func TestCompileAndEvalCEL(t *testing.T) {
 		},
 		{
 			name:    "invalid_cel_syntax",
-			in:      model.String{Val: `[[[[[`},
+			in:      mdl.S(`[[[[[`),
 			want:    "",
 			wantErr: "Syntax error: mismatched input",
 		},

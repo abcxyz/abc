@@ -193,7 +193,7 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:        mdl.S("env"),
-					ValuesFrom: &model.String{Val: `[]`},
+					ValuesFrom: mdl.SP(`[]`),
 				},
 				Steps: []*spec.Step{
 					{

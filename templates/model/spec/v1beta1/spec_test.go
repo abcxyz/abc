@@ -909,7 +909,7 @@ params:
 							Desc:   mdl.S("print some stuff"),
 							Action: mdl.S("print"),
 							Print: &Print{
-								Message: model.String{Val: `Hello, {{.name}}`},
+								Message: mdl.S(`Hello, {{.name}}`),
 							},
 						},
 						{
@@ -954,7 +954,7 @@ params:
 							Desc:   mdl.S("print some stuff"),
 							Action: mdl.S("print"),
 							Print: &Print{
-								Message: model.String{Val: `Hello, {{.name}}`},
+								Message: mdl.S(`Hello, {{.name}}`),
 							},
 						},
 						{

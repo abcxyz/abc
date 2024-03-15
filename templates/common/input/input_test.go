@@ -107,7 +107,7 @@ func TestValidateInputs(t *testing.T) {
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule:    model.String{Val: `size(my_input) < 5`},
+							Rule:    mdl.S(`size(my_input) < 5`),
 							Message: mdl.S("Length must be less than 5"),
 						},
 					},
@@ -124,7 +124,7 @@ func TestValidateInputs(t *testing.T) {
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule:    model.String{Val: `size(my_input) < 3`},
+							Rule:    mdl.S(`size(my_input) < 3`),
 							Message: mdl.S("Length must be less than 3"),
 						},
 					},
@@ -147,7 +147,7 @@ Rule msg:     Length must be less than 3`,
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule:    model.String{Val: `size(my_input) < 5`},
+							Rule:    mdl.S(`size(my_input) < 5`),
 							Message: mdl.S("Length must be less than 5"),
 						},
 						{
@@ -172,7 +172,7 @@ Rule msg:     Length must be less than 3`,
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule:    model.String{Val: `size(my_input) < 3`},
+							Rule:    mdl.S(`size(my_input) < 3`),
 							Message: mdl.S("Length must be less than 3"),
 						},
 						{
@@ -203,7 +203,7 @@ Rule msg:     Length must be less than 3`,
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule:    model.String{Val: `size(my_input) < 3`},
+							Rule:    mdl.S(`size(my_input) < 3`),
 							Message: mdl.S("Length must be less than 3"),
 						},
 						{
@@ -244,7 +244,7 @@ Rule msg:     Must contain "shoe"`,
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule: model.String{Val: `(`},
+							Rule: mdl.S(`(`),
 						},
 					},
 				},
@@ -266,7 +266,7 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:2: Syntax error:
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule: model.String{Val: `bool(42)`},
+							Rule: mdl.S(`bool(42)`),
 						},
 					},
 				},
@@ -288,7 +288,7 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:5: found no matc
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule: model.String{Val: `42`},
+							Rule: mdl.S(`42`),
 						},
 					},
 				},

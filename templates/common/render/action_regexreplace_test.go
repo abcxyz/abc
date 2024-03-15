@@ -139,7 +139,7 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b(?P<my_first_input>b...) (?P<my_second_input>g....)`},
+						Regex: mdl.S(`\b(?P<my_first_input>b...) (?P<my_second_input>g....)`),
 						With:  mdl.S("${my_second_input} ${my_first_input}"),
 					},
 				},
@@ -203,7 +203,7 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b(?P<mysubgroup>be..)\b`},
+						Regex: mdl.S(`\b(?P<mysubgroup>be..)\b`),
 						With:  mdl.S("{{.cool_${mysubgroup}}}"),
 					},
 				},
@@ -224,7 +224,7 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b(?P<mygroup>be..)\b`},
+						Regex: mdl.S(`\b(?P<mygroup>be..)\b`),
 						With:  mdl.S("{{.cool_${1}}}"),
 					},
 				},
@@ -247,8 +247,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b{{.to_replace}}`},
-						With:  model.String{Val: `{{.replace_with}}`},
+						Regex: mdl.S(`\b{{.to_replace}}`),
+						With:  mdl.S(`{{.replace_with}}`),
 					},
 				},
 			},
@@ -268,8 +268,8 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex:             model.String{Val: `alpha (?P<mygroup>beta) gamma`},
-						With:              model.String{Val: `{{.myinput}}`},
+						Regex:             mdl.S(`alpha (?P<mygroup>beta) gamma`),
+						With:              mdl.S(`{{.myinput}}`),
 						SubgroupToReplace: mdl.S("mygroup"),
 					},
 				},
@@ -291,13 +291,13 @@ func TestActionRegexReplace(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex:             model.String{Val: `alpha (?P<mygroup>beta) gamma`},
-						With:              model.String{Val: `{{.reptile}}`},
+						Regex:             mdl.S(`alpha (?P<mygroup>beta) gamma`),
+						With:              mdl.S(`{{.reptile}}`),
 						SubgroupToReplace: mdl.S("mygroup"),
 					},
 					{
-						Regex:             model.String{Val: `[a-z]+ [a-z]+ (?P<mygroup>gamma)`},
-						With:              model.String{Val: `{{.tree}}`},
+						Regex:             mdl.S(`[a-z]+ [a-z]+ (?P<mygroup>gamma)`),
+						With:              mdl.S(`{{.tree}}`),
 						SubgroupToReplace: mdl.S("mygroup"),
 					},
 				},
