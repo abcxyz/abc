@@ -27,18 +27,10 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 )
 
-// ExportToAvoidWarnings avoids compiler warnings complaning about unused
-// variables. TODO(upgrade): remove this when no longer necessary.
-var ExportToAvoidWarnings = []any{hashAndCompare, notComputed}
-
 // hashResult is the result from hashAndCompare().
 type hashResult string
 
 const (
-	// notComputed is the zero value, meaning "the hash was not computed
-	// (yet)".
-	notComputed hashResult = ""
-
 	// match means "the file contents were hashed, and the value of the hash
 	// matched the expected value".
 	match hashResult = "hash_matched"
@@ -47,9 +39,9 @@ const (
 	// hash didn't match the expected value".
 	mismatch hashResult = "edited"
 
-	// deleted means "the file contents couldn't be hashed because the file
+	// absent means "the file contents couldn't be hashed because the file
 	// doesn't exist".
-	deleted hashResult = "deleted"
+	absent hashResult = "deleted"
 )
 
 // hashAndCompare extracts the hash algorithm (e.g. "h1:" from wantHash, then
@@ -78,7 +70,7 @@ func hashAndCompare(path, wantHash string) (hashResult, error) {
 	inFile, err := os.Open(path)
 	if err != nil {
 		if common.IsStatNotExistErr(err) {
-			return deleted, nil
+			return absent, nil
 		}
 		return "", fmt.Errorf("Open(%q): %w", path, err)
 	}
