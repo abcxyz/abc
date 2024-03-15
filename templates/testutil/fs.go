@@ -108,14 +108,13 @@ func LoadDirMode(tb testing.TB, dir string, opts ...LoadDirOpt) map[string]ModeA
 		if err != nil {
 			tb.Fatal(err)
 		}
-		skip := skippable(tb, relPath, opt.skipGlobs)
-		if d.IsDir() {
-			if skip {
-				return fs.SkipDir
+		if skippable(tb, relPath, opt.skipGlobs) {
+			if d.IsDir() {
+				return fs.SkipDir // skips traversing all children of this dir
 			}
 			return nil
 		}
-		if skip {
+		if d.IsDir() {
 			return nil
 		}
 		contents, err := os.ReadFile(path)
