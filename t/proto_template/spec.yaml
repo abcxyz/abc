@@ -68,7 +68,7 @@ steps:
         'buf.yaml',
         'Makefile',
         'README.md',
-        'version.yaml',
+        'VERSION',
       ]
       skip:
         - '.gitignore'
