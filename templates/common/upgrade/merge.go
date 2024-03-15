@@ -29,10 +29,6 @@ import (
 	"github.com/abcxyz/pkg/sets"
 )
 
-// ExportToAvoidWarnings avoids compiler warnings complaning about unused
-// variables. TODO(upgrade): remove this when no longer necessary.
-var ExportToAvoidWarnings = mergeAll
-
 // A mergeAction is an action to take for a given output file. This may involve
 // conflicts between upgraded template output files and files that were
 // locally customized by the user.
