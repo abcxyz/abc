@@ -88,8 +88,10 @@ func WriteAllMode(tb testing.TB, root string, files map[string]ModeAndContents) 
 // LoadDirMode reads all the files recursively under "dir", returning their contents as a
 // map[filename]->contents. Returns nil if dir doesn't exist. Keys use slash separators, not
 // native.
-func LoadDirMode(tb testing.TB, dir string) map[string]ModeAndContents {
+func LoadDirMode(tb testing.TB, dir string, opts ...LoadDirOpt) map[string]ModeAndContents {
 	tb.Helper()
+
+	opt := combineLoadDirOpts(opts...)
 
 	if _, err := os.Stat(dir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
@@ -101,6 +103,16 @@ func LoadDirMode(tb testing.TB, dir string) map[string]ModeAndContents {
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			tb.Fatal(err)
+		}
+		if skippable(tb, relPath, opt.skipGlobs) {
+			if d.IsDir() {
+				return fs.SkipDir // skips traversing all children of this dir
+			}
+			return nil
 		}
 		if d.IsDir() {
 			return nil
@@ -129,13 +141,28 @@ func LoadDirMode(tb testing.TB, dir string) map[string]ModeAndContents {
 	return out
 }
 
+func skippable(tb testing.TB, relPath string, globs []string) bool {
+	tb.Helper()
+
+	for _, glob := range globs {
+		ok, err := filepath.Match(glob, relPath)
+		if err != nil {
+			tb.Fatalf("invalid glob: %s", glob)
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
 // LoadDir reads all the files recursively under "dir", returning their contents as a
 // map[filename]->contents but without file mode. Returns nil if dir doesn't
 // exist. Keys use slash separators, not native.
-func LoadDir(tb testing.TB, dir string) map[string]string {
+func LoadDir(tb testing.TB, dir string, opts ...LoadDirOpt) map[string]string {
 	tb.Helper()
 
-	withMode := LoadDirMode(tb, dir)
+	withMode := LoadDirMode(tb, dir, opts...)
 	if withMode == nil {
 		return nil
 	}
@@ -144,6 +171,27 @@ func LoadDir(tb testing.TB, dir string) map[string]string {
 		out[name] = mc.Contents
 	}
 	return out
+}
+
+// LoadDirOpt is a "functional option" for the LoadDir* functions.
+type LoadDirOpt struct {
+	skipGlobs []string
+}
+
+func combineLoadDirOpts(opts ...LoadDirOpt) LoadDirOpt {
+	var out LoadDirOpt
+	for _, opt := range opts {
+		out.skipGlobs = append(out.skipGlobs, opt.skipGlobs...)
+	}
+	return out
+}
+
+// SkipGlob is a LoadDirOpt that skips all directory entries matching the given
+// glob (and their children, in the case of directories).
+func SkipGlob(glob string) LoadDirOpt {
+	return LoadDirOpt{
+		skipGlobs: []string{glob},
+	}
 }
 
 // WithGitRepoAt adds "files" to the given map containing a minimal git repo.
