@@ -183,11 +183,6 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 		return false, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
 
-	// TODO(upgrade): much of the upgrade logic is missing here:
-	//   - checking file hashes
-	//   - checking diffs
-	//   - others
-
 	if err := mergeTentatively(ctx, p.FS, installedDir, mergeDir, p.ManifestPath, oldManifest); err != nil {
 		return false, err
 	}
