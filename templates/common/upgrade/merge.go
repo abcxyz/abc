@@ -21,12 +21,13 @@ import (
 	"path/filepath"
 	"sort"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	manifestutil "github.com/abcxyz/abc/templates/model/manifest"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
-	"golang.org/x/exp/maps"
 )
 
 // ExportToAvoidWarnings avoids compiler warnings complaning about unused
