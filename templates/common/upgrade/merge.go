@@ -269,8 +269,8 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 
 	logger := logging.FromContext(ctx).With("logger", "actuateMergeDecision")
 	logger.DebugContext(ctx, "merging one file",
-		"dryRun", dryRun,
-		"relPath", relPath,
+		"dry_run", dryRun,
+		"rel_path", relPath,
 		"action", decision.action,
 		"explanation", decision.humanExplanation)
 
