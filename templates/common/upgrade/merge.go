@@ -76,18 +76,48 @@ type mergeDecision struct {
 	humanExplanation string
 }
 
-// TODO a million tests
-// TODO document that if a field is irrelevant it can be left as zero
+// decideMergeParams are the inputs to decideMerge(). It contains information
+// about a single output path, and whether the pre-existing file or candidate
+// replacement file match certain expected hash values.
 type decideMergeParams struct {
-	IsInOldManifest       bool
-	IsInNewManifest       bool
+	// Is this file in the "old" manifest? If so, that means it was output by
+	// the template version that was installed prior to the template version
+	// that we're upgrading to right now.
+	IsInOldManifest bool
+
+	// Is this file in the "new" manifest? If so, that means it is being output
+	// by the new, upgraded version of the template.
+	IsInNewManifest bool
+
+	// Only used if IsInOldManifest==true. Does the preexisting file on the
+	// filesystem (before the upgrade began) match the hash value in the old
+	// manifest? If the hash doesn't match, that means the user made some
+	// customizations.
 	OldFileMatchesOldHash hashResult // TODO make this a bool?
+
+	// Only used if IsInNewManifest==true. Does the new file being output by
+	// the new version of the template match the hash value in the old
+	// manifest? If the hash matches, that means that the current template
+	// outputs identical file contents to the old template.
 	NewFileMatchesOldHash hashResult // TODO make this a hashresult?
+
+	// Only used if IsInNewManifest==true and isInOldManifest==false. Does the
+	// preexisting file on the filesystem (before the upgrade began) match the
+	// hash value in the new manifest? If so, that means that an add/add
+	// conflict can be avoided because the both parties added identical file
+	// contents.
 	OldFileMatchesNewHash hashResult
 }
 
+// decideMerge is the core of the algorithm that merges the template output with
+// the user's existing files, which in the general case are a mix of files
+// output by previous template render/upgrade operations, together with some
+// local customizations. We want to integrate changes from the upgraded template
+// without clobbering the user's local edits, while keeping manual conflict
+// requiring as little conflict resolution as possible.
 func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	switch {
+	// Case: this file was not output by the old template version, but is output by this template version.
 	case !o.IsInOldManifest && o.IsInNewManifest:
 		switch o.OldFileMatchesNewHash {
 		case match:
@@ -107,6 +137,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 			}, nil
 		}
 
+	// Case: this file was output by the old template version, but not by the new template version.
 	case o.IsInOldManifest && !o.IsInNewManifest:
 		switch o.OldFileMatchesOldHash {
 		case match:
@@ -126,6 +157,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 			}, nil
 		}
 
+	// Case: this file was output by the old template version AND the new template version.
 	case o.IsInOldManifest && o.IsInNewManifest:
 		if o.NewFileMatchesOldHash == match {
 			return &mergeDecision{
@@ -158,10 +190,14 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("this is a bug in abc, please report it at https://github.com/abcxyz/abc/issues/new?template=bug.yaml: IsInOldManifest=%t IsInNewManifest=%t OldFileMatchesOldHash=%q NewFileMatchesOldHash=%q OldFileMatchesNewHash=%q",
+	return nil, fmt.Errorf("this is a bug in abc, please report it at https://github.com/abcxyz/abc/issues/new?template=bug.yaml with this text: IsInOldManifest=%t IsInNewManifest=%t OldFileMatchesOldHash=%q NewFileMatchesOldHash=%q OldFileMatchesNewHash=%q",
 		o.IsInOldManifest, o.IsInNewManifest, o.OldFileMatchesOldHash, o.NewFileMatchesOldHash, o.OldFileMatchesNewHash)
 }
 
+// mergeAll incorporates the output of the upgraded template version in mergeDir
+// with the preexisting template output directory in installedDir. installedDir
+// in the general case is a mix of files output by previous template
+// render/upgrade operations, together with some local customizations.
 func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, mergeDir string, oldManifest, newManifest *manifest.Manifest) error {
 	oldHashes := manifestutil.HashesAsMap(oldManifest.OutputHashes)
 	newHashes := manifestutil.HashesAsMap(newManifest.OutputHashes)
