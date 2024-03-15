@@ -21,14 +21,17 @@ import (
 	"path/filepath"
 	"sort"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/abcxyz/abc/templates/common"
 	manifestutil "github.com/abcxyz/abc/templates/model/manifest"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
+	"golang.org/x/exp/maps"
 )
+
+// ExportToAvoidWarnings avoids compiler warnings complaning about unused
+// variables. TODO(upgrade): remove this when no longer necessary.
+var ExportToAvoidWarnings = mergeAll
 
 // A mergeAction is an action to take for a given output file. This may involve
 // conflicts between upgraded template output files and files that were

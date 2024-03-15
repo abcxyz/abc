@@ -4,7 +4,7 @@ version: 'v1'
 managed:
   enabled: true
   go_package_prefix:
-    default: 'github.com/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME/gen/go'
+    default: 'github.com/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME'
 
 # remote plugins so you dont need to install locally
 plugins:
