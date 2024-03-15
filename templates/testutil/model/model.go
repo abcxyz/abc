@@ -16,6 +16,7 @@ package model
 
 import "github.com/abcxyz/abc/templates/model"
 
+// S is a helper to easily create a model.String with less boilerplate.
 func S(s string) model.String {
 	return model.String{Val: s}
 }
