@@ -34,7 +34,7 @@ jobs:
       - name: 'Capture proposed version'
         id: 'capture'
         run: |
-          echo "PROPOSED_PROTO_VERSION=$(yq eval '.proto_version' version.yaml)" >> $GITHUB_OUTPUT
+          echo "PROPOSED_PROTO_VERSION=$(cat VERSION)" >> ${GITHUB_OUTPUT}
 
   upload_source_protos:
     runs-on: 'ubuntu-latest'
@@ -73,12 +73,7 @@ jobs:
       - name: 'Run Build'
         shell: 'bash'
         run: |
-          set +e
-          BUILD_CHECK=$(buf build)
-          if ! [[ -z "${BUILD_CHECK}" ]]; then
-            echo "::error::$BUILD_CHECK"
-            exit 1
-          fi
+          buf build
 
   lint:
     runs-on: 'ubuntu-latest'
@@ -102,12 +97,7 @@ jobs:
       - name: 'Run Lint'
         shell: 'bash'
         run: |
-          set +e
-          LINT_CHECK=$(buf lint)
-          if ! [[ -z "${LINT_CHECK}" ]]; then
-            echo "::error::$LINT_CHECK"
-            exit 1
-          fi
+          buf lint
 
   regenerate:
     runs-on: 'ubuntu-latest'
@@ -140,11 +130,10 @@ jobs:
           PROTO_VERSION: '${{ needs.version.outputs.proposed_proto_version }}'
         shell: 'bash'
         run: |
-          set +e
           make generate
-          DIFF=$(git status --porcelain)
-          echo $DIFF
-          if ! [[ -z "${DIFF}" ]]; then
+          git_status=$(git status --porcelain)
+          echo ${git_status}
+          if ! [[ -z "${git_status}" ]]; then
             echo "::error::Files were not generated from latest proto changes, run make generate and push the latest changes."
             exit 1
           fi
@@ -180,9 +169,4 @@ jobs:
       - name: 'Run Break Check'
         shell: 'bash'
         run: |
-          set +e
-          BREAK_CHECK=$(buf breaking --against ${{ runner.temp }}/.source)
-          if ! [[ -z "${BREAK_CHECK}" ]]; then
-            echo "::error::$BREAK_CHECK"
-            exit 1
-          fi
+          buf breaking --against ${{ runner.temp }}/.source
