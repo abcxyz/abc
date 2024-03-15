@@ -113,8 +113,8 @@ type decideMergeParams struct {
 // the user's existing files, which in the general case are a mix of files
 // output by previous template render/upgrade operations, together with some
 // local customizations. We want to integrate changes from the upgraded template
-// without clobbering the user's local edits, while keeping manual conflict
-// requiring as little conflict resolution as possible.
+// without clobbering the user's local edits, while requiring as little manual
+// conflict resolution as possible.
 func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	switch {
 	// Case: this file was not output by the old template version, but is output by this template version.
