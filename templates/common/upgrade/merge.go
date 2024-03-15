@@ -17,6 +17,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	manifestutil "github.com/abcxyz/abc/templates/model/manifest"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
 )
 
@@ -247,12 +249,76 @@ func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, merg
 		}
 
 		if err := actuateMergeDecision(ctx, fs, dryRun, decision, installedDir, mergeDir, relPath); err != nil {
-			return err
+			return fmt.Errorf("failed filesystem operation during merge: %w", err)
 		}
 	}
 	return nil
 }
 
-func actuateMergeDecision(context.Context, common.FS, bool, *mergeDecision, string, string, string) error {
-	return fmt.Errorf("not implemented")
+const (
+	suffixLocallyAdded                  = ".abcmerge_locally_added"
+	suffixLocallyEdited                 = ".abcmerge_locally_edited"
+	suffixFromNewTemplate               = ".abcmerge_from_new_template"
+	suffixFromNewTemplateLocallyDeleted = ".abcmerge_locally_deleted_vs_new_template_version"
+	suffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
+)
+
+// TODO return a detailed report of what action was taken?
+func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decision *mergeDecision, installedDir, mergeDir, relPath string) error {
+	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
+
+	logger := logging.FromContext(ctx).With("logger", "actuateMergeDecision")
+	logger.DebugContext(ctx, "merging one file",
+		"dryRun", dryRun,
+		"relPath", relPath,
+		"action", decision.action,
+		"explanation", decision.humanExplanation)
+
+	dstPath := filepath.Join(installedDir, relPath)
+	srcPath := filepath.Join(mergeDir, relPath)
+
+	switch decision.action {
+	case writeNew:
+		return common.CopyFile(ctx, nil, fs, srcPath, dstPath, dryRun, nil) //nolint:wrapcheck
+	case noop:
+		return nil
+	case deleteAction:
+		if dryRun {
+			return nil
+		}
+		if err := os.Remove(dstPath); err != nil {
+			return err //nolint:wrapcheck
+		}
+		return nil
+	case deleteEditConflict:
+		dstPath += suffixFromNewTemplateLocallyDeleted
+		return common.CopyFile(ctx, nil, fs, srcPath, dstPath, dryRun, nil) //nolint:wrapcheck
+	case editDeleteConflict:
+		if dryRun {
+			return nil
+		}
+		if err := fs.Rename(dstPath, dstPath+suffixWantToDelete); err != nil {
+			return err //nolint:wrapcheck
+		}
+		return nil
+	case editEditConflict:
+		if dryRun {
+			return nil
+		}
+		if err := fs.Rename(dstPath, dstPath+suffixLocallyEdited); err != nil {
+			return err //nolint:wrapcheck
+		}
+		dstWithSuffix := dstPath + suffixFromNewTemplate
+		return common.CopyFile(ctx, nil, fs, srcPath, dstWithSuffix, dryRun, nil) //nolint:wrapcheck
+	case addAddConflict:
+		if dryRun {
+			return nil
+		}
+		if err := fs.Rename(dstPath, dstPath+suffixLocallyAdded); err != nil {
+			return err //nolint:wrapcheck
+		}
+		return common.CopyFile(ctx, nil, fs, srcPath, dstPath+suffixFromNewTemplate, dryRun, nil) //nolint:wrapcheck
+	default:
+		return fmt.Errorf("internal error: unrecognized merged action %v", decision.action)
+	}
 }
