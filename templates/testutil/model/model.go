@@ -20,3 +20,9 @@ import "github.com/abcxyz/abc/templates/model"
 func S(s string) model.String {
 	return model.String{Val: s}
 }
+
+// SP is a helper to easily create a *model.String with less boilerplate.
+func SP(s string) *model.String {
+	out := S(s)
+	return &out
+}

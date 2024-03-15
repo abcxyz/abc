@@ -23,6 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -53,18 +54,18 @@ steps:
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
 			want: &Spec{
-				Desc: model.String{Val: "A simple template that just prints and exits"},
+				Desc: mdl.S("A simple template that just prints and exits"),
 				Inputs: []*Input{
 					{
-						Name:    model.String{Val: "person_name"},
-						Desc:    model.String{Val: "An optional name of a person to greet"},
-						Default: &model.String{Val: "default value"},
+						Name:    mdl.S("person_name"),
+						Desc:    mdl.S("An optional name of a person to greet"),
+						Default: mdl.SP("default value"),
 					},
 				},
 				Steps: []*Step{
 					{
-						Desc:   model.String{Val: "Print a message"},
-						Action: model.String{Val: "print"},
+						Desc:   mdl.S("Print a message"),
+						Action: mdl.S("print"),
 						Print: &Print{
 							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
 						},
@@ -89,18 +90,18 @@ steps:
   params:
     message: 'Hello, {{.or .person_name "World"}}'`,
 			want: &Spec{
-				Desc: model.String{Val: "A simple template that just prints and exits"},
+				Desc: mdl.S("A simple template that just prints and exits"),
 				Inputs: []*Input{
 					{
-						Name:    model.String{Val: "person_name"},
-						Desc:    model.String{Val: "An optional name of a person to greet"},
-						Default: &model.String{Val: "default value"},
+						Name:    mdl.S("person_name"),
+						Desc:    mdl.S("An optional name of a person to greet"),
+						Default: mdl.SP("default value"),
 					},
 				},
 				Steps: []*Step{
 					{
-						Desc:   model.String{Val: "Print a message"},
-						Action: model.String{Val: "print"},
+						Desc:   mdl.S("Print a message"),
+						Action: mdl.S("print"),
 						Print: &Print{
 							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
 						},
@@ -199,9 +200,9 @@ func TestUnmarshalInput(t *testing.T) {
 desc: "The name of a person to greet"
 default: "default"`,
 			want: &Input{
-				Name:    model.String{Val: "person_name"},
-				Desc:    model.String{Val: "The name of a person to greet"},
-				Default: &model.String{Val: "default"},
+				Name:    mdl.S("person_name"),
+				Desc:    mdl.S("The name of a person to greet"),
+				Default: mdl.SP("default"),
 			},
 		},
 		{
@@ -209,8 +210,8 @@ default: "default"`,
 			in: `name: 'person_name'
 desc: "The name of a person to greet"`,
 			want: &Input{
-				Name:    model.String{Val: "person_name"},
-				Desc:    model.String{Val: "The name of a person to greet"},
+				Name:    mdl.S("person_name"),
+				Desc:    mdl.S("The name of a person to greet"),
 				Default: nil,
 			},
 		},
@@ -240,12 +241,12 @@ rules:
   - rule: 'size(a) > 5'
     message: 'my message'`,
 			want: &Input{
-				Name: model.String{Val: "a"},
-				Desc: model.String{Val: "foo"},
+				Name: mdl.S("a"),
+				Desc: mdl.S("foo"),
 				Rules: []*Rule{
 					{
-						Rule:    model.String{Val: "size(a) > 5"},
-						Message: model.String{Val: "my message"},
+						Rule:    mdl.S("size(a) > 5"),
+						Message: mdl.S("my message"),
 					},
 				},
 			},
@@ -257,11 +258,11 @@ name: 'a'
 rules:
   - rule: 'size(a) > 5'`,
 			want: &Input{
-				Name: model.String{Val: "a"},
-				Desc: model.String{Val: "foo"},
+				Name: mdl.S("a"),
+				Desc: mdl.S("foo"),
 				Rules: []*Rule{
 					{
-						Rule: model.String{Val: "size(a) > 5"},
+						Rule: mdl.S("size(a) > 5"),
 					},
 				},
 			},
@@ -276,16 +277,16 @@ rules:
   - rule: 'size(a) < 100'
     message: 'my other message'`,
 			want: &Input{
-				Name: model.String{Val: "a"},
-				Desc: model.String{Val: "foo"},
+				Name: mdl.S("a"),
+				Desc: mdl.S("foo"),
 				Rules: []*Rule{
 					{
-						Rule:    model.String{Val: "size(a) > 5"},
-						Message: model.String{Val: "my message"},
+						Rule:    mdl.S("size(a) > 5"),
+						Message: mdl.S("my message"),
 					},
 					{
-						Rule:    model.String{Val: "size(a) < 100"},
-						Message: model.String{Val: "my other message"},
+						Rule:    mdl.S("size(a) < 100"),
+						Message: mdl.S("my other message"),
 					},
 				},
 			},
@@ -340,14 +341,14 @@ params:
   with: 'jkl'
   skip_ensure_newline: true`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "append"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("append"),
 				Append: &Append{
 					Paths: []model.String{
 						{Val: "a.txt"},
 						{Val: "b.txt"},
 					},
-					With:              model.String{Val: "jkl"},
+					With:              mdl.S("jkl"),
 					SkipEnsureNewline: model.Bool{Val: true},
 				},
 			},
@@ -385,10 +386,10 @@ action: 'print'
 params:
   message: 'Hello'`,
 			want: &Step{
-				Desc:   model.String{Val: "Print a message"},
-				Action: model.String{Val: "print"},
+				Desc:   mdl.S("Print a message"),
+				Action: mdl.S("print"),
 				Print: &Print{
-					Message: model.String{Val: "Hello"},
+					Message: mdl.S("Hello"),
 				},
 			},
 		},
@@ -424,12 +425,12 @@ params:
   paths: ['a/b/c', 'x/y.txt']
   from: 'destination'`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("include"),
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							From: model.String{Val: "destination"},
+							From: mdl.S("destination"),
 							Paths: []model.String{
 								{
 									Val: "a/b/c",
@@ -452,12 +453,12 @@ params:
   - paths: ['a/b/c', 'x/y.txt']
     from: 'destination'`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("include"),
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							From: model.String{Val: "destination"},
+							From: mdl.S("destination"),
 							Paths: []model.String{
 								{
 									Val: "a/b/c",
@@ -480,8 +481,8 @@ params:
     - paths: ['a/b/c', 'd/e/f']
       as: ['x/y/z', 'q/r/s']`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("include"),
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
@@ -515,8 +516,8 @@ params:
     - paths: ['.']
       skip: ['x/y']`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("include"),
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
@@ -544,8 +545,8 @@ params:
     - paths: ['.']
       from: 'destination'`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("include"),
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
@@ -592,8 +593,8 @@ params:
     - paths: ['.']
       from: 'invalid'`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("include"),
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
@@ -620,8 +621,8 @@ params:
     - paths: ['a/b/c', 'd/e/f']
       as: ['x/y/z', 'q/r/s', 't/u/v']`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "include"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("include"),
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
@@ -696,8 +697,8 @@ params:
   - regex: 'my_other_regex'
     with: 'whatever'`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "regex_replace"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("regex_replace"),
 				RegexReplace: &RegexReplace{
 					Paths: []model.String{
 						{Val: "a.txt"},
@@ -705,13 +706,13 @@ params:
 					},
 					Replacements: []*RegexReplaceEntry{
 						{
-							Regex:             model.String{Val: "my_(?P<groupname>regex)"},
-							SubgroupToReplace: model.String{Val: "groupname"},
-							With:              model.String{Val: "some_template"},
+							Regex:             mdl.S("my_(?P<groupname>regex)"),
+							SubgroupToReplace: mdl.S("groupname"),
+							With:              mdl.S("some_template"),
 						},
 						{
-							Regex: model.String{Val: "my_other_regex"},
-							With:  model.String{Val: "whatever"},
+							Regex: mdl.S("my_other_regex"),
+							With:  mdl.S("whatever"),
 						},
 					},
 				},
@@ -775,16 +776,16 @@ params:
   - regex: '(?P<mygroup>myregex'
   - regex: '(?P<myothergroup>myotherregex'`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "regex_name_lookup"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("regex_name_lookup"),
 				RegexNameLookup: &RegexNameLookup{
 					Paths: []model.String{
 						{Val: "a.txt"},
 						{Val: "b.txt"},
 					},
 					Replacements: []*RegexNameLookupEntry{
-						{Regex: model.String{Val: "(?P<mygroup>myregex"}},
-						{Regex: model.String{Val: "(?P<myothergroup>myotherregex"}},
+						{Regex: mdl.S("(?P<mygroup>myregex")},
+						{Regex: mdl.S("(?P<myothergroup>myotherregex")},
 					},
 				},
 			},
@@ -811,8 +812,8 @@ params:
   - to_replace: 'ghi'
     with: 'jkl'`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "string_replace"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("string_replace"),
 				StringReplace: &StringReplace{
 					Paths: []model.String{
 						{Val: "a.txt"},
@@ -820,12 +821,12 @@ params:
 					},
 					Replacements: []*StringReplacement{
 						{
-							ToReplace: model.String{Val: "abc"},
-							With:      model.String{Val: "def"},
+							ToReplace: mdl.S("abc"),
+							With:      mdl.S("def"),
 						},
 						{
-							ToReplace: model.String{Val: "ghi"},
-							With:      model.String{Val: "jkl"},
+							ToReplace: mdl.S("ghi"),
+							With:      mdl.S("jkl"),
 						},
 					},
 				},
@@ -856,8 +857,8 @@ action: 'go_template'
 params:
   paths: ['my/path/1', 'my/path/2']`,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "go_template"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("go_template"),
 				GoTemplate: &GoTemplate{
 					Paths: []model.String{
 						{Val: "my/path/1"},
@@ -893,11 +894,11 @@ params:
         message: 'yet another message'
 `,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "for_each"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("for_each"),
 				ForEach: &ForEach{
 					Iterator: &ForEachIterator{
-						Key: model.String{Val: "environment"},
+						Key: mdl.S("environment"),
 						Values: []model.String{
 							{Val: "dev"},
 							{Val: "prod"},
@@ -905,17 +906,17 @@ params:
 					},
 					Steps: []*Step{
 						{
-							Desc:   model.String{Val: "print some stuff"},
-							Action: model.String{Val: "print"},
+							Desc:   mdl.S("print some stuff"),
+							Action: mdl.S("print"),
 							Print: &Print{
 								Message: model.String{Val: `Hello, {{.name}}`},
 							},
 						},
 						{
-							Desc:   model.String{Val: "another action"},
-							Action: model.String{Val: "print"},
+							Desc:   mdl.S("another action"),
+							Action: mdl.S("print"),
 							Print: &Print{
-								Message: model.String{Val: "yet another message"},
+								Message: mdl.S("yet another message"),
 							},
 						},
 					},
@@ -941,26 +942,26 @@ params:
         message: 'yet another message'
 `,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "for_each"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("for_each"),
 				ForEach: &ForEach{
 					Iterator: &ForEachIterator{
-						Key:        model.String{Val: "environment"},
-						ValuesFrom: &model.String{Val: "my_cel_expression"},
+						Key:        mdl.S("environment"),
+						ValuesFrom: mdl.SP("my_cel_expression"),
 					},
 					Steps: []*Step{
 						{
-							Desc:   model.String{Val: "print some stuff"},
-							Action: model.String{Val: "print"},
+							Desc:   mdl.S("print some stuff"),
+							Action: mdl.S("print"),
 							Print: &Print{
 								Message: model.String{Val: `Hello, {{.name}}`},
 							},
 						},
 						{
-							Desc:   model.String{Val: "another action"},
-							Action: model.String{Val: "print"},
+							Desc:   mdl.S("another action"),
+							Action: mdl.S("print"),
 							Print: &Print{
-								Message: model.String{Val: "yet another message"},
+								Message: mdl.S("yet another message"),
 							},
 						},
 					},
@@ -1081,11 +1082,11 @@ params:
   message: 'Hello'
 `,
 			want: &Step{
-				Desc:   model.String{Val: "mydesc"},
-				Action: model.String{Val: "print"},
-				If:     model.String{Val: "{{.myinput}}"},
+				Desc:   mdl.S("mydesc"),
+				Action: mdl.S("print"),
+				If:     mdl.S("{{.myinput}}"),
 				Print: &Print{
-					Message: model.String{Val: "Hello"},
+					Message: mdl.S("Hello"),
 				},
 			},
 		},

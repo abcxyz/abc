@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -88,7 +89,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				Paths: modelStrings([]string{"."}),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: "(?P<mysubgroup>beta)"},
+						Regex: mdl.S("(?P<mysubgroup>beta)"),
 					},
 				},
 			},
@@ -171,7 +172,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				Paths: modelStrings([]string{"{{.filename}}"}),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: "(?P<cake>beta)"},
+						Regex: mdl.S("(?P<cake>beta)"),
 					},
 				},
 			},

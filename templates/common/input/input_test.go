@@ -23,6 +23,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -48,7 +49,7 @@ func TestPromptForInputs_CanceledContext(t *testing.T) {
 		spec := &spec.Spec{
 			Inputs: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 				},
 			},
 		}
@@ -92,7 +93,7 @@ func TestValidateInputs(t *testing.T) {
 			name: "no_validation_rule",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 				},
 			},
 			inputVals: map[string]string{
@@ -103,11 +104,11 @@ func TestValidateInputs(t *testing.T) {
 			name: "single_passing_validation_rule",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 5`},
-							Message: model.String{Val: "Length must be less than 5"},
+							Message: mdl.S("Length must be less than 5"),
 						},
 					},
 				},
@@ -120,11 +121,11 @@ func TestValidateInputs(t *testing.T) {
 			name: "single_failing_validation_rule",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
-							Message: model.String{Val: "Length must be less than 3"},
+							Message: mdl.S("Length must be less than 3"),
 						},
 					},
 				},
@@ -143,11 +144,11 @@ Rule msg:     Length must be less than 3`,
 			name: "multiple_passing_validation_rules",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 5`},
-							Message: model.String{Val: "Length must be less than 5"},
+							Message: mdl.S("Length must be less than 5"),
 						},
 						{
 							Rule:    model.String{Val: `my_input.startsWith("fo")`},
@@ -168,11 +169,11 @@ Rule msg:     Length must be less than 3`,
 			name: "multiple_passing_validation_rules_one_failing",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
-							Message: model.String{Val: "Length must be less than 3"},
+							Message: mdl.S("Length must be less than 3"),
 						},
 						{
 							Rule:    model.String{Val: `my_input.startsWith("fo")`},
@@ -199,11 +200,11 @@ Rule msg:     Length must be less than 3`,
 			name: "multiple_failing_validation_rules",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule:    model.String{Val: `size(my_input) < 3`},
-							Message: model.String{Val: "Length must be less than 3"},
+							Message: mdl.S("Length must be less than 3"),
 						},
 						{
 							Rule:    model.String{Val: `my_input.startsWith("ham")`},
@@ -240,7 +241,7 @@ Rule msg:     Must contain "shoe"`,
 			name: "cel_syntax_error",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `(`},
@@ -262,7 +263,7 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:2: Syntax error:
 			name: "cel_type_conversion_error",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `bool(42)`},
@@ -284,7 +285,7 @@ CEL error:    failed compiling CEL expression: ERROR: <input>:1:5: found no matc
 			name: "cel_output_type_conversion_error",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `42`},
@@ -306,7 +307,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 			name: "multi_input_validation",
 			inputModels: []*spec.Input{
 				{
-					Name: model.String{Val: "my_input"},
+					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `my_input + my_other_input == "sharknado"`},
@@ -314,7 +315,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 					},
 				},
 				{
-					Name: model.String{Val: "my_other_input"},
+					Name: mdl.S("my_other_input"),
 					Rules: []*spec.Rule{
 						{
 							Rule: model.String{Val: `"tor" + my_other_input + my_input == "tornadoshark"`},

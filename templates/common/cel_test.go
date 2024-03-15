@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/model"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -80,12 +81,12 @@ func TestCompileAndEvalCEL(t *testing.T) {
 		},
 		{
 			name: "simple_int_return",
-			in:   model.String{Val: "42"},
+			in:   mdl.S("42"),
 			want: 42,
 		},
 		{
 			name: "simple_uint_return",
-			in:   model.String{Val: "42u"},
+			in:   mdl.S("42u"),
 			want: uint(42),
 		},
 		{

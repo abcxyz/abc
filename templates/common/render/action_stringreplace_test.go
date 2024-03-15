@@ -22,9 +22,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -50,8 +50,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{"my_file.txt"},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("bar"),
 				},
 			},
 			initialContents: map[string]string{
@@ -66,8 +66,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{"my_file.txt", ".", "my_file.txt"},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "foofoo"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("foofoo"),
 				},
 			},
 			initialContents: map[string]string{
@@ -82,8 +82,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{""},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("bar"),
 				},
 			},
 			initialContents: map[string]string{
@@ -100,8 +100,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{""},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("bar"),
 				},
 			},
 			initialContents: map[string]string{
@@ -116,8 +116,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{""},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("bar"),
 				},
 			},
 			initialContents: map[string]string{
@@ -132,8 +132,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{"my_{{.filename_adjective}}_file.txt"},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "sand{{.old_suffix}}"},
-					With:      model.String{Val: "hot{{.new_suffix}}"},
+					ToReplace: mdl.S("sand{{.old_suffix}}"),
+					With:      mdl.S("hot{{.new_suffix}}"),
 				},
 			},
 			initialContents: map[string]string{
@@ -155,8 +155,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{"{{.myinput}}"},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("bar"),
 				},
 			},
 			initialContents: map[string]string{
@@ -173,8 +173,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{""},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "{{.myinput}}"},
-					With:      model.String{Val: "bar"},
+					ToReplace: mdl.S("{{.myinput}}"),
+					With:      mdl.S("bar"),
 				},
 			},
 			initialContents: map[string]string{
@@ -191,8 +191,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{""},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "{{.myinput}}"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("{{.myinput}}"),
 				},
 			},
 			initialContents: map[string]string{
@@ -209,8 +209,8 @@ func TestActionStringReplace(t *testing.T) {
 			paths: []string{"my_file.txt"},
 			replacements: []*spec.StringReplacement{
 				{
-					ToReplace: model.String{Val: "foo"},
-					With:      model.String{Val: "bar"},
+					ToReplace: mdl.S("foo"),
+					With:      mdl.S("bar"),
 				},
 			},
 			initialContents: map[string]string{

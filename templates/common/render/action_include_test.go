@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -627,7 +628,7 @@ func TestActionInclude(t *testing.T) {
 				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},
@@ -649,7 +650,7 @@ func TestActionInclude(t *testing.T) {
 				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"subdir"}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},
@@ -672,7 +673,7 @@ func TestActionInclude(t *testing.T) {
 				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"*.txt"}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},
@@ -700,7 +701,7 @@ func TestActionInclude(t *testing.T) {
 				Paths: []*spec.IncludePath{
 					{
 						Paths: modelStrings([]string{"file1.txt", "subdir/file2.txt"}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},
@@ -727,7 +728,7 @@ func TestActionInclude(t *testing.T) {
 					},
 					{
 						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},
@@ -766,7 +767,7 @@ func TestActionInclude(t *testing.T) {
 					},
 					{
 						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},
@@ -806,7 +807,7 @@ func TestActionInclude(t *testing.T) {
 					},
 					{
 						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},
@@ -860,7 +861,7 @@ func TestActionInclude(t *testing.T) {
 					},
 					{
 						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						From:  mdl.S("destination"),
 					},
 				},
 			},

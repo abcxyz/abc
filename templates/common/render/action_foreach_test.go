@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -44,7 +45,7 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: model.String{Val: "greeting_target"},
+					Key: mdl.S("greeting_target"),
 					Values: []model.String{
 						{Val: "Bob"},
 						{Val: "Charlie"},
@@ -53,7 +54,7 @@ func TestActionForEach(t *testing.T) {
 				Steps: []*spec.Step{
 					{
 						Print: &spec.Print{
-							Message: model.String{Val: "Hello {{.greeting_target}} from {{.from}}"},
+							Message: mdl.S("Hello {{.greeting_target}} from {{.from}}"),
 						},
 					},
 				},
@@ -69,7 +70,7 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: model.String{Val: "greeting_target"},
+					Key: mdl.S("greeting_target"),
 					Values: []model.String{
 						{Val: "{{.first_recipient}}"},
 						{Val: "{{.second_recipient}}"},
@@ -78,7 +79,7 @@ func TestActionForEach(t *testing.T) {
 				Steps: []*spec.Step{
 					{
 						Print: &spec.Print{
-							Message: model.String{Val: "Hello {{.greeting_target}} from {{.from}}"},
+							Message: mdl.S("Hello {{.greeting_target}} from {{.from}}"),
 						},
 					},
 				},
@@ -95,7 +96,7 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: model.String{Val: "greeter"},
+					Key: mdl.S("greeter"),
 					Values: []model.String{
 						{Val: "{{.first_greeter}}"},
 						{Val: "{{.second_greeter}}"},
@@ -103,10 +104,10 @@ func TestActionForEach(t *testing.T) {
 				},
 				Steps: []*spec.Step{
 					{
-						Action: model.String{Val: "for_each"},
+						Action: mdl.S("for_each"),
 						ForEach: &spec.ForEach{
 							Iterator: &spec.ForEachIterator{
-								Key: model.String{Val: "greeting_target"},
+								Key: mdl.S("greeting_target"),
 								Values: []model.String{
 									{Val: "{{.first_recipient}}"},
 									{Val: "{{.second_recipient}}"},
@@ -115,7 +116,7 @@ func TestActionForEach(t *testing.T) {
 							Steps: []*spec.Step{
 								{
 									Print: &spec.Print{
-										Message: model.String{Val: "Hello {{.greeting_target}} from {{.greeter}}"},
+										Message: mdl.S("Hello {{.greeting_target}} from {{.greeter}}"),
 									},
 								},
 							},
@@ -132,7 +133,7 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: model.String{Val: "color"},
+					Key: mdl.S("color"),
 					Values: []model.String{
 						{Val: "Red"},
 					},
@@ -140,7 +141,7 @@ func TestActionForEach(t *testing.T) {
 				Steps: []*spec.Step{
 					{
 						Print: &spec.Print{
-							Message: model.String{Val: "{{.color}}"},
+							Message: mdl.S("{{.color}}"),
 						},
 					},
 				},
@@ -152,7 +153,7 @@ func TestActionForEach(t *testing.T) {
 			inputs: map[string]string{},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: model.String{Val: "x"},
+					Key: mdl.S("x"),
 					Values: []model.String{
 						{Val: "Alice"},
 					},
@@ -160,7 +161,7 @@ func TestActionForEach(t *testing.T) {
 				Steps: []*spec.Step{
 					{
 						Print: &spec.Print{
-							Message: model.String{Val: "{{.nonexistent}}"},
+							Message: mdl.S("{{.nonexistent}}"),
 						},
 					},
 				},
@@ -174,13 +175,13 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key:        model.String{Val: "env"},
+					Key:        mdl.S("env"),
 					ValuesFrom: &model.String{Val: `environments.split(",")`},
 				},
 				Steps: []*spec.Step{
 					{
 						Print: &spec.Print{
-							Message: model.String{Val: "{{.env}}"},
+							Message: mdl.S("{{.env}}"),
 						},
 					},
 				},
@@ -191,13 +192,13 @@ func TestActionForEach(t *testing.T) {
 			name: "cel_values_empty_no_actions",
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key:        model.String{Val: "env"},
+					Key:        mdl.S("env"),
 					ValuesFrom: &model.String{Val: `[]`},
 				},
 				Steps: []*spec.Step{
 					{
 						Print: &spec.Print{
-							Message: model.String{Val: "{{.env}}"},
+							Message: mdl.S("{{.env}}"),
 						},
 					},
 				},
@@ -208,13 +209,13 @@ func TestActionForEach(t *testing.T) {
 			name: "cel_values_literal",
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key:        model.String{Val: "env"},
+					Key:        mdl.S("env"),
 					ValuesFrom: &model.String{Val: `["production", "dev"]`},
 				},
 				Steps: []*spec.Step{
 					{
 						Print: &spec.Print{
-							Message: model.String{Val: "{{.env}}"},
+							Message: mdl.S("{{.env}}"),
 						},
 					},
 				},
