@@ -170,7 +170,7 @@ func TestActionAppend(t *testing.T) {
 			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sr := &spec.Append{
-				Paths: mdl.Strings(tc.paths),
+				Paths: mdl.Strings(tc.paths...),
 				With:  mdl.S(tc.with),
 				SkipEnsureNewline: model.Bool{
 					Pos: &model.ConfigPos{},

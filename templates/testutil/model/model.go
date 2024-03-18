@@ -28,7 +28,7 @@ func SP(s string) *model.String {
 }
 
 // Strings wraps each element of the input in a model.String.
-func Strings(ss []string) []model.String {
+func Strings(ss ...string) []model.String {
 	out := make([]model.String, len(ss))
 	for i, s := range ss {
 		out[i] = model.String{

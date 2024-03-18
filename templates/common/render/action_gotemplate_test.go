@@ -49,7 +49,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, Alice!",
@@ -62,7 +62,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, world!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, world!",
@@ -78,7 +78,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "{{.greeting}}, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, Alice!",
@@ -94,7 +94,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a_Alice.txt": "{{.greeting}}, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: mdl.Strings([]string{"a_{{.person}}.txt"}),
+				Paths: mdl.Strings("a_{{.person}}.txt"),
 			},
 			want: map[string]string{
 				"a_Alice.txt": "Hello, Alice!",
@@ -109,7 +109,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, {{.person}}!",
@@ -123,7 +123,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{",
 			},
 			gt: &spec.GoTemplate{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, {{",
@@ -147,7 +147,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"suffix.txt":       `{{ trimSuffix .suffix "suffix" }}`,
 			},
 			gt: &spec.GoTemplate{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"replace_all.txt":  `my_test_project`,

@@ -52,7 +52,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"myfile.txt"}),
+						Paths: mdl.Strings("myfile.txt"),
 					},
 				},
 			},
@@ -68,7 +68,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"/myfile.txt"}),
+						Paths: mdl.Strings("/myfile.txt"),
 					},
 				},
 			},
@@ -84,7 +84,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"../file.txt"}),
+						Paths: mdl.Strings("../file.txt"),
 					},
 				},
 			},
@@ -95,7 +95,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"../*.txt"}),
+						Paths: mdl.Strings("../*.txt"),
 					},
 				},
 			},
@@ -106,7 +106,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"{{.my_dir}}/{{.my_file}}"}),
+						Paths: mdl.Strings("{{.my_dir}}/{{.my_file}}"),
 					},
 				},
 			},
@@ -126,7 +126,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"myfile.txt", "myfile.txt"}),
+						Paths: mdl.Strings("myfile.txt", "myfile.txt"),
 					},
 				},
 			},
@@ -142,7 +142,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"foo/myfile.txt", "foo/", "foo/myfile.txt"}),
+						Paths: mdl.Strings("foo/myfile.txt", "foo/", "foo/myfile.txt"),
 					},
 				},
 			},
@@ -158,7 +158,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"{{.filename}}"}),
+						Paths: mdl.Strings("{{.filename}}"),
 					},
 				},
 			},
@@ -173,7 +173,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"nonexistent"}),
+						Paths: mdl.Strings("nonexistent"),
 					},
 				},
 			},
@@ -189,7 +189,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"myfile.txt"}),
+						Paths: mdl.Strings("myfile.txt"),
 					},
 				},
 			},
@@ -204,7 +204,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"*.txt"}),
+						Paths: mdl.Strings("*.txt"),
 					},
 				},
 			},
@@ -224,7 +224,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"dir*"}),
+						Paths: mdl.Strings("dir*"),
 					},
 				},
 			},
@@ -242,7 +242,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"dir*"}),
+						Paths: mdl.Strings("dir*"),
 					},
 				},
 			},
@@ -264,7 +264,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"dir/*.txt"}),
+						Paths: mdl.Strings("dir/*.txt"),
 					},
 				},
 			},
@@ -284,7 +284,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"{{.filename}}.*"}),
+						Paths: mdl.Strings("{{.filename}}.*"),
 					},
 				},
 			},
@@ -307,8 +307,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"dir1/file1.txt"}),
-						As:    mdl.Strings([]string{"dir2/file2.txt"}),
+						Paths: mdl.Strings("dir1/file1.txt"),
+						As:    mdl.Strings("dir2/file2.txt"),
 					},
 				},
 			},
@@ -324,8 +324,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"*.txt"}),
-						As:    mdl.Strings([]string{"dir"}),
+						Paths: mdl.Strings("*.txt"),
+						As:    mdl.Strings("dir"),
 					},
 				},
 			},
@@ -341,8 +341,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"*.txt"}),
-						As:    mdl.Strings([]string{"dir"}),
+						Paths: mdl.Strings("*.txt"),
+						As:    mdl.Strings("dir"),
 					},
 				},
 			},
@@ -360,8 +360,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"*.txt", "*.md"}),
-						As:    mdl.Strings([]string{"txtdir", "mddir"}),
+						Paths: mdl.Strings("*.txt", "*.md"),
+						As:    mdl.Strings("txtdir", "mddir"),
 					},
 				},
 			},
@@ -383,8 +383,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"dir*"}),
-						As:    mdl.Strings([]string{"topdir"}),
+						Paths: mdl.Strings("dir*"),
+						As:    mdl.Strings("topdir"),
 					},
 				},
 			},
@@ -402,8 +402,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"file{{.one}}.txt", "file{{.two}}.txt"}),
-						As:    mdl.Strings([]string{"file{{.three}}.txt", "file{{.four}}.txt"}),
+						Paths: mdl.Strings("file{{.one}}.txt", "file{{.two}}.txt"),
+						As:    mdl.Strings("file{{.three}}.txt", "file{{.four}}.txt"),
 					},
 				},
 			},
@@ -427,7 +427,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 				},
 			},
@@ -445,7 +445,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 				},
 			},
@@ -463,7 +463,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 				},
 			},
@@ -482,8 +482,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
-						Skip:  mdl.Strings([]string{"file2.txt"}),
+						Paths: mdl.Strings("."),
+						Skip:  mdl.Strings("file2.txt"),
 					},
 				},
 			},
@@ -504,8 +504,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"file1.txt"}),
-						Skip:  mdl.Strings([]string{"file1.txt"}),
+						Paths: mdl.Strings("file1.txt"),
+						Skip:  mdl.Strings("file1.txt"),
 					},
 				},
 			},
@@ -519,8 +519,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
-						Skip:  mdl.Strings([]string{"file1.txt", "file2.txt", "file4.txt"}),
+						Paths: mdl.Strings("."),
+						Skip:  mdl.Strings("file1.txt", "file2.txt", "file4.txt"),
 					},
 				},
 			},
@@ -541,8 +541,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"*.txt"}),
-						Skip:  mdl.Strings([]string{"file1.txt", "file2.txt", "file4.txt"}),
+						Paths: mdl.Strings("*.txt"),
+						Skip:  mdl.Strings("file1.txt", "file2.txt", "file4.txt"),
 					},
 				},
 			},
@@ -563,8 +563,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"subfolder"}),
-						Skip:  mdl.Strings([]string{"subfolder/file2.txt"}),
+						Paths: mdl.Strings("subfolder"),
+						Skip:  mdl.Strings("subfolder/file2.txt"),
 					},
 				},
 			},
@@ -584,8 +584,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"subfolder"}),
-						Skip:  mdl.Strings([]string{"subfolder/*.txt"}),
+						Paths: mdl.Strings("subfolder"),
+						Skip:  mdl.Strings("subfolder/*.txt"),
 					},
 				},
 			},
@@ -605,8 +605,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"folder1"}),
-						Skip:  mdl.Strings([]string{"folder1/folder2"}),
+						Paths: mdl.Strings("folder1"),
+						Skip:  mdl.Strings("folder1/folder2"),
 					},
 				},
 			},
@@ -627,7 +627,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 						From:  mdl.S("destination"),
 					},
 				},
@@ -649,7 +649,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"subdir"}),
+						Paths: mdl.Strings("subdir"),
 						From:  mdl.S("destination"),
 					},
 				},
@@ -672,7 +672,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"*.txt"}),
+						Paths: mdl.Strings("*.txt"),
 						From:  mdl.S("destination"),
 					},
 				},
@@ -700,7 +700,7 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"file1.txt", "subdir/file2.txt"}),
+						Paths: mdl.Strings("file1.txt", "subdir/file2.txt"),
 						From:  mdl.S("destination"),
 					},
 				},
@@ -724,15 +724,15 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 						From:  mdl.S("destination"),
 					},
 				},
 			},
-			ignorePatterns: mdl.Strings([]string{"folder0", "file1.txt", "folder1/folder2"}),
+			ignorePatterns: mdl.Strings("folder0", "file1.txt", "folder1/folder2"),
 			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file 0 contents"},
@@ -763,15 +763,15 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 						From:  mdl.S("destination"),
 					},
 				},
 			},
-			ignorePatterns: mdl.Strings([]string{"*older0", "*1.txt", "folder1/*2"}),
+			ignorePatterns: mdl.Strings("*older0", "*1.txt", "folder1/*2"),
 			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file 0 contents"},
@@ -803,15 +803,15 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 						From:  mdl.S("destination"),
 					},
 				},
 			},
-			ignorePatterns: mdl.Strings([]string{"/folder0", "/file1.txt", "/folder1/folder2"}),
+			ignorePatterns: mdl.Strings("/folder0", "/file1.txt", "/folder1/folder2"),
 			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file 0 contents"},
@@ -857,10 +857,10 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: mdl.Strings([]string{"."}),
+						Paths: mdl.Strings("."),
 						From:  mdl.S("destination"),
 					},
 				},

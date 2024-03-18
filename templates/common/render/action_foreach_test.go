@@ -45,7 +45,7 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:    mdl.S("greeting_target"),
-					Values: mdl.Strings([]string{"Bob", "Charlie"}),
+					Values: mdl.Strings("Bob", "Charlie"),
 				},
 				Steps: []*spec.Step{
 					{
@@ -66,11 +66,8 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: mdl.S("greeting_target"),
-					Values: mdl.Strings([]string{
-						"{{.first_recipient}}",
-						"{{.second_recipient}}",
-					}),
+					Key:    mdl.S("greeting_target"),
+					Values: mdl.Strings("{{.first_recipient}}", "{{.second_recipient}}"),
 				},
 				Steps: []*spec.Step{
 					{
@@ -93,7 +90,7 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:    mdl.S("greeter"),
-					Values: mdl.Strings([]string{"{{.first_greeter}}", "{{.second_greeter}}"}),
+					Values: mdl.Strings("{{.first_greeter}}", "{{.second_greeter}}"),
 				},
 				Steps: []*spec.Step{
 					{
@@ -101,7 +98,7 @@ func TestActionForEach(t *testing.T) {
 						ForEach: &spec.ForEach{
 							Iterator: &spec.ForEachIterator{
 								Key:    mdl.S("greeting_target"),
-								Values: mdl.Strings([]string{"{{.first_recipient}}", "{{.second_recipient}}"}),
+								Values: mdl.Strings("{{.first_recipient}}", "{{.second_recipient}}"),
 							},
 							Steps: []*spec.Step{
 								{
@@ -124,7 +121,7 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:    mdl.S("color"),
-					Values: mdl.Strings([]string{"Red"}),
+					Values: mdl.Strings("Red"),
 				},
 				Steps: []*spec.Step{
 					{
@@ -142,7 +139,7 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:    mdl.S("x"),
-					Values: mdl.Strings([]string{"Alice"}),
+					Values: mdl.Strings("Alice"),
 				},
 				Steps: []*spec.Step{
 					{

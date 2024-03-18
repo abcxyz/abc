@@ -234,7 +234,7 @@ func TestActionStringReplace(t *testing.T) {
 			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sr := &spec.StringReplace{
-				Paths:        mdl.Strings(tc.paths),
+				Paths:        mdl.Strings(tc.paths...),
 				Replacements: tc.replacements,
 			}
 			sp := &stepParams{

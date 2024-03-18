@@ -47,7 +47,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: mdl.S(`\b(?P<my_input>b...) (?P<my_input>g....)`),
@@ -67,7 +67,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foofoo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: mdl.S(`(?P<my_input>foo)`),
@@ -85,7 +85,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 			},
 			inputs: map[string]string{},
 			rr: &spec.RegexNameLookup{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: mdl.S("(?P<mysubgroup>beta)"),
@@ -106,7 +106,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: mdl.S(`\b(?P<my_input>b...) (g....)`),
@@ -129,7 +129,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"mygroup":        "omega",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: mdl.S(`(?P<{{.group_name}}>{{.regex_to_match}})`),
@@ -150,7 +150,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: mdl.Strings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: mdl.S(`\b(?P<my_input>b...) (?P<my_input>g....)`),
@@ -168,7 +168,7 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"a.txt": "alpha beta gamma",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: mdl.Strings([]string{"{{.filename}}"}),
+				Paths: mdl.Strings("{{.filename}}"),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
 						Regex: mdl.S("(?P<cake>beta)"),

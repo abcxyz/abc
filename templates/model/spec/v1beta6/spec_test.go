@@ -344,7 +344,7 @@ params:
 				Desc:   mdl.S("mydesc"),
 				Action: mdl.S("append"),
 				Append: &Append{
-					Paths:             mdl.Strings([]string{"a.txt", "b.txt"}),
+					Paths:             mdl.Strings("a.txt", "b.txt"),
 					With:              mdl.S("jkl"),
 					SkipEnsureNewline: model.Bool{Val: true},
 				},
@@ -427,15 +427,8 @@ params:
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							From: mdl.S("destination"),
-							Paths: []model.String{
-								{
-									Val: "a/b/c",
-								},
-								{
-									Val: "x/y.txt",
-								},
-							},
+							From:  mdl.S("destination"),
+							Paths: mdl.Strings("a/b/c", "x/y.txt"),
 						},
 					},
 				},
@@ -455,15 +448,8 @@ params:
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							From: mdl.S("destination"),
-							Paths: []model.String{
-								{
-									Val: "a/b/c",
-								},
-								{
-									Val: "x/y.txt",
-								},
-							},
+							From:  mdl.S("destination"),
+							Paths: mdl.Strings("a/b/c", "x/y.txt"),
 						},
 					},
 				},
@@ -483,22 +469,8 @@ params:
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []model.String{
-								{
-									Val: "a/b/c",
-								},
-								{
-									Val: "d/e/f",
-								},
-							},
-							As: []model.String{
-								{
-									Val: "x/y/z",
-								},
-								{
-									Val: "q/r/s",
-								},
-							},
+							Paths: mdl.Strings("a/b/c", "d/e/f"),
+							As:    mdl.Strings("x/y/z", "q/r/s"),
 						},
 					},
 				},
@@ -518,16 +490,8 @@ params:
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []model.String{
-								{
-									Val: ".",
-								},
-							},
-							Skip: []model.String{
-								{
-									Val: "x/y",
-								},
-							},
+							Paths: mdl.Strings("."),
+							Skip:  mdl.Strings("x/y"),
 						},
 					},
 				},
@@ -547,14 +511,8 @@ params:
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []model.String{
-								{
-									Val: ".",
-								},
-							},
-							From: model.String{
-								Val: "destination",
-							},
+							Paths: mdl.Strings("."),
+							From:  mdl.S("destination"),
 						},
 					},
 				},
@@ -595,14 +553,8 @@ params:
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []model.String{
-								{
-									Val: ".",
-								},
-							},
-							From: model.String{
-								Val: "invalid",
-							},
+							Paths: mdl.Strings("."),
+							From:  mdl.S("invalid"),
 						},
 					},
 				},
@@ -623,25 +575,8 @@ params:
 				Include: &Include{
 					Paths: []*IncludePath{
 						{
-							Paths: []model.String{
-								{
-									Val: "a/b/c",
-								},
-								{
-									Val: "d/e/f",
-								},
-							},
-							As: []model.String{
-								{
-									Val: "x/y/z",
-								},
-								{
-									Val: "q/r/s",
-								},
-								{
-									Val: "t/u/v",
-								},
-							},
+							Paths: mdl.Strings("a/b/c", "d/e/f"),
+							As:    mdl.Strings("x/y/z", "q/r/s", "t/u/v"),
 						},
 					},
 				},
@@ -697,10 +632,7 @@ params:
 				Desc:   mdl.S("mydesc"),
 				Action: mdl.S("regex_replace"),
 				RegexReplace: &RegexReplace{
-					Paths: []model.String{
-						{Val: "a.txt"},
-						{Val: "b.txt"},
-					},
+					Paths: mdl.Strings("a.txt", "b.txt"),
 					Replacements: []*RegexReplaceEntry{
 						{
 							Regex:             mdl.S("my_(?P<groupname>regex)"),
@@ -776,10 +708,7 @@ params:
 				Desc:   mdl.S("mydesc"),
 				Action: mdl.S("regex_name_lookup"),
 				RegexNameLookup: &RegexNameLookup{
-					Paths: []model.String{
-						{Val: "a.txt"},
-						{Val: "b.txt"},
-					},
+					Paths: mdl.Strings("a.txt", "b.txt"),
 					Replacements: []*RegexNameLookupEntry{
 						{Regex: mdl.S("(?P<mygroup>myregex")},
 						{Regex: mdl.S("(?P<myothergroup>myotherregex")},
@@ -812,10 +741,7 @@ params:
 				Desc:   mdl.S("mydesc"),
 				Action: mdl.S("string_replace"),
 				StringReplace: &StringReplace{
-					Paths: []model.String{
-						{Val: "a.txt"},
-						{Val: "b.txt"},
-					},
+					Paths: mdl.Strings("a.txt", "b.txt"),
 					Replacements: []*StringReplacement{
 						{
 							ToReplace: mdl.S("abc"),
@@ -857,10 +783,7 @@ params:
 				Desc:   mdl.S("mydesc"),
 				Action: mdl.S("go_template"),
 				GoTemplate: &GoTemplate{
-					Paths: []model.String{
-						{Val: "my/path/1"},
-						{Val: "my/path/2"},
-					},
+					Paths: mdl.Strings("my/path/1", "my/path/2"),
 				},
 			},
 		},
@@ -895,11 +818,8 @@ params:
 				Action: mdl.S("for_each"),
 				ForEach: &ForEach{
 					Iterator: &ForEachIterator{
-						Key: mdl.S("environment"),
-						Values: []model.String{
-							{Val: "dev"},
-							{Val: "prod"},
-						},
+						Key:    mdl.S("environment"),
+						Values: mdl.Strings("dev", "prod"),
 					},
 					Steps: []*Step{
 						{

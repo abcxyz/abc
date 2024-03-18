@@ -69,7 +69,7 @@ steps:
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: mdl.Strings([]string{"."}),
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -131,7 +131,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: mdl.Strings([]string{"."}),
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -200,7 +200,7 @@ steps:
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: mdl.Strings([]string{"."}),
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -280,7 +280,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: mdl.Strings([]string{"."}),
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -396,7 +396,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: mdl.Strings([]string{"."}),
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -491,7 +491,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: mdl.Strings([]string{"."}),
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
