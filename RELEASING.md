@@ -34,4 +34,4 @@ number, as follows.
   the
   [abc-templates-announce mailing list](https://groups.google.com/g/abc-templates-announce)
   to tell people that a new version has been released, and what's new about it
-  ([example](https://groups.google.com/g/abc-templates-announce/c/pR8Su8Toqls).
+  ([example](https://groups.google.com/g/abc-templates-announce/c/pR8Su8Toqls)).
