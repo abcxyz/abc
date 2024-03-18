@@ -26,3 +26,15 @@ func SP(s string) *model.String {
 	out := S(s)
 	return &out
 }
+
+// Strings wraps each element of the input in a model.String.
+func Strings(ss []string) []model.String {
+	out := make([]model.String, len(ss))
+	for i, s := range ss {
+		out[i] = model.String{
+			Pos: &model.ConfigPos{}, // for the purposes of testing, "location unknown" is fine.
+			Val: s,
+		}
+	}
+	return out
+}

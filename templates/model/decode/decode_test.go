@@ -69,9 +69,7 @@ steps:
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings([]string{"."}),
 								},
 							},
 						},
@@ -133,9 +131,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings([]string{"."}),
 								},
 							},
 						},
@@ -204,9 +200,7 @@ steps:
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings([]string{"."}),
 								},
 							},
 						},
@@ -286,9 +280,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings([]string{"."}),
 								},
 							},
 						},
@@ -404,9 +396,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings([]string{"."}),
 								},
 							},
 						},
@@ -501,9 +491,7 @@ steps:
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings([]string{"."}),
 								},
 							},
 						},

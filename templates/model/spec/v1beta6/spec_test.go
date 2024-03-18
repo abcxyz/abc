@@ -67,7 +67,7 @@ steps:
 						Desc:   mdl.S("Print a message"),
 						Action: mdl.S("print"),
 						Print: &Print{
-							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
+							Message: mdl.S(`Hello, {{.or .person_name "World"}}`),
 						},
 					},
 				},
@@ -103,7 +103,7 @@ steps:
 						Desc:   mdl.S("Print a message"),
 						Action: mdl.S("print"),
 						Print: &Print{
-							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
+							Message: mdl.S(`Hello, {{.or .person_name "World"}}`),
 						},
 					},
 				},
@@ -344,10 +344,7 @@ params:
 				Desc:   mdl.S("mydesc"),
 				Action: mdl.S("append"),
 				Append: &Append{
-					Paths: []model.String{
-						{Val: "a.txt"},
-						{Val: "b.txt"},
-					},
+					Paths:             mdl.Strings([]string{"a.txt", "b.txt"}),
 					With:              mdl.S("jkl"),
 					SkipEnsureNewline: model.Bool{Val: true},
 				},

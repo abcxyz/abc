@@ -25,6 +25,7 @@ import (
 	"github.com/abcxyz/abc/templates/model/spec/features"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -48,7 +49,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings([]string{"."}),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, Alice!",
@@ -61,7 +62,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, world!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings([]string{"."}),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, world!",
@@ -77,7 +78,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "{{.greeting}}, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings([]string{"."}),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, Alice!",
@@ -93,7 +94,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a_Alice.txt": "{{.greeting}}, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"a_{{.person}}.txt"}),
+				Paths: mdl.Strings([]string{"a_{{.person}}.txt"}),
 			},
 			want: map[string]string{
 				"a_Alice.txt": "Hello, Alice!",
@@ -108,7 +109,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings([]string{"."}),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, {{.person}}!",
@@ -122,7 +123,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings([]string{"."}),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, {{",
@@ -146,7 +147,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"suffix.txt":       `{{ trimSuffix .suffix "suffix" }}`,
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings([]string{"."}),
 			},
 			want: map[string]string{
 				"replace_all.txt":  `my_test_project`,

@@ -69,7 +69,7 @@ func TestTestUnmarshal(t *testing.T) {
 				Inputs: []*VarValue{
 					{
 						Name:  mdl.S("person_name"),
-						Value: model.String{Val: ""},
+						Value: mdl.S(""),
 					},
 				},
 			},

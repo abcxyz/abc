@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/cli"
@@ -151,12 +150,12 @@ Rule msg:     Length must be less than 3`,
 							Message: mdl.S("Length must be less than 5"),
 						},
 						{
-							Rule:    model.String{Val: `my_input.startsWith("fo")`},
-							Message: model.String{Val: `Must start with "fo"`},
+							Rule:    mdl.S(`my_input.startsWith("fo")`),
+							Message: mdl.S(`Must start with "fo"`),
 						},
 						{
-							Rule:    model.String{Val: `my_input.contains("oo")`},
-							Message: model.String{Val: `Must contain "oo"`},
+							Rule:    mdl.S(`my_input.contains("oo")`),
+							Message: mdl.S(`Must contain "oo"`),
 						},
 					},
 				},
@@ -176,12 +175,12 @@ Rule msg:     Length must be less than 3`,
 							Message: mdl.S("Length must be less than 3"),
 						},
 						{
-							Rule:    model.String{Val: `my_input.startsWith("fo")`},
-							Message: model.String{Val: `Must start with "fo"`},
+							Rule:    mdl.S(`my_input.startsWith("fo")`),
+							Message: mdl.S(`Must start with "fo"`),
 						},
 						{
-							Rule:    model.String{Val: `my_input.contains("oo")`},
-							Message: model.String{Val: `Must contain "oo"`},
+							Rule:    mdl.S(`my_input.contains("oo")`),
+							Message: mdl.S(`Must contain "oo"`),
 						},
 					},
 				},
@@ -207,12 +206,12 @@ Rule msg:     Length must be less than 3`,
 							Message: mdl.S("Length must be less than 3"),
 						},
 						{
-							Rule:    model.String{Val: `my_input.startsWith("ham")`},
-							Message: model.String{Val: `Must start with "ham"`},
+							Rule:    mdl.S(`my_input.startsWith("ham")`),
+							Message: mdl.S(`Must start with "ham"`),
 						},
 						{
-							Rule:    model.String{Val: `my_input.contains("shoe")`},
-							Message: model.String{Val: `Must contain "shoe"`},
+							Rule:    mdl.S(`my_input.contains("shoe")`),
+							Message: mdl.S(`Must contain "shoe"`),
 						},
 					},
 				},
@@ -310,7 +309,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 					Name: mdl.S("my_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule: model.String{Val: `my_input + my_other_input == "sharknado"`},
+							Rule: mdl.S(`my_input + my_other_input == "sharknado"`),
 						},
 					},
 				},
@@ -318,7 +317,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 					Name: mdl.S("my_other_input"),
 					Rules: []*spec.Rule{
 						{
-							Rule: model.String{Val: `"tor" + my_other_input + my_input == "tornadoshark"`},
+							Rule: mdl.S(`"tor" + my_other_input + my_input == "tornadoshark"`),
 						},
 					},
 				},

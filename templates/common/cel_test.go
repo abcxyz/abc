@@ -41,7 +41,7 @@ func TestCompileAndEvalCEL(t *testing.T) {
 	}{
 		{
 			name: "simple_success",
-			in:   model.String{Val: `["alligator","crocodile"]`},
+			in:   mdl.S(`["alligator","crocodile"]`),
 			want: []string{"alligator", "crocodile"},
 		},
 		{
@@ -58,18 +58,18 @@ func TestCompileAndEvalCEL(t *testing.T) {
 		},
 		{
 			name:    "bad_heterogenous_list",
-			in:      model.String{Val: `["alligator", 42]`},
+			in:      mdl.S(`["alligator", 42]`),
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
 		{
 			name: "string_split",
-			in:   model.String{Val: `"alligator,crocodile".split(",")`},
+			in:   mdl.S(`"alligator,crocodile".split(",")`),
 			want: []string{"alligator", "crocodile"},
 		},
 		{
 			name: "input_vars",
-			in:   model.String{Val: `["alligator", reptile]`},
+			in:   mdl.S(`["alligator", reptile]`),
 			vars: map[string]string{"reptile": "crocodile"},
 			want: []string{"alligator", "crocodile"},
 		},
@@ -91,7 +91,7 @@ func TestCompileAndEvalCEL(t *testing.T) {
 		},
 		{
 			name: "simple_map_return",
-			in:   model.String{Val: `{"reptile": "alligator"}`},
+			in:   mdl.S(`{"reptile": "alligator"}`),
 			want: map[string]any{"reptile": "alligator"},
 		},
 	}

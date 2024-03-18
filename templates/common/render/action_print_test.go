@@ -22,8 +22,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -87,10 +87,7 @@ func TestActionPrint(t *testing.T) {
 				extraPrintVars: tc.extraPrintVars,
 			}
 			pr := &spec.Print{
-				Message: model.String{
-					Val: tc.in,
-					Pos: &model.ConfigPos{},
-				},
+				Message: mdl.S(tc.in),
 			}
 			err := actionPrint(ctx, pr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

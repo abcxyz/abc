@@ -32,7 +32,6 @@ import (
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
@@ -1553,7 +1552,7 @@ Enter value, or leave empty to accept default: `,
 				{
 					Name:    mdl.S("animal"),
 					Desc:    mdl.S("your favorite animal"),
-					Default: &model.String{Val: ""},
+					Default: mdl.SP(""),
 				},
 			},
 			dialog: []abctestutil.DialogStep{

@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
 )
@@ -131,7 +130,7 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 					{
 						Name:    mdl.S("name1"),
 						Desc:    mdl.S("desc1"),
-						Default: &model.String{Val: ""},
+						Default: mdl.SP(""),
 					},
 				},
 			},

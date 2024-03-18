@@ -67,7 +67,7 @@ steps:
 						Desc:   mdl.S("Print a message"),
 						Action: mdl.S("print"),
 						Print: &Print{
-							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
+							Message: mdl.S(`Hello, {{.or .person_name "World"}}`),
 						},
 					},
 				},
@@ -103,7 +103,7 @@ steps:
 						Desc:   mdl.S("Print a message"),
 						Action: mdl.S("print"),
 						Print: &Print{
-							Message: model.String{Val: `Hello, {{.or .person_name "World"}}`},
+							Message: mdl.S(`Hello, {{.or .person_name "World"}}`),
 						},
 					},
 				},

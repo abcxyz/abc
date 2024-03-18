@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
@@ -45,11 +44,8 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: mdl.S("greeting_target"),
-					Values: []model.String{
-						{Val: "Bob"},
-						{Val: "Charlie"},
-					},
+					Key:    mdl.S("greeting_target"),
+					Values: mdl.Strings([]string{"Bob", "Charlie"}),
 				},
 				Steps: []*spec.Step{
 					{
@@ -71,10 +67,10 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key: mdl.S("greeting_target"),
-					Values: []model.String{
-						{Val: "{{.first_recipient}}"},
-						{Val: "{{.second_recipient}}"},
-					},
+					Values: mdl.Strings([]string{
+						"{{.first_recipient}}",
+						"{{.second_recipient}}",
+					}),
 				},
 				Steps: []*spec.Step{
 					{
@@ -96,22 +92,16 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: mdl.S("greeter"),
-					Values: []model.String{
-						{Val: "{{.first_greeter}}"},
-						{Val: "{{.second_greeter}}"},
-					},
+					Key:    mdl.S("greeter"),
+					Values: mdl.Strings([]string{"{{.first_greeter}}", "{{.second_greeter}}"}),
 				},
 				Steps: []*spec.Step{
 					{
 						Action: mdl.S("for_each"),
 						ForEach: &spec.ForEach{
 							Iterator: &spec.ForEachIterator{
-								Key: mdl.S("greeting_target"),
-								Values: []model.String{
-									{Val: "{{.first_recipient}}"},
-									{Val: "{{.second_recipient}}"},
-								},
+								Key:    mdl.S("greeting_target"),
+								Values: mdl.Strings([]string{"{{.first_recipient}}", "{{.second_recipient}}"}),
 							},
 							Steps: []*spec.Step{
 								{
@@ -133,10 +123,8 @@ func TestActionForEach(t *testing.T) {
 			},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: mdl.S("color"),
-					Values: []model.String{
-						{Val: "Red"},
-					},
+					Key:    mdl.S("color"),
+					Values: mdl.Strings([]string{"Red"}),
 				},
 				Steps: []*spec.Step{
 					{
@@ -153,10 +141,8 @@ func TestActionForEach(t *testing.T) {
 			inputs: map[string]string{},
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
-					Key: mdl.S("x"),
-					Values: []model.String{
-						{Val: "Alice"},
-					},
+					Key:    mdl.S("x"),
+					Values: mdl.Strings([]string{"Alice"}),
 				},
 				Steps: []*spec.Step{
 					{
@@ -176,7 +162,7 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:        mdl.S("env"),
-					ValuesFrom: &model.String{Val: `environments.split(",")`},
+					ValuesFrom: mdl.SP(`environments.split(",")`),
 				},
 				Steps: []*spec.Step{
 					{
@@ -210,7 +196,7 @@ func TestActionForEach(t *testing.T) {
 			in: &spec.ForEach{
 				Iterator: &spec.ForEachIterator{
 					Key:        mdl.S("env"),
-					ValuesFrom: &model.String{Val: `["production", "dev"]`},
+					ValuesFrom: mdl.SP(`["production", "dev"]`),
 				},
 				Steps: []*spec.Step{
 					{
