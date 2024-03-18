@@ -25,14 +25,9 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	manifestutil "github.com/abcxyz/abc/templates/model/manifest"
-	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
 )
-
-// ExportToAvoidWarnings avoids compiler warnings complaning about unused
-// variables. TODO(upgrade): remove this when no longer necessary.
-var ExportToAvoidWarnings = mergeAll
 
 // A mergeAction is an action to take for a given output file. This may involve
 // conflicts between upgraded template output files and files that were
@@ -202,9 +197,9 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 // with the preexisting template output directory in installedDir. installedDir
 // in the general case is a mix of files output by previous template
 // render/upgrade operations, together with some local customizations.
-func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, mergeDir string, oldManifest, newManifest *manifest.Manifest) error {
-	oldHashes := manifestutil.HashesAsMap(oldManifest.OutputHashes)
-	newHashes := manifestutil.HashesAsMap(newManifest.OutputHashes)
+func mergeAll(ctx context.Context, p *commitParams, dryRun bool) error {
+	oldHashes := manifestutil.HashesAsMap(p.oldManifest.OutputHashes)
+	newHashes := manifestutil.HashesAsMap(p.newManifest.OutputHashes)
 	filesUnion := maps.Keys(sets.UnionMapKeys(oldHashes, newHashes))
 	sort.Strings(filesUnion)
 
@@ -212,7 +207,7 @@ func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, merg
 		oldHash, isInOldManifest := oldHashes[relPath]
 		newHash, isInNewManifest := newHashes[relPath]
 
-		pathOld := filepath.Join(installedDir, relPath)
+		pathOld := filepath.Join(p.installedDir, relPath)
 
 		// Each file is presumed missing until we see it.
 		oldFileMatchesNewHash, oldFileMatchesOldHash, newFileMatchesOldHash := absent, absent, absent
@@ -223,7 +218,7 @@ func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, merg
 			if err != nil {
 				return err
 			}
-			newFileMatchesOldHash, err = hashAndCompare(filepath.Join(mergeDir, relPath), oldHash)
+			newFileMatchesOldHash, err = hashAndCompare(filepath.Join(p.mergeDir, relPath), oldHash)
 			if err != nil {
 				return err
 			}
@@ -248,7 +243,7 @@ func mergeAll(ctx context.Context, fs common.FS, dryRun bool, installedDir, merg
 			return err
 		}
 
-		if err := actuateMergeDecision(ctx, fs, dryRun, decision, installedDir, mergeDir, relPath); err != nil {
+		if err := actuateMergeDecision(ctx, p, dryRun, decision, relPath); err != nil {
 			return fmt.Errorf("failed filesystem operation during merge: %w", err)
 		}
 	}
@@ -264,7 +259,7 @@ const (
 )
 
 // TODO return a detailed report of what action was taken?
-func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decision *mergeDecision, installedDir, mergeDir, relPath string) error {
+func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, decision *mergeDecision, relPath string) error {
 	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
 
 	logger := logging.FromContext(ctx).With("logger", "actuateMergeDecision")
@@ -274,12 +269,12 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 		"action", decision.action,
 		"explanation", decision.humanExplanation)
 
-	dstPath := filepath.Join(installedDir, relPath)
-	srcPath := filepath.Join(mergeDir, relPath)
+	dstPath := filepath.Join(p.installedDir, relPath)
+	srcPath := filepath.Join(p.mergeDir, relPath)
 
 	switch decision.action {
 	case writeNew:
-		return common.CopyFile(ctx, nil, fs, srcPath, dstPath, dryRun, nil) //nolint:wrapcheck
+		return common.CopyFile(ctx, nil, p.fs, srcPath, dstPath, dryRun, nil) //nolint:wrapcheck
 	case noop:
 		return nil
 	case deleteAction:
@@ -292,12 +287,12 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 		return nil
 	case deleteEditConflict:
 		dstPath += suffixFromNewTemplateLocallyDeleted
-		return common.CopyFile(ctx, nil, fs, srcPath, dstPath, dryRun, nil) //nolint:wrapcheck
+		return common.CopyFile(ctx, nil, p.fs, srcPath, dstPath, dryRun, nil) //nolint:wrapcheck
 	case editDeleteConflict:
 		if dryRun {
 			return nil
 		}
-		if err := fs.Rename(dstPath, dstPath+suffixWantToDelete); err != nil {
+		if err := p.fs.Rename(dstPath, dstPath+suffixWantToDelete); err != nil {
 			return err //nolint:wrapcheck
 		}
 		return nil
@@ -305,19 +300,19 @@ func actuateMergeDecision(ctx context.Context, fs common.FS, dryRun bool, decisi
 		if dryRun {
 			return nil
 		}
-		if err := fs.Rename(dstPath, dstPath+suffixLocallyEdited); err != nil {
+		if err := p.fs.Rename(dstPath, dstPath+suffixLocallyEdited); err != nil {
 			return err //nolint:wrapcheck
 		}
 		dstWithSuffix := dstPath + suffixFromNewTemplate
-		return common.CopyFile(ctx, nil, fs, srcPath, dstWithSuffix, dryRun, nil) //nolint:wrapcheck
+		return common.CopyFile(ctx, nil, p.fs, srcPath, dstWithSuffix, dryRun, nil) //nolint:wrapcheck
 	case addAddConflict:
 		if dryRun {
 			return nil
 		}
-		if err := fs.Rename(dstPath, dstPath+suffixLocallyAdded); err != nil {
+		if err := p.fs.Rename(dstPath, dstPath+suffixLocallyAdded); err != nil {
 			return err //nolint:wrapcheck
 		}
-		return common.CopyFile(ctx, nil, fs, srcPath, dstPath+suffixFromNewTemplate, dryRun, nil) //nolint:wrapcheck
+		return common.CopyFile(ctx, nil, p.fs, srcPath, dstPath+suffixFromNewTemplate, dryRun, nil) //nolint:wrapcheck
 	default:
 		return fmt.Errorf("internal error: unrecognized merged action %v", decision.action)
 	}

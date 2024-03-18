@@ -110,7 +110,7 @@ steps:
 	}{
 		// TODO(upgrade): tests to add:
 		//  remote git template
-		//  manifest name is preserved
+		//  a chain of upgrades
 		//  extra inputs needed:
 		//    inputs from file
 		//    inputs provided as flags
@@ -592,20 +592,21 @@ steps:
 			clk.Set(beforeUpgradeTime)
 			renderAndVerify(t, ctx, clk, tempBase, templateDir, destDir)
 
-			assertManifest(ctx, t, "before upgrade", tc.wantManifestBeforeUpgrade, manifestDir)
-
-			clk.Set(afterUpgradeTime) // simulate time passing between initial installation and upgrade
-
 			manifestBaseName, err := findManifest(manifestDir)
 			if err != nil {
 				t.Fatal(err)
 			}
+			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+
+			assertManifest(ctx, t, "before upgrade", tc.wantManifestBeforeUpgrade, manifestFullPath)
+
+			clk.Set(afterUpgradeTime) // simulate time passing between initial installation and upgrade
 
 			params := &Params{
 				Clock:              clk,
 				CWD:                destDir,
 				FS:                 &common.RealFS{},
-				ManifestPath:       filepath.Join(manifestDir, manifestBaseName),
+				ManifestPath:       manifestFullPath,
 				Stdout:             os.Stdout,
 				AllowDirtyTestOnly: true,
 			}
@@ -641,7 +642,7 @@ steps:
 				t.Errorf("got ok=%t, want %t", ok, tc.wantOK)
 			}
 
-			assertManifest(ctx, t, "after upgrade", tc.wantManifestAfterUpgrade, manifestDir)
+			assertManifest(ctx, t, "after upgrade", tc.wantManifestAfterUpgrade, manifestFullPath)
 
 			gotInstalledDirContentsAfter := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
 			if diff := cmp.Diff(gotInstalledDirContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
@@ -651,15 +652,10 @@ steps:
 	}
 }
 
-func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, abcDir string) {
+func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, path string) {
 	tb.Helper()
 
-	baseName, err := findManifest(abcDir)
-	if err != nil {
-		tb.Fatal(err)
-	}
-
-	got, err := loadManifest(ctx, &common.RealFS{}, filepath.Join(abcDir, baseName))
+	got, err := loadManifest(ctx, &common.RealFS{}, path)
 	if err != nil {
 		tb.Fatal(err)
 	}
