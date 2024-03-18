@@ -102,7 +102,6 @@ type Params struct {
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
 func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
-	// TODO(upgrade): this function is too long, break it up
 	if !filepath.IsAbs(p.ManifestPath) {
 		return false, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
 	}
