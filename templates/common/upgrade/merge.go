@@ -258,7 +258,7 @@ const (
 	suffixFromNewTemplateLocallyDeleted = ".abcmerge_locally_deleted_vs_new_template_version"
 	suffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
 
-	// This is the beginning of  among all the above suffies
+	// This is the beginning of all the above suffixes.
 	conflictSuffixBegins = ".abcmerge_"
 )
 

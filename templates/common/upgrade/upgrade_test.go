@@ -576,6 +576,7 @@ steps:
 				"out.txt":   "foo",
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
 				newFile := filepath.Join(installedDir, "foo.abcmerge_locally_added")
 				contents := []byte("whatever")
 				if err := os.WriteFile(newFile, contents, common.OwnerRWPerms); err != nil {
