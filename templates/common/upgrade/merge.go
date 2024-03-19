@@ -251,11 +251,15 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) error {
 }
 
 const (
+	// These are appended to files that need manual merge conflict resolution.
 	suffixLocallyAdded                  = ".abcmerge_locally_added"
 	suffixLocallyEdited                 = ".abcmerge_locally_edited"
 	suffixFromNewTemplate               = ".abcmerge_from_new_template"
 	suffixFromNewTemplateLocallyDeleted = ".abcmerge_locally_deleted_vs_new_template_version"
 	suffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
+
+	// This is the beginning of all the above suffixes.
+	conflictSuffixBegins = ".abcmerge_"
 )
 
 // TODO return a detailed report of what action was taken?

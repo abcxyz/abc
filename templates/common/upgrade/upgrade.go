@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,7 +103,14 @@ type Params struct {
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
 func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
-	// TODO(upgrade): this function is too long, break it up
+	// For now, manifest files are always located in the .abc directory under
+	// the directory where they were installed.
+	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
+
+	if err := detectUnmergedConflicts(installedDir); err != nil {
+		return false, err
+	}
+
 	if !filepath.IsAbs(p.ManifestPath) {
 		return false, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
 	}
@@ -114,10 +122,6 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
-
-	// For now, manifest files are always located in the .abc directory under
-	// the directory where they were installed.
-	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
 
 	downloader, err := templatesource.ForUpgrade(ctx, &templatesource.ForUpgradeParams{
 		InstalledDir:       installedDir,
@@ -250,9 +254,6 @@ type commitParams struct {
 // commit merges the contents of the merge directory into the installed
 // directory and writes the new manifest.
 func commit(ctx context.Context, p *commitParams, dryRun bool) error {
-	// TODO(upgrade): detect any unresolved conflicts (.abc_merge_* files maybe?) and refuse to
-	//                upgrade if there are any.
-
 	if err := mergeAll(ctx, p, dryRun); err != nil {
 		return err
 	}
@@ -349,4 +350,34 @@ func findManifest(dir string) (string, error) {
 	}
 
 	return filepath.Base(matches[0]), nil
+}
+
+// detectUnmergedConflicts looks for any *.abcmerge_* files in the given directory,
+// which would indicate that a previous upgrade operation had some unresolved
+// merge conflicts.
+func detectUnmergedConflicts(installedDir string) error {
+	var unmergedFiles []string
+	if err := filepath.WalkDir(installedDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(installedDir, path)
+		if err != nil {
+			return fmt.Errorf("filepath.Rel: %w", err)
+		}
+		if relPath == common.ABCInternalDir && d.IsDir() {
+			return fs.SkipDir
+		}
+		if strings.Contains(path, conflictSuffixBegins) {
+			unmergedFiles = append(unmergedFiles, path)
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed crawling directory %q looking for unmerged files: %w", installedDir, err)
+	}
+
+	if len(unmergedFiles) > 0 {
+		return fmt.Errorf("aborting the upgrade because it looks like there's already an upgrade in progress. These files need to be resolved: %v", unmergedFiles)
+	}
+	return nil
 }
