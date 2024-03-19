@@ -29,6 +29,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/render/gotmpl"
 	"github.com/abcxyz/abc/templates/model"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -235,7 +236,7 @@ func TestWalkAndModify(t *testing.T) {
 			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
 
 			for _, p := range tc.relPaths {
-				relPathsPositions = append(relPathsPositions, model.String{Val: p})
+				relPathsPositions = append(relPathsPositions, mdl.S(p))
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
@@ -334,21 +335,21 @@ func TestProcessPaths(t *testing.T) {
 	}{
 		{
 			name:      "verify_paths_unchanged",
-			paths:     modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
+			paths:     mdl.Strings("file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"),
 			scope:     common.NewScope(map[string]string{}, nil),
-			wantPaths: modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
+			wantPaths: mdl.Strings("file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"),
 		},
 		{
 			name:  "go_template_in_path",
-			paths: modelStrings([]string{"{{.replace_name}}.txt"}),
+			paths: mdl.Strings("{{.replace_name}}.txt"),
 			scope: common.NewScope(map[string]string{
 				"replace_name": "file1",
 			}, nil),
-			wantPaths: modelStrings([]string{"file1.txt"}),
+			wantPaths: mdl.Strings("file1.txt"),
 		},
 		{
 			name:    "fail_dot_dot_relative_path",
-			paths:   modelStrings([]string{"../foo.txt"}),
+			paths:   mdl.Strings("../foo.txt"),
 			scope:   common.NewScope(map[string]string{}, nil),
 			wantErr: `path "../foo.txt" must not contain ".."`,
 		},
@@ -400,18 +401,18 @@ func TestProcessGlobs(t *testing.T) {
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
 				"subfolder2/file4.txt",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
 				"subfolder2/file4.txt",
-			}),
+			),
 		},
 		{
 			name: "star_glob_paths",
@@ -422,16 +423,16 @@ func TestProcessGlobs(t *testing.T) {
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"*.txt",
 				"subfolder2/*.txt",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder2/file4.txt",
 				"subfolder2/file5.txt",
-			}),
+			),
 		},
 		{
 			name: "glob_star_in_middle",
@@ -442,16 +443,16 @@ func TestProcessGlobs(t *testing.T) {
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"f*e1.txt",
 				"f*e2.txt",
 				"sub*er2",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder2",
-			}),
+			),
 		},
 		{
 			name: "glob_star_all_paths",
@@ -462,13 +463,13 @@ func TestProcessGlobs(t *testing.T) {
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{"*"}),
-			wantPaths: modelStrings([]string{
+			paths: mdl.Strings("*"),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
 				"subfolder2",
-			}),
+			),
 		},
 		{
 			name: "glob_star_matches_hidden_files",
@@ -476,11 +477,11 @@ func TestProcessGlobs(t *testing.T) {
 				".gitignore": {Mode: 0o600, Contents: ".gitignore contents"},
 				".something": {Mode: 0o600, Contents: ".something contents"},
 			},
-			paths: modelStrings([]string{"*"}),
-			wantPaths: modelStrings([]string{
+			paths: mdl.Strings("*"),
+			wantPaths: mdl.Strings(
 				".gitignore",
 				".something",
-			}),
+			),
 		},
 		{
 			name: "question_glob_paths",
@@ -491,22 +492,20 @@ func TestProcessGlobs(t *testing.T) {
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file4 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"file?.txt",
 				"subfolder2/file?.txt",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder2/file4.txt",
 				"subfolder2/file5.txt",
-			}),
+			),
 		},
 		{
-			name: "no_glob_matches",
-			paths: modelStrings([]string{
-				"file_not_found.txt",
-			}),
+			name:           "no_glob_matches",
+			paths:          mdl.Strings("file_not_found.txt"),
 			wantGlobErr:    fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
 			wantNonGlobErr: fmt.Sprintf(`include path doesn't exist: %q`, "file_not_found.txt"),
 		},
@@ -516,12 +515,8 @@ func TestProcessGlobs(t *testing.T) {
 				"abc.txt": {Mode: 0o600, Contents: "bcd contents"},
 				"xyz.txt": {Mode: 0o600, Contents: "xyz contents"},
 			},
-			paths: modelStrings([]string{
-				"[a-c][a-c][a-c].txt",
-			}),
-			wantPaths: modelStrings([]string{
-				"abc.txt",
-			}),
+			paths:     mdl.Strings("[a-c][a-c][a-c].txt"),
+			wantPaths: mdl.Strings("abc.txt"),
 		},
 	}
 
@@ -565,15 +560,4 @@ func TestProcessGlobs(t *testing.T) {
 			}
 		})
 	}
-}
-
-func modelStrings(ss []string) []model.String {
-	out := make([]model.String, len(ss))
-	for i, s := range ss {
-		out[i] = model.String{
-			Pos: &model.ConfigPos{}, // for the purposes of testing, "location unknown" is fine.
-			Val: s,
-		}
-	}
-	return out
 }

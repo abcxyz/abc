@@ -23,6 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -54,27 +55,27 @@ output_hashes:
   - file: 'd/e/f.txt'
     hash: 'h1:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730'`,
 			want: &Manifest{
-				TemplateLocation: model.String{Val: "github.com/abcxyz/abc/t/rest_server@latest"},
-				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
-				TemplateVersion:  model.String{Val: "v1.2.3"},
+				TemplateLocation: mdl.S("github.com/abcxyz/abc/t/rest_server@latest"),
+				TemplateDirhash:  mdl.S("h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"),
+				TemplateVersion:  mdl.S("v1.2.3"),
 				Inputs: []*Input{
 					{
-						Name:  model.String{Val: "my_input_1"},
-						Value: model.String{Val: "my_value_1"},
+						Name:  mdl.S("my_input_1"),
+						Value: mdl.S("my_value_1"),
 					},
 					{
-						Name:  model.String{Val: "my_input_2"},
-						Value: model.String{Val: "my_value_2"},
+						Name:  mdl.S("my_input_2"),
+						Value: mdl.S("my_value_2"),
 					},
 				},
 				OutputHashes: []*OutputHash{
 					{
-						File: model.String{Val: "a/b/c.txt"},
-						Hash: model.String{Val: "h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"},
+						File: mdl.S("a/b/c.txt"),
+						Hash: mdl.S("h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"),
 					},
 					{
-						File: model.String{Val: "d/e/f.txt"},
-						Hash: model.String{Val: "h1:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"},
+						File: mdl.S("d/e/f.txt"),
+						Hash: mdl.S("h1:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"),
 					},
 				},
 			},
@@ -150,12 +151,12 @@ inputs:
     value: 'my_value_1'
 `,
 			want: &Manifest{
-				TemplateLocation: model.String{Val: "github.com/abcxyz/abc/t/rest_server@latest"},
-				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
+				TemplateLocation: mdl.S("github.com/abcxyz/abc/t/rest_server@latest"),
+				TemplateDirhash:  mdl.S("h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"),
 				Inputs: []*Input{
 					{
-						Name:  model.String{Val: "my_input_1"},
-						Value: model.String{Val: "my_value_1"},
+						Name:  mdl.S("my_input_1"),
+						Value: mdl.S("my_value_1"),
 					},
 				},
 			},
@@ -170,12 +171,12 @@ output_hashes:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
 			want: &Manifest{
-				TemplateLocation: model.String{Val: "github.com/abcxyz/abc/t/rest_server@latest"},
-				TemplateDirhash:  model.String{Val: "h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"},
+				TemplateLocation: mdl.S("github.com/abcxyz/abc/t/rest_server@latest"),
+				TemplateDirhash:  mdl.S("h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"),
 				OutputHashes: []*OutputHash{
 					{
-						File: model.String{Val: "a/b/c.txt"},
-						Hash: model.String{Val: "h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"},
+						File: mdl.S("a/b/c.txt"),
+						Hash: mdl.S("h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"),
 					},
 				},
 			},

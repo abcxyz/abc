@@ -24,8 +24,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -44,8 +44,8 @@ func TestValidateRules(t *testing.T) {
 			}, nil),
 			rules: []*spec.Rule{
 				{
-					Rule:    model.String{Val: "size(my_var) < 5"},
-					Message: model.String{Val: "Length must be less than 5"},
+					Rule:    mdl.S("size(my_var) < 5"),
+					Message: mdl.S("Length must be less than 5"),
 				},
 			},
 			want: "",
@@ -57,8 +57,8 @@ func TestValidateRules(t *testing.T) {
 			}, nil),
 			rules: []*spec.Rule{
 				{
-					Rule:    model.String{Val: "size(my_var) < 5"},
-					Message: model.String{Val: "Length must be less than 5"},
+					Rule:    mdl.S("size(my_var) < 5"),
+					Message: mdl.S("Length must be less than 5"),
 				},
 			},
 			want: "rules validation failed:\n\nRule:      size(my_var) < 5\nRule msg:  Length must be less than 5\n",
@@ -95,8 +95,8 @@ func TestValidateRulesWithMessage(t *testing.T) {
 			}, nil),
 			rules: []*spec.Rule{
 				{
-					Rule:    model.String{Val: "size(my_var) < 5"},
-					Message: model.String{Val: "Length must be less than 5"},
+					Rule:    mdl.S("size(my_var) < 5"),
+					Message: mdl.S("Length must be less than 5"),
 				},
 			},
 			callBack: func(tw *tabwriter.Writer) {},
@@ -109,8 +109,8 @@ func TestValidateRulesWithMessage(t *testing.T) {
 			}, nil),
 			rules: []*spec.Rule{
 				{
-					Rule:    model.String{Val: "size(my_var) < 5"},
-					Message: model.String{Val: "Length must be less than 5"},
+					Rule:    mdl.S("size(my_var) < 5"),
+					Message: mdl.S("Length must be less than 5"),
 				},
 			},
 			callBack: func(tw *tabwriter.Writer) {
@@ -126,12 +126,12 @@ func TestValidateRulesWithMessage(t *testing.T) {
 			}, nil),
 			rules: []*spec.Rule{
 				{
-					Rule:    model.String{Val: "name.matches('^[A-Za-z]+$')"},
-					Message: model.String{Val: "name must only contain alphabetic characters"},
+					Rule:    mdl.S("name.matches('^[A-Za-z]+$')"),
+					Message: mdl.S("name must only contain alphabetic characters"),
 				},
 				{
-					Rule:    model.String{Val: "int(age) < 130"},
-					Message: model.String{Val: "age must be less than 130"},
+					Rule:    mdl.S("int(age) < 130"),
+					Message: mdl.S("age must be less than 130"),
 				},
 			},
 			callBack: func(tw *tabwriter.Writer) {},
@@ -151,12 +151,12 @@ Rule msg:  age must be less than 130
 			}, nil),
 			rules: []*spec.Rule{
 				{
-					Rule:    model.String{Val: "name.matches('^[A-Za-z]+$')"},
-					Message: model.String{Val: "name must only contain alphabetic characters"},
+					Rule:    mdl.S("name.matches('^[A-Za-z]+$')"),
+					Message: mdl.S("name must only contain alphabetic characters"),
 				},
 				{
-					Rule:    model.String{Val: "int(age) < 130"},
-					Message: model.String{Val: "age must be less than 130"},
+					Rule:    mdl.S("int(age) < 130"),
+					Message: mdl.S("age must be less than 130"),
 				},
 			},
 			callBack: func(tw *tabwriter.Writer) {

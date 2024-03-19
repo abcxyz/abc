@@ -21,9 +21,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -47,10 +47,10 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: `\b(?P<my_input>b...) (?P<my_input>g....)`},
+						Regex: mdl.S(`\b(?P<my_input>b...) (?P<my_input>g....)`),
 					},
 				},
 			},
@@ -67,10 +67,10 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foofoo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: `(?P<my_input>foo)`},
+						Regex: mdl.S(`(?P<my_input>foo)`),
 					},
 				},
 			},
@@ -85,10 +85,10 @@ func TestActionRegexNameLookup(t *testing.T) {
 			},
 			inputs: map[string]string{},
 			rr: &spec.RegexNameLookup{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: "(?P<mysubgroup>beta)"},
+						Regex: mdl.S("(?P<mysubgroup>beta)"),
 					},
 				},
 			},
@@ -106,10 +106,10 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: `\b(?P<my_input>b...) (g....)`},
+						Regex: mdl.S(`\b(?P<my_input>b...) (g....)`),
 					},
 				},
 			},
@@ -129,10 +129,10 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"mygroup":        "omega",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: `(?P<{{.group_name}}>{{.regex_to_match}})`},
+						Regex: mdl.S(`(?P<{{.group_name}}>{{.regex_to_match}})`),
 					},
 				},
 			},
@@ -150,10 +150,10 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"my_input": "foo",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: `\b(?P<my_input>b...) (?P<my_input>g....)`},
+						Regex: mdl.S(`\b(?P<my_input>b...) (?P<my_input>g....)`),
 					},
 				},
 			},
@@ -168,10 +168,10 @@ func TestActionRegexNameLookup(t *testing.T) {
 				"a.txt": "alpha beta gamma",
 			},
 			rr: &spec.RegexNameLookup{
-				Paths: modelStrings([]string{"{{.filename}}"}),
+				Paths: mdl.Strings("{{.filename}}"),
 				Replacements: []*spec.RegexNameLookupEntry{
 					{
-						Regex: model.String{Val: "(?P<cake>beta)"},
+						Regex: mdl.S("(?P<cake>beta)"),
 					},
 				},
 			},

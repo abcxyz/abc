@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/abc/templates/model/goldentest/features"
 	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -168,8 +169,8 @@ builtin_vars:
 					TestConfig: &goldentest.Test{
 						BuiltinVars: []*goldentest.VarValue{
 							{
-								Name:  model.String{Val: "_git_tag"},
-								Value: model.String{Val: "my-cool-tag"},
+								Name:  mdl.S("_git_tag"),
+								Value: mdl.S("my-cool-tag"),
 							},
 						},
 						Features: features.Features{
@@ -265,12 +266,12 @@ steps:
 				TestConfig: &goldentest.Test{
 					Inputs: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "input_a"},
-							Value: model.String{Val: "a"},
+							Name:  mdl.S("input_a"),
+							Value: mdl.S("a"),
 						},
 						{
-							Name:  model.String{Val: "input_b"},
-							Value: model.String{Val: "b"},
+							Name:  mdl.S("input_b"),
+							Value: mdl.S("b"),
 						},
 					},
 				},
@@ -354,8 +355,8 @@ func TestBuiltIns(t *testing.T) {
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_git_tag"},
-							Value: model.String{Val: "my-cool-tag"},
+							Name:  mdl.S("_git_tag"),
+							Value: mdl.S("my-cool-tag"),
 						},
 					},
 				},
@@ -413,8 +414,8 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_git_tag"},
-							Value: model.String{Val: "my-cool-tag"},
+							Name:  mdl.S("_git_tag"),
+							Value: mdl.S("my-cool-tag"),
 						},
 					},
 				},
@@ -445,8 +446,8 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_bad_var_name_should_fail"},
-							Value: model.String{Val: "foo"},
+							Name:  mdl.S("_bad_var_name_should_fail"),
+							Value: mdl.S("foo"),
 						},
 					},
 				},
@@ -472,12 +473,12 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_flag_dest"},
-							Value: model.String{Val: "my-dest"},
+							Name:  mdl.S("_flag_dest"),
+							Value: mdl.S("my-dest"),
 						},
 						{
-							Name:  model.String{Val: "_flag_source"},
-							Value: model.String{Val: "my-source"},
+							Name:  mdl.S("_flag_source"),
+							Value: mdl.S("my-source"),
 						},
 					},
 				},
@@ -506,12 +507,12 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_flag_dest"},
-							Value: model.String{Val: "my-dest"},
+							Name:  mdl.S("_flag_dest"),
+							Value: mdl.S("my-dest"),
 						},
 						{
-							Name:  model.String{Val: "_flag_source"},
-							Value: model.String{Val: "my-source"},
+							Name:  mdl.S("_flag_source"),
+							Value: mdl.S("my-source"),
 						},
 					},
 				},

@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/model"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -40,57 +41,57 @@ func TestCompileAndEvalCEL(t *testing.T) {
 	}{
 		{
 			name: "simple_success",
-			in:   model.String{Val: `["alligator","crocodile"]`},
+			in:   mdl.S(`["alligator","crocodile"]`),
 			want: []string{"alligator", "crocodile"},
 		},
 		{
 			name:    "bad_int_to_string",
-			in:      model.String{Val: `42`},
+			in:      mdl.S(`42`),
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to []string`,
 		},
 		{
 			name:    "bad_list_of_int_to_list_of_string",
-			in:      model.String{Val: `[42]`},
+			in:      mdl.S(`[42]`),
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
 		{
 			name:    "bad_heterogenous_list",
-			in:      model.String{Val: `["alligator", 42]`},
+			in:      mdl.S(`["alligator", 42]`),
 			want:    []string(nil),
 			wantErr: `CEL expression result couldn't be converted to []string. The CEL engine error was: unsupported type conversion from 'int' to string`,
 		},
 		{
 			name: "string_split",
-			in:   model.String{Val: `"alligator,crocodile".split(",")`},
+			in:   mdl.S(`"alligator,crocodile".split(",")`),
 			want: []string{"alligator", "crocodile"},
 		},
 		{
 			name: "input_vars",
-			in:   model.String{Val: `["alligator", reptile]`},
+			in:   mdl.S(`["alligator", reptile]`),
 			vars: map[string]string{"reptile": "crocodile"},
 			want: []string{"alligator", "crocodile"},
 		},
 		{
 			name:    "invalid_cel_syntax",
-			in:      model.String{Val: `[[[[[`},
+			in:      mdl.S(`[[[[[`),
 			want:    "",
 			wantErr: "Syntax error: mismatched input",
 		},
 		{
 			name: "simple_int_return",
-			in:   model.String{Val: "42"},
+			in:   mdl.S("42"),
 			want: 42,
 		},
 		{
 			name: "simple_uint_return",
-			in:   model.String{Val: "42u"},
+			in:   mdl.S("42u"),
 			want: uint(42),
 		},
 		{
 			name: "simple_map_return",
-			in:   model.String{Val: `{"reptile": "alligator"}`},
+			in:   mdl.S(`{"reptile": "alligator"}`),
 			want: map[string]any{"reptile": "alligator"},
 		},
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -169,11 +170,8 @@ func TestActionAppend(t *testing.T) {
 			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sr := &spec.Append{
-				Paths: modelStrings(tc.paths),
-				With: model.String{
-					Pos: &model.ConfigPos{},
-					Val: tc.with,
-				},
+				Paths: mdl.Strings(tc.paths...),
+				With:  mdl.S(tc.with),
 				SkipEnsureNewline: model.Bool{
 					Pos: &model.ConfigPos{},
 					Val: tc.skipEnsureNewline,
