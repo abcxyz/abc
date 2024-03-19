@@ -515,7 +515,7 @@ func TestProcessGlobs(t *testing.T) {
 				"abc.txt": {Mode: 0o600, Contents: "bcd contents"},
 				"xyz.txt": {Mode: 0o600, Contents: "xyz contents"},
 			},
-			paths: mdl.Strings("[a-c][a-c][a-c].txt"),
+			paths:     mdl.Strings("[a-c][a-c][a-c].txt"),
 			wantPaths: mdl.Strings("abc.txt"),
 		},
 	}
