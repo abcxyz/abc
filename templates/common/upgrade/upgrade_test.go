@@ -569,6 +569,32 @@ steps:
 				}
 			}),
 		},
+		{
+			name: "abort_on_unmerged_conflicts",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": includeDotSpec,
+				"out.txt":   "foo",
+			},
+			localEdits: func(tb testing.TB, installedDir string) {
+				newFile := filepath.Join(installedDir, "foo.abcmerge_locally_added")
+				contents := []byte("whatever")
+				if err := os.WriteFile(newFile, contents, common.OwnerRWPerms); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantManifestBeforeUpgrade: outTxtOnlyManifest,
+			templateUnionForUpgrade: map[string]string{
+				// This shouldn't be written to the fs. The upgrade should be
+				// aborted before the right.
+				"out.txt": "bar",
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt":                    "foo",
+				"foo.abcmerge_locally_added": "whatever",
+			},
+			wantManifestAfterUpgrade: outTxtOnlyManifest,
+			wantErr:                  "already an upgrade in progress",
+		},
 	}
 
 	for _, tc := range cases {
