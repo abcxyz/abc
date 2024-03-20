@@ -86,9 +86,9 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	prompt := ""
-	prompt += "Here's the summary of the README.md documentation file for abc. This was summarized by an LLM specifically for you:\n\n```\n"
-	prompt += string(summarizedReadme)
-	prompt += "\n```\nThat's the end of the summary of the README.md documentation file.\n\n"
+	// prompt += "Here's the summary of the README.md documentation file for abc. This was summarized by an LLM specifically for you:\n\n```\n"
+	// prompt += string(summarizedReadme)
+	// prompt += "\n```\nThat's the end of the summary of the README.md documentation file.\n\n"
 
 	prompt += string(partialPrompt)
 	prompt += `Now let's generate a template. The following paragraph is a request from a user. You should output a spec.yaml, possibly along with instructions for transforming their existing files with placeholder values to be replaced by template actions. You may ask for clarification if anything is unclear. Please create a spec.yaml file that accomplishes their goal and explain how it works. When the user talks about "output", they probably mean "outputting a file from the template using the include action", and not "print a message using the print action". Remember to include instructions for adding placeholder values into the user's input files, if needed. For example, if the instructions are to replace "replace_me" in a given file, instruct the user to add the "replace_me" placeholder in that file. Here's the user input:` + "\n\n"
