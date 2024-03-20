@@ -29,8 +29,8 @@ import (
 //go:embed prompt.txt
 var partialPrompt []byte
 
-//gp:embed summarized_readme.txt
-var summarizedReadme []byte
+// //go:embed summarized_readme.txt
+// var summarizedReadme []byte
 
 type Command struct {
 	cli.BaseCommand
