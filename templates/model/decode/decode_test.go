@@ -32,6 +32,7 @@ import (
 	specfeatures "github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta6 "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -60,17 +61,15 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1alpha1.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Steps: []*specv1alpha1.Step{
 					{
-						Action: model.String{Val: "include"},
-						Desc:   model.String{Val: "include all files"},
+						Action: mdl.S("include"),
+						Desc:   mdl.S("include all files"),
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -90,8 +89,8 @@ inputs:
 			want: &goldentestv1alpha1.Test{
 				Inputs: []*goldentestv1alpha1.VarValue{
 					{
-						Name:  model.String{Val: "foo"},
-						Value: model.String{Val: "bar"},
+						Name:  mdl.S("foo"),
+						Value: mdl.S("bar"),
 					},
 				},
 			},
@@ -105,8 +104,8 @@ kind: 'Manifest'
 template_location: 'foo'
 template_dirhash: 'bar'`,
 			want: &manifestv1alpha1.Manifest{
-				TemplateLocation: model.String{Val: "foo"},
-				TemplateDirhash:  model.String{Val: "bar"},
+				TemplateLocation: mdl.S("foo"),
+				TemplateDirhash:  mdl.S("bar"),
 			},
 			wantVersion: "cli.abcxyz.dev/v1alpha1",
 		},
@@ -123,18 +122,16 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1beta6.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Steps: []*specv1beta6.Step{
 					{
-						Action: model.String{Val: "include"},
-						If:     model.String{Val: "true"},
-						Desc:   model.String{Val: "include all files"},
+						Action: mdl.S("include"),
+						If:     mdl.S("true"),
+						Desc:   mdl.S("include all files"),
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -157,14 +154,14 @@ builtin_vars:
 			want: &goldentestv1beta4.Test{
 				Inputs: []*goldentestv1beta4.VarValue{
 					{
-						Name:  model.String{Val: "foo"},
-						Value: model.String{Val: "bar"},
+						Name:  mdl.S("foo"),
+						Value: mdl.S("bar"),
 					},
 				},
 				BuiltinVars: []*goldentestv1beta4.VarValue{
 					{
-						Name:  model.String{Val: "_git_tag"},
-						Value: model.String{Val: "my-cool-tag"},
+						Name:  mdl.S("_git_tag"),
+						Value: mdl.S("my-cool-tag"),
 					},
 				},
 			},
@@ -178,8 +175,8 @@ kind: 'Manifest'
 template_location: 'foo'
 template_dirhash: 'bar'`,
 			want: &manifestv1alpha1.Manifest{
-				TemplateLocation: model.String{Val: "foo"},
-				TemplateDirhash:  model.String{Val: "bar"},
+				TemplateLocation: mdl.S("foo"),
+				TemplateDirhash:  mdl.S("bar"),
 			},
 			wantVersion: "cli.abcxyz.dev/v1beta1",
 		},
@@ -195,17 +192,15 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1alpha1.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Steps: []*specv1alpha1.Step{
 					{
-						Action: model.String{Val: "include"},
-						Desc:   model.String{Val: "include all files"},
+						Action: mdl.S("include"),
+						Desc:   mdl.S("include all files"),
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -276,18 +271,16 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1beta6.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Steps: []*specv1beta6.Step{
 					{
-						Action: model.String{Val: "include"},
-						If:     model.String{Val: "true"},
-						Desc:   model.String{Val: "include all files"},
+						Action: mdl.S("include"),
+						If:     mdl.S("true"),
+						Desc:   mdl.S("include all files"),
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -307,8 +300,8 @@ builtin_vars:
 			want: &goldentestv1beta4.Test{
 				BuiltinVars: []*goldentestv1beta4.VarValue{
 					{
-						Name:  model.String{Val: "_git_tag"},
-						Value: model.String{Val: "foo"},
+						Name:  mdl.S("_git_tag"),
+						Value: mdl.S("foo"),
 					},
 				},
 			},
@@ -390,7 +383,7 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1beta6.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Features: specfeatures.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
@@ -398,14 +391,12 @@ steps:
 				},
 				Steps: []*specv1beta6.Step{
 					{
-						Action: model.String{Val: "include"},
-						Desc:   model.String{Val: "step desc"},
+						Action: mdl.S("include"),
+						Desc:   mdl.S("step desc"),
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -423,8 +414,8 @@ inputs:
 			want: &goldentestv1beta4.Test{
 				Inputs: []*goldentestv1beta4.VarValue{
 					{
-						Name:  model.String{Val: "foo"},
-						Value: model.String{Val: "bar"},
+						Name:  mdl.S("foo"),
+						Value: mdl.S("bar"),
 					},
 				},
 				Features: goldentestfeatures.Features{
@@ -440,8 +431,8 @@ kind: 'Manifest'
 template_location: 'foo'
 template_dirhash: 'bar'`,
 			want: &manifestv1alpha1.Manifest{
-				TemplateLocation: model.String{Val: "foo"},
-				TemplateDirhash:  model.String{Val: "bar"},
+				TemplateLocation: mdl.S("foo"),
+				TemplateDirhash:  mdl.S("bar"),
 			},
 		},
 		{
@@ -475,7 +466,7 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1beta6.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Features: specfeatures.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
@@ -483,26 +474,24 @@ steps:
 				},
 				Inputs: []*specv1beta6.Input{
 					{
-						Name: model.String{Val: "foo"},
-						Desc: model.String{Val: "The name parameter"},
+						Name: mdl.S("foo"),
+						Desc: mdl.S("The name parameter"),
 						Rules: []*specv1beta6.Rule{
 							{
-								Rule:    model.String{Val: "size(foo) < 10"},
-								Message: model.String{Val: "name length must be less than 10"},
+								Rule:    mdl.S("size(foo) < 10"),
+								Message: mdl.S("name length must be less than 10"),
 							},
 						},
 					},
 				},
 				Steps: []*specv1beta6.Step{
 					{
-						Action: model.String{Val: "include"},
-						Desc:   model.String{Val: "step desc"},
+						Action: mdl.S("include"),
+						Desc:   mdl.S("step desc"),
 						Include: &specv1beta6.Include{
 							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},

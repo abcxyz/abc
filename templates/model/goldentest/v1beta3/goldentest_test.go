@@ -22,6 +22,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -44,12 +45,12 @@ func TestTestUnmarshal(t *testing.T) {
 			want: &Test{
 				Inputs: []*VarValue{
 					{
-						Name:  model.String{Val: "person_name"},
-						Value: model.String{Val: "iron_man"},
+						Name:  mdl.S("person_name"),
+						Value: mdl.S("iron_man"),
 					},
 					{
-						Name:  model.String{Val: "dog_name"},
-						Value: model.String{Val: "iron_dog"},
+						Name:  mdl.S("dog_name"),
+						Value: mdl.S("iron_dog"),
 					},
 				},
 			},
@@ -67,8 +68,8 @@ func TestTestUnmarshal(t *testing.T) {
 			want: &Test{
 				Inputs: []*VarValue{
 					{
-						Name:  model.String{Val: "person_name"},
-						Value: model.String{Val: ""},
+						Name:  mdl.S("person_name"),
+						Value: mdl.S(""),
 					},
 				},
 			},

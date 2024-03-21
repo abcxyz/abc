@@ -32,9 +32,9 @@ import (
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
-	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -1329,8 +1329,8 @@ func TestPromptDialog(t *testing.T) {
 			name: "single_input_prompt",
 			inputs: []*spec.Input{
 				{
-					Name: model.String{Val: "animal"},
-					Desc: model.String{Val: "your favorite animal"},
+					Name: mdl.S("animal"),
+					Desc: mdl.S("your favorite animal"),
 				},
 			},
 			dialog: []abctestutil.DialogStep{
@@ -1351,12 +1351,12 @@ Enter value: `,
 			name: "single_input_prompt_with_single_validation_rule",
 			inputs: []*spec.Input{
 				{
-					Name: model.String{Val: "animal"},
-					Desc: model.String{Val: "your favorite animal"},
+					Name: mdl.S("animal"),
+					Desc: mdl.S("your favorite animal"),
 					Rules: []*spec.Rule{
 						{
-							Rule:    model.String{Val: "size(animal) > 1"},
-							Message: model.String{Val: "length must be greater than 1"},
+							Rule:    mdl.S("size(animal) > 1"),
+							Message: mdl.S("length must be greater than 1"),
 						},
 					},
 				},
@@ -1381,16 +1381,16 @@ Enter value: `,
 			name: "single_input_prompt_with_multiple_validation_rules",
 			inputs: []*spec.Input{
 				{
-					Name: model.String{Val: "animal"},
-					Desc: model.String{Val: "your favorite animal"},
+					Name: mdl.S("animal"),
+					Desc: mdl.S("your favorite animal"),
 					Rules: []*spec.Rule{
 						{
-							Rule:    model.String{Val: "size(animal) > 1"},
-							Message: model.String{Val: "length must be greater than 1"},
+							Rule:    mdl.S("size(animal) > 1"),
+							Message: mdl.S("length must be greater than 1"),
 						},
 						{
-							Rule:    model.String{Val: "size(animal) < 100"},
-							Message: model.String{Val: "length must be less than 100"},
+							Rule:    mdl.S("size(animal) < 100"),
+							Message: mdl.S("length must be less than 100"),
 						},
 					},
 				},
@@ -1417,12 +1417,12 @@ Enter value: `,
 			name: "multiple_input_prompts",
 			inputs: []*spec.Input{
 				{
-					Name: model.String{Val: "animal"},
-					Desc: model.String{Val: "your favorite animal"},
+					Name: mdl.S("animal"),
+					Desc: mdl.S("your favorite animal"),
 				},
 				{
-					Name: model.String{Val: "car"},
-					Desc: model.String{Val: "your favorite car"},
+					Name: mdl.S("car"),
+					Desc: mdl.S("your favorite car"),
 				},
 			},
 			dialog: []abctestutil.DialogStep{
@@ -1452,8 +1452,8 @@ Enter value: `,
 			name: "single_input_should_not_be_prompted_if_provided_by_command_line_flags",
 			inputs: []*spec.Input{
 				{
-					Name: model.String{Val: "animal"},
-					Desc: model.String{Val: "your favorite animal"},
+					Name: mdl.S("animal"),
+					Desc: mdl.S("your favorite animal"),
 				},
 			},
 			flagInputVals: map[string]string{
@@ -1468,12 +1468,12 @@ Enter value: `,
 			name: "two_inputs_of_which_one_is_provided_and_one_prompted",
 			inputs: []*spec.Input{
 				{
-					Name: model.String{Val: "animal"},
-					Desc: model.String{Val: "your favorite animal"},
+					Name: mdl.S("animal"),
+					Desc: mdl.S("your favorite animal"),
 				},
 				{
-					Name: model.String{Val: "car"},
-					Desc: model.String{Val: "your favorite car"},
+					Name: mdl.S("car"),
+					Desc: mdl.S("your favorite car"),
 				},
 			},
 			flagInputVals: map[string]string{
@@ -1502,9 +1502,9 @@ Enter value: `,
 			name: "single_input_with_default_accepted",
 			inputs: []*spec.Input{
 				{
-					Name:    model.String{Val: "animal"},
-					Desc:    model.String{Val: "your favorite animal"},
-					Default: &model.String{Val: "shark"},
+					Name:    mdl.S("animal"),
+					Desc:    mdl.S("your favorite animal"),
+					Default: mdl.SP("shark"),
 				},
 			},
 			dialog: []abctestutil.DialogStep{
@@ -1526,9 +1526,9 @@ Enter value, or leave empty to accept default: `,
 			name: "single_input_with_default_not_accepted",
 			inputs: []*spec.Input{
 				{
-					Name:    model.String{Val: "animal"},
-					Desc:    model.String{Val: "your favorite animal"},
-					Default: &model.String{Val: "shark"},
+					Name:    mdl.S("animal"),
+					Desc:    mdl.S("your favorite animal"),
+					Default: mdl.SP("shark"),
 				},
 			},
 			dialog: []abctestutil.DialogStep{
@@ -1550,9 +1550,9 @@ Enter value, or leave empty to accept default: `,
 			name: "default_empty_string_should_be_printed_quoted",
 			inputs: []*spec.Input{
 				{
-					Name:    model.String{Val: "animal"},
-					Desc:    model.String{Val: "your favorite animal"},
-					Default: &model.String{Val: ""},
+					Name:    mdl.S("animal"),
+					Desc:    mdl.S("your favorite animal"),
+					Default: mdl.SP(""),
 				},
 			},
 			dialog: []abctestutil.DialogStep{
