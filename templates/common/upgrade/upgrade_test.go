@@ -708,12 +708,11 @@ steps:
 			clk.Set(afterUpgradeTime) // simulate time passing between initial installation and upgrade
 
 			params := &Params{
-				Clock:              clk,
-				CWD:                destDir,
-				FS:                 &common.RealFS{},
-				ManifestPath:       manifestFullPath,
-				Stdout:             os.Stdout,
-				AllowDirtyTestOnly: true,
+				Clock:        clk,
+				CWD:          destDir,
+				FS:           &common.RealFS{},
+				ManifestPath: manifestFullPath,
+				Stdout:       os.Stdout,
 			}
 
 			if tc.localEdits != nil {
@@ -797,9 +796,8 @@ func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBa
 	tb.Helper()
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-		AllowDirtyTestOnly: true,
-		CWD:                tempBase,
-		Source:             templateDir,
+		CWD:    tempBase,
+		Source: templateDir,
 	})
 	if err != nil {
 		tb.Fatal(err)

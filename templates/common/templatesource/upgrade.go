@@ -75,12 +75,6 @@ type ForUpgradeParams struct {
 
 	// The value of --git-protocol.
 	GitProtocol string
-
-	// Normally, when determining if a template location is canonical, any
-	// directory that has uncommitted git changes is not canonical. However,
-	// for testing purposes we sometimes bypass this check and allow dirty git
-	// workspaces to be treated as canonical.
-	AllowDirtyTestOnly bool
 }
 
 func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
@@ -134,7 +128,6 @@ func localGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) 
 	}
 
 	return &LocalDownloader{
-		SrcPath:            absSrcPath,
-		allowDirtyTestOnly: f.AllowDirtyTestOnly,
+		SrcPath: absSrcPath,
 	}, nil
 }

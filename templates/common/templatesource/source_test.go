@@ -309,12 +309,11 @@ func TestGitCanonicalVersion(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name       string
-		dir        string
-		allowDirty bool
-		files      map[string]string
-		want       string
-		wantErr    string
+		name    string
+		dir     string
+		files   map[string]string
+		want    string
+		wantErr string
 	}{
 		{
 			name:  "simple_success_no_tag",
@@ -382,17 +381,8 @@ func TestGitCanonicalVersion(t *testing.T) {
 			files: nil,
 		},
 		{
-			name:       "dirty_workspace_not_allowed",
-			dir:        ".",
-			allowDirty: false,
-			files: abctestutil.WithGitRepoAt("", map[string]string{
-				"my_file.txt": "my contents",
-			}),
-		},
-		{
-			name:       "dirty_workspace_allowed",
-			dir:        ".",
-			allowDirty: true,
+			name: "dirty_workspace_allowed",
+			dir:  ".",
 			files: abctestutil.WithGitRepoAt("", map[string]string{
 				"my_file.txt": "my contents",
 			}),
@@ -409,7 +399,7 @@ func TestGitCanonicalVersion(t *testing.T) {
 			tmp := t.TempDir()
 			abctestutil.WriteAll(t, tmp, tc.files)
 			ctx := context.Background()
-			got, gotOK, err := gitCanonicalVersion(ctx, filepath.Join(tmp, tc.dir), tc.allowDirty)
+			got, gotOK, err := gitCanonicalVersion(ctx, filepath.Join(tmp, tc.dir))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

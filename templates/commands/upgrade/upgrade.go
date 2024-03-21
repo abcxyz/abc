@@ -151,14 +151,15 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	//  - suggest diff / meld / vim commands?
 	fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n")
 	for _, cf := range r.Conflicts {
-		fmt.Fprintf(c.Stdout(), "file %s: conflict type %s: ", cf.Path, cf.Action)
+		fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
+		fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
 		if cf.OursPath != "" {
-			fmt.Fprintf(c.Stdout(), "ours: %s", cf.OursPath)
+			fmt.Fprintf(c.Stdout(), "  our file was renamed to: %s\n", cf.OursPath)
 		}
 		if cf.IncomingTemplatePath != "" {
-			fmt.Fprintf(c.Stdout(), "new template version: %s", cf.IncomingTemplatePath)
+			fmt.Fprintf(c.Stdout(), "  incoming file: %s\n", cf.IncomingTemplatePath)
 		}
-		fmt.Fprintf(c.Stdout(), "\n")
+		fmt.Fprintf(c.Stdout(), "--\n")
 	}
 
 	return nil

@@ -132,10 +132,6 @@ type remoteGitDownloader struct {
 
 	cloner cloner
 	tagser tagser
-
-	// It's too hard in tests to generate a clean git repo, so we provide
-	// this option to just ignore the fact that the git repo is dirty.
-	allowDirty bool
 }
 
 // Download implements Downloader.
@@ -209,7 +205,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	//   - The user may have specified a branch name, but we don't allow branches
 	//     to be used as template versions in manifests because they change
 	//     frequently.
-	canonicalVersion, ok, err := gitCanonicalVersion(ctx, tmpDir, g.allowDirty)
+	canonicalVersion, ok, err := gitCanonicalVersion(ctx, tmpDir)
 	if err != nil {
 		return nil, err
 	}

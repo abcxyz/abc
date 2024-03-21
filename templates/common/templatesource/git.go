@@ -21,7 +21,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 
 	"github.com/abcxyz/abc/templates/common/git"
-	"github.com/abcxyz/pkg/logging"
 )
 
 const (
@@ -37,35 +36,17 @@ const (
 //   - other non-semver tags in reverse alphabetical order
 //   - the HEAD SHA
 //
-// It returns false if:
-//
-//   - the given directory is not in a git workspace
-//   - the git workspace is not clean (uncommitted changes) (for testing, you
-//     can provide allowDirty=true to override this)
+// It returns false if the given directory is not in a git workspace.
 //
 // It returns error only if something weird happened when running git commands.
 // The returned string is always empty if the boolean is false.
-func gitCanonicalVersion(ctx context.Context, dir string, allowDirty bool) (string, bool, error) {
-	logger := logging.FromContext(ctx).With("logger", "CanonicalVersion")
-
+func gitCanonicalVersion(ctx context.Context, dir string) (string, bool, error) {
 	_, ok, err := git.Workspace(ctx, dir)
 	if err != nil {
 		return "", false, err //nolint:wrapcheck
 	}
 	if !ok {
 		return "", false, nil
-	}
-
-	if !allowDirty {
-		ok, err = git.IsClean(ctx, dir)
-		if err != nil {
-			return "", false, err //nolint:wrapcheck
-		}
-		if !ok {
-			logger.WarnContext(ctx, "omitting template git version from manifest because the workspace is dirty",
-				"source_git_workspace", dir)
-			return "", false, nil
-		}
 	}
 
 	tag, ok, err := bestHeadTag(ctx, dir)
