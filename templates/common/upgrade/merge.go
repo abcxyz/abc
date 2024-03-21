@@ -28,7 +28,7 @@ import (
 	"github.com/abcxyz/pkg/sets"
 )
 
-// A Action is an action to take for a given output file. This may involve
+// An Action is an action to take for a given output file. This may involve
 // conflicts between upgraded template output files and files that were
 // locally customized by the user.
 //
@@ -41,8 +41,12 @@ func (a Action) IsConflict() bool {
 	switch a {
 	case AddAddConflict, EditEditConflict, EditDeleteConflict, DeleteEditConflict:
 		return true
+	case WriteNew, DeleteAction, Noop:
+		return false
 	}
-	return false
+	// This should be unreachable. The golangci "exhaustive" lint check will
+	// tell us if any case isn't handled above.
+	panic("unreachable")
 }
 
 const (
@@ -77,6 +81,9 @@ const (
 	DeleteEditConflict Action = "deleteEditConflict"
 )
 
+// A mergeDecision is the output from the conflict detector. It contains the
+// action to take (e.g. "editDeleteConflict") and the reason why that decision
+// was made.
 type mergeDecision struct {
 	action           Action
 	humanExplanation string
@@ -210,7 +217,7 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 	filesUnion := maps.Keys(sets.UnionMapKeys(oldHashes, newHashes))
 	sort.Strings(filesUnion)
 
-	var actionsTaken []ActionTaken
+	actionsTaken := make([]ActionTaken, 0, len(filesUnion))
 
 	for _, relPath := range filesUnion {
 		oldHash, isInOldManifest := oldHashes[relPath]
@@ -286,78 +293,63 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 	installedPath := filepath.Join(p.installedDir, relPath)
 	mergePath := filepath.Join(p.mergeDir, relPath)
 
+	actionTaken := ActionTaken{
+		Action:      decision.action,
+		Explanation: decision.humanExplanation,
+		Path:        relPath,
+	}
+
 	switch decision.action {
 	case WriteNew:
 		if err := common.CopyFile(ctx, nil, p.fs, mergePath, installedPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		return ActionTaken{
-			Action: WriteNew,
-			Path:   relPath,
-		}, nil
+		return actionTaken, nil
 	case Noop:
-		return ActionTaken{
-			Action: Noop,
-			Path:   relPath,
-		}, nil
+		return actionTaken, nil
 	case DeleteAction:
 		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
-			return ActionTaken{}, err //nolint:wrapcheck
+			return ActionTaken{}, err
 		}
-		return ActionTaken{
-			Action: DeleteAction,
-			Path:   relPath,
-		}, nil
+		return actionTaken, nil
 	case DeleteEditConflict:
 		dstPath := installedPath + suffixFromNewTemplateLocallyDeleted
 		if err := common.CopyFile(ctx, nil, p.fs, mergePath, dstPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		return ActionTaken{
-			Action:               DeleteEditConflict,
-			Path:                 relPath,
-			IncomingTemplatePath: relPath + suffixFromNewTemplateLocallyDeleted,
-		}, nil
+		actionTaken.IncomingTemplatePath = relPath + suffixFromNewTemplateLocallyDeleted
+		return actionTaken, nil
 	case EditDeleteConflict:
 		renamedPath := installedPath + suffixWantToDelete
 		if err := renameOrDryRun(p.fs, dryRun, installedPath, renamedPath); err != nil {
-			return ActionTaken{}, err //nolint:wrapcheck
+			return ActionTaken{}, err
 		}
-		return ActionTaken{
-			Action:   EditDeleteConflict,
-			Path:     relPath,
-			OursPath: relPath + suffixWantToDelete,
-		}, nil
+		actionTaken.OursPath = relPath + suffixWantToDelete
+		return actionTaken, nil
 	case EditEditConflict:
 		renamedPath := installedPath + suffixLocallyEdited
 		incomingPath := installedPath + suffixFromNewTemplate
 		if err := renameOrDryRun(p.fs, dryRun, installedPath, renamedPath); err != nil {
-			return ActionTaken{}, err //nolint:wrapcheck
+			return ActionTaken{}, err
 		}
 		if err := common.CopyFile(ctx, nil, p.fs, mergePath, incomingPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		return ActionTaken{
-			Action:               EditEditConflict,
-			Path:                 relPath,
-			OursPath:             relPath + suffixLocallyEdited,
-			IncomingTemplatePath: relPath + suffixFromNewTemplate,
-		}, nil
+		actionTaken.OursPath = relPath + suffixLocallyEdited
+		actionTaken.IncomingTemplatePath = relPath + suffixFromNewTemplate
+		return actionTaken, nil
 	case AddAddConflict:
 		renamedPath := installedPath + suffixLocallyAdded
 		if err := renameOrDryRun(p.fs, dryRun, installedPath, renamedPath); err != nil {
-			return ActionTaken{}, err //nolint:wrapcheck
+			return ActionTaken{}, err
 		}
 		incomingPath := installedPath + suffixFromNewTemplate
 		if err := common.CopyFile(ctx, nil, p.fs, mergePath, incomingPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		return ActionTaken{
-			Action:               AddAddConflict,
-			Path:                 relPath,
-			OursPath:             relPath + suffixLocallyAdded,
-			IncomingTemplatePath: relPath + suffixFromNewTemplate,
-		}, nil
+		actionTaken.OursPath = relPath + suffixLocallyAdded
+		actionTaken.IncomingTemplatePath = relPath + suffixFromNewTemplate
+		return actionTaken, nil
 	default:
 		return ActionTaken{}, fmt.Errorf("internal error: unrecognized merged action %v", decision.action)
 	}
@@ -367,12 +359,12 @@ func renameOrDryRun(fs common.FS, dryRun bool, from, to string) error {
 	if dryRun {
 		return nil
 	}
-	return fs.Rename(from, to)
+	return fs.Rename(from, to) //nolint:wrapcheck
 }
 
 func removeOrDryRun(fs common.FS, dryRun bool, path string) error {
 	if dryRun {
 		return nil
 	}
-	return fs.Remove(path)
+	return fs.Remove(path) //nolint:wrapcheck
 }

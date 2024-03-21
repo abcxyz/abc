@@ -117,37 +117,39 @@ type Result struct {
 	// fields in this struct will have zero values.
 	AlreadyUpToDate bool
 
-	// If there were any conflicts, then this map will have len>0. A conflict is
-	// a situation where manual user internention is required. For example, it
-	// would be a conflict if the user locally edited a template output file,
-	// then upgraded to a template version that also contained a change to that
-	// same file.
-	//
-	// The map keys are paths relative to the directory where the template is
-	// installed.
-	ActionsTaken []ActionTaken
-
-	// Conflicts is a subset of ActionsTaken, just those that require manual
-	// intervention.
+	// Conflicts is the set of files that require manual intervention by the
+	// user to resolve a merge conflict. For example, there may be a file that
+	// was edited by the user and that edit conflicts with changes to that same
+	// file by the upgraded version of the template.
 	Conflicts []ActionTaken
+
+	// NonConflicts is the set of template output files that do NOT require any
+	// action by the user. Callers are free to ignore this.
+	//
+	// This is mutually exclusive with "Conflicts". Each file is in only one of
+	// the two lists.
+	NonConflicts []ActionTaken
 }
 
 type ActionTaken struct {
 	Action Action
 
+	// Explanation is a human-readable reason why the given Action was chosen
+	// for this path.
+	Explanation string
+
 	// Path is always set. This is the relative path from the directory where
 	// the template is installed.
 	Path string
 
-	// OursPath is only set if there's a conflict. TODO
+	// OursPath is only set if there's a conflict. This is the path that the
+	// local file was renamed to that needs manual merge resolution.
 	OursPath string
-	// IncomingTemplatePath is only set if there's a conflict. TODO
+
+	// IncomingTemplatePath is only set if there's a conflict. This is the path
+	// to the incoming template file that needs merge resolution.
 	IncomingTemplatePath string
 }
-
-// // String implements fmt.Stringer.
-// func (c *ActionTaken) String() string {
-// }
 
 // Upgrade takes a directory containing previously rendered template output and
 // updates it using the newest version of the template, which is pointed to by
@@ -262,11 +264,11 @@ func Upgrade(ctx context.Context, p *Params) (_ Result, rErr error) {
 		return Result{}, err
 	}
 
-	conflicts := filterConflicts(actionsTaken)
+	conflicts, nonConflicts := partitionConflicts(actionsTaken)
 
 	return Result{
-		ActionsTaken: actionsTaken,
 		Conflicts:    conflicts,
+		NonConflicts: nonConflicts,
 	}, nil
 }
 
@@ -447,12 +449,13 @@ func detectUnmergedConflicts(installedDir string) error {
 	return nil
 }
 
-func filterConflicts(actionsTaken []ActionTaken) []ActionTaken {
-	out := make([]ActionTaken, 0)
+func partitionConflicts(actionsTaken []ActionTaken) (conflicts, nonConflicts []ActionTaken) {
 	for _, a := range actionsTaken {
 		if a.Action.IsConflict() {
-			out = append(out, a)
+			conflicts = append(conflicts, a)
+			continue
 		}
+		nonConflicts = append(nonConflicts, a)
 	}
-	return out
+	return conflicts, nonConflicts
 }

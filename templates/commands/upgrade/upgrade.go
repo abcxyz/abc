@@ -145,7 +145,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	// TODO test
+	// TODO(upgrade): command-level tests (not just library-level)
 	//
 	// TODO(upgrade):
 	//  - suggest diff / meld / vim commands?

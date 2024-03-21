@@ -132,7 +132,7 @@ steps:
       with: 'world'`,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
+				NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\nworld\n",
@@ -167,7 +167,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
+				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
@@ -213,7 +213,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
+				NonConflicts: []ActionTaken{
 					{Action: DeleteAction, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
@@ -259,12 +259,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
-					{
-						Action:   EditDeleteConflict,
-						Path:     "another_file.txt",
-						OursPath: "another_file.txt.abcmerge_template_wants_to_delete",
-					},
+				NonConflicts: []ActionTaken{
 					{
 						Action: Noop,
 						Path:   "out.txt",
@@ -319,7 +314,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
+				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
@@ -361,14 +356,6 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
-					{
-						Action:               EditEditConflict,
-						Path:                 "out.txt",
-						OursPath:             "out.txt.abcmerge_locally_edited",
-						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
-					},
-				},
 				Conflicts: []ActionTaken{
 					{
 						Action:               EditEditConflict,
@@ -415,13 +402,6 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
-					{
-						Action:               DeleteEditConflict,
-						Path:                 "out.txt",
-						IncomingTemplatePath: "out.txt.abcmerge_locally_deleted_vs_new_template_version",
-					},
-				},
 				Conflicts: []ActionTaken{
 					{
 						Action:               DeleteEditConflict,
@@ -473,7 +453,7 @@ steps:
 				"spec.yaml":                      includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
+				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "template_changes_this_file.txt"},
 					{Action: Noop, Path: "user_deletes_this_file.txt"},
 				},
@@ -526,7 +506,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
+				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "out.txt"},
 					{Action: WriteNew, Path: "some_other_file.txt"},
 				},
@@ -581,13 +561,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
-					{
-						Action:               "addAddConflict",
-						Path:                 "out.txt",
-						OursPath:             "out.txt.abcmerge_locally_added",
-						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
-					},
+				NonConflicts: []ActionTaken{
 					{
 						Action: "noop",
 						Path:   "some_other_file.txt",
@@ -652,7 +626,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: Result{
-				ActionsTaken: []ActionTaken{
+				NonConflicts: []ActionTaken{
 					{Action: "noop", Path: "out.txt"},
 					{Action: "noop", Path: "some_other_file.txt"},
 				},
@@ -769,7 +743,11 @@ steps:
 				t.Fatal(diff)
 			}
 
-			if diff := cmp.Diff(result, tc.want, cmpopts.EquateEmpty()); diff != "" {
+			opts := []cmp.Option{
+				cmpopts.EquateEmpty(),
+				cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
+			}
+			if diff := cmp.Diff(result, tc.want, opts...); diff != "" {
 				t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 			}
 
