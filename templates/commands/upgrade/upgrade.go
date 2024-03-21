@@ -64,6 +64,41 @@ func (c *Command) Flags() *cli.FlagSet {
 	return set
 }
 
+const mergeInstructions = `
+Some manual conflict resolution is required because of a conflict between your
+local edits and the new version of the template. Please look at all files ending
+in .abcmerge_* and either edit, delete, or rename them to reflect your decision.
+
+Background on conflict types:
+
+ - editEditConflict: you made some local edits to this file that was installed
+   by the template, which conflicts with the new version of the template which
+   wants to edit the file. Both versions of the file are left in your output
+   directory, named "yourfile.abcmerge_locally_edited" and
+   "yourfile.abcmerge_from_new_template". Please resolve the conflict by either
+   (1) renaming one of the files to "yourfile" and deleting the other, or (2)
+   merging the two files into "yourfile".
+
+ - editDeleteConflict: you made an edit to this file that was installed by the
+   template, which conflicts with the new version of the template, which wants
+   to delete this file. Your version has been renamed to
+   "yourfile.abcmerge_template_wants_to_delete". Please resolve the conflict by
+   renaming it back to "yourfile" or deleting it.
+
+ - deleteEditConflict: you deleted this file that was installed by the template,
+   which conflicts with the new version of the template which wants to edit it.
+   The new version from the template is named
+   "yourfile.abcmerge_locally_deleted_vs_new_template_version". Please resolve
+   the conflict by renaming it to "yourfile" or deleting it.
+
+ - addAddConflict: you added a file which was not originally part of the
+   template, which conflicts with the new version of the template, which wants
+   to create a file of the same name. Your version of the file has been renamed
+   to "yourfile.abcmerge_locally_added", and the version of the template is
+   named "yourfile.abcmerge_from_new_template". Please resolve the conflict by
+   (1) renaming one of these files to "yourfile and deleting the other, or (2)
+   merging the two files into "yourfile".`
+
 func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
@@ -81,7 +116,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
 
-	ok, err := upgrade.Upgrade(ctx, &upgrade.Params{
+	r, err := upgrade.Upgrade(ctx, &upgrade.Params{
 		Clock:                clock.New(),
 		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
@@ -101,8 +136,29 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err //nolint:wrapcheck
 	}
 
-	if !ok {
+	if r.AlreadyUpToDate {
 		fmt.Fprintf(c.Stdout(), "already up to date with latest template version\n")
+		return nil
 	}
+
+	if len(r.Conflicts) == 0 {
+		return nil
+	}
+
+	// TODO test
+	//
+	// TODO(upgrade):
+	//  - suggest diff / meld / vim commands?
+	fmt.Fprint(c.Stdout(), mergeInstructions+"\n")
+	for _, cf := range r.Conflicts {
+		fmt.Fprintf(c.Stdout(), "  file %s: conflict type %s: ", cf.Path, cf.Action)
+		if cf.OursPath != "" {
+			fmt.Fprintf(c.Stdout(), "ours: %s", cf.OursPath)
+		}
+		if cf.IncomingTemplatePath != "" {
+			fmt.Fprintf(c.Stdout(), "new template version: %s", cf.IncomingTemplatePath)
+		}
+	}
+
 	return nil
 }

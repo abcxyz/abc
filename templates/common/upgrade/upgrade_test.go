@@ -105,7 +105,7 @@ steps:
 		localEdits                   func(tb testing.TB, installedDir string)
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
 		wantManifestAfterUpgrade     *manifest.Manifest
-		wantOK                       bool
+		want                         Result
 		wantErr                      string
 	}{
 		// TODO(upgrade): tests to add:
@@ -122,7 +122,6 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			wantOK:                    true,
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
 				"spec.yaml": includeDotSpec + `
@@ -132,6 +131,9 @@ steps:
       paths: ['out.txt']
       with: 'world'`,
 			},
+			want: Result{
+				ActionsTaken: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
+			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\nworld\n",
 			},
@@ -140,8 +142,8 @@ steps:
 			}),
 		},
 		{
-			name:   "short_circuit_if_already_latest_version",
-			wantOK: false,
+			name: "short_circuit_if_already_latest_version",
+			want: Result{AlreadyUpToDate: true},
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -154,8 +156,7 @@ steps:
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
 		},
 		{
-			name:   "new_template_has_file_not_in_old_template",
-			wantOK: true,
+			name: "new_template_has_file_not_in_old_template",
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -164,6 +165,12 @@ steps:
 			templateUnionForUpgrade: map[string]string{
 				"another_file.txt": "I'm another file\n",
 				"spec.yaml":        includeDotSpec,
+			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{Action: WriteNew, Path: "another_file.txt"},
+					{Action: Noop, Path: "out.txt"},
+				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":          "hello\n",
@@ -185,8 +192,7 @@ steps:
 			// This test case starts with a template outputting two files, and
 			// upgrades to a template that only outputs one file. The other file
 			// should be removed from the destination directory.
-			name:   "old_template_has_file_not_in_new_template_with_no_local_edits",
-			wantOK: true,
+			name: "old_template_has_file_not_in_new_template_with_no_local_edits",
 			origTemplateDirContents: map[string]string{
 				"out.txt":          "hello\n",
 				"another_file.txt": "I'm another file\n",
@@ -206,6 +212,12 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{Action: DeleteAction, Path: "another_file.txt"},
+					{Action: Noop, Path: "out.txt"},
+				},
+			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
 			},
@@ -219,8 +231,7 @@ steps:
 			//  - The user edits one of the files
 			//  - We upgrade to a template that no longer outputs the file that was edited
 			//  - There should be an edit/delete conflict.
-			name:   "new_template_removes_file_that_has_user_edits",
-			wantOK: true,
+			name: "new_template_removes_file_that_has_user_edits",
 			origTemplateDirContents: map[string]string{
 				"out.txt":          "hello\n",
 				"another_file.txt": "I'm another file\n",
@@ -246,6 +257,26 @@ steps:
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
+			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{
+						Action:   EditDeleteConflict,
+						Path:     "another_file.txt",
+						OursPath: "another_file.txt.abcmerge_template_wants_to_delete",
+					},
+					{
+						Action: Noop,
+						Path:   "out.txt",
+					},
+				},
+				Conflicts: []ActionTaken{
+					{
+						Action:   EditDeleteConflict,
+						Path:     "another_file.txt",
+						OursPath: "another_file.txt.abcmerge_template_wants_to_delete",
+					},
+				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"another_file.txt.abcmerge_template_wants_to_delete": "my edited contents",
@@ -261,8 +292,7 @@ steps:
 			//  - The user deletes one of them
 			//  - We upgrade to a new verson of the template that no longer outputs that file
 			//  - This "delete vs delete" should not be a conflict, we just accept the absence of the file.
-			name:   "upgraded_template_no_longer_outputs_a_file_that_was_locally_deleted",
-			wantOK: true,
+			name: "upgraded_template_no_longer_outputs_a_file_that_was_locally_deleted",
 			origTemplateDirContents: map[string]string{
 				"out.txt":          "hello\n",
 				"another_file.txt": "I'm another file\n",
@@ -288,6 +318,12 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{Action: Noop, Path: "another_file.txt"},
+					{Action: Noop, Path: "out.txt"},
+				},
+			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
 			},
@@ -301,8 +337,7 @@ steps:
 			//  - The user edits that file
 			//  - We upgrade to a template that also changes that same file
 			//  - There should be an edit/edit conflict.
-			name:   "upgraded_template_changes_file_that_has_user_edits",
-			wantOK: true,
+			name: "upgraded_template_changes_file_that_has_user_edits",
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello",
 				"spec.yaml": includeDotSpec,
@@ -325,6 +360,24 @@ steps:
 				"out.txt":   "goodbye",
 				"spec.yaml": includeDotSpec,
 			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{
+						Action:               EditEditConflict,
+						Path:                 "out.txt",
+						OursPath:             "out.txt.abcmerge_locally_edited",
+						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+					},
+				},
+				Conflicts: []ActionTaken{
+					{
+						Action:               EditEditConflict,
+						Path:                 "out.txt",
+						OursPath:             "out.txt.abcmerge_locally_edited",
+						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+					},
+				},
+			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_edited":    "my edited contents",
 				"out.txt.abcmerge_from_new_template": "goodbye",
@@ -339,8 +392,7 @@ steps:
 			//  - The user deletes the file
 			//  - The upgraded template version has new contents for that file
 			//  - There should be a delete-vs-edit conflict
-			name:   "user_deleted_and_template_has_updated_version",
-			wantOK: true,
+			name: "user_deleted_and_template_has_updated_version",
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello",
 				"spec.yaml": includeDotSpec,
@@ -361,6 +413,22 @@ steps:
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "goodbye",
 				"spec.yaml": includeDotSpec,
+			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{
+						Action:               DeleteEditConflict,
+						Path:                 "out.txt",
+						IncomingTemplatePath: "out.txt.abcmerge_locally_deleted_vs_new_template_version",
+					},
+				},
+				Conflicts: []ActionTaken{
+					{
+						Action:               DeleteEditConflict,
+						Path:                 "out.txt",
+						IncomingTemplatePath: "out.txt.abcmerge_locally_deleted_vs_new_template_version",
+					},
+				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_deleted_vs_new_template_version": "goodbye",
@@ -377,8 +445,7 @@ steps:
 			//    but does change an unrelated file (so the template dirhash is
 			//    different)
 			//  - There's no conflict. The user's deletion takes priority.
-			name:   "user_deleted_and_template_is_unchanged",
-			wantOK: true,
+			name: "user_deleted_and_template_is_unchanged",
 			origTemplateDirContents: map[string]string{
 				"user_deletes_this_file.txt":     "hello",
 				"template_changes_this_file.txt": "initial contents",
@@ -405,6 +472,12 @@ steps:
 				"template_changes_this_file.txt": "modified contents",
 				"spec.yaml":                      includeDotSpec,
 			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{Action: WriteNew, Path: "template_changes_this_file.txt"},
+					{Action: Noop, Path: "user_deletes_this_file.txt"},
+				},
+			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"template_changes_this_file.txt": "modified contents",
 			},
@@ -421,8 +494,7 @@ steps:
 			}),
 		},
 		{
-			name:   "user_edited_and_template_unchanged",
-			wantOK: true,
+			name: "user_edited_and_template_unchanged",
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "initial contents",
 				"spec.yaml": includeDotSpec,
@@ -453,6 +525,12 @@ steps:
 				"some_other_file.txt": "bar",
 				"spec.yaml":           includeDotSpec,
 			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{Action: Noop, Path: "out.txt"},
+					{Action: WriteNew, Path: "some_other_file.txt"},
+				},
+			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":             "modified contents",
 				"some_other_file.txt": "bar",
@@ -472,13 +550,13 @@ steps:
 		{
 			// This test simulates a situation where:
 			//  - The template is initially rendered doesn't have a file named
-			//    foo
-			//  - The user coincidentally creates a file named foo
+			//    out.txt
+			//  - The user coincidentally creates a file named out.txt
 			//  - The template is upgraded to a new version that *does* output a
-			//    file named foo, which is different than the user's added file.
+			//    file named out.txt, which is different than the user's added
+			//    file.
 			//  - This should be an add/add conflict
-			name:   "add_add_conflict",
-			wantOK: true,
+			name: "add_add_conflict",
 			origTemplateDirContents: map[string]string{
 				"spec.yaml":           includeDotSpec,
 				"some_other_file.txt": "some other file contents",
@@ -502,6 +580,28 @@ steps:
 				"some_other_file.txt": "some other file contents",
 				"spec.yaml":           includeDotSpec,
 			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{
+						Action:               "addAddConflict",
+						Path:                 "out.txt",
+						OursPath:             "out.txt.abcmerge_locally_added",
+						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+					},
+					{
+						Action: "noop",
+						Path:   "some_other_file.txt",
+					},
+				},
+				Conflicts: []ActionTaken{
+					{
+						Action:               "addAddConflict",
+						Path:                 "out.txt",
+						OursPath:             "out.txt.abcmerge_locally_added",
+						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+					},
+				},
+			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_added":     "my cool new file",
 				"out.txt.abcmerge_from_new_template": "template now outputs this",
@@ -519,7 +619,6 @@ steps:
 				}
 			}),
 		},
-
 		{
 			// This test simulates a situation where:
 			//  - The template is initially rendered doesn't have a file named
@@ -528,8 +627,7 @@ steps:
 			//  - The template is upgraded to a new version that *does* output a
 			//    file named foo, which is different than the user's added file.
 			//  - This should be an add/add conflict
-			name:   "add_add_no_conflict",
-			wantOK: true,
+			name: "add_add_no_conflict",
 			origTemplateDirContents: map[string]string{
 				"spec.yaml":           includeDotSpec,
 				"some_other_file.txt": "some other file contents",
@@ -552,6 +650,12 @@ steps:
 				"out.txt":             "identical contents",
 				"some_other_file.txt": "some other file contents",
 				"spec.yaml":           includeDotSpec,
+			},
+			want: Result{
+				ActionsTaken: []ActionTaken{
+					{Action: "noop", Path: "out.txt"},
+					{Action: "noop", Path: "some_other_file.txt"},
+				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":             "identical contents",
@@ -586,7 +690,7 @@ steps:
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
 				// This shouldn't be written to the fs. The upgrade should be
-				// aborted before the right.
+				// aborted before the write.
 				"out.txt": "bar",
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -660,13 +764,13 @@ steps:
 				abctestutil.WriteAll(t, templateDir, tc.templateReplacementForUpgrade)
 			}
 
-			ok, err := Upgrade(ctx, params)
+			result, err := Upgrade(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
-			if ok != tc.wantOK {
-				t.Errorf("got ok=%t, want %t", ok, tc.wantOK)
+			if diff := cmp.Diff(result, tc.want, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 			}
 
 			assertManifest(ctx, t, "after upgrade", tc.wantManifestAfterUpgrade, manifestFullPath)
