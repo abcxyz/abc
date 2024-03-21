@@ -131,6 +131,13 @@ type Result struct {
 	NonConflicts []ActionTaken
 }
 
+// ActionTaken represents an output of the merge operation. Every file that's
+// part of the template output will have an ActionTaken that explains what the
+// merge algorithm decided to do for this file (e.g. Noop, EditEditConflict,
+// or other), and why.
+//
+// If there was a merge conflict, then files may have been renamed. See OursPath
+// and IncomingTemplatePath.
 type ActionTaken struct {
 	Action Action
 
@@ -138,16 +145,27 @@ type ActionTaken struct {
 	// for this path.
 	Explanation string
 
-	// Path is always set. This is the relative path from the directory where
-	// the template is installed.
+	// This is the Path to the single file that this ActionTaken is about. It is
+	// always set.
+	//
+	// This is a relative path, starting from the directory where the template
+	// is installed.
 	Path string
 
-	// OursPath is only set if there's a conflict. This is the path that the
-	// local file was renamed to that needs manual merge resolution.
+	// OursPath is only set for certain types of merge conflict. This is the
+	// path that the local file was renamed to that needs manual merge
+	// resolution.
+	//
+	// This is a relative path, starting from the directory where the template
+	// is installed.
 	OursPath string
 
-	// IncomingTemplatePath is only set if there's a conflict. This is the path
-	// to the incoming template file that needs merge resolution.
+	// IncomingTemplatePath is only set for certain types of merge conflict.
+	// This is the path to the incoming template file that needs merge
+	// resolution.
+	//
+	// This is a relative path, starting from the directory where the template
+	// is installed.
 	IncomingTemplatePath string
 }
 
@@ -449,6 +467,8 @@ func detectUnmergedConflicts(installedDir string) error {
 	return nil
 }
 
+// partitionConflicts splits up the incoming list into those actions/files which
+// had merge conflicts, and those that didn't.
 func partitionConflicts(actionsTaken []ActionTaken) (conflicts, nonConflicts []ActionTaken) {
 	for _, a := range actionsTaken {
 		if a.Action.IsConflict() {
