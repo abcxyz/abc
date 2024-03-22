@@ -29,7 +29,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
-	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/tempdir"
@@ -143,46 +142,45 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		}
 		sort.Strings(relPaths)
 
-		dmp := diffmatchpatch.New()
-
 		var tcErr error
 		outputMismatch := false
 		for _, relPath := range relPaths {
 			goldenFile := filepath.Join(goldenDataDir, relPath)
 			tempFile := filepath.Join(tempDataDir, relPath)
-			abcRenameTrimedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
-			abcRenameTrimedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
+			abcRenameTrimmedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
+			abcRenameTrimmedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
 
-			goldenContent, err := os.ReadFile(goldenFile)
-			if err != nil {
+			if _, err := os.Stat(goldenFile); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimedGoldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					outputMismatch = true
 					continue
 				}
-				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimedGoldenFile, err)
+				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedGoldenFile, err)
 			}
 
-			tempContent, err := os.ReadFile(tempFile)
-			if err != nil {
+			if _, err := os.Stat(tempFile); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimedGoldenFile))
+					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
 					err := fmt.Errorf(failureText)
 					tcErr = errors.Join(tcErr, err)
 					continue
 				}
-				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimedTempFile, err)
+				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedTempFile, err)
 			}
 
 			// Set checklines to false: avoid a line-level diff which is faster
 			// however less optimal.
-			diffs := dmp.DiffMain(string(tempContent), string(goldenContent), false)
+			diff, err := execDiff(ctx, useColor, goldenFile, tempFile)
+			if err != nil {
+				return err
+			}
 
-			if hasDiff(diffs) {
-				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", abcRenameTrimedGoldenFile))
-				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(diffs))
+			if len(diff) > 0 {
+				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", abcRenameTrimmedGoldenFile))
+				err := fmt.Errorf("%s:\n%s", failureText, diff)
 				tcErr = errors.Join(tcErr, err)
 				outputMismatch = true
 			}
@@ -192,13 +190,22 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		if !tc.TestConfig.Features.SkipStdout {
 			goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 			tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
-			stdoutDiff, err := getStdoutDiff(goldenStdoutFile, tempStdoutFile, dmp)
+
+			// Nonexistent stdout is treated as empty.
+			if _, err := os.Stat(goldenStdoutFile); errors.Is(err, os.ErrNotExist) {
+				goldenStdoutFile = "/dev/null"
+			}
+			if _, err := os.Stat(tempStdoutFile); errors.Is(err, os.ErrNotExist) {
+				tempStdoutFile = "/dev/null"
+			}
+
+			stdoutDiff, err := execDiff(ctx, useColor, goldenStdoutFile, tempStdoutFile)
 			if err != nil {
 				return fmt.Errorf("failed to compare stdout:%w", err)
 			}
-			if hasDiff(stdoutDiff) {
+			if len(stdoutDiff) > 0 {
 				failureText := red("the printed messages differ between the recorded golden output and the actual output")
-				err := fmt.Errorf("%s:\n%s", failureText, dmp.DiffPrettyText(stdoutDiff))
+				err := fmt.Errorf("%s:\n%s", failureText, stdoutDiff)
 				tcErr = errors.Join(tcErr, err)
 				outputMismatch = true
 			}
@@ -267,35 +274,19 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 	return nil
 }
 
-// hasDiff returns whether file content mismatch exits.
-func hasDiff(diffs []diffmatchpatch.Diff) bool {
-	for _, diff := range diffs {
-		if diff.Type != diffmatchpatch.DiffEqual {
-			return true
-		}
+// Returns len > 0 if there's a diff. Returns unified diff format.
+func execDiff(ctx context.Context, color bool, file1, file2 string) (string, error) {
+	args := []string{"diff", "-u"}
+	if color {
+		args = append(args, "--color=always")
 	}
-	return false
-}
-
-func getStdoutDiff(goldenStdoutPath, tempStdoutPath string, dmp *diffmatchpatch.DiffMatchPatch) ([]diffmatchpatch.Diff, error) {
-	goldenStdout, err := os.ReadFile(goldenStdoutPath)
+	args = append(args, file1, file2)
+	stdout, stderr, exitCode, err := common.RunAllowNonzero(ctx, args...)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
-		}
-		goldenStdout = []byte("")
+		return "", fmt.Errorf("error exec'ing diff: %w", err)
 	}
-
-	tempStdout, err := os.ReadFile(tempStdoutPath)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("failed to read (%s): %w", tempStdoutPath, err)
-		}
-		tempStdout = []byte("")
+	if exitCode == 2 { // docs for diff say it returns code 2 on error
+		return "", fmt.Errorf("error exec'ing diff: %s", stderr)
 	}
-	// Set checklines to false: avoid a line-level diff which is faster
-	// however less optimal.
-	diffs := dmp.DiffMain(string(tempStdout), string(goldenStdout), false)
-
-	return diffs, nil
+	return stdout, nil
 }
