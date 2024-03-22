@@ -55,7 +55,6 @@ func RunAllowNonzero(ctx context.Context, args ...string) (stdout, stderr string
 
 // if "allowNonzeroExit" is false, then a nonzero exit code from the command
 // will cause an error to be returned.
->>>>>>> origin/drevell/golden-test-too-verbose
 func run(ctx context.Context, allowNonZeroExit bool, args ...string) (stdout, stderr string, exitCode int, _ error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc

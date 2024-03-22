@@ -1,7 +1,5 @@
 **This is not an official Google product.**
 
-foo
-
 # Template: React Framework
 
 This template was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). 

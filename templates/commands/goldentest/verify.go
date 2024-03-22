@@ -278,7 +278,7 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 func execDiff(ctx context.Context, color bool, file1, file2 string) (string, error) {
 	args := []string{"diff", "-u"}
 	if color {
-		args = append(args, "--color")
+		args = append(args, "--color=always")
 	}
 	args = append(args, file1, file2)
 	stdout, stderr, exitCode, err := common.RunAllowNonzero(ctx, args...)
