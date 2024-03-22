@@ -43,7 +43,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "no_subdir",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",
@@ -73,7 +72,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "latest_version_lookup",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",
@@ -111,7 +109,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "with_subdir",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "my-subdir",
@@ -146,7 +143,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "with_deep_subdir",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "my/deep",
@@ -223,7 +219,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "clone_by_sha",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",
@@ -252,7 +247,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "clone_by_sha_with_detected_tag",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",

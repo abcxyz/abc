@@ -228,8 +228,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 			tmp := t.TempDir()
 			abctestutil.WriteAll(t, tmp, tc.initialTempDirContents)
 			dl := &LocalDownloader{
-				SrcPath:            filepath.Join(tmp, tc.copyFromDir),
-				allowDirtyTestOnly: true,
+				SrcPath: filepath.Join(tmp, tc.copyFromDir),
 			}
 			dest := filepath.Join(tmp, tc.destDirForCanonicalCheck)
 			templateDir := t.TempDir()

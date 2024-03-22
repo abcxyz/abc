@@ -69,8 +69,7 @@ func (l *localSourceParser) sourceParse(ctx context.Context, params *ParseSource
 	logger.InfoContext(ctx, "treating src as a local path", "src", absSource)
 
 	return &LocalDownloader{
-		SrcPath:            absSource,
-		allowDirtyTestOnly: params.AllowDirtyTestOnly,
+		SrcPath: absSource,
 	}, true, nil
 }
 
@@ -78,10 +77,6 @@ func (l *localSourceParser) sourceParse(ctx context.Context, params *ParseSource
 type LocalDownloader struct {
 	// This path uses the OS-native file separator and is an absolute path.
 	SrcPath string
-
-	// It's too hard in tests to generate a clean git repo, so we provide
-	// this option to just ignore the fact that the git repo is dirty.
-	allowDirtyTestOnly bool
 }
 
 // installedDir is only used to check for canonical-ness.
@@ -104,7 +99,7 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 	if err != nil {
 		return nil, err
 	}
-	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.SrcPath, destDir, l.allowDirtyTestOnly)
+	canonicalSource, version, locType, err := canonicalize(ctx, cwd, l.SrcPath, destDir)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +118,7 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 // directories qualify as a canonical source, and if so, returns the
 // canonicalized version of the source. See the docs on DownloadMetadata for an
 // explanation of canonical sources.
-func canonicalize(ctx context.Context, cwd, source, destDir string, allowDirty bool) (canonicalSource, version, locType string, _ error) {
+func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSource, version, locType string, _ error) {
 	logger := logging.FromContext(ctx).With("logger", "canonicalize")
 
 	absSource := common.JoinIfRelative(cwd, source)
@@ -157,7 +152,7 @@ func canonicalize(ctx context.Context, cwd, source, destDir string, allowDirty b
 		return "", "", "", fmt.Errorf("filepath.Rel(%q,%q): %w", absDestDir, absSource, err)
 	}
 
-	version, _, err = gitCanonicalVersion(ctx, sourceGitWorkspace, allowDirty)
+	version, _, err = gitCanonicalVersion(ctx, sourceGitWorkspace)
 	if err != nil {
 		return "", "", "", err
 	}

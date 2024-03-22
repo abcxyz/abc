@@ -105,10 +105,6 @@ type Params struct {
 
 	// Empty string, except in tests. Will be used as the parent of temp dirs.
 	TempDirBase string
-
-	// For testing, allow template directories in dirty git workspaces to be
-	// treated as canonical.
-	AllowDirtyTestOnly bool
 }
 
 type Result struct {
@@ -197,11 +193,10 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
 	downloader, err := templatesource.ForUpgrade(ctx, &templatesource.ForUpgradeParams{
-		InstalledDir:       installedDir,
-		CanonicalLocation:  oldManifest.TemplateLocation.Val,
-		LocType:            oldManifest.LocationType.Val,
-		GitProtocol:        p.GitProtocol,
-		AllowDirtyTestOnly: p.AllowDirtyTestOnly,
+		InstalledDir:      installedDir,
+		CanonicalLocation: oldManifest.TemplateLocation.Val,
+		LocType:           oldManifest.LocationType.Val,
+		GitProtocol:       p.GitProtocol,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
