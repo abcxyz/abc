@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -40,6 +41,20 @@ import (
 	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 )
+
+// TODO(upgrade):
+//   - add "abort if conflict" feature
+//   - add "check for update and exit" feature
+//   - add "upgrade all template installations within directory"
+//   - handle "include from destination"
+//   - maybe switch file hashes to SHA1, so then we can opportunistically get
+//     the common base from the installedDir repo or template repo (which might
+//     be the same repo), so then we can do a 3-way merge (`git merge-file`)
+//     instead of a 2-way merge.
+//   - support --merge-strategy=ours|theirs to resolve conflicts
+//   - support --merge-strategy=ai to try to get an LLM to semantically resolve the diff
+//   - try an automatic 2-way merge: diff the two files, then apply the diff?
+//   - interactive conflict resolution
 
 // Params contains all the arguments to Upgrade().
 type Params struct {
@@ -96,28 +111,86 @@ type Params struct {
 	AllowDirtyTestOnly bool
 }
 
+type Result struct {
+	// If no upgrade was done because this installation of the template is
+	// already on the latest version, then this will be true and all other
+	// fields in this struct will have zero values.
+	AlreadyUpToDate bool
+
+	// Conflicts is the set of files that require manual intervention by the
+	// user to resolve a merge conflict. For example, there may be a file that
+	// was edited by the user and that edit conflicts with changes to that same
+	// file by the upgraded version of the template.
+	Conflicts []ActionTaken
+
+	// NonConflicts is the set of template output files that do NOT require any
+	// action by the user. Callers are free to ignore this.
+	//
+	// This is mutually exclusive with "Conflicts". Each file is in only one of
+	// the two lists.
+	NonConflicts []ActionTaken
+}
+
+// ActionTaken represents an output of the merge operation. Every file that's
+// part of the template output will have an ActionTaken that explains what the
+// merge algorithm decided to do for this file (e.g. Noop, EditEditConflict,
+// or other), and why.
+//
+// If there was a merge conflict, then files may have been renamed. See OursPath
+// and IncomingTemplatePath.
+type ActionTaken struct {
+	Action Action
+
+	// Explanation is a human-readable reason why the given Action was chosen
+	// for this path.
+	Explanation string
+
+	// This is the Path to the single file that this ActionTaken is about. It is
+	// always set.
+	//
+	// This is a relative path, starting from the directory where the template
+	// is installed.
+	Path string
+
+	// OursPath is only set for certain types of merge conflict. This is the
+	// path that the local file was renamed to that needs manual merge
+	// resolution.
+	//
+	// This is a relative path, starting from the directory where the template
+	// is installed.
+	OursPath string
+
+	// IncomingTemplatePath is only set for certain types of merge conflict.
+	// This is the path to the incoming template file that needs merge
+	// resolution.
+	//
+	// This is a relative path, starting from the directory where the template
+	// is installed.
+	IncomingTemplatePath string
+}
+
 // Upgrade takes a directory containing previously rendered template output and
 // updates it using the newest version of the template, which is pointed to by
 // the manifest file.
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
+func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
 	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	if !filepath.IsAbs(p.ManifestPath) {
-		return false, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
+		return nil, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
 	}
 
 	oldManifest, err := loadManifest(ctx, p.FS, p.ManifestPath)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
@@ -131,27 +204,27 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 		AllowDirtyTestOnly: p.AllowDirtyTestOnly,
 	})
 	if err != nil {
-		return false, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
+		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
 			oldManifest.TemplateLocation.Val, oldManifest.LocationType.Val, p.GitProtocol, err)
 	}
 
 	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
 	if err != nil {
-		return false, err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	dlMeta, err := downloader.Download(ctx, p.CWD, templateDir, installedDir)
 	if err != nil {
-		return false, fmt.Errorf("failed downloading template: %w", err)
+		return nil, fmt.Errorf("failed downloading template: %w", err)
 	}
 
 	hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
 	if err != nil {
-		return false, err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
-		return false, nil
+		return &Result{AlreadyUpToDate: true}, nil
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
@@ -159,10 +232,9 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 	// rendering before we merge it with the real template output directory.
 	mergeDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.UpgradeMergeDirNamePart)
 	if err != nil {
-		return false, err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
-	// TODO(upgrade): handle "include from destination" as a special case
 	if err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
 		Clock:               p.Clock,
 		Cwd:                 p.CWD,
@@ -184,17 +256,17 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 		Stdout:              p.Stdout,
 		TempDirBase:         p.TempDirBase,
 	}); err != nil {
-		return false, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
+		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
 
 	newManifestPath, err := findManifest(filepath.Join(mergeDir, common.ABCInternalDir))
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, common.ABCInternalDir, newManifestPath))
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	commitParams := &commitParams{
@@ -205,11 +277,17 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 		oldManifest:     oldManifest,
 		newManifest:     newManifest,
 	}
-	if err := mergeTentatively(ctx, commitParams); err != nil {
-		return false, err
+	actionsTaken, err := mergeTentatively(ctx, commitParams)
+	if err != nil {
+		return nil, err
 	}
 
-	return true, nil
+	conflicts, nonConflicts := partitionConflicts(actionsTaken)
+
+	return &Result{
+		Conflicts:    conflicts,
+		NonConflicts: nonConflicts,
+	}, nil
 }
 
 // mergeTentatively does a dry-run commit followed by a real commit.
@@ -217,14 +295,21 @@ func Upgrade(ctx context.Context, p *Params) (_ bool, rErr error) {
 // We do a dry run first to try to detect any problems before we start mutating
 // the output directory. We'd like to avoid leaving a mess in the output
 // directory if the operation fails.
-func mergeTentatively(ctx context.Context, p *commitParams) error {
+func mergeTentatively(ctx context.Context, p *commitParams) ([]ActionTaken, error) {
+	var actionsTaken []ActionTaken
 	for _, dryRun := range []bool{true, false} {
-		if err := commit(ctx, p, dryRun); err != nil {
-			return err
+		var err error
+		actionsTaken, err = commit(ctx, p, dryRun)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	sort.Slice(actionsTaken, func(i, j int) bool {
+		return actionsTaken[i].Path < actionsTaken[j].Path
+	})
+
+	return actionsTaken, nil
 }
 
 // commitParams contains the inputs to commit().
@@ -253,28 +338,29 @@ type commitParams struct {
 
 // commit merges the contents of the merge directory into the installed
 // directory and writes the new manifest.
-func commit(ctx context.Context, p *commitParams, dryRun bool) error {
-	if err := mergeAll(ctx, p, dryRun); err != nil {
-		return err
+func commit(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken, error) {
+	actionsTaken, err := mergeAll(ctx, p, dryRun)
+	if err != nil {
+		return nil, err
 	}
 
 	mergedManifest := mergeManifest(p.oldManifest, p.newManifest)
 
 	buf, err := yaml.Marshal(mergedManifest)
 	if err != nil {
-		return fmt.Errorf("failed marshaling Manifest when writing: %w", err)
+		return nil, fmt.Errorf("failed marshaling Manifest when writing: %w", err)
 	}
 	buf = append(common.DoNotModifyHeader, buf...)
 
 	if dryRun {
-		return nil
+		return nil, nil
 	}
 
 	if err := os.WriteFile(p.oldManifestPath, buf, common.OwnerRWPerms); err != nil {
-		return fmt.Errorf("WriteFile(%q): %w", p.oldManifestPath, err)
+		return nil, fmt.Errorf("WriteFile(%q): %w", p.oldManifestPath, err)
 	}
 
-	return nil
+	return actionsTaken, nil
 }
 
 // mergeManifest creates a new manifest for writing to the filesystem. It takes
@@ -380,4 +466,17 @@ func detectUnmergedConflicts(installedDir string) error {
 		return fmt.Errorf("aborting the upgrade because it looks like there's already an upgrade in progress. These files need to be resolved: %v", unmergedFiles)
 	}
 	return nil
+}
+
+// partitionConflicts splits up the incoming list into those actions/files which
+// had merge conflicts, and those that didn't.
+func partitionConflicts(actionsTaken []ActionTaken) (conflicts, nonConflicts []ActionTaken) {
+	for _, a := range actionsTaken {
+		if a.Action.IsConflict() {
+			conflicts = append(conflicts, a)
+			continue
+		}
+		nonConflicts = append(nonConflicts, a)
+	}
+	return conflicts, nonConflicts
 }
