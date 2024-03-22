@@ -105,7 +105,7 @@ steps:
 		localEdits                   func(tb testing.TB, installedDir string)
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
 		wantManifestAfterUpgrade     *manifest.Manifest
-		want                         Result
+		want                         *Result
 		wantErr                      string
 	}{
 		// TODO(upgrade): tests to add:
@@ -131,7 +131,7 @@ steps:
       paths: ['out.txt']
       with: 'world'`,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -143,7 +143,7 @@ steps:
 		},
 		{
 			name: "short_circuit_if_already_latest_version",
-			want: Result{AlreadyUpToDate: true},
+			want: &Result{AlreadyUpToDate: true},
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -166,7 +166,7 @@ steps:
 				"another_file.txt": "I'm another file\n",
 				"spec.yaml":        includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -212,7 +212,7 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{Action: DeleteAction, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -258,7 +258,7 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{
 						Action: Noop,
@@ -313,7 +313,7 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -355,7 +355,7 @@ steps:
 				"out.txt":   "goodbye",
 				"spec.yaml": includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				Conflicts: []ActionTaken{
 					{
 						Action:               EditEditConflict,
@@ -401,7 +401,7 @@ steps:
 				"out.txt":   "goodbye",
 				"spec.yaml": includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				Conflicts: []ActionTaken{
 					{
 						Action:               DeleteEditConflict,
@@ -452,7 +452,7 @@ steps:
 				"template_changes_this_file.txt": "modified contents",
 				"spec.yaml":                      includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "template_changes_this_file.txt"},
 					{Action: Noop, Path: "user_deletes_this_file.txt"},
@@ -505,7 +505,7 @@ steps:
 				"some_other_file.txt": "bar",
 				"spec.yaml":           includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "out.txt"},
 					{Action: WriteNew, Path: "some_other_file.txt"},
@@ -560,7 +560,7 @@ steps:
 				"some_other_file.txt": "some other file contents",
 				"spec.yaml":           includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{
 						Action: "noop",
@@ -625,7 +625,7 @@ steps:
 				"some_other_file.txt": "some other file contents",
 				"spec.yaml":           includeDotSpec,
 			},
-			want: Result{
+			want: &Result{
 				NonConflicts: []ActionTaken{
 					{Action: "noop", Path: "out.txt"},
 					{Action: "noop", Path: "some_other_file.txt"},
