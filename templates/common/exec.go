@@ -17,6 +17,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"time"
@@ -42,6 +43,19 @@ const DefaultRunTimeout = time.Minute
 // If the command fails, the error message will include the contents of stdout
 // and stderr. This saves boilerplate in the caller.
 func Run(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
+	stdout, stderr, _, err := run(ctx, false, args...)
+	return stdout, stderr, err
+}
+
+// RunAllowNonzero is like Run, except that if the command has a nonzero exit
+// code, that doesn't cause an error to be returned.
+func RunAllowNonzero(ctx context.Context, args ...string) (stdout, stderr string, exitCode int, _ error) {
+	return run(ctx, true, args...)
+}
+
+// if "allowNonzeroExit" is false, then a nonzero exit code from the command
+// will cause an error to be returned.
+func run(ctx context.Context, allowNonZeroExit bool, args ...string) (stdout, stderr string, exitCode int, _ error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, DefaultRunTimeout)
@@ -57,10 +71,18 @@ func Run(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
 	err := cmd.Run()
 	stdout, stderr = stdoutBuf.String(), stderrBuf.String()
 	if err != nil {
-		err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w"\nstdout: %s\nstderr: %s`,
-			args, err, ctx.Err(), cmd.Stdout, cmd.Stderr)
+		// Don't return error if both (a) the caller indicated they're OK with a
+		// nonzero exit code and (b) the error is of a type that means the only
+		// problem was a nonzero exit code.
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && allowNonZeroExit {
+			err = nil
+		} else {
+			err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w"\nstdout: %s\nstderr: %s`,
+				args, err, ctx.Err(), cmd.Stdout, cmd.Stderr)
+		}
 	}
-	return stdout, stderr, err
+	return stdout, stderr, cmd.ProcessState.ExitCode(), err
 }
 
 // RunMany calls [Run] for each command in args. If any command returns error,
