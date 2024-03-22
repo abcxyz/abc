@@ -23,7 +23,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-func TestExec(t *testing.T) {
+func TestRun(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -81,5 +81,20 @@ func TestExec(t *testing.T) {
 				t.Errorf("got stderr:\n%q\nbut wanted stderr to contain: %q", stderr, tc.wantStderr)
 			}
 		})
+	}
+}
+
+func TestRunAllowNonzero(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	// The "diff" command returns exit code 2 when its input file doesn't exist.
+	_, _, exitCode, err := RunAllowNonzero(ctx, "diff", "nonexistent_file_1.txt", "nonexistent_file_2.txt")
+	if err != nil {
+		t.Fatalf("got error %v, wanted nil", err)
+	}
+	if exitCode != 2 {
+		t.Fatalf("got exit code %d, wanted 2", exitCode)
 	}
 }
