@@ -56,17 +56,9 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.StringMapVar(flags.Inputs(&f.Inputs))
 	r.StringSliceVar(flags.InputFiles(&f.InputFiles))
 	r.BoolVar(flags.SkipInputValidation(&f.SkipInputValidation))
-	r.BoolVar(flags.DebugScratchContents(&f.DebugScratchContents))
 	r.BoolVar(flags.DebugStepDiffs(&f.DebugStepDiffs))
 	r.BoolVar(flags.KeepTempDirs(&f.KeepTempDirs))
 	r.BoolVar(flags.Prompt(&f.Prompt))
-
-	r.StringMapVar(&cli.StringMapVar{
-		Name:    "input",
-		Example: "foo=bar",
-		Target:  &f.Inputs,
-		Usage:   "The key=val pairs of template values; may be repeated.",
-	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(flags.DebugScratchContents(&f.DebugScratchContents))
