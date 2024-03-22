@@ -171,22 +171,22 @@ type ActionTaken struct {
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func Upgrade(ctx context.Context, p *Params) (_ Result, rErr error) {
+func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
 	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
 	if !filepath.IsAbs(p.ManifestPath) {
-		return Result{}, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
+		return nil, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
 	}
 
 	oldManifest, err := loadManifest(ctx, p.FS, p.ManifestPath)
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
@@ -199,27 +199,27 @@ func Upgrade(ctx context.Context, p *Params) (_ Result, rErr error) {
 		GitProtocol:       p.GitProtocol,
 	})
 	if err != nil {
-		return Result{}, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
+		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
 			oldManifest.TemplateLocation.Val, oldManifest.LocationType.Val, p.GitProtocol, err)
 	}
 
 	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
 	if err != nil {
-		return Result{}, err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	dlMeta, err := downloader.Download(ctx, p.CWD, templateDir, installedDir)
 	if err != nil {
-		return Result{}, fmt.Errorf("failed downloading template: %w", err)
+		return nil, fmt.Errorf("failed downloading template: %w", err)
 	}
 
 	hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
 	if err != nil {
-		return Result{}, err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
-		return Result{AlreadyUpToDate: true}, nil
+		return &Result{AlreadyUpToDate: true}, nil
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
@@ -227,7 +227,7 @@ func Upgrade(ctx context.Context, p *Params) (_ Result, rErr error) {
 	// rendering before we merge it with the real template output directory.
 	mergeDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.UpgradeMergeDirNamePart)
 	if err != nil {
-		return Result{}, err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	if err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
@@ -251,17 +251,17 @@ func Upgrade(ctx context.Context, p *Params) (_ Result, rErr error) {
 		Stdout:              p.Stdout,
 		TempDirBase:         p.TempDirBase,
 	}); err != nil {
-		return Result{}, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
+		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
 
 	newManifestPath, err := findManifest(filepath.Join(mergeDir, common.ABCInternalDir))
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
 	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, common.ABCInternalDir, newManifestPath))
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
 	commitParams := &commitParams{
@@ -274,12 +274,12 @@ func Upgrade(ctx context.Context, p *Params) (_ Result, rErr error) {
 	}
 	actionsTaken, err := mergeTentatively(ctx, commitParams)
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
 	conflicts, nonConflicts := partitionConflicts(actionsTaken)
 
-	return Result{
+	return &Result{
 		Conflicts:    conflicts,
 		NonConflicts: nonConflicts,
 	}, nil
@@ -298,10 +298,11 @@ func mergeTentatively(ctx context.Context, p *commitParams) ([]ActionTaken, erro
 		if err != nil {
 			return nil, err
 		}
-		sort.Slice(actionsTaken, func(i, j int) bool {
-			return actionsTaken[i].Path < actionsTaken[j].Path
-		})
 	}
+
+	sort.Slice(actionsTaken, func(i, j int) bool {
+		return actionsTaken[i].Path < actionsTaken[j].Path
+	})
 
 	return actionsTaken, nil
 }
