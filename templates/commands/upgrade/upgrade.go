@@ -154,10 +154,10 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
 		fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
 		if cf.OursPath != "" {
-			fmt.Fprintf(c.Stdout(), "  our file was renamed to: %s\n", cf.OursPath)
+			fmt.Fprintf(c.Stdout(), "our file was renamed to: %s\n", cf.OursPath)
 		}
 		if cf.IncomingTemplatePath != "" {
-			fmt.Fprintf(c.Stdout(), "  incoming file: %s\n", cf.IncomingTemplatePath)
+			fmt.Fprintf(c.Stdout(), "incoming file: %s\n", cf.IncomingTemplatePath)
 		}
 		fmt.Fprintf(c.Stdout(), "--\n")
 	}
