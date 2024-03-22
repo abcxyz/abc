@@ -285,7 +285,7 @@ func execDiff(ctx context.Context, color bool, file1, file2 string) (string, err
 	if err != nil {
 		return "", fmt.Errorf("error exec'ing diff: %w", err)
 	}
-	if exitCode == 2 {
+	if exitCode == 2 { // docs for diff say it returns code 2 on error
 		return "", fmt.Errorf("error exec'ing diff: %s", stderr)
 	}
 	return stdout, nil
