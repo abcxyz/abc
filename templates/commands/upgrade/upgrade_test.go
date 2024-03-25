@@ -26,13 +26,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/benbjohnson/clock"
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/benbjohnson/clock"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestUpgradeCommand(t *testing.T) {
@@ -87,6 +88,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
 				overwrite(tb, installedDir, "greet.txt", "goodbye\n")
 			},
 			upgradedTemplate: map[string]string{
@@ -107,6 +109,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
 				overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
 				overwrite(tb, installedDir, "color.txt", "red\n")
 			},
@@ -478,6 +481,8 @@ func TestErrors(t *testing.T) {
 }
 
 func findManifest(tb testing.TB, dir string) string {
+	tb.Helper()
+
 	joined := filepath.Join(dir, "manifest*.yaml")
 	matches, err := filepath.Glob(joined)
 	if err != nil {
@@ -495,6 +500,8 @@ func findManifest(tb testing.TB, dir string) string {
 }
 
 func overwrite(tb testing.TB, dir, baseName, contents string) {
+	tb.Helper()
+
 	filename := filepath.Join(dir, baseName)
 	if err := os.WriteFile(filename, []byte(contents), common.OwnerRWPerms); err != nil {
 		tb.Fatal(err)

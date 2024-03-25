@@ -635,6 +635,7 @@ steps:
 				"out.txt":   "foo",
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
 				overwrite(tb, installedDir, "foo.abcmerge_locally_added", "whatever")
 			},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
@@ -810,6 +811,7 @@ func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manife
 }
 
 func overwrite(tb testing.TB, dir, baseName, contents string) {
+	tb.Helper()
 	filename := filepath.Join(dir, baseName)
 	if err := os.WriteFile(filename, []byte(contents), common.OwnerRWPerms); err != nil {
 		tb.Fatal(err)
