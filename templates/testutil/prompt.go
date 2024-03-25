@@ -17,6 +17,7 @@ package testutil
 
 import (
 	"io"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -37,12 +38,12 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 		buf := make([]byte, 64*1_000)
 		tb.Log("to Read")
 		n, err := r.Read(buf)
-		tb.Log("from Read")
 		if err != nil {
 			errCh <- err
 			return
 		}
 		got = string(buf[:n])
+		tb.Logf("Read returned: %s", got)
 	}()
 
 	select {
@@ -51,7 +52,11 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 			tb.Fatal(err)
 		}
 	case <-time.After(time.Second):
-		tb.Fatalf("timed out waiting to read %q", wantSubstr)
+		tb.Errorf("timed out waiting to read %q", wantSubstr)
+		buf := make([]byte, 1_000_000)
+		length := runtime.Stack(buf, true)
+		tb.Logf("Stack trace:\n%s", buf[:length])
+		tb.Fatal("terminating test due to read timeout")
 	}
 
 	if !strings.Contains(got, wantSubstr) {

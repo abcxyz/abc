@@ -32,6 +32,9 @@ import (
 type Command struct {
 	cli.BaseCommand
 	flags Flags
+
+	// Used in prompt tests to bypass "is the input a terminal" check..
+	skipPromptTTYCheck bool
 }
 
 // Desc implements cli.Command.
@@ -130,6 +133,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Prompt:               c.flags.Prompt,
 		Prompter:             c,
 		SkipInputValidation:  c.flags.SkipInputValidation,
+		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
 		Stdout:               c.Stdout(),
 	})
 	if err != nil {
@@ -137,19 +141,18 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	if r.AlreadyUpToDate {
-		fmt.Fprintf(c.Stdout(), "already up to date with latest template version\n")
+		fmt.Fprintf(c.Stdout(), "Already up to date with latest template version\n")
 		return nil
 	}
 
 	if len(r.Conflicts) == 0 {
+		fmt.Fprintf(c.Stdout(), "Upgrade complete with no conflicts\n")
 		return nil
 	}
 
-	// TODO(upgrade): command-level tests (not just library-level)
-	//
 	// TODO(upgrade):
 	//  - suggest diff / meld / vim commands?
-	fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n")
+	fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n--\n")
 	for _, cf := range r.Conflicts {
 		fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
 		fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
