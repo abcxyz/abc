@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: 'cli.abcxyz.dev/v1alpha1'
+apiVersion: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc:
@@ -23,18 +23,15 @@ inputs:
     desc: 'The name of the github org the repo will belong to'
   - name: 'github_repo_name'
     desc: 'The name of the github repo'
-  - name: 'protobuf_version'
-    desc: 'The protobuf version to use, see https://github.com/protocolbuffers/protobuf/releases'
-    default: '24.3'
-  - name: 'protoc_gen_go_version'
-    desc: 'The protoc go plugin version to use, see https://pkg.go.dev/google.golang.org/protobuf/cmd/protoc-gen-go'
-    default: '1.31.0'
-  - name: 'go_version'
+  - name: 'buf_version'
+    desc: 'The buf version to use, see https://github.com/bufbuild/buf/releases'
+    default: '1.28.1'
+  - name: 'buf_checksum'
+    desc: 'Checksum to validate the buf binary, retrieved from https://github.com/bufbuild/buf/releases'
+    default: '278dd19ef5e6a504bdda16faf1488451'
+  - name: 'proto_go_version'
     desc: 'The go version to use'
-    default: '1.21.1'
-  - name: 'go_gar_proto_version'
-    desc: 'prefix for the uploaded go GAR artifact'
-    default: 'v0.0.0'
+    default: '1.22.1'
   - name: 'wif_provider'
     desc: 'The WIF provider that has access to the GAR repositories'
   - name: 'wif_service_account'
@@ -43,16 +40,45 @@ inputs:
     desc: 'The project ID where the GARs are hosted'
   - name: 'go_gar_repository_name'
     desc: 'Name of the go GAR'
+    default: 'proto-go'
   - name: 'go_gar_repository_location'
     desc: 'Region of the go GAR'
-  - name: 'go_module_path'
-    desc: 'Module path of the go protos module'
+  - name: 'npm_scope'
+    desc: 'The npm scope to be used when configuring npm for publishing'
+    default: 'protos'
+  - name: 'proto_node_version'
+    desc: 'The node version to use'
+    default: '20.11.1'
+  - name: 'node_gar_repository_name'
+    desc: 'Name of the node GAR'
+    default: 'proto-node'
+  - name: 'node_gar_repository_location'
+    desc: 'Location of the node GAR'
 
 steps:
   - desc: 'Include some files and directories'
     action: 'include'
     params:
-      paths: ['protos', 'scripts', '.github', 'prototool.yaml']
+      paths: [
+        '.github',
+        'protos',
+        'scripts',
+        'buf.gen.yaml',
+        'buf.work.yaml',
+        'buf.yaml',
+        'Makefile',
+        'README.md',
+        'VERSION',
+      ]
+      skip:
+        - '.gitignore'
+  - desc: 'Include .gitignore under a different name'
+    action: 'include'
+    params:
+      paths:
+        - '.gitignore_template_rename' # A bare .gitignore file will break the hosting repo
+      as:
+        - '.gitignore'
   - desc: 'Replace proto related configurations'
     action: 'string_replace'
     params:
@@ -62,12 +88,12 @@ steps:
           with: '{{.github_org_name}}'
         - to_replace: 'REPLACE_GITHUB_REPO_NAME'
           with: '{{.github_repo_name}}'
-        - to_replace: 'REPLACE_PROTOBUF_VERSION'
-          with: '{{.protobuf_version}}'
-        - to_replace: 'REPLACE_PROTOC_GEN_GO_VERSION'
-          with: '{{.protoc_gen_go_version}}'
-        - to_replace: 'REPLACE_GO_VERSION'
-          with: '{{.go_version}}'
+        - to_replace: 'REPLACE_BUF_VERSION'
+          with: '{{.buf_version}}'
+        - to_replace: 'REPLACE_BUF_CHECKSUM'
+          with: '{{.buf_checksum}}'
+        - to_replace: 'REPLACE_PROTO_GO_VERSION'
+          with: '{{.proto_go_version}}'
         - to_replace: 'REPLACE_WIF_PROVIDER'
           with: '{{.wif_provider}}'
         - to_replace: 'REPLACE_WIF_SERVICE_ACCOUNT'
@@ -78,7 +104,11 @@ steps:
           with: '{{.go_gar_repository_name}}'
         - to_replace: 'REPLACE_GO_GAR_REPOSITORY_LOCATION'
           with: '{{.go_gar_repository_location}}'
-        - to_replace: 'REPLACE_GO_MODULE_PATH'
-          with: '{{.go_module_path}}'
-        - to_replace: 'REPLACE_GO_GAR_PROTO_VERSION'
-          with: '{{.go_gar_proto_version}}'
+        - to_replace: 'REPLACE_NPM_SCOPE'
+          with: '{{.npm_scope}}'
+        - to_replace: 'REPLACE_PROTO_NODE_VERSION'
+          with: '{{.proto_node_version}}'
+        - to_replace: 'REPLACE_NODE_GAR_REPOSITORY_NAME'
+          with: '{{.node_gar_repository_name}}'
+        - to_replace: 'REPLACE_NODE_GAR_REPOSITORY_LOCATION'
+          with: '{{.node_gar_repository_location}}'

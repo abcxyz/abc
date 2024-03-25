@@ -25,13 +25,14 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/model"
+	goldentestfeatures "github.com/abcxyz/abc/templates/model/goldentest/features"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
-	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentestv1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
-	"github.com/abcxyz/abc/templates/model/spec/features"
+	specfeatures "github.com/abcxyz/abc/templates/model/spec/features"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
-	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
-	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	specv1beta6 "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/sets"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -40,12 +41,13 @@ func TestDecode(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name         string
-		requireKind  string
-		fileContents string
-		want         model.ValidatorUpgrader
-		wantVersion  string
-		wantErr      string
+		name           string
+		requireKind    string
+		fileContents   string
+		isReleaseBuild bool
+		want           model.ValidatorUpgrader
+		wantVersion    string
+		wantErr        string
 	}{
 		{
 			name:        "oldest_template",
@@ -59,17 +61,15 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1alpha1.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Steps: []*specv1alpha1.Step{
 					{
-						Action: model.String{Val: "include"},
-						Desc:   model.String{Val: "include all files"},
+						Action: mdl.S("include"),
+						Desc:   mdl.S("include all files"),
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -89,8 +89,8 @@ inputs:
 			want: &goldentestv1alpha1.Test{
 				Inputs: []*goldentestv1alpha1.VarValue{
 					{
-						Name:  model.String{Val: "foo"},
-						Value: model.String{Val: "bar"},
+						Name:  mdl.S("foo"),
+						Value: mdl.S("bar"),
 					},
 				},
 			},
@@ -104,15 +104,15 @@ kind: 'Manifest'
 template_location: 'foo'
 template_dirhash: 'bar'`,
 			want: &manifestv1alpha1.Manifest{
-				TemplateLocation: model.String{Val: "foo"},
-				TemplateDirhash:  model.String{Val: "bar"},
+				TemplateLocation: mdl.S("foo"),
+				TemplateDirhash:  mdl.S("bar"),
 			},
 			wantVersion: "cli.abcxyz.dev/v1alpha1",
 		},
 		{
 			name:        "newest_template",
 			requireKind: KindTemplate,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta1'
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
 desc: 'mydesc'
 steps:
@@ -121,44 +121,51 @@ steps:
     if: 'true'
     params:
       paths: ['.']`,
-			want: &specv1beta1.Spec{
-				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta1.Step{
+			want: &specv1beta6.Spec{
+				Desc: mdl.S("mydesc"),
+				Steps: []*specv1beta6.Step{
 					{
-						Action: model.String{Val: "include"},
-						If:     model.String{Val: "true"},
-						Desc:   model.String{Val: "include all files"},
-						Include: &specv1beta1.Include{
-							Paths: []*specv1beta1.IncludePath{
+						Action: mdl.S("include"),
+						If:     mdl.S("true"),
+						Desc:   mdl.S("include all files"),
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
 					},
 				},
 			},
-			wantVersion: "cli.abcxyz.dev/v1beta1",
+			wantVersion: "cli.abcxyz.dev/v1beta6",
 		},
 		{
 			name:        "newest_golden_test",
 			requireKind: KindGoldenTest,
-			fileContents: `api_version: 'cli.abcxyz.dev/v1beta1'
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 inputs:
   - name: 'foo'
-    value: 'bar'`,
-			want: &goldentestv1alpha1.Test{
-				Inputs: []*goldentestv1alpha1.VarValue{
+    value: 'bar'
+builtin_vars:
+  - name: '_git_tag'
+    value: 'my-cool-tag'`,
+			want: &goldentestv1beta4.Test{
+				Inputs: []*goldentestv1beta4.VarValue{
 					{
-						Name:  model.String{Val: "foo"},
-						Value: model.String{Val: "bar"},
+						Name:  mdl.S("foo"),
+						Value: mdl.S("bar"),
+					},
+				},
+				BuiltinVars: []*goldentestv1beta4.VarValue{
+					{
+						Name:  mdl.S("_git_tag"),
+						Value: mdl.S("my-cool-tag"),
 					},
 				},
 			},
-			wantVersion: "cli.abcxyz.dev/v1beta1",
+			wantVersion: "cli.abcxyz.dev/v1beta5",
 		},
 		{
 			name:        "newest_manifest",
@@ -168,8 +175,8 @@ kind: 'Manifest'
 template_location: 'foo'
 template_dirhash: 'bar'`,
 			want: &manifestv1alpha1.Manifest{
-				TemplateLocation: model.String{Val: "foo"},
-				TemplateDirhash:  model.String{Val: "bar"},
+				TemplateLocation: mdl.S("foo"),
+				TemplateDirhash:  mdl.S("bar"),
 			},
 			wantVersion: "cli.abcxyz.dev/v1beta1",
 		},
@@ -185,17 +192,15 @@ steps:
     params:
       paths: ['.']`,
 			want: &specv1alpha1.Spec{
-				Desc: model.String{Val: "mydesc"},
+				Desc: mdl.S("mydesc"),
 				Steps: []*specv1alpha1.Step{
 					{
-						Action: model.String{Val: "include"},
-						Desc:   model.String{Val: "include all files"},
+						Action: mdl.S("include"),
+						Desc:   mdl.S("include all files"),
 						Include: &specv1alpha1.Include{
 							Paths: []*specv1alpha1.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -265,19 +270,17 @@ steps:
     if: 'true'
     params:
       paths: ['.']`,
-			want: &specv1beta3.Spec{
-				Desc: model.String{Val: "mydesc"},
-				Steps: []*specv1beta3.Step{
+			want: &specv1beta6.Spec{
+				Desc: mdl.S("mydesc"),
+				Steps: []*specv1beta6.Step{
 					{
-						Action: model.String{Val: "include"},
-						If:     model.String{Val: "true"},
-						Desc:   model.String{Val: "include all files"},
-						Include: &specv1beta3.Include{
-							Paths: []*specv1beta3.IncludePath{
+						Action: mdl.S("include"),
+						If:     mdl.S("true"),
+						Desc:   mdl.S("include all files"),
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -294,15 +297,44 @@ kind: 'GoldenTest'
 builtin_vars:
 - name: '_git_tag'
   value: 'foo'`,
-			want: &goldentestv1beta3.Test{
-				BuiltinVars: []*goldentestv1beta3.VarValue{
+			want: &goldentestv1beta4.Test{
+				BuiltinVars: []*goldentestv1beta4.VarValue{
 					{
-						Name:  model.String{Val: "_git_tag"},
-						Value: model.String{Val: "foo"},
+						Name:  mdl.S("_git_tag"),
+						Value: mdl.S("foo"),
 					},
 				},
 			},
 			wantErr: `file file.yaml sets api_version "cli.abcxyz.dev/v1alpha1" but does not parse and validate successfully under that version. However, it will be valid if you change the api_version`,
+		},
+		{
+			name:        "template_exceeds_latest_supported_api_version",
+			requireKind: KindTemplate,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta7'
+kind: 'Template'
+desc: 'mydesc'
+steps:
+  - action: 'include'
+    desc: 'include all files'
+    if: 'true'
+    params:
+      paths: ['.']`,
+			isReleaseBuild: true,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta7" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
+		},
+		{
+			name:        "golden_test_exceeds_latest_supported_api_version",
+			requireKind: KindGoldenTest,
+			fileContents: `api_version: 'cli.abcxyz.dev/v1beta7'
+kind: 'GoldenTest'
+inputs:
+    - name: 'foo'
+      value: 'bar'
+builtin_vars:
+    - name: '_git_tag'
+      value: 'my-cool-tag'`,
+			isReleaseBuild: true,
+			wantErr:        `api_version "cli.abcxyz.dev/v1beta7" is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation`,
 		},
 	}
 
@@ -312,7 +344,7 @@ builtin_vars:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, gotVersion, err := Decode(strings.NewReader(tc.fileContents), "file.yaml", tc.requireKind)
+			got, gotVersion, err := Decode(strings.NewReader(tc.fileContents), "file.yaml", tc.requireKind, tc.isReleaseBuild)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -350,22 +382,21 @@ steps:
     desc: 'step desc'
     params:
       paths: ['.']`,
-			want: &specv1beta3.Spec{
-				Desc: model.String{Val: "mydesc"},
-				Features: features.Features{
+			want: &specv1beta6.Spec{
+				Desc: mdl.S("mydesc"),
+				Features: specfeatures.Features{
 					SkipGlobs:   true,
 					SkipGitVars: true,
+					SkipTime:    true,
 				},
-				Steps: []*specv1beta3.Step{
+				Steps: []*specv1beta6.Step{
 					{
-						Action: model.String{Val: "include"},
-						Desc:   model.String{Val: "step desc"},
-						Include: &specv1beta3.Include{
-							Paths: []*specv1beta3.IncludePath{
+						Action: mdl.S("include"),
+						Desc:   mdl.S("step desc"),
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
 								{
-									Paths: []model.String{
-										{Val: "."},
-									},
+									Paths: mdl.Strings("."),
 								},
 							},
 						},
@@ -380,12 +411,16 @@ kind: 'GoldenTest'
 inputs:
   - name: 'foo'
     value: 'bar'`,
-			want: &goldentestv1beta3.Test{
-				Inputs: []*goldentestv1beta3.VarValue{
+			want: &goldentestv1beta4.Test{
+				Inputs: []*goldentestv1beta4.VarValue{
 					{
-						Name:  model.String{Val: "foo"},
-						Value: model.String{Val: "bar"},
+						Name:  mdl.S("foo"),
+						Value: mdl.S("bar"),
 					},
+				},
+				Features: goldentestfeatures.Features{
+					SkipStdout:     true,
+					SkipABCRenamed: true,
 				},
 			},
 		},
@@ -396,8 +431,8 @@ kind: 'Manifest'
 template_location: 'foo'
 template_dirhash: 'bar'`,
 			want: &manifestv1alpha1.Manifest{
-				TemplateLocation: model.String{Val: "foo"},
-				TemplateDirhash:  model.String{Val: "bar"},
+				TemplateLocation: mdl.S("foo"),
+				TemplateDirhash:  mdl.S("bar"),
 			},
 		},
 		{
@@ -411,6 +446,58 @@ kind: 'Template'`,
 			fileContents: `api_version: 'cli.abcxyz.dev/v1beta1'
 kind: 'Template'`,
 			wantErr: `validation failed in file.yaml: at line 1 column 1: field "desc" is required`,
+		},
+		{
+			name: "oldest_template_rules_survive_upgrade",
+			fileContents: `api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'mydesc'
+
+inputs:
+  - name: 'foo'
+    desc: 'The name parameter'
+    rules:
+      - rule: 'size(foo) < 10'
+        message: 'name length must be less than 10'
+
+steps:
+  - action: 'include'
+    desc: 'step desc'
+    params:
+      paths: ['.']`,
+			want: &specv1beta6.Spec{
+				Desc: mdl.S("mydesc"),
+				Features: specfeatures.Features{
+					SkipGlobs:   true,
+					SkipGitVars: true,
+					SkipTime:    true,
+				},
+				Inputs: []*specv1beta6.Input{
+					{
+						Name: mdl.S("foo"),
+						Desc: mdl.S("The name parameter"),
+						Rules: []*specv1beta6.Rule{
+							{
+								Rule:    mdl.S("size(foo) < 10"),
+								Message: mdl.S("name length must be less than 10"),
+							},
+						},
+					},
+				},
+				Steps: []*specv1beta6.Step{
+					{
+						Action: mdl.S("include"),
+						Desc:   mdl.S("step desc"),
+						Include: &specv1beta6.Include{
+							Paths: []*specv1beta6.IncludePath{
+								{
+									Paths: mdl.Strings("."),
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -482,5 +569,40 @@ func TestAPIVersions_ArchetypesArePointers(t *testing.T) {
 					entry.apiVersion, archetype)
 			}
 		}
+	}
+}
+
+func TestLatestSupportedAPIVersion(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		isReleaseBuild bool
+		want           string
+	}{
+		{
+			name:           "is_release_build",
+			isReleaseBuild: true,
+			want:           "cli.abcxyz.dev/v1beta6", // update for each api_version release
+		},
+		{
+			name:           "not_release_build",
+			isReleaseBuild: false,
+			want:           "cli.abcxyz.dev/v1beta6", // update for creation of a new api_version
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := LatestSupportedAPIVersion(tc.isReleaseBuild)
+			if got != tc.want {
+				t.Errorf("LatestSupportedAPIVersion(%t)=%q, want %q",
+					tc.isReleaseBuild, got, tc.want)
+			}
+		})
 	}
 }

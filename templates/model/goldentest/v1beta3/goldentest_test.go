@@ -22,6 +22,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/model"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -44,12 +45,12 @@ func TestTestUnmarshal(t *testing.T) {
 			want: &Test{
 				Inputs: []*VarValue{
 					{
-						Name:  model.String{Val: "person_name"},
-						Value: model.String{Val: "iron_man"},
+						Name:  mdl.S("person_name"),
+						Value: mdl.S("iron_man"),
 					},
 					{
-						Name:  model.String{Val: "dog_name"},
-						Value: model.String{Val: "iron_dog"},
+						Name:  mdl.S("dog_name"),
+						Value: mdl.S("iron_dog"),
 					},
 				},
 			},
@@ -60,10 +61,18 @@ func TestTestUnmarshal(t *testing.T) {
 			want: &Test{},
 		},
 		{
-			name: "missing_field_should_fail",
+			name: "empty_string_value",
 			in: `inputs:
-- name: 'person_name'`,
-			wantErr: `at line 2 column 3: field "value" is required`,
+- name: 'person_name'
+  value: ''`,
+			want: &Test{
+				Inputs: []*VarValue{
+					{
+						Name:  mdl.S("person_name"),
+						Value: mdl.S(""),
+					},
+				},
+			},
 		},
 		{
 			name: "unknown_field_should_fail",

@@ -19,8 +19,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -28,9 +30,11 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/common/tempdir"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 )
 
 // TestCase describes a template golden test case.
@@ -55,6 +59,12 @@ const (
 	// The golden test config file is always located in the test case root dir and
 	// named test.yaml.
 	configName = "test.yaml"
+
+	// The prefix of git/github related directories and files.
+	gitPrefix = ".git"
+
+	// the suffix of abc renamed directories and files.
+	abcRenameSuffix = ".abc_renamed"
 )
 
 // parseTestCases returns a list of test cases to record or verify.
@@ -134,9 +144,9 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 	return out, nil
 }
 
-// renderTestCases render all test cases in a temporary directory.
+// renderTestCases render all test cases into a temporary directory.
 func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (string, error) {
-	tempDir, err := os.MkdirTemp("", "abc-test-*")
+	tempDir, err := os.MkdirTemp("", tempdir.GoldenTestRenderNamePart)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary directory: %w", err)
 	}
@@ -163,13 +173,14 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 	stdoutBuf := &strings.Builder{}
 
 	err = render.Render(ctx, &render.Params{
-		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
 		Clock:               clock.New(),
 		Cwd:                 cwd,
-		DestDir:             testDir,
+		OutDir:              testDir,
+		Downloader:          &templatesource.LocalDownloader{SrcPath: templateDir},
 		FS:                  &common.RealFS{},
 		Inputs:              varValuesToMap(tc.TestConfig.Inputs),
-		Source:              templateDir,
+		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
+		SourceForMessages:   templateDir,
 		Stdout:              stdoutBuf,
 	})
 	if err != nil {
@@ -180,8 +191,9 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		return err //nolint:wrapcheck
 	}
 
-	// write stdout to ".abc/.stdout".
-	if stdoutBuf.Len() > 0 {
+	// write stdout to ".abc/.stdout"
+	// when the goldentest spec enables stdout verification and there is stdout.
+	if !tc.TestConfig.Features.SkipStdout && stdoutBuf.Len() > 0 {
 		abcInternal := filepath.Join(testDir, common.ABCInternalDir)
 		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
 			return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)
@@ -211,4 +223,32 @@ func mapToVarValues(m map[string]string) []*goldentest.VarValue {
 		})
 	}
 	return out
+}
+
+func renameGitDirsAndFiles(dir string) error {
+	// including path of git related directories and files.
+	var gitPaths []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if strings.HasPrefix(d.Name(), gitPrefix) {
+			gitPaths = append(gitPaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
+	}
+
+	// rename in reverse order, otherwise you will rename directory before you rename the files under the specific directory.
+	slices.Reverse(gitPaths)
+	for _, gitPath := range gitPaths {
+		newPath := gitPath + abcRenameSuffix
+		if err := os.Rename(gitPath, newPath); err != nil {
+			return fmt.Errorf("error renaming directory or file %s: %w", gitPath, err)
+		}
+	}
+	return nil
 }

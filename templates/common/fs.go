@@ -47,6 +47,8 @@ type FS interface {
 	MkdirTemp(string, string) (string, error)
 	OpenFile(string, int, os.FileMode) (*os.File, error)
 	ReadFile(string) ([]byte, error)
+	Rename(string, string) error
+	Remove(string) error
 	RemoveAll(string) error
 	WriteFile(string, []byte, os.FileMode) error
 }
@@ -76,6 +78,14 @@ func (r *RealFS) ReadFile(name string) ([]byte, error) {
 
 func (r *RealFS) RemoveAll(name string) error {
 	return os.RemoveAll(name) //nolint:wrapcheck
+}
+
+func (r *RealFS) Remove(name string) error {
+	return os.Remove(name) //nolint:wrapcheck
+}
+
+func (r *RealFS) Rename(from, to string) error {
+	return os.Rename(from, to) //nolint:wrapcheck
 }
 
 func (r *RealFS) Stat(name string) (fs.FileInfo, error) {
@@ -115,8 +125,7 @@ type CopyParams struct {
 	// If Hasher and OutHashes are not nil, then each copied file will be hashed
 	// and the hex hash will be saved in OutHashes. If a file is "skipped"
 	// (CopyHint.Skip==true) then the hash will not be computed. In dry run
-	// mode, the hash will be computed normally. OutHashes always uses forward
-	// slashes as path separator, regardless of OS.
+	// mode, the hash will be computed normally.
 	Hasher    func() hash.Hash
 	OutHashes map[string][]byte
 }
@@ -220,34 +229,35 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		} else if !IsStatNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
-		srcInfo, err := p.FS.Stat(path)
-		if err != nil {
-			return fmt.Errorf("Stat(): %w", err)
-		}
 
-		// The permission bits on the output file are copied from the input file;
-		// this preserves the execute bit on executable files.
-		mode := srcInfo.Mode().Perm()
 		var hash hash.Hash
 		if p.Hasher != nil {
 			hash = p.Hasher()
 		}
-		if err := copyFile(ctx, pos, p.FS, path, dst, mode, p.DryRun, hash); err != nil {
+		if err := CopyFile(ctx, pos, p.FS, path, dst, p.DryRun, hash); err != nil {
 			return err
 		}
 		if hash != nil && p.OutHashes != nil {
-			p.OutHashes[filepath.ToSlash(relToSrc)] = hash.Sum(nil)
+			p.OutHashes[relToSrc] = hash.Sum(nil)
 		}
 		return nil
 	})
 }
 
-// copyFile copies the contents of src to dst.
+// CopyFile copies the contents of src to dst.
 //
 // hash is nil-able. If not nil, it will be written to with the file contents.
 // The caller should call hash.Sum() to get the hash output.
-func copyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, mode fs.FileMode, dryRun bool, hash hash.Hash) (outErr error) {
+func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, dryRun bool, hash hash.Hash) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "copyFile")
+
+	// The permission bits on the output file are copied from the input file.
+	// This preserves the execute bit on executable files.
+	srcInfo, err := rfs.Stat(src)
+	if err != nil {
+		return fmt.Errorf("Stat(): %w", err)
+	}
+	mode := srcInfo.Mode().Perm()
 
 	readFile, err := rfs.Open(src)
 	if err != nil {
@@ -295,7 +305,7 @@ func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) err
 
 	fileToBackup := filepath.Join(srcRoot, relPath)
 
-	if err := copyFile(ctx, nil, rfs, fileToBackup, backupFile, OwnerRWPerms, false, nil); err != nil {
+	if err := CopyFile(ctx, nil, rfs, fileToBackup, backupFile, false, nil); err != nil {
 		return fmt.Errorf("failed backing up file %q at %q before overwriting: %w",
 			fileToBackup, backupFile, err)
 	}
@@ -402,4 +412,13 @@ func (e *ErrorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 func IsStatNotExistErr(err error) bool {
 	return errors.Is(err, fs.ErrNotExist) ||
 		errors.Is(err, fs.ErrInvalid)
+}
+
+// JoinIfRelative returns path if it's an absolute path, otherwise
+// filepath.Join(cwd, path).
+func JoinIfRelative(cwd, path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(cwd, path)
 }

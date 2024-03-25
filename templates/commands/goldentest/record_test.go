@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -32,7 +32,7 @@ import (
 func TestRecordCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	specYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -43,7 +43,7 @@ steps:
     params:
       paths: ['.']
 `
-	testYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	testYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`
 
 	cases := []struct {
@@ -180,7 +180,7 @@ kind: 'GoldenTest'`
 		{
 			name: "test_with_stdout_succeeds",
 			filesContent: map[string]string{
-				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1alpha1'
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A template that outputs no files and do print'
@@ -194,7 +194,78 @@ steps:
 			expectedGoldenContent: map[string]string{
 				"test/test.yaml":          testYaml,
 				"test/data/.abc/.gitkeep": "",
-				"test/data/.abc/.stdout":  "Hello\n",
+				"test/data/.abc/stdout":   "Hello\n",
+			},
+		},
+		{
+			name: "test_with_v1beta3_stdout_skip_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A template that outputs no files and do print'
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+        message: 'Hello'`,
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"test/data/.abc/.gitkeep": "",
+			},
+		},
+		{
+			name: "test_with_git_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml":                      specYaml,
+				"a.txt":                          "file A content",
+				"b.txt":                          "file B content",
+				"testdata/golden/test/test.yaml": testYaml,
+				".gitignore":                     "gitignore contents",
+				".gitfoo/file1.txt":              "file1",
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml":                          testYaml,
+				"test/data/.abc/.gitkeep":                 "",
+				"test/data/a.txt":                         "file A content",
+				"test/data/b.txt":                         "file B content",
+				"test/data/.gitignore.abc_renamed":        "gitignore contents",
+				"test/data/.gitfoo.abc_renamed/file1.txt": "file1",
+			},
+		},
+		{
+			name: "test_with_v1beta3_git_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['.']
+`,
+				"a.txt": "file A content",
+				"b.txt": "file B content",
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				".gitignore":        "gitignore contents",
+				".gitfoo/file1.txt": "file1",
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"test/data/.abc/.gitkeep":     "",
+				"test/data/a.txt":             "file A content",
+				"test/data/b.txt":             "file B content",
+				"test/data/.gitignore":        "gitignore contents",
+				"test/data/.gitfoo/file1.txt": "file1",
 			},
 		},
 	}
@@ -207,7 +278,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -224,7 +295,7 @@ steps:
 				}
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden"))
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden"))
 			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

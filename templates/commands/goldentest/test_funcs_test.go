@@ -23,9 +23,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	"github.com/abcxyz/abc/templates/model/goldentest/features"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -46,7 +48,7 @@ func TestParseTestCases(t *testing.T) {
 			name:      "specified_test_name_succeed",
 			testNames: []string{"test_case_1"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
@@ -60,11 +62,11 @@ kind: 'GoldenTest'`,
 			name:      "specified_multiple_test_names_succeed",
 			testNames: []string{"test_case_1", "test_case_2"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
-				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
-				"testdata/golden/test_case_3/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_3/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
@@ -81,9 +83,9 @@ kind: 'GoldenTest'`,
 		{
 			name: "all_tests_succeed",
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
-				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_2/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want: []*TestCase{
@@ -133,7 +135,7 @@ kind: 'GoldenTest'`,
 			name:      "specified_test_name_not_found",
 			testNames: []string{"test_case_2"},
 			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`,
 			},
 			want:    nil,
@@ -167,9 +169,13 @@ builtin_vars:
 					TestConfig: &goldentest.Test{
 						BuiltinVars: []*goldentest.VarValue{
 							{
-								Name:  model.String{Val: "_git_tag"},
-								Value: model.String{Val: "my-cool-tag"},
+								Name:  mdl.S("_git_tag"),
+								Value: mdl.S("my-cool-tag"),
 							},
+						},
+						Features: features.Features{
+							SkipStdout:     true,
+							SkipABCRenamed: true,
 						},
 					},
 				},
@@ -185,7 +191,7 @@ builtin_vars:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			got, err := parseTestCases(ctx, tempDir, tc.testNames)
@@ -260,12 +266,12 @@ steps:
 				TestConfig: &goldentest.Test{
 					Inputs: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "input_a"},
-							Value: model.String{Val: "a"},
+							Name:  mdl.S("input_a"),
+							Value: mdl.S("a"),
 						},
 						{
-							Name:  model.String{Val: "input_b"},
-							Value: model.String{Val: "b"},
+							Name:  mdl.S("input_b"),
+							Value: mdl.S("b"),
 						},
 					},
 				},
@@ -300,7 +306,7 @@ steps:
         message: 'Hello'`,
 			},
 			expectedGoldenContent: map[string]string{
-				"data/.abc/.stdout": "Hello\n",
+				"data/.abc/stdout": "Hello\n",
 			},
 		},
 	}
@@ -313,7 +319,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
@@ -324,8 +330,8 @@ steps:
 				return
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
-			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent, common.CmpFileMode); diff != "" {
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/test"))
+			if diff := cmp.Diff(gotDestContents, tc.expectedGoldenContent); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -349,8 +355,8 @@ func TestBuiltIns(t *testing.T) {
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_git_tag"},
-							Value: model.String{Val: "my-cool-tag"},
+							Name:  mdl.S("_git_tag"),
+							Value: mdl.S("my-cool-tag"),
 						},
 					},
 				},
@@ -408,8 +414,8 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_git_tag"},
-							Value: model.String{Val: "my-cool-tag"},
+							Name:  mdl.S("_git_tag"),
+							Value: mdl.S("my-cool-tag"),
 						},
 					},
 				},
@@ -440,8 +446,8 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_bad_var_name_should_fail"},
-							Value: model.String{Val: "foo"},
+							Name:  mdl.S("_bad_var_name_should_fail"),
+							Value: mdl.S("foo"),
 						},
 					},
 				},
@@ -467,12 +473,12 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_flag_dest"},
-							Value: model.String{Val: "my-dest"},
+							Name:  mdl.S("_flag_dest"),
+							Value: mdl.S("my-dest"),
 						},
 						{
-							Name:  model.String{Val: "_flag_source"},
-							Value: model.String{Val: "my-source"},
+							Name:  mdl.S("_flag_source"),
+							Value: mdl.S("my-source"),
 						},
 					},
 				},
@@ -490,7 +496,7 @@ steps:
     message: '{{._flag_dest}} {{._flag_source}}'`,
 			},
 			want: map[string]string{
-				"data/.abc/.stdout": "my-dest my-source\n",
+				"data/.abc/stdout": "my-dest my-source\n",
 			},
 		},
 
@@ -501,12 +507,12 @@ steps:
 				TestConfig: &goldentest.Test{
 					BuiltinVars: []*goldentest.VarValue{
 						{
-							Name:  model.String{Val: "_flag_dest"},
-							Value: model.String{Val: "my-dest"},
+							Name:  mdl.S("_flag_dest"),
+							Value: mdl.S("my-dest"),
 						},
 						{
-							Name:  model.String{Val: "_flag_source"},
-							Value: model.String{Val: "my-source"},
+							Name:  mdl.S("_flag_source"),
+							Value: mdl.S("my-source"),
 						},
 					},
 				},
@@ -572,7 +578,7 @@ steps:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := context.Background()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
@@ -583,8 +589,87 @@ steps:
 				return
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, filepath.Join(tempDir, "testdata/golden/test"))
-			if diff := cmp.Diff(gotDestContents, tc.want, common.CmpFileMode); diff != "" {
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/test"))
+			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestRenameGitDirsAndFiles(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		filesContent map[string]string
+		want         map[string]string
+		wantErr      string
+	}{
+		{
+			name: "simple_success",
+			filesContent: map[string]string{
+				".gitfoo/file1.txt": "foo file1",
+				".git/config":       "gitconfig contents",
+				".git/ref":          "gitref contents",
+				".gitignore":        "gitignore contents",
+				"file1.txt":         "file1",
+			},
+			want: map[string]string{
+				".gitfoo.abc_renamed/file1.txt": "foo file1",
+				".git.abc_renamed/config":       "gitconfig contents",
+				".git.abc_renamed/ref":          "gitref contents",
+				".gitignore.abc_renamed":        "gitignore contents",
+				"file1.txt":                     "file1",
+			},
+		},
+		{
+			name: "non_root_gitignore_success",
+			filesContent: map[string]string{
+				"subfolder1/.gitignore": "subfolder1 gitignore contents",
+				"subfolder2/.gitignore": "subfolder2 gitignore contents",
+				"file1.txt":             "file1",
+			},
+			want: map[string]string{
+				"subfolder1/.gitignore.abc_renamed": "subfolder1 gitignore contents",
+				"subfolder2/.gitignore.abc_renamed": "subfolder2 gitignore contents",
+				"file1.txt":                         "file1",
+			},
+		},
+		{
+			name: "nested_git_success",
+			filesContent: map[string]string{
+				".git/config":           "gitconfig contents",
+				".git/.gitignore":       "git gitignore contents",
+				"subfolder1/.gitignore": "subfolder1 gitignore contents",
+				"file1.txt":             "file1",
+			},
+			want: map[string]string{
+				".git.abc_renamed/config":                 "gitconfig contents",
+				".git.abc_renamed/.gitignore.abc_renamed": "git gitignore contents",
+				"subfolder1/.gitignore.abc_renamed":       "subfolder1 gitignore contents",
+				"file1.txt":                               "file1",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
+
+			err := renameGitDirsAndFiles(tempDir)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
+
+			gotDestContents := abctestutil.LoadDir(t, tempDir)
+			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})

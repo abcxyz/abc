@@ -26,4 +26,4 @@ steps:
     action: 'print'
     params:
       message:
-        'Please go to the main.go and replace the the data model (hint text: "Your data model goes here.") and the data processing logic (hint text: "Your data parsing logic goes here.")'
+        'Please go to the main.go and replace the data model (hint text: "Your data model goes here.") and the data processing logic (hint text: "Your data parsing logic goes here.")'

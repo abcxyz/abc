@@ -18,12 +18,13 @@ import (
 	"context"
 	"fmt"
 
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 func actionGoTemplate(ctx context.Context, p *spec.GoTemplate, sp *stepParams) error {
 	if err := walkAndModify(ctx, sp, p.Paths, func(b []byte) ([]byte, error) {
-		executed, err := parseAndExecuteGoTmpl(nil, string(b), sp.scope)
+		executed, err := gotmpl.ParseExec(nil, string(b), sp.scope)
 		if err != nil {
 			return nil, fmt.Errorf("failed executing file as Go template: %w", err)
 		}

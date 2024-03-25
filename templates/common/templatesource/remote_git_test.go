@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -43,7 +43,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "no_subdir",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",
@@ -65,15 +64,14 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 				},
 			},
 		},
 		{
 			name: "latest_version_lookup",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",
@@ -103,15 +101,14 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 				},
 			},
 		},
 		{
 			name: "with_subdir",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "my-subdir",
@@ -138,15 +135,14 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 				},
 			},
 		},
 		{
 			name: "with_deep_subdir",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "my/deep",
@@ -173,8 +169,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 				},
 			},
 		},
@@ -223,16 +219,15 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "clone_by_sha",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",
-				version:         common.MinimalGitHeadSHA,
+				version:         abctestutil.MinimalGitHeadSHA,
 				cloner: &fakeCloner{
 					t:           t,
 					out:         basicFiles,
 					wantRemote:  "fake-remote",
-					wantVersion: common.MinimalGitHeadSHA,
+					wantVersion: abctestutil.MinimalGitHeadSHA,
 				},
 			},
 			want: basicFiles,
@@ -241,28 +236,27 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    "remote_git",
 				HasVersion:      true,
-				Version:         common.MinimalGitHeadSHA,
+				Version:         abctestutil.MinimalGitHeadSHA,
 				Vars: DownloaderVars{
 					GitTag:      "",
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 				},
 			},
 		},
 		{
 			name: "clone_by_sha_with_detected_tag",
 			dl: &remoteGitDownloader{
-				allowDirty:      true,
 				canonicalSource: "mysource",
 				remote:          "fake-remote",
 				subdir:          "",
-				version:         common.MinimalGitHeadSHA,
+				version:         abctestutil.MinimalGitHeadSHA,
 				cloner: &fakeCloner{
 					t:           t,
 					addTag:      "v1.2.3",
 					out:         basicFiles,
 					wantRemote:  "fake-remote",
-					wantVersion: common.MinimalGitHeadSHA,
+					wantVersion: abctestutil.MinimalGitHeadSHA,
 				},
 			},
 			want: basicFiles,
@@ -274,8 +268,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
-					GitSHA:      common.MinimalGitHeadSHA,
-					GitShortSHA: common.MinimalGitHeadShortSHA,
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 				},
 			},
 		},
@@ -289,11 +283,11 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 
 			ctx := context.Background()
 			tempDir := t.TempDir()
-			gotDLMeta, err := tc.dl.Download(ctx, "", tempDir)
+			gotDLMeta, err := tc.dl.Download(ctx, "", tempDir, "")
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
-			got := common.LoadDirWithoutMode(t, tempDir)
+			got := abctestutil.LoadDir(t, tempDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output files were not as expected (-got, +want): %s", diff)
 			}
@@ -443,14 +437,14 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, version, outDir string) 
 		f.t.Errorf("got version %q, want %q", version, f.wantVersion)
 	}
 
-	files := common.WithGitRepoAt("", f.out)
+	files := abctestutil.WithGitRepoAt("", f.out)
 
 	if f.addTag != "" {
 		// Adding a tag is just creating a file under .git/refs/tags.
-		files[".git/refs/tags/"+f.addTag] = common.MinimalGitHeadSHA
+		files[".git/refs/tags/"+f.addTag] = abctestutil.MinimalGitHeadSHA
 	}
 
-	common.WriteAllDefaultMode(f.t, outDir, files)
+	abctestutil.WriteAll(f.t, outDir, files)
 	return nil
 }
 

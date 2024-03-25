@@ -17,11 +17,11 @@ package render
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/benbjohnson/clock"
@@ -30,12 +30,14 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
-	"github.com/abcxyz/abc/templates/common/paths"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl/funcs"
+	"github.com/abcxyz/abc/templates/common/rules"
 	"github.com/abcxyz/abc/templates/common/specutil"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/spec/features"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
 )
@@ -64,8 +66,19 @@ type Params struct {
 	// The value of --debug-step-diffs.
 	DebugStepDiffs bool
 
-	// The value of --dest.
+	// The directory that this operation is targeting, from the user's point of
+	// view. It's sometimes the same as OutDir:
+	//   - When Render() is being called as part of `abc templates render`,
+	//     this is the same as OutDir.
+	//   - When Render() is being called as part of `abc templates upgrade`,
+	//     this is the directory that the template is installed to, and NOT the
+	//     temp dir that receives the output of Render().
+	//
+	// This is optional. If unset, the value of OutDir will be used.
 	DestDir string
+
+	// The downloader that will provide the template.
+	Downloader templatesource.Downloader
 
 	// The value of --force-overwrite.
 	ForceOverwrite bool
@@ -89,6 +102,9 @@ type Params struct {
 	// The value of --manifest.
 	Manifest bool
 
+	// The directory where the rendered output will be written.
+	OutDir string
+
 	// Whether to prompt the user for inputs on stdin in the case where they're
 	// not all provided in Inputs or InputFiles.
 	Prompt bool
@@ -105,8 +121,9 @@ type Params struct {
 	SkipPromptTTYCheck bool
 
 	// The location from which the template is installed, as provided by the
-	// user on the command line.
-	Source string
+	// user on the command line, or from the manifest. This is only used in
+	// log messages and for the _flag_source variable in print actions.
+	SourceForMessages string
 
 	// The output stream used by "print" actions.
 	Stdout io.Writer
@@ -123,30 +140,44 @@ type Params struct {
 //
 // This is a library function because template rendering is a reusable operation
 // that is called as a subroutine by "golden-test" and "upgrade" commands.
-func Render(ctx context.Context, p *Params) (outErr error) {
+func Render(ctx context.Context, p *Params) (rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "Render")
 
-	tempRemover := newTempDirRemover(p.FS, p.KeepTempDirs)
-	defer func() {
-		outErr = errors.Join(outErr, tempRemover.maybeRemoveAll(ctx))
-	}()
+	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
-	logger.DebugContext(ctx, "downloading/copying template")
-	dlMeta, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
-		CWD:         p.Cwd,
-		FS:          p.FS,
-		TempDirBase: p.TempDirBase,
-		Source:      p.Source,
-		GitProtocol: p.GitProtocol,
-	})
-	tempRemover.append(templateDir) // templateDir might be set even if there's an error
+	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
+	logger.DebugContext(ctx, "created temporary template directory",
+		"path", templateDir)
+
+	logger.DebugContext(ctx, "downloading/copying template")
+	destDir := p.DestDir
+	if destDir == "" {
+		destDir = p.OutDir
+	}
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, destDir)
+	if err != nil {
+		return fmt.Errorf("failed to download/copy template: %w", err)
+	}
+	logger.DebugContext(ctx, "downloaded source template to temporary directory",
+		"destination", templateDir)
+
+	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
+}
+
+// RenderAlreadyDownloaded is for the unusual case where the template has
+// already been downloaded to the local filesystem. Most callers should prefer
+// to call Render() instead.
+//
+// The Params.Downloader field is ignored by this function.
+func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.DownloadMetadata, templateDir string, p *Params) (rErr error) {
+	logger := logging.FromContext(ctx).With("logger", "RenderAlreadyDownloaded")
 
 	logger.DebugContext(ctx, "loading spec file")
-
-	spec, err := specutil.Load(ctx, p.FS, templateDir, p.Source)
+	spec, err := specutil.Load(ctx, p.FS, templateDir, p.SourceForMessages)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -166,13 +197,15 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		return err //nolint:wrapcheck
 	}
 
-	scratchDir, err := p.FS.MkdirTemp(p.TempDirBase, paths.ScratchDirNamePart)
+	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+
+	scratchDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.ScratchDirNamePart)
 	if err != nil {
-		return fmt.Errorf("failed to create temp directory for scratch directory: %w", err)
+		return err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "created temporary scratch directory",
 		"path", scratchDir)
-	tempRemover.append(scratchDir)
 
 	debugStepDiffsDir, err := initDebugStepDiffsDir(ctx, p, scratchDir)
 	if err != nil {
@@ -182,6 +215,10 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 	scope, extraPrintVars, err := scopes(resolvedInputs, p, spec.Features, dlMeta.Vars)
 	if err != nil {
 		return err
+	}
+
+	if err := rules.ValidateRules(ctx, scope, spec.Rules); err != nil {
+		return err //nolint:wrapcheck
 	}
 
 	sp := &stepParams{
@@ -222,7 +259,7 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 		)
 	}
 
-	logger.DebugContext(ctx, "render operation complete", "source", p.Source)
+	logger.DebugContext(ctx, "render operation complete", "source", p.SourceForMessages)
 
 	return nil
 }
@@ -230,13 +267,24 @@ func Render(ctx context.Context, p *Params) (outErr error) {
 // scopes returns two things:
 //
 //   - a Scope object that has all variable bindings that are in scope for the
-//     spec.yaml. This
-//     includes vars for user inputs and also built-in vars like _git_tag.
+//     spec.yaml. This includes vars for user inputs and also built-in vars like
+//     _git_tag.
 //   - a map of extra variable bindings in addition to the above scope, for
 //     variables that are only in scope inside "print" actions. Print has access
 //     to e.g. the _flag_dest var that cannot be accessed elsewhere.
 func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_ *common.Scope, extraPrintVars map[string]string, _ error) {
-	scope := common.NewScope(resolvedInputs)
+	vars, extraPrintVars, err := scopeVars(resolvedInputs, rp, f, dlVars)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	goTmplFuncs := funcs.Funcs(f)
+
+	return common.NewScope(vars, goTmplFuncs), extraPrintVars, nil
+}
+
+func scopeVars(resolvedInputs map[string]string, rp *Params, f features.Features, dlVars templatesource.DownloaderVars) (_, extraPrintVars map[string]string, _ error) {
+	out := maps.Clone(resolvedInputs)
 
 	if rp.OverrideBuiltinVars != nil { // The caller is overriding the builtin underscore-prefixed vars.
 		if err := builtinvar.Validate(f, maps.Keys(rp.OverrideBuiltinVars)); err != nil {
@@ -255,8 +303,9 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 			builtinvar.FlagSource: "",
 		}
 		extraPrintVars = sets.IntersectMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames)
-		scope = scope.With(sets.SubtractMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames))
-		return scope, extraPrintVars, nil
+		nonPrintVars := sets.SubtractMapKeys(rp.OverrideBuiltinVars, printOnlyVarNames)
+		out = sets.UnionMapKeys(nonPrintVars, out)
+		return out, extraPrintVars, nil
 	}
 
 	// The caller isn't overriding the builtin underscore-prefixed vars (this
@@ -268,22 +317,26 @@ func scopes(resolvedInputs map[string]string, rp *Params, f features.Features, d
 	for _, n := range builtinNames {
 		builtinsEmptyStringMap[n] = ""
 	}
-	scope = scope.With(builtinsEmptyStringMap)
+	out = sets.UnionMapKeys(builtinsEmptyStringMap, out)
 
 	if !f.SkipGitVars { // if this api_version supports _git_* vars, add them.
-		scope = scope.With(map[string]string{
+		out = sets.UnionMapKeys(map[string]string{
 			builtinvar.GitTag:      dlVars.GitTag,
 			builtinvar.GitSHA:      dlVars.GitSHA,
 			builtinvar.GitShortSHA: dlVars.GitShortSHA,
-		})
+		}, out)
+	}
+
+	if !f.SkipTime {
+		out[builtinvar.NowMilliseconds] = strconv.FormatInt(rp.Clock.Now().UTC().UnixMilli(), 10)
 	}
 
 	extraPrintVars = map[string]string{
-		builtinvar.FlagDest:   rp.DestDir,
-		builtinvar.FlagSource: rp.Source,
+		builtinvar.FlagDest:   rp.OutDir,
+		builtinvar.FlagSource: rp.SourceForMessages,
 	}
 
-	return scope, extraPrintVars, nil
+	return out, extraPrintVars, nil
 }
 
 // Configure the git directory that will contain a commit per step for debugging
@@ -293,7 +346,7 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 		return "", nil // This particular debugging feature isn't enabled
 	}
 
-	out, err := p.FS.MkdirTemp(p.TempDirBase, paths.DebugStepDiffsDirNamePart)
+	out, err := p.FS.MkdirTemp(p.TempDirBase, tempdir.DebugStepDiffsDirNamePart)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory for debug directory: %w", err)
 	}
@@ -410,13 +463,13 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 		}
 		if !celResult {
 			logger.DebugContext(ctx, `skipping step because "if" expression evaluated to false`,
-				"step_index_from_0", stepIdx,
+				"step_index_from_zero", stepIdx,
 				"action", step.Action.Val,
 				"cel_expr", step.If.Val)
 			return nil
 		}
 		logger.DebugContext(ctx, `proceeding to execute step because "if" expression evaluated to true`,
-			"step_index_from_0", stepIdx,
+			"step_index_from_zero", stepIdx,
 			"action", step.Action.Val,
 			"cel_expr", step.If.Val)
 	}
@@ -445,7 +498,7 @@ func executeOneStep(ctx context.Context, stepIdx int, step *spec.Step, sp *stepP
 
 // scratchContents returns the contents of the scratch dir for debugging purposes; it's
 // only used if --debug-scratch-contents=true.
-func scratchContents(ctx context.Context, stepIdx int, step *spec.Step, sp *stepParams) (string, error) {
+func scratchContents(_ context.Context, stepIdx int, step *spec.Step, sp *stepParams) (string, error) {
 	sb := &strings.Builder{}
 	fmt.Fprintf(sb, "Scratch dir contents after step %d (starting from 0), which is action type %q, defined at spec file line %d:\n",
 		stepIdx, step.Action.Val, step.Action.Pos.Line)
@@ -493,11 +546,11 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 		}
 
 		if p.Manifest {
-			if err := writeManifest(ctx, &writeManifestParams{
+			if err := writeManifest(&writeManifestParams{
 				clock:        p.Clock,
 				cwd:          p.Cwd,
 				dlMeta:       cp.dlMeta,
-				destDir:      p.DestDir,
+				destDir:      p.OutDir,
 				dryRun:       dryRun,
 				fs:           p.FS,
 				inputs:       cp.inputs,
@@ -527,7 +580,7 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		// output dir here to handle the edge case where the template generates
 		// no output files. In that case, the output directory should be created
 		// but empty.
-		if err := p.FS.MkdirAll(p.DestDir, common.OwnerRWXPerms); err != nil {
+		if err := p.FS.MkdirAll(p.OutDir, common.OwnerRWXPerms); err != nil {
 			return nil, fmt.Errorf("failed creating template output directory: %w", err)
 		}
 	}
@@ -573,7 +626,7 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 	params := &common.CopyParams{
 		BackupDirMaker: backupDirMaker,
 		DryRun:         dryRun,
-		DstRoot:        p.DestDir,
+		DstRoot:        p.OutDir,
 		Hasher:         sha256.New,
 		OutHashes:      map[string][]byte{},
 		SrcRoot:        scratchDir,
@@ -589,50 +642,6 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		logger.InfoContext(ctx, "template render succeeded")
 	}
 	return params.OutHashes, nil
-}
-
-// tempDirRemover helps manage the removal of temporary directories when
-// rendering is finished.
-type tempDirRemover struct {
-	fs           common.FS
-	tempDirs     []string
-	keepTempDirs bool
-}
-
-func newTempDirRemover(fs common.FS, keepTempDirs bool) *tempDirRemover {
-	return &tempDirRemover{
-		fs:           fs,
-		keepTempDirs: keepTempDirs,
-	}
-}
-
-func (t *tempDirRemover) append(dir string) {
-	if dir == "" {
-		return
-	}
-	t.tempDirs = append(t.tempDirs, dir)
-}
-
-// maybeRemoveAll should be called in a defer to clean up temp dirs, like this:
-//
-//		 defer func() {
-//		   outErr = errors.Join(outErr, t.maybeRemoveAll(ctx))
-//	     }()
-func (t *tempDirRemover) maybeRemoveAll(ctx context.Context) error {
-	logger := logging.FromContext(ctx).With("logger", "tempDirRemover.Remove")
-	if t.keepTempDirs {
-		logger.WarnContext(ctx, "keeping temporary directories due to --keep-temp-dirs",
-			"paths", t.tempDirs)
-		return nil
-	}
-
-	logger.DebugContext(ctx, "removing all temporary directories (skip this with --keep-temp-dirs)")
-
-	var merr error
-	for _, p := range t.tempDirs {
-		merr = errors.Join(merr, t.fs.RemoveAll(p))
-	}
-	return merr
 }
 
 func sliceToSet[T comparable](vals []T) map[T]struct{} {

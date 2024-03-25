@@ -23,7 +23,9 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -165,21 +167,18 @@ func TestActionAppend(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			common.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
+			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sr := &spec.Append{
-				Paths: modelStrings(tc.paths),
-				With: model.String{
-					Pos: &model.ConfigPos{},
-					Val: tc.with,
-				},
+				Paths: mdl.Strings(tc.paths...),
+				With:  mdl.S(tc.with),
 				SkipEnsureNewline: model.Bool{
 					Pos: &model.ConfigPos{},
 					Val: tc.skipEnsureNewline,
 				},
 			}
 			sp := &stepParams{
-				scope:      common.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs, nil),
 				scratchDir: scratchDir,
 				rp: &Params{
 					FS: &common.ErrorFS{
@@ -193,7 +192,7 @@ func TestActionAppend(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDir(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}

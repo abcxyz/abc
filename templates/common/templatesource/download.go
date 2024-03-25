@@ -18,25 +18,23 @@ package templatesource
 
 import (
 	"context"
-	"fmt"
-	"reflect"
-	"strings"
-
-	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/pkg/logging"
-)
-
-const (
-	// These will be used as part of the names of the temporary directories to
-	// make them identifiable.
-	templateDirNamePart = "template-copy-"
 )
 
 // A Downloader is returned by a sourceParser. It offers the ability to
 // download a template, and provides some metadata.
 type Downloader interface {
-	// Download downloads this template into the given directory.
-	Download(ctx context.Context, cwd, destDir string) (*DownloadMetadata, error)
+	// Download downloads this template into templateDir. templateDir should be
+	// a temporary directory.
+	//
+	// destDir is the directory that this operation is targeting, from the
+	// user's point of view. This is only used to determine whether a template
+	// installed from a local directory is canonical or not; it's not written to
+	// as part of the download operation. When we're being called as part of
+	// `abc templates render`, then this is the render output directory. When
+	// we're being called as part of `abc templates upgrade`, this is the
+	// directory that the template is installed to, and NOT the temp dir that
+	// receives the output of Render().
+	Download(ctx context.Context, cwd, templateDir, destDir string) (*DownloadMetadata, error)
 }
 
 type DownloadMetadata struct {
@@ -84,63 +82,4 @@ type DownloaderVars struct {
 	GitTag      string
 	GitSHA      string
 	GitShortSHA string
-}
-
-// The parameters to Download, wrapped in a struct because there are so many.
-type DownloadParams struct {
-	FS common.FS
-
-	// The directory under which to create temp directories.
-	TempDirBase string
-
-	// The template source location, e.g. github.com/abcxyz/abc/t/rest_server.
-	Source string
-
-	// The value of --git-protocol.
-	GitProtocol string
-
-	// The value of os.Getwd().
-	CWD string
-}
-
-// Downloads the template and returns:
-//   - the ParsedSource giving metadata about the template
-//   - the name of the temp directory where the template contents were saved.
-//
-// If error is returned, then the returned directory name may or may not exist,
-// and may or may not be empty.
-func Download(ctx context.Context, p *DownloadParams) (*DownloadMetadata, string, error) {
-	logger := logging.FromContext(ctx).With("logger", "Download")
-
-	templateDir, err := p.FS.MkdirTemp(p.TempDirBase, templateDirNamePart)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create temporary directory to use as template directory: %w", err)
-	}
-	logger.DebugContext(ctx, "created temporary template directory",
-		"path", templateDir)
-
-	downloader, err := ParseSource(ctx, &ParseSourceParams{
-		CWD:         p.CWD,
-		Source:      p.Source,
-		GitProtocol: p.GitProtocol,
-	})
-	if err != nil {
-		return nil, templateDir, err
-	}
-	logger.DebugContext(ctx, "template location parse successful as", "type", reflect.TypeOf(downloader).String())
-
-	dlMeta, err := downloader.Download(ctx, p.CWD, templateDir)
-	if err != nil {
-		return nil, templateDir, err //nolint:wrapcheck
-	}
-	logger.DebugContext(ctx, "downloaded source template temporary directory",
-		"source", p.Source,
-		"destination", templateDir)
-
-	if dlMeta.IsCanonical && strings.ContainsAny(dlMeta.CanonicalSource, `\`+"\n") {
-		return nil, "", fmt.Errorf("the template location contains a disallowed character; no backslashes or newlines are allowed in the canonicalized source %q",
-			dlMeta.CanonicalSource)
-	}
-
-	return dlMeta, templateDir, nil
 }

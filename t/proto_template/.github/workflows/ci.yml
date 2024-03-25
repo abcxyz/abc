@@ -1,84 +1,172 @@
 name: 'ci'
 
 on:
+  workflow_call:
+    outputs:
+      proto_version:
+        description: 'The proposed proto version'
+        value: '${{ jobs.version.outputs.proposed_proto_version }}'
   pull_request:
     branches:
       - 'main'
-  workflow_dispatch:
 
 permissions:
   contents: 'read'
   id-token: 'write'
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  group: 'ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 
 env:
-  GO_VERSION: 'REPLACE_GO_VERSION'
-  PROTOTOOL_VERSION: '1.10.0' # this is the last released version before the project was completed
-  PROTOBUF_VERSION: 'REPLACE_PROTOBUF_VERSION'
-  PROTOC_GEN_GO_VERSION: 'REPLACE_PROTOC_GEN_GO_VERSION'
+  GO_VERSION: 'REPLACE_PROTO_GO_VERSION'
+  BUF_VERSION: 'REPLACE_BUF_VERSION'
+  BUF_CHECKSUM: 'REPLACE_BUF_CHECKSUM'
 
 jobs:
-  prototool:
+  version:
     runs-on: 'ubuntu-latest'
-
+    outputs:
+      proposed_proto_version: '${{ steps.capture.outputs.PROPOSED_PROTO_VERSION }}'
     steps:
       - name: 'Checkout'
-        uses: 'actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9' # ratchet:actions/checkout@v3
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - name: 'Capture proposed version'
+        id: 'capture'
+        run: |
+          echo "PROPOSED_PROTO_VERSION=$(cat VERSION)" >> ${GITHUB_OUTPUT}
+
+  upload_source_protos:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+        with:
+          ref: 'main'
+
+      - name: 'Upload Go GitHub Artifact'
+        uses: 'actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3' # ratchet:actions/upload-artifact@v4
+        with:
+          name: 'source-${{ github.sha }}'
+          path: '.'
+          if-no-files-found: 'error'
+          retention-days: 3
+
+  build:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout PR branch'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+        with:
+          ref: '${{ github.event.pull_request.head.ref }}'
+
+      - name: 'Setup Buf CLI'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        with:
+          download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
+          install_path: '${{ runner.temp }}/.buf'
+          binary_subpath: 'buf/bin/buf'
+          checksum: '${{ env.BUF_CHECKSUM }}'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_buf_${{ env.BUF_VERSION }}'
+          add_to_path: true
+
+      - name: 'Run Build'
+        shell: 'bash'
+        run: |
+          buf build
+
+  lint:
+    runs-on: 'ubuntu-latest'
+    needs: 'build'
+    steps:
+      - name: 'Checkout PR branch'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+        with:
+          ref: '${{ github.event.pull_request.head.ref }}'
+
+      - name: 'Setup Buf CLI'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        with:
+          download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
+          install_path: '${{ runner.temp }}/.buf'
+          binary_subpath: 'buf/bin/buf'
+          checksum: '${{ env.BUF_CHECKSUM }}'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_buf_${{ env.BUF_VERSION }}'
+          add_to_path: true
+
+      - name: 'Run Lint'
+        shell: 'bash'
+        run: |
+          buf lint
+
+  regenerate:
+    runs-on: 'ubuntu-latest'
+    needs:
+      - 'build'
+      - 'version'
+    steps:
+      - name: 'Checkout PR branch'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+        with:
+          ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Go'
-        uses: 'actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753' # ratchet:actions/setup-go@v4
+        uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
           go-version: '${{ env.GO_VERSION }}'
 
-      - name: 'Install protobuf'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:exclude
+      - name: 'Setup Buf CLI'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
         with:
-          download_url: 'https://github.com/protocolbuffers/protobuf/releases/download/v${{ env.PROTOBUF_VERSION }}/protoc-${{ env.PROTOBUF_VERSION }}-linux-x86_64.zip'
-          install_path: '${{ runner.temp }}/.protoc'
-          checksum: 'fc793561283d9ea6813fb757ae54f1afea6770afcd930904bdf3e590910420aa'
-          cache_key: '${{ runner.os }}_${{ runner.arch }}_protoc_${{ env.PROTOBUF_VERSION }}'
+          download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
+          install_path: '${{ runner.temp }}/.buf'
+          binary_subpath: 'buf/bin/buf'
+          checksum: '${{ env.BUF_CHECKSUM }}'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_buf_${{ env.BUF_VERSION }}'
           add_to_path: true
 
-      - name: 'Install protoc-gen-go'
-        run: |
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@v${{ env.PROTOC_GEN_GO_VERSION }}
-
-      - name: 'Install prototool binary'
-        uses: 'abcxyz/pkg/.github/actions/setup-binary@main' # ratchet:exclude
-        with:
-          download_url: 'https://github.com/uber/prototool/releases/download/v${{ env.PROTOTOOL_VERSION }}/prototool-Linux-x86_64.tar.gz'
-          install_path: '${{ runner.temp }}/.prototool'
-          checksum: '50e53589b95e2435e26de01de8eac6af6ae6980b1cacf1e0ad319b7644f16b3b'
-          cache_key: '${{ runner.os }}_${{ runner.arch }}_prototool_${{ env.PROTOTOOL_VERSION }}'
-          add_to_path: true
-
-      - name: 'Set prototool to path'
+      - name: 'Run Generate'
         env:
-          PROTOTOOL_PATH: '${{ runner.temp }}/.prototool/prototool/bin'
+          PROTO_VERSION: '${{ needs.version.outputs.proposed_proto_version }}'
         shell: 'bash'
         run: |
-          echo "${PROTOTOOL_PATH}" >> $GITHUB_PATH
-
-      - name: 'Lint proto files'
-        shell: 'bash'
-        run: |
-          set +e
-          LINTER_OUTPUT=$(prototool lint protos)
-          if ! [[ -z "${LINTER_OUTPUT}" ]]; then
-            echo "::error::LINTER_OUTPUT"
+          make generate
+          git_status=$(git status --porcelain)
+          echo ${git_status}
+          if ! [[ -z "${git_status}" ]]; then
+            echo "::error::Files were not generated from latest proto changes, run make generate and push the latest changes."
             exit 1
           fi
 
-      - name: 'Verify generated proto files'
+  breaking:
+    runs-on: 'ubuntu-latest'
+    needs:
+      - 'build'
+      - 'upload_source_protos'
+    steps:
+      - name: 'Checkout PR branch'
+        uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+        with:
+          ref: '${{ github.event.pull_request.head.ref }}'
+
+      - name: 'Setup Buf CLI'
+        uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
+        with:
+          download_url: 'https://github.com/bufbuild/buf/releases/download/v${{ env.BUF_VERSION }}/buf-Linux-x86_64.tar.gz'
+          install_path: '${{ runner.temp }}/.buf'
+          binary_subpath: 'buf/bin/buf'
+          checksum: '${{ env.BUF_CHECKSUM }}'
+          cache_key: '${{ runner.os }}_${{ runner.arch }}_buf_${{ env.BUF_VERSION }}'
+          add_to_path: true
+
+      - name: 'Download go artifact'
+        uses: 'actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85' # ratchet:actions/download-artifact@v4
+        with:
+          pattern: 'source-${{ github.sha }}'
+          path: '${{ runner.temp }}/.source'
+          merge-multiple: true
+
+      - name: 'Run Break Check'
+        shell: 'bash'
         run: |
-          # add protoc to the path
-          export PATH="$PATH:${{ runner.temp }}/.protoc/bin"
-          chmod +x ./scripts/generate.sh && ./scripts/generate.sh
-          GIT_DIFF=$(git diff)
-          if ! [[ -z "${GIT_DIFF}" ]]; then
-            echo "::error::Generated proto files are out of sync, re-run script to reflect latest proto state"
-            exit 1
-          fi
+          buf breaking --against ${{ runner.temp }}/.source

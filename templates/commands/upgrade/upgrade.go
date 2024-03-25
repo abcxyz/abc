@@ -18,10 +18,13 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/benbjohnson/clock"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/model/decode"
-	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
+	"github.com/abcxyz/abc/templates/common/upgrade"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -29,8 +32,6 @@ import (
 type Command struct {
 	cli.BaseCommand
 	flags Flags
-
-	testFS common.FS
 }
 
 // Desc implements cli.Command.
@@ -46,14 +47,14 @@ Usage: {{ COMMAND }} [options] <manifest>
 The {{ COMMAND }} command upgrades an already-rendered template output to use
 the latest version of a template.
 
-The "<manifest>" is the path to the *.lock.yaml file that was created when the
-template was originally rendered.
+The "<manifest>" is the path to the manifest_*.lock.yaml file that was created when the
+template was originally rendered, usually found in the .abc subdirectory.
 `
 }
 
 // Hidden implements cli.Command.
 func (c *Command) Hidden() bool {
-	// TODO(#191): unhide the upgrade command when it's ready.
+	// TODO(upgrade): unhide the upgrade command when it's ready.
 	return true
 }
 
@@ -63,51 +64,103 @@ func (c *Command) Flags() *cli.FlagSet {
 	return set
 }
 
+const mergeInstructions = `
+Some manual conflict resolution is required because of a conflict between your
+local edits and the new version of the template. Please look at all files ending
+in .abcmerge_* and either edit, delete, or rename them to reflect your decision.
+
+Background on conflict types:
+
+ - editEditConflict: you made some local edits to this file that was installed
+   by the template, which conflicts with the new version of the template which
+   wants to edit the file. Both versions of the file are left in your output
+   directory, named "yourfile.abcmerge_locally_edited" and
+   "yourfile.abcmerge_from_new_template". Please resolve the conflict by either
+   (1) renaming one of the files to "yourfile" and deleting the other, or (2)
+   merging the two files into "yourfile".
+
+ - editDeleteConflict: you made an edit to this file that was installed by the
+   template, which conflicts with the new version of the template, which wants
+   to delete this file. Your version has been renamed to
+   "yourfile.abcmerge_template_wants_to_delete". Please resolve the conflict by
+   renaming it back to "yourfile" or deleting it.
+
+ - deleteEditConflict: you deleted this file that was installed by the template,
+   which conflicts with the new version of the template which wants to edit it.
+   The new version from the template is named
+   "yourfile.abcmerge_locally_deleted_vs_new_template_version". Please resolve
+   the conflict by renaming it to "yourfile" or deleting it.
+
+ - addAddConflict: you added a file which was not originally part of the
+   template, which conflicts with the new version of the template, which wants
+   to create a file of the same name. Your version of the file has been renamed
+   to "yourfile.abcmerge_locally_added", and the version of the template is
+   named "yourfile.abcmerge_from_new_template". Please resolve the conflict by
+   (1) renaming one of these files to "yourfile and deleting the other, or (2)
+   merging the two files into "yourfile".`
+
 func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	fSys := c.testFS // allow filesystem interaction to be faked for testing
-	if fSys == nil {
-		fSys = &common.RealFS{}
-	}
+	fs := &common.RealFS{}
 
-	return c.realRun(ctx, &runParams{
-		fs: fSys,
-	})
-}
-
-type runParams struct {
-	fs common.FS
-}
-
-func (c *Command) realRun(ctx context.Context, rp *runParams) error {
-	manifest, err := loadManifest(ctx, rp.fs, c.flags.Manifest)
+	absManifestPath, err := filepath.Abs(c.flags.Manifest)
 	if err != nil {
-		return err
+		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Manifest, err)
 	}
-	_ = manifest
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("os.Getwd(): %w", err)
+	}
+
+	r, err := upgrade.Upgrade(ctx, &upgrade.Params{
+		Clock:                clock.New(),
+		CWD:                  cwd,
+		DebugStepDiffs:       c.flags.DebugStepDiffs,
+		DebugScratchContents: c.flags.DebugScratchContents,
+		FS:                   fs,
+		GitProtocol:          c.flags.GitProtocol,
+		InputFiles:           c.flags.InputFiles,
+		Inputs:               c.flags.Inputs,
+		KeepTempDirs:         c.flags.KeepTempDirs,
+		ManifestPath:         absManifestPath,
+		Prompt:               c.flags.Prompt,
+		Prompter:             c,
+		SkipInputValidation:  c.flags.SkipInputValidation,
+		Stdout:               c.Stdout(),
+	})
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	if r.AlreadyUpToDate {
+		fmt.Fprintf(c.Stdout(), "already up to date with latest template version\n")
+		return nil
+	}
+
+	if len(r.Conflicts) == 0 {
+		return nil
+	}
+
+	// TODO(upgrade): command-level tests (not just library-level)
+	//
+	// TODO(upgrade):
+	//  - suggest diff / meld / vim commands?
+	fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n")
+	for _, cf := range r.Conflicts {
+		fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
+		fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
+		if cf.OursPath != "" {
+			fmt.Fprintf(c.Stdout(), "our file was renamed to: %s\n", cf.OursPath)
+		}
+		if cf.IncomingTemplatePath != "" {
+			fmt.Fprintf(c.Stdout(), "incoming file: %s\n", cf.IncomingTemplatePath)
+		}
+		fmt.Fprintf(c.Stdout(), "--\n")
+	}
 
 	return nil
-}
-
-func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
-	f, err := fs.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
-	}
-	defer f.Close()
-
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
-	if err != nil {
-		return nil, fmt.Errorf("error reading manifest file: %w", err)
-	}
-
-	out, ok := manifestI.(*manifest.Manifest)
-	if !ok {
-		return nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
-	}
-
-	return out, nil
 }

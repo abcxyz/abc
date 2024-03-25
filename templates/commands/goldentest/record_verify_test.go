@@ -19,7 +19,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -30,7 +30,7 @@ func TestRecordVerify(t *testing.T) {
 	t.Parallel()
 
 	specYAMLContents := `
-api_version: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 desc: 'A simple template'
 inputs:
@@ -45,7 +45,7 @@ steps:
 `
 
 	testYAMLContents := `
-api_version: 'cli.abcxyz.dev/v1alpha1'
+api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 inputs:
 - name: 'path_to_include'
@@ -74,7 +74,7 @@ inputs:
 			name: "mismatch_should_fail",
 			messWith: func(t *testing.T, dir string) {
 				t.Helper()
-				common.WriteAllDefaultMode(t, dir, map[string]string{
+				abctestutil.WriteAll(t, dir, map[string]string{
 					"a.txt": "mismatched content",
 				})
 			},
@@ -89,7 +89,7 @@ inputs:
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, templateContent)
+			abctestutil.WriteAll(t, tempDir, templateContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 

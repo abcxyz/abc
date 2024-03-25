@@ -19,18 +19,18 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 )
 
 func TestSpecDescriptionForDescribe(t *testing.T) {
 	t.Parallel()
 	spec := &spec.Spec{
-		Desc: model.String{Val: "Test Description"},
+		Desc: mdl.S("Test Description"),
 		Inputs: []*spec.Input{
 			{
-				Name: model.String{Val: "name1"},
-				Desc: model.String{Val: "desc1"},
+				Name: mdl.S("name1"),
+				Desc: mdl.S("desc1"),
 			},
 		},
 	}
@@ -46,25 +46,25 @@ func TestSpecDescriptionForDescribe(t *testing.T) {
 func TestAllSpecInputVarForDescribe(t *testing.T) {
 	t.Parallel()
 	spec := &spec.Spec{
-		Desc: model.String{Val: "Test Description"},
+		Desc: mdl.S("Test Description"),
 		Inputs: []*spec.Input{
 			{
-				Name:    model.String{Val: "name1"},
-				Desc:    model.String{Val: "desc1"},
-				Default: &model.String{Val: "."},
-				Rules: []*spec.InputRule{
+				Name:    mdl.S("name1"),
+				Desc:    mdl.S("desc1"),
+				Default: mdl.SP("."),
+				Rules: []*spec.Rule{
 					{
-						Rule:    model.String{Val: "test rule 0"},
-						Message: model.String{Val: "test rule 0 message"},
+						Rule:    mdl.S("test rule 0"),
+						Message: mdl.S("test rule 0 message"),
 					},
 					{
-						Rule: model.String{Val: "test rule 1"},
+						Rule: mdl.S("test rule 1"),
 					},
 				},
 			},
 			{
-				Name: model.String{Val: "name2"},
-				Desc: model.String{Val: "desc2"},
+				Name: mdl.S("name2"),
+				Desc: mdl.S("desc2"),
 			},
 		},
 	}
@@ -95,19 +95,19 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 		{
 			name: "input_with_non_empty_default_value",
 			spec: &spec.Spec{
-				Desc: model.String{Val: "Test Description"},
+				Desc: mdl.S("Test Description"),
 				Inputs: []*spec.Input{
 					{
-						Name:    model.String{Val: "name1"},
-						Desc:    model.String{Val: "desc1"},
-						Default: &model.String{Val: "."},
-						Rules: []*spec.InputRule{
+						Name:    mdl.S("name1"),
+						Desc:    mdl.S("desc1"),
+						Default: mdl.SP("."),
+						Rules: []*spec.Rule{
 							{
-								Rule:    model.String{Val: "test rule 0"},
-								Message: model.String{Val: "test rule 0 message"},
+								Rule:    mdl.S("test rule 0"),
+								Message: mdl.S("test rule 0 message"),
 							},
 							{
-								Rule: model.String{Val: "test rule 1"},
+								Rule: mdl.S("test rule 1"),
 							},
 						},
 					},
@@ -125,12 +125,12 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 		{
 			name: "input_with_empty_default_value",
 			spec: &spec.Spec{
-				Desc: model.String{Val: "Test Description"},
+				Desc: mdl.S("Test Description"),
 				Inputs: []*spec.Input{
 					{
-						Name:    model.String{Val: "name1"},
-						Desc:    model.String{Val: "desc1"},
-						Default: &model.String{Val: ""},
+						Name:    mdl.S("name1"),
+						Desc:    mdl.S("desc1"),
+						Default: mdl.SP(""),
 					},
 				},
 			},
@@ -143,11 +143,11 @@ func TestSingleSpecInputVarForDescribe(t *testing.T) {
 		{
 			name: "input_with_no_default_value",
 			spec: &spec.Spec{
-				Desc: model.String{Val: "Test Description"},
+				Desc: mdl.S("Test Description"),
 				Inputs: []*spec.Input{
 					{
-						Name: model.String{Val: "name1"},
-						Desc: model.String{Val: "desc1"},
+						Name: mdl.S("name1"),
+						Desc: mdl.S("desc1"),
 					},
 				},
 			},

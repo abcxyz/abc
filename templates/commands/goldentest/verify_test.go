@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abcxyz/abc/templates/common"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -28,7 +28,7 @@ import (
 func TestVerifyCommand(t *testing.T) {
 	t.Parallel()
 
-	specYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	specYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -40,7 +40,7 @@ steps:
       paths: ['.']
 `
 
-	printSpecYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	printSpecYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'Template'
 
 desc: 'A simple template'
@@ -51,7 +51,7 @@ steps:
     params:
       message: 'Hello'
 `
-	testYaml := `api_version: 'cli.abcxyz.dev/v1alpha1'
+	testYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'`
 
 	cases := []struct {
@@ -243,7 +243,7 @@ kind: 'GoldenTest'`
 				"spec.yaml":                               printSpecYaml,
 				"testdata/golden/test/test.yaml":          testYaml,
 				"testdata/golden/test/data/.abc/.gitkeep": "",
-				"testdata/golden/test/data/.abc/.stdout":  "Hello\n",
+				"testdata/golden/test/data/.abc/stdout":   "Hello\n",
 			},
 		},
 		{
@@ -252,12 +252,131 @@ kind: 'GoldenTest'`
 				"spec.yaml":                                printSpecYaml,
 				"testdata/golden/test1/test.yaml":          testYaml,
 				"testdata/golden/test1/data/.abc/.gitkeep": "",
-				"testdata/golden/test1/data/.abc/.stdout":  "Bob\n",
+				"testdata/golden/test1/data/.abc/stdout":   "Bob\n",
+			},
+			wantErrs: []string{
+				"golden test test1 fails",
+				"the printed messages differ between the recorded golden output and the actual output",
+				"golden test [test1] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
+			},
+		},
+		{
+			name: "simple_test_with_stdout_verify_fails_with_missing_stdout",
+			filesContent: map[string]string{
+				"spec.yaml":                                printSpecYaml,
+				"testdata/golden/test1/test.yaml":          testYaml,
+				"testdata/golden/test1/data/.abc/.gitkeep": "",
+			},
+			wantErrs: []string{
+				"golden test test1 fails",
+				"the printed messages differ between the recorded golden output and the actual output",
+				"golden test [test1] didn't match actual output, you might " +
+					"need to run 'record' command to capture it as the new expected output",
+			},
+		},
+		{
+			name: "simple_test_with_v1beta3_skipstdout_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Print a message'
+    action: 'print'
+    params:
+      message: 'Hello'
+`,
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"testdata/golden/test/data/.abc/.gitkeep": "",
+			},
+		},
+		{
+			name: "simple_test_with_git_verify_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml":                      specYaml,
+				"a.txt":                          "file A content",
+				"b.txt":                          "file B content",
+				".gitignore":                     "gitignore contents",
+				".gitfoo/file1.txt":              "file1",
+				"testdata/golden/test/test.yaml": testYaml,
+				"testdata/golden/test/data/.abc/.gitkeep":                 "",
+				"testdata/golden/test/data/a.txt":                         "file A content",
+				"testdata/golden/test/data/b.txt":                         "file B content",
+				"testdata/golden/test/data/.gitignore.abc_renamed":        "gitignore contents",
+				"testdata/golden/test/data/.gitfoo.abc_renamed/file1.txt": "file1",
+			},
+		},
+		{
+			name: "simple_test_with_gitignore_verify_fails",
+			filesContent: map[string]string{
+				"spec.yaml":                       specYaml,
+				"a.txt":                           "file A content",
+				"b.txt":                           "file B content",
+				".gitignore":                      "gitignore contents",
+				"testdata/golden/test1/test.yaml": testYaml,
+				"testdata/golden/test1/data/.abc/.gitkeep":          "",
+				"testdata/golden/test1/data/a.txt":                  "file A content",
+				"testdata/golden/test1/data/b.txt":                  "file B content",
+				"testdata/golden/test1/data/.gitignore.abc_renamed": "not matched gitignore contents",
 			},
 			wantErrs: []string{
 				"golden test test1 fails",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
+				".gitignore] file content mismatch",
+			},
+		},
+		{
+			name: "simple_test_without_dot_abc_directory_succeeeds",
+			filesContent: map[string]string{
+				"spec.yaml":                        specYaml,
+				"a.txt":                            "file A content",
+				"b.txt":                            "file B content",
+				"testdata/golden/test1/test.yaml":  testYaml,
+				"testdata/golden/test1/data/a.txt": "file A content",
+				"testdata/golden/test1/data/b.txt": "file B content",
+			},
+		},
+		{
+			name: "simple_test_with_v1beat3_git_verify_succeeds",
+			filesContent: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['.']
+`,
+				"a.txt":             "file A content",
+				"b.txt":             "file B content",
+				".gitignore":        "gitignore contents",
+				".gitfoo/file1.txt": "file1",
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+				"testdata/golden/test/data/.abc/.gitkeep":     "",
+				"testdata/golden/test/data/a.txt":             "file A content",
+				"testdata/golden/test/data/b.txt":             "file B content",
+				"testdata/golden/test/data/.gitignore":        "gitignore contents",
+				"testdata/golden/test/data/.gitfoo/file1.txt": "file1",
+			},
+		},
+		{
+			name: "no test recorded data",
+			filesContent: map[string]string{
+				"spec.yaml": printSpecYaml,
+				"testdata/golden/test/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta3'
+kind: 'GoldenTest'`,
+			},
+			wantErrs: []string{
+				"please run `record` command to record the template rendering result to golden tests",
 			},
 		},
 	}
@@ -270,7 +389,7 @@ kind: 'GoldenTest'`
 
 			tempDir := t.TempDir()
 
-			common.WriteAllDefaultMode(t, tempDir, tc.filesContent)
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 

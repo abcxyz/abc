@@ -26,7 +26,10 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl"
 	"github.com/abcxyz/abc/templates/model"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -216,10 +219,10 @@ func TestWalkAndModify(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			common.WriteAllDefaultMode(t, scratchDir, tc.initialContents)
+			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sp := &stepParams{
-				scope:      common.NewScope(nil),
+				scope:      common.NewScope(nil, nil),
 				scratchDir: scratchDir,
 				rp: &Params{
 					FS: &common.ErrorFS{
@@ -233,7 +236,7 @@ func TestWalkAndModify(t *testing.T) {
 			relPathsPositions := make([]model.String, 0, len(tc.relPaths))
 
 			for _, p := range tc.relPaths {
-				relPathsPositions = append(relPathsPositions, model.String{Val: p})
+				relPathsPositions = append(relPathsPositions, mdl.S(p))
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
@@ -242,7 +245,7 @@ func TestWalkAndModify(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDir(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %v", diff)
 			}
@@ -302,7 +305,7 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseAndExecuteGoTmpl(tc.pos, tc.tmpl, common.NewScope(tc.inputs))
+			got, err := gotmpl.ParseExec(tc.pos, tc.tmpl, common.NewScope(tc.inputs, nil))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
@@ -320,122 +323,6 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 	}
 }
 
-// These are basic tests to ensure the template functions are mounted. More
-// exhaustive tests are at template_funcs_test.go.
-func TestTemplateFuncs(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name    string
-		tmpl    string
-		inputs  map[string]string
-		want    string
-		wantErr string
-	}{
-		{
-			name: "contains_true",
-			tmpl: `{{ contains "food" "foo" }}`,
-			want: "true",
-		},
-		{
-			name: "contains_false",
-			tmpl: `{{ contains "food" "bar" }}`,
-			want: "false",
-		},
-		{
-			name: "replace",
-			tmpl: `{{ replace "food" "foo" "bar" 1 }}`,
-			want: "bard",
-		},
-		{
-			name: "replaceAll",
-			tmpl: `{{ replaceAll "food food food" "foo" "bar" }}`,
-			want: "bard bard bard", //nolint:dupword // expected
-		},
-		{
-			name: "sortStrings",
-			tmpl: `{{ split "zebra,car,foo" "," | sortStrings }}`,
-			want: "[car foo zebra]",
-		},
-		{
-			name: "split",
-			tmpl: `{{ split "a,b,c" "," }}`,
-			want: "[a b c]",
-		},
-		{
-			name: "toLower",
-			tmpl: `{{ toLower "AbCD" }}`,
-			want: "abcd",
-		},
-		{
-			name: "toUpper",
-			tmpl: `{{ toUpper "AbCD" }}`,
-			want: "ABCD",
-		},
-		{
-			name: "trimPrefix",
-			tmpl: `{{ trimPrefix "foobarbaz" "foo" }}`,
-			want: "barbaz",
-		},
-		{
-			name: "trimSuffix",
-			tmpl: `{{ trimSuffix "foobarbaz" "baz" }}`,
-			want: "foobar",
-		},
-		{
-			name: "toSnakeCase",
-			tmpl: `{{ toSnakeCase "foo-bar-baz" }}`,
-			want: "foo_bar_baz",
-		},
-		{
-			name: "toLowerSnakeCase",
-			tmpl: `{{ toLowerSnakeCase "foo-bar-baz" }}`,
-			want: "foo_bar_baz",
-		},
-		{
-			name: "toUpperSnakeCase",
-			tmpl: `{{ toUpperSnakeCase "foo-bar-baz" }}`,
-			want: "FOO_BAR_BAZ",
-		},
-		{
-			name: "toHyphenCase",
-			tmpl: `{{ toHyphenCase "foo_bar_baz" }}`,
-			want: "foo-bar-baz",
-		},
-		{
-			name: "toLowerHyphenCase",
-			tmpl: `{{ toLowerHyphenCase "foo_bar_baz" }}`,
-			want: "foo-bar-baz",
-		},
-		{
-			name: "toUpperHyphenCase",
-			tmpl: `{{ toUpperHyphenCase "foo-bar-baz" }}`,
-			want: "FOO-BAR-BAZ",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			pos := &model.ConfigPos{
-				Line: 1,
-			}
-
-			got, err := parseAndExecuteGoTmpl(pos, tc.tmpl, common.NewScope(map[string]string{}))
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Error(diff)
-			}
-
-			if diff := cmp.Diff(got, tc.want); diff != "" {
-				t.Errorf("template output was not as expected (-got,+want): %s", diff)
-			}
-		})
-	}
-}
-
 func TestProcessPaths(t *testing.T) {
 	t.Parallel()
 
@@ -448,23 +335,23 @@ func TestProcessPaths(t *testing.T) {
 	}{
 		{
 			name:      "verify_paths_unchanged",
-			paths:     modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"}),
-			scope:     common.NewScope(map[string]string{}),
-			wantPaths: modelStrings([]string{"file1.txt", "file2.txt", "subfolder1", filepath.FromSlash("subfolder2/file3.txt")}),
+			paths:     mdl.Strings("file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"),
+			scope:     common.NewScope(map[string]string{}, nil),
+			wantPaths: mdl.Strings("file1.txt", "file2.txt", "subfolder1", "subfolder2/file3.txt"),
 		},
 		{
 			name:  "go_template_in_path",
-			paths: modelStrings([]string{"{{.replace_name}}.txt"}),
+			paths: mdl.Strings("{{.replace_name}}.txt"),
 			scope: common.NewScope(map[string]string{
 				"replace_name": "file1",
-			}),
-			wantPaths: modelStrings([]string{"file1.txt"}),
+			}, nil),
+			wantPaths: mdl.Strings("file1.txt"),
 		},
 		{
 			name:    "fail_dot_dot_relative_path",
-			paths:   modelStrings([]string{"../foo.txt"}),
-			scope:   common.NewScope(map[string]string{}),
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../foo.txt")),
+			paths:   mdl.Strings("../foo.txt"),
+			scope:   common.NewScope(map[string]string{}, nil),
+			wantErr: `path "../foo.txt" must not contain ".."`,
 		},
 	}
 
@@ -499,7 +386,7 @@ func TestProcessGlobs(t *testing.T) {
 
 	cases := []struct {
 		name           string
-		dirContents    map[string]common.ModeAndContents
+		dirContents    map[string]abctestutil.ModeAndContents
 		paths          []model.String
 		wantPaths      []model.String
 		wantGlobErr    string
@@ -507,135 +394,129 @@ func TestProcessGlobs(t *testing.T) {
 	}{
 		{
 			name: "non_glob_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
 				"subfolder2/file4.txt",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
-				filepath.FromSlash("subfolder2/file4.txt"),
-			}),
+				"subfolder2/file4.txt",
+			),
 		},
 		{
 			name: "star_glob_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"*.txt",
 				"subfolder2/*.txt",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
-				filepath.FromSlash("subfolder2/file4.txt"),
-				filepath.FromSlash("subfolder2/file5.txt"),
-			}),
+				"subfolder2/file4.txt",
+				"subfolder2/file5.txt",
+			),
 		},
 		{
 			name: "glob_star_in_middle",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"f*e1.txt",
 				"f*e2.txt",
 				"sub*er2",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder2",
-			}),
+			),
 		},
 		{
 			name: "glob_star_all_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file5 contents"},
 			},
-			paths: modelStrings([]string{"*"}),
-			wantPaths: modelStrings([]string{
+			paths: mdl.Strings("*"),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
 				"subfolder1",
 				"subfolder2",
-			}),
+			),
 		},
 		{
 			name: "glob_star_matches_hidden_files",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				".gitignore": {Mode: 0o600, Contents: ".gitignore contents"},
 				".something": {Mode: 0o600, Contents: ".something contents"},
 			},
-			paths: modelStrings([]string{"*"}),
-			wantPaths: modelStrings([]string{
+			paths: mdl.Strings("*"),
+			wantPaths: mdl.Strings(
 				".gitignore",
 				".something",
-			}),
+			),
 		},
 		{
 			name: "question_glob_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":            {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":            {Mode: 0o600, Contents: "file2 contents"},
 				"subfolder1/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 				"subfolder2/file4.txt": {Mode: 0o600, Contents: "file4 contents"},
 				"subfolder2/file5.txt": {Mode: 0o600, Contents: "file4 contents"},
 			},
-			paths: modelStrings([]string{
+			paths: mdl.Strings(
 				"file?.txt",
 				"subfolder2/file?.txt",
-			}),
-			wantPaths: modelStrings([]string{
+			),
+			wantPaths: mdl.Strings(
 				"file1.txt",
 				"file2.txt",
-				filepath.FromSlash("subfolder2/file4.txt"),
-				filepath.FromSlash("subfolder2/file5.txt"),
-			}),
+				"subfolder2/file4.txt",
+				"subfolder2/file5.txt",
+			),
 		},
 		{
-			name: "no_glob_matches",
-			paths: modelStrings([]string{
-				"file_not_found.txt",
-			}),
+			name:           "no_glob_matches",
+			paths:          mdl.Strings("file_not_found.txt"),
 			wantGlobErr:    fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
 			wantNonGlobErr: fmt.Sprintf(`include path doesn't exist: %q`, "file_not_found.txt"),
 		},
 		{
 			name: "character_range_paths",
-			dirContents: map[string]common.ModeAndContents{
+			dirContents: map[string]abctestutil.ModeAndContents{
 				"abc.txt": {Mode: 0o600, Contents: "bcd contents"},
 				"xyz.txt": {Mode: 0o600, Contents: "xyz contents"},
 			},
-			paths: modelStrings([]string{
-				"[a-c][a-c][a-c].txt",
-			}),
-			wantPaths: modelStrings([]string{
-				"abc.txt",
-			}),
+			paths:     mdl.Strings("[a-c][a-c][a-c].txt"),
+			wantPaths: mdl.Strings("abc.txt"),
 		},
 	}
 
@@ -646,7 +527,7 @@ func TestProcessGlobs(t *testing.T) {
 
 			// pre-populate dir contents
 			tempDir := t.TempDir()
-			common.WriteAll(t, tempDir, tc.dirContents)
+			abctestutil.WriteAllMode(t, tempDir, tc.dirContents)
 			ctx := context.Background()
 
 			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false) // with globbing enabled
@@ -679,15 +560,4 @@ func TestProcessGlobs(t *testing.T) {
 			}
 		})
 	}
-}
-
-func modelStrings(ss []string) []model.String {
-	out := make([]model.String, len(ss))
-	for i, s := range ss {
-		out[i] = model.String{
-			Pos: &model.ConfigPos{}, // for the purposes of testing, "location unknown" is fine.
-			Val: s,
-		}
-	}
-	return out
 }

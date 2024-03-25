@@ -76,10 +76,10 @@ func TestScope(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			scope := NewScope(tc.inherit)
+			scope := NewScope(tc.inherit, nil)
 			scope = scope.With(tc.with)
 
-			if diff := cmp.Diff(scope.All(), tc.want); diff != "" {
+			if diff := cmp.Diff(scope.AllVars(), tc.want); diff != "" {
 				t.Errorf("All() returned unexpected value (-got,+want): %s", diff)
 			}
 
@@ -114,7 +114,7 @@ func TestScopeDeepNesting(t *testing.T) {
 		}
 	}
 
-	scope := NewScope(inMaps[0])
+	scope := NewScope(inMaps[0], nil)
 	for i := 1; i <= 9; i++ {
 		scope = scope.With(inMaps[i])
 	}
@@ -132,7 +132,7 @@ func TestScopeDeepNesting(t *testing.T) {
 		"key_9":     "value_9",
 		"overwrite": "9",
 	}
-	got := scope.All()
+	got := scope.AllVars()
 
 	if diff := cmp.Diff(got, want); diff != "" {
 		t.Errorf("output map wasn't as expected (-got,+want): %s", diff)

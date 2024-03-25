@@ -27,7 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	abctestutil "github.com/abcxyz/abc/templates/common/testutil"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -228,7 +228,7 @@ Enter value: `,
 			dest := filepath.Join(tempDir, "dest")
 			sourceDir := filepath.Join(tempDir, "source")
 
-			common.WriteAllDefaultMode(t, sourceDir, tc.templateContents)
+			abctestutil.WriteAll(t, sourceDir, tc.templateContents)
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
@@ -269,8 +269,8 @@ Enter value: `,
 				t.Fatal("timed out waiting for background goroutine to finish")
 			}
 
-			gotDestContents := common.LoadDirWithoutMode(t, dest)
-			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, common.CmpFileMode); diff != "" {
+			gotDestContents := abctestutil.LoadDir(t, dest)
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 		})

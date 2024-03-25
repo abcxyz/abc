@@ -22,7 +22,9 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -43,11 +45,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"a.txt": "alpha foo gamma",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "foo"},
-						With:  model.String{Val: "bar"},
+						Regex: mdl.S("foo"),
+						With:  mdl.S("bar"),
 					},
 				},
 			},
@@ -61,11 +63,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"a.txt": "alpha foo gamma",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"a.txt", ".", "a.txt"}),
+				Paths: mdl.Strings("a.txt", ".", "a.txt"),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "foo"},
-						With:  model.String{Val: "foofoo"},
+						Regex: mdl.S("foo"),
+						With:  mdl.S("foofoo"),
 					},
 				},
 			},
@@ -79,11 +81,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"a.txt": "apple banana\nbanana apple\napple apple\n", //nolint:dupword
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "\\n$"},
-						With:  model.String{Val: ""},
+						Regex: mdl.S("\\n$"),
+						With:  mdl.S(""),
 					},
 				},
 			},
@@ -97,11 +99,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"a.txt": "apple banana\nbanana apple\napple apple\n", //nolint:dupword
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "(?m:apple$)"},
-						With:  model.String{Val: "apple."},
+						Regex: mdl.S("(?m:apple$)"),
+						With:  mdl.S("apple."),
 					},
 				},
 			},
@@ -115,11 +117,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"a.txt": "alpha foo gamma foo",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "foo"},
-						With:  model.String{Val: "bar"},
+						Regex: mdl.S("foo"),
+						With:  mdl.S("bar"),
 					},
 				},
 			},
@@ -134,11 +136,11 @@ func TestActionRegexReplace(t *testing.T) {
 			},
 			inputs: map[string]string{},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b(?P<my_first_input>b...) (?P<my_second_input>g....)`},
-						With:  model.String{Val: "${my_second_input} ${my_first_input}"},
+						Regex: mdl.S(`\b(?P<my_first_input>b...) (?P<my_second_input>g....)`),
+						With:  mdl.S("${my_second_input} ${my_first_input}"),
 					},
 				},
 			},
@@ -155,11 +157,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"foo": "bar",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "template_(?P<mygroup>[a-z]+)"},
-						With:  model.String{Val: "{{.$1}}"},
+						Regex: mdl.S("template_(?P<mygroup>[a-z]+)"),
+						With:  mdl.S("{{.$1}}"),
 					},
 				},
 			},
@@ -177,11 +179,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"foo": "bar",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "template_(?P<mysubgroup>[a-z]+)"},
-						With:  model.String{Val: "{{.${mysubgroup}}}"},
+						Regex: mdl.S("template_(?P<mysubgroup>[a-z]+)"),
+						With:  mdl.S("{{.${mysubgroup}}}"),
 					},
 				},
 			},
@@ -198,11 +200,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"cool_beta": "BETA",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b(?P<mysubgroup>be..)\b`},
-						With:  model.String{Val: "{{.cool_${mysubgroup}}}"},
+						Regex: mdl.S(`\b(?P<mysubgroup>be..)\b`),
+						With:  mdl.S("{{.cool_${mysubgroup}}}"),
 					},
 				},
 			},
@@ -219,11 +221,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"cool_beta": "BETA",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b(?P<mygroup>be..)\b`},
-						With:  model.String{Val: "{{.cool_${1}}}"},
+						Regex: mdl.S(`\b(?P<mygroup>be..)\b`),
+						With:  mdl.S("{{.cool_${1}}}"),
 					},
 				},
 			},
@@ -242,11 +244,11 @@ func TestActionRegexReplace(t *testing.T) {
 				"replace_with": "BETA!",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: `\b{{.to_replace}}`},
-						With:  model.String{Val: `{{.replace_with}}`},
+						Regex: mdl.S(`\b{{.to_replace}}`),
+						With:  mdl.S(`{{.replace_with}}`),
 					},
 				},
 			},
@@ -263,12 +265,12 @@ func TestActionRegexReplace(t *testing.T) {
 				"myinput": "alligator",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex:             model.String{Val: `alpha (?P<mygroup>beta) gamma`},
-						With:              model.String{Val: `{{.myinput}}`},
-						SubgroupToReplace: model.String{Val: "mygroup"},
+						Regex:             mdl.S(`alpha (?P<mygroup>beta) gamma`),
+						With:              mdl.S(`{{.myinput}}`),
+						SubgroupToReplace: mdl.S("mygroup"),
 					},
 				},
 			},
@@ -286,17 +288,17 @@ func TestActionRegexReplace(t *testing.T) {
 				"tree":    "maple",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex:             model.String{Val: `alpha (?P<mygroup>beta) gamma`},
-						With:              model.String{Val: `{{.reptile}}`},
-						SubgroupToReplace: model.String{Val: "mygroup"},
+						Regex:             mdl.S(`alpha (?P<mygroup>beta) gamma`),
+						With:              mdl.S(`{{.reptile}}`),
+						SubgroupToReplace: mdl.S("mygroup"),
 					},
 					{
-						Regex:             model.String{Val: `[a-z]+ [a-z]+ (?P<mygroup>gamma)`},
-						With:              model.String{Val: `{{.tree}}`},
-						SubgroupToReplace: model.String{Val: "mygroup"},
+						Regex:             mdl.S(`[a-z]+ [a-z]+ (?P<mygroup>gamma)`),
+						With:              mdl.S(`{{.tree}}`),
+						SubgroupToReplace: mdl.S("mygroup"),
 					},
 				},
 			},
@@ -312,11 +314,11 @@ beta
 gamma`,
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "^beta$"},
-						With:  model.String{Val: "shouldnt_appear"},
+						Regex: mdl.S("^beta$"),
+						With:  mdl.S("shouldnt_appear"),
 					},
 				},
 			},
@@ -334,11 +336,11 @@ beta
 gamma`,
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "(?m:^beta$)"},
-						With:  model.String{Val: "brontosaurus"},
+						Regex: mdl.S("(?m:^beta$)"),
+						With:  mdl.S("brontosaurus"),
 					},
 				},
 			},
@@ -355,11 +357,11 @@ gamma`,
 				"b.txt": "sigma foo chi",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "foo"},
-						With:  model.String{Val: "bar"},
+						Regex: mdl.S("foo"),
+						With:  mdl.S("bar"),
 					},
 				},
 			},
@@ -374,11 +376,11 @@ gamma`,
 				"a.txt": "alpha foo gamma",
 			},
 			rr: &spec.RegexReplace{
-				Paths: modelStrings([]string{"{{.filename}}"}),
+				Paths: mdl.Strings("{{.filename}}"),
 				Replacements: []*spec.RegexReplaceEntry{
 					{
-						Regex: model.String{Val: "foo"},
-						With:  model.String{Val: "bar"},
+						Regex: mdl.S("foo"),
+						With:  mdl.S("bar"),
 					},
 				},
 			},
@@ -398,11 +400,11 @@ gamma`,
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			common.WriteAllDefaultMode(t, scratchDir, tc.initContents)
+			abctestutil.WriteAll(t, scratchDir, tc.initContents)
 
 			ctx := context.Background()
 			sp := &stepParams{
-				scope:      common.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs, nil),
 				scratchDir: scratchDir,
 				rp: &Params{
 					FS: &common.RealFS{},
@@ -413,7 +415,7 @@ gamma`,
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDir(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output differed from expected, (-got,+want): %s", diff)
 			}

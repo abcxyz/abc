@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -66,7 +67,7 @@ func (c *RecordCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *RecordCommand) Run(ctx context.Context, args []string) error {
+func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
@@ -76,14 +77,19 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse golden test: %w", err)
 	}
 
+	rfs := &common.RealFS{}
+
+	tempTracker := tempdir.NewDirTracker(rfs, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+
 	// Create a temporary directory to validate golden tests rendered with no
 	// error. If any test fails, no data should be written to file system
 	// for atomicity purpose.
 	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
-	defer os.RemoveAll(tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
+	tempTracker.Track(tempDir)
 
 	var merr error
 	logger := logging.FromContext(ctx)
@@ -108,7 +114,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		params := &common.CopyParams{
 			DstRoot: testDir,
 			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir),
-			FS:      &common.RealFS{},
+			FS:      rfs,
 			Visitor: visitor,
 		}
 		merr = errors.Join(merr, common.CopyRecursive(ctx, nil, params))
@@ -117,6 +123,13 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
 			return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)
 		}
+
+		if !tc.TestConfig.Features.SkipABCRenamed {
+			if err := renameGitDirsAndFiles(testDir); err != nil {
+				return fmt.Errorf("failed renaming git related dirs and files for test case %q: %w", tc.TestName, err)
+			}
+		}
+
 		// git won't commit an empty directory, so add a placeholder file.
 		gitKeep := filepath.Join(abcInternal, ".gitkeep")
 		if err := os.WriteFile(gitKeep, []byte{}, common.OwnerRWPerms); err != nil {

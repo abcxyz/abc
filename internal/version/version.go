@@ -14,19 +14,28 @@
 
 package version
 
-import "github.com/abcxyz/pkg/buildinfo"
+import (
+	"golang.org/x/mod/semver"
+
+	"github.com/abcxyz/pkg/buildinfo"
+)
 
 var (
 	// Name is the name of the binary. This can be overridden by the build
 	// process.
-	Name = "abc"
+	name string
+	Name = valueOrFallback(name, func() string {
+		return "abc"
+	})
 
 	// Version is the main package version. This can be overridden by the build
 	// process.
-	Version = buildinfo.Version()
+	version string
+	Version = valueOrFallback(version, buildinfo.Version)
 
 	// Commit is the git sha. This can be overridden by the build process.
-	Commit = buildinfo.Commit()
+	commit string
+	Commit = valueOrFallback(commit, buildinfo.Commit)
 
 	// OSArch is the operating system and architecture combination.
 	OSArch = buildinfo.OSArch()
@@ -34,3 +43,22 @@ var (
 	// HumanVersion is the compiled version.
 	HumanVersion = Name + " " + Version + " (" + Commit + ", " + OSArch + ")"
 )
+
+// IsReleaseBuild returns true if this binary was built by goreleaser as part of
+// the official release process (as opposed to a user just running "go build",
+// or running in a CI environment, or something else).
+func IsReleaseBuild() bool {
+	// Binary from release build should follow semver format.
+	// When installing via `go install github.com/abcxyz/abc/cmd/abc@vXXX`,
+	// `Version` is `vXXX` for example `v0.1.0` with `v` prefix.
+	// When installing via downloading artifacts in GitHub directly,
+	// `Version` is `XXX` for example `0.1.0` without `v` prefix.
+	return semver.IsValid("v"+Version) || semver.IsValid(Version)
+}
+
+func valueOrFallback(val string, fn func() string) string {
+	if val != "" {
+		return val
+	}
+	return fn()
+}

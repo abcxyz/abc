@@ -292,7 +292,7 @@ func celCompile(ctx context.Context, scope *Scope, expr string) (cel.Program, er
 	startedAt := time.Now()
 
 	celOpts := []cel.EnvOption{}
-	for varName := range scope.All() {
+	for varName := range scope.AllVars() {
 		celOpts = append(celOpts, cel.Variable(varName, cel.StringType))
 	}
 	celOpts = append(celOpts, celFuncs...) // Add custom function bindings
@@ -307,7 +307,7 @@ func celCompile(ctx context.Context, scope *Scope, expr string) (cel.Program, er
 		if name, ok := isCELUndeclaredRef(err); ok {
 			return nil, &errs.UnknownVarError{
 				VarName:       name,
-				AvailableVars: maps.Keys(scope.All()),
+				AvailableVars: maps.Keys(scope.AllVars()),
 				Wrapped:       err,
 			}
 		}
@@ -353,7 +353,7 @@ func celEval(ctx context.Context, scope *Scope, prog cel.Program, outPtr any) er
 
 	// The CEL engine needs variable values as a map[string]any, but we have a
 	// map[string]string, so convert.
-	scopeAll := scope.All()
+	scopeAll := scope.AllVars()
 	scopeMapAny := make(map[string]any, len(scopeAll))
 	for varName, varVal := range scopeAll {
 		scopeMapAny[varName] = varVal

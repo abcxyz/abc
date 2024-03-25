@@ -40,7 +40,7 @@ type Spec struct {
 	// as: '.DS_Store, '.bin', '.ssh'.
 	Ignore []model.String `yaml:"ignore"`
 
-	// Features configures which features to use depending on spec version.
+	// Features configures which features to use depending on spec API version.
 	Features features.Features `yaml:"-"`
 }
 
@@ -73,8 +73,6 @@ type Input struct {
 	Desc    model.String  `yaml:"desc"`
 	Default *model.String `yaml:"default,omitempty"`
 	Rules   []*InputRule  `yaml:"rules"`
-
-	// TODO(tyroneclay): add your new field here
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

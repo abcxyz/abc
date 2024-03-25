@@ -22,7 +22,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -127,7 +127,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	// that already exist in the destination.
 	fromDir := sp.templateDir
 	if inc.From.Val == "destination" {
-		fromDir = sp.rp.DestDir
+		fromDir = sp.rp.OutDir
 	}
 
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
@@ -209,10 +209,10 @@ func checkIgnore(patterns []model.String, path string) (bool, error) {
 			matched, err = filepath.Match(p.Val, filepath.Base(path))
 		} else if p.Val[0] == '/' {
 			// Match pattern with a leading slash as it is from the same root as path.
-			matched, err = filepath.Match(filepath.FromSlash(p.Val[1:]), path)
+			matched, err = filepath.Match(p.Val[1:], path)
 		} else {
 			// Math pattern using relative path.
-			matched, err = filepath.Match(filepath.FromSlash(p.Val), path)
+			matched, err = filepath.Match(p.Val, path)
 		}
 		if err != nil {
 			return false,

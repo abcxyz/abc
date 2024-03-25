@@ -17,15 +17,15 @@ package describe
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -70,8 +70,6 @@ func (c *Command) Flags() *cli.FlagSet {
 type runParams struct {
 	fs     common.FS
 	stdout io.Writer
-
-	describeTempDirBase string
 }
 
 func (c *Command) Run(ctx context.Context, args []string) error {
@@ -88,31 +86,31 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	})
 }
 
-// readRun provides fakable interface to test Run.
+// realRun provides a fakeable interface to test Run.
 func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
-	var tempDirs []string
-	defer func() {
-		for _, d := range tempDirs {
-			rErr = errors.Join(rErr, rp.fs.RemoveAll(d))
-		}
-	}()
+	tempTracker := tempdir.NewDirTracker(rp.fs, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("os.Getwd(): %w", err)
 	}
-	_, templateDir, err := templatesource.Download(ctx, &templatesource.DownloadParams{
-		FS:          rp.fs,
-		TempDirBase: rp.describeTempDirBase,
-		Source:      c.flags.Source,
-		GitProtocol: c.flags.GitProtocol,
-		CWD:         cwd,
-	})
-	if templateDir != "" { // templateDir might be set even if there's an error
-		tempDirs = append(tempDirs, templateDir)
-	}
+
+	templateDir, err := tempTracker.MkdirTempTracked("", tempdir.TemplateDirNamePart)
 	if err != nil {
 		return err //nolint:wrapcheck
+	}
+	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
+		CWD:         cwd,
+		Source:      c.flags.Source,
+		GitProtocol: c.flags.GitProtocol,
+	})
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	if _, err = downloader.Download(ctx, cwd, templateDir, ""); err != nil {
+		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
 
 	spec, err := specutil.Load(ctx, rp.fs, templateDir, c.flags.Source)

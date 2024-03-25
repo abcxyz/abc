@@ -28,7 +28,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	"github.com/abcxyz/abc/templates/common/rules"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/sets"
 )
 
@@ -78,7 +79,7 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 	}
 
-	fileInputs, err := loadInputFiles(ctx, rp.FS, rp.InputFiles)
+	fileInputs, err := loadInputFiles(rp.FS, rp.InputFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -118,27 +119,17 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 }
 
 func validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map[string]string) error {
-	scope := common.NewScope(inputVals)
+	scope := common.NewScope(inputVals, nil)
 
 	sb := &strings.Builder{}
 	tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)
 
 	for _, input := range specInputs {
-		for _, rule := range input.Rules {
-			var ok bool
-			err := common.CelCompileAndEval(ctx, scope, rule.Rule, &ok)
-			if ok && err == nil {
-				continue
-			}
-
+		input := input
+		rules.ValidateRulesWithMessage(ctx, scope, input.Rules, tw, func() {
 			fmt.Fprintf(tw, "\nInput name:\t%s", input.Name.Val)
 			fmt.Fprintf(tw, "\nInput value:\t%s", inputVals[input.Name.Val])
-			writeRule(tw, rule, false, 0)
-			if err != nil {
-				fmt.Fprintf(tw, "\nCEL error:\t%s", err.Error())
-			}
-			fmt.Fprintf(tw, "\n") // Add vertical relief between validation messages
-		}
+		})
 	}
 
 	tw.Flush()
@@ -165,7 +156,7 @@ func promptForInputs(ctx context.Context, prompter Prompter, spec *spec.Spec, in
 		fmt.Fprintf(tw, "\nDescription:\t%s", i.Desc.Val)
 		for idx, rule := range i.Rules {
 			printRuleIndex := len(i.Rules) > 1
-			writeRule(tw, rule, printRuleIndex, idx)
+			rules.WriteRule(tw, rule, printRuleIndex, idx)
 		}
 
 		if i.Default != nil {
@@ -233,12 +224,12 @@ func filterUnknownInputs(spec *spec.Spec, inputs map[string]string) map[string]s
 }
 
 // loadInputFiles iterates over each --input-file and combines them all into a map.
-func loadInputFiles(ctx context.Context, fs common.FS, paths []string) (map[string]string, error) {
+func loadInputFiles(fs common.FS, paths []string) (map[string]string, error) {
 	out := make(map[string]string)
 	sourceFileForInput := make(map[string]string)
 
 	for _, f := range paths {
-		inputsThisFile, err := loadInputFile(ctx, fs, f)
+		inputsThisFile, err := loadInputFile(fs, f)
 		if err != nil {
 			return nil, err
 		}
@@ -281,27 +272,9 @@ func checkInputsMissing(spec *spec.Spec, inputs map[string]string) []string {
 	return missing
 }
 
-// writeRule writes a human-readable description of the given rule to the given
-// tabwriter in a 2-column format.
-//
-// Sometimes we run this in a context where we want to include the index of the
-// rule in the list of rules; in that case, pass includeIndex=true and the index
-// value. If includeIndex is false, then index is ignored.
-func writeRule(tw *tabwriter.Writer, rule *spec.InputRule, includeIndex bool, index int) {
-	indexStr := ""
-	if includeIndex {
-		indexStr = fmt.Sprintf(" %d", index)
-	}
-
-	fmt.Fprintf(tw, "\nRule%s:\t%s", indexStr, rule.Rule.Val)
-	if rule.Message.Val != "" {
-		fmt.Fprintf(tw, "\nRule%s msg:\t%s", indexStr, rule.Message.Val)
-	}
-}
-
 // loadInputFile loads a single --input-file into a map.
-func loadInputFile(ctx context.Context, fs common.FS, path string) (map[string]string, error) {
-	data, err := os.ReadFile(path)
+func loadInputFile(fs common.FS, path string) (map[string]string, error) {
+	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading input file: %w", err)
 	}

@@ -21,7 +21,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	"github.com/abcxyz/abc/templates/common/render/gotmpl/funcs"
+	"github.com/abcxyz/abc/templates/model/spec/features"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -45,7 +49,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, Alice!",
@@ -58,7 +62,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, world!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, world!",
@@ -74,7 +78,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "{{.greeting}}, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, Alice!",
@@ -90,7 +94,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a_Alice.txt": "{{.greeting}}, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"a_{{.person}}.txt"}),
+				Paths: mdl.Strings("a_{{.person}}.txt"),
 			},
 			want: map[string]string{
 				"a_Alice.txt": "Hello, Alice!",
@@ -105,7 +109,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{.person}}!",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, {{.person}}!",
@@ -119,7 +123,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"a.txt": "Hello, {{",
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"a.txt": "Hello, {{",
@@ -143,7 +147,7 @@ func TestActionGoTemplate(t *testing.T) {
 				"suffix.txt":       `{{ trimSuffix .suffix "suffix" }}`,
 			},
 			gt: &spec.GoTemplate{
-				Paths: modelStrings([]string{"."}),
+				Paths: mdl.Strings("."),
 			},
 			want: map[string]string{
 				"replace_all.txt":  `my_test_project`,
@@ -163,11 +167,11 @@ func TestActionGoTemplate(t *testing.T) {
 			t.Parallel()
 
 			scratchDir := t.TempDir()
-			common.WriteAllDefaultMode(t, scratchDir, tc.initContents)
+			abctestutil.WriteAll(t, scratchDir, tc.initContents)
 
 			ctx := context.Background()
 			sp := &stepParams{
-				scope:      common.NewScope(tc.inputs),
+				scope:      common.NewScope(tc.inputs, funcs.Funcs(features.Features{})),
 				scratchDir: scratchDir,
 				rp: &Params{
 					FS: &common.RealFS{},
@@ -178,7 +182,7 @@ func TestActionGoTemplate(t *testing.T) {
 				t.Error(diff)
 			}
 
-			got := common.LoadDirWithoutMode(t, scratchDir)
+			got := abctestutil.LoadDir(t, scratchDir)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Errorf("output differed from expected, (-got,+want): %s", diff)
 			}

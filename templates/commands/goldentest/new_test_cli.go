@@ -26,13 +26,14 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
-	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentest "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	"github.com/abcxyz/abc/templates/model/header"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -75,20 +76,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-
-	tempDir, err := os.MkdirTemp("", "abc-new-test-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer func() {
-		rErr = errors.Join(rErr, os.RemoveAll(tempDir))
-	}()
-
 	fs := &common.RealFS{}
-
-	if err != nil {
-		return err //nolint:wrapcheck
-	}
 
 	spec, err := specutil.Load(ctx, fs, c.flags.Location, c.flags.Location)
 	if err != nil {
@@ -144,13 +132,18 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("write(%q): %w", testConfigFile, err)
 	}
 
+	fmt.Printf("new test (%q) created successfully, "+
+		"you can run `record` command to record the template rendering result to golden tests\n",
+		c.flags.NewTestName)
 	return nil
 }
 
 func marshalTestCase(inputs, builtinVars map[string]string) ([]byte, error) {
+	apiVersion := decode.LatestSupportedAPIVersion(version.IsReleaseBuild())
+
 	testCase := &goldentest.WithHeader{
 		Header: &header.Fields{
-			NewStyleAPIVersion: model.String{Val: decode.LatestAPIVersion},
+			NewStyleAPIVersion: model.String{Val: apiVersion},
 			Kind:               model.String{Val: decode.KindGoldenTest},
 		},
 		Wrapped: &goldentest.ForMarshaling{

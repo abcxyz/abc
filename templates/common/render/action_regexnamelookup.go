@@ -22,7 +22,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 // actionRegexNameLookup replaces named regex capturing groups with the template
@@ -84,7 +84,7 @@ func replaceWithNameLookup(allMatches [][]int, b []byte, rn *spec.RegexNameLooku
 			replacementVal, ok := scope.Lookup(subGroupName)
 			if !ok {
 				return nil, rn.Regex.Pos.Errorf("there was no template input variable matching the subgroup name %q; available variables are %v",
-					subGroupName, maps.Keys(scope.All()))
+					subGroupName, maps.Keys(scope.AllVars()))
 			}
 			replaceAtStartIdx := oneMatch[subGroupIdx*2]
 			replaceAtEndIdx := oneMatch[subGroupIdx*2+1]

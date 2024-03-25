@@ -23,9 +23,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/abcxyz/abc/templates/common"
-	"github.com/abcxyz/abc/templates/common/paths"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/model"
-	spec "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -36,11 +38,11 @@ func TestActionInclude(t *testing.T) {
 	cases := []struct {
 		name                 string
 		include              *spec.Include
-		templateContents     map[string]common.ModeAndContents
-		destDirContents      map[string]common.ModeAndContents
+		templateContents     map[string]abctestutil.ModeAndContents
+		destDirContents      map[string]abctestutil.ModeAndContents
 		inputs               map[string]string
 		ignorePatterns       []model.String
-		wantScratchContents  map[string]common.ModeAndContents
+		wantScratchContents  map[string]abctestutil.ModeAndContents
 		wantIncludedFromDest []string
 		statErr              error
 		wantErr              string
@@ -50,14 +52,14 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"myfile.txt"}),
+						Paths: mdl.Strings("myfile.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
@@ -66,14 +68,14 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"/myfile.txt"}),
+						Paths: mdl.Strings("/myfile.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
@@ -82,40 +84,40 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"../file.txt"}),
+						Paths: mdl.Strings("../file.txt"),
 					},
 				},
 			},
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../file.txt")),
+			wantErr: `path "../file.txt" must not contain ".."`,
 		},
 		{
 			name: "reject_dot_dot_glob",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"../*.txt"}),
+						Paths: mdl.Strings("../*.txt"),
 					},
 				},
 			},
-			wantErr: fmt.Sprintf(`path %q must not contain ".."`, filepath.FromSlash("../*.txt")),
+			wantErr: `path "../*.txt" must not contain ".."`,
 		},
 		{
 			name: "templated_filename_success",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"{{.my_dir}}/{{.my_file}}"}),
+						Paths: mdl.Strings("{{.my_dir}}/{{.my_file}}"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"foo/bar.txt": {Mode: 0o600, Contents: "file contents"},
 			},
 			inputs: map[string]string{
 				"my_dir":  "foo",
 				"my_file": "bar.txt",
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"foo/bar.txt": {Mode: 0o600, Contents: "file contents"},
 			},
 		},
@@ -124,14 +126,14 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"myfile.txt", "myfile.txt"}),
+						Paths: mdl.Strings("myfile.txt", "myfile.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
@@ -140,14 +142,14 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"foo/myfile.txt", "foo/", "foo/myfile.txt"}),
+						Paths: mdl.Strings("foo/myfile.txt", "foo/", "foo/myfile.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"foo/myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"foo/myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
@@ -156,11 +158,11 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"{{.filename}}"}),
+						Paths: mdl.Strings("{{.filename}}"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "file contents"},
 			},
 			inputs:  map[string]string{},
@@ -171,11 +173,11 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"nonexistent"}),
+						Paths: mdl.Strings("nonexistent"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 			wantErr: `glob "nonexistent" did not match any files`,
@@ -187,11 +189,11 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"myfile.txt"}),
+						Paths: mdl.Strings("myfile.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 			statErr: fmt.Errorf("fake error"),
@@ -202,16 +204,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"*.txt"}),
+						Paths: mdl.Strings("*.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 				"file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 				"file3.txt": {Mode: 0o600, Contents: "file3 contents"},
@@ -222,15 +224,15 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"dir*"}),
+						Paths: mdl.Strings("dir*"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
@@ -240,17 +242,17 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"dir*"}),
+						Paths: mdl.Strings("dir*"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"directive.txt":  {Mode: 0o600, Contents: "directive file contents"},
 				"director.txt":   {Mode: 0o600, Contents: "director file contents"},
 				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"directive.txt":  {Mode: 0o600, Contents: "directive file contents"},
 				"director.txt":   {Mode: 0o600, Contents: "director file contents"},
 				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
@@ -262,17 +264,17 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"dir/*.txt"}),
+						Paths: mdl.Strings("dir/*.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"dont_include.txt":  {Mode: 0o600, Contents: "dont_include contents"},
 				"dont/include2.txt": {Mode: 0o600, Contents: "dont_include2 contents"},
 				"dir/file1.txt":     {Mode: 0o600, Contents: "file1 contents"},
 				"dir/file2.txt":     {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"dir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"dir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
@@ -282,19 +284,19 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"{{.filename}}.*"}),
+						Paths: mdl.Strings("{{.filename}}.*"),
 					},
 				},
 			},
 			inputs: map[string]string{
 				"filename": "file",
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file.txt":  {Mode: 0o600, Contents: "txt file contents"},
 				"file.md":   {Mode: 0o600, Contents: "md file contents"},
 				"file.json": {Mode: 0o600, Contents: "json file contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file.txt":  {Mode: 0o600, Contents: "txt file contents"},
 				"file.md":   {Mode: 0o600, Contents: "md file contents"},
 				"file.json": {Mode: 0o600, Contents: "json file contents"},
@@ -305,15 +307,15 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"dir1/file1.txt"}),
-						As:    modelStrings([]string{"dir2/file2.txt"}),
+						Paths: mdl.Strings("dir1/file1.txt"),
+						As:    mdl.Strings("dir2/file2.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"dir1/file1.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"dir2/file2.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
@@ -322,15 +324,15 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"*.txt"}),
-						As:    modelStrings([]string{"dir"}),
+						Paths: mdl.Strings("*.txt"),
+						As:    mdl.Strings("dir"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"dir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
 		},
@@ -339,16 +341,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"*.txt"}),
-						As:    modelStrings([]string{"dir"}),
+						Paths: mdl.Strings("*.txt"),
+						As:    mdl.Strings("dir"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"dir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"dir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
@@ -358,18 +360,18 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"*.txt", "*.md"}),
-						As:    modelStrings([]string{"txtdir", "mddir"}),
+						Paths: mdl.Strings("*.txt", "*.md"),
+						As:    mdl.Strings("txtdir", "mddir"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 				"file3.md":  {Mode: 0o600, Contents: "file3 contents"},
 				"file4.md":  {Mode: 0o600, Contents: "file4 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"txtdir/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"txtdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 				"mddir/file3.md":   {Mode: 0o600, Contents: "file3 contents"},
@@ -381,16 +383,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"dir*"}),
-						As:    modelStrings([]string{"topdir"}),
+						Paths: mdl.Strings("dir*"),
+						As:    mdl.Strings("topdir"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"topdir/dir1/file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"topdir/dir2/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
@@ -400,8 +402,8 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"file{{.one}}.txt", "file{{.two}}.txt"}),
-						As:    modelStrings([]string{"file{{.three}}.txt", "file{{.four}}.txt"}),
+						Paths: mdl.Strings("file{{.one}}.txt", "file{{.two}}.txt"),
+						As:    mdl.Strings("file{{.three}}.txt", "file{{.four}}.txt"),
 					},
 				},
 			},
@@ -411,11 +413,11 @@ func TestActionInclude(t *testing.T) {
 				"three": "3",
 				"four":  "4",
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "my file contents"},
 				"file2.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file3.txt": {Mode: 0o600, Contents: "my file contents"},
 				"file4.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
@@ -425,16 +427,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":                 {Mode: 0o600, Contents: "my file contents"},
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
 		},
@@ -443,15 +445,15 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "my file contents"},
 				"subdir/spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "my file contents"},
 				"subdir/spec.yaml": {Mode: 0o600, Contents: "spec contents"},
 			},
@@ -461,16 +463,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":                        {Mode: 0o600, Contents: "my file contents"},
 				"spec.yaml":                        {Mode: 0o600, Contents: "spec contents"},
 				"subdir/testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":                        {Mode: 0o600, Contents: "my file contents"},
 				"subdir/testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
@@ -480,19 +482,19 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
-						Skip:  modelStrings([]string{"file2.txt"}),
+						Paths: mdl.Strings("."),
+						Skip:  mdl.Strings("file2.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
 				"file2.txt":                 {Mode: 0o600, Contents: "file 2 contents"},
 				"subfolder/file3.txt":       {Mode: 0o600, Contents: "file 3 contents"},
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":           {Mode: 0o600, Contents: "file 1 contents"},
 				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
@@ -502,12 +504,12 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"file1.txt"}),
-						Skip:  modelStrings([]string{"file1.txt"}),
+						Paths: mdl.Strings("file1.txt"),
+						Skip:  mdl.Strings("file1.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
 			},
 			wantScratchContents: nil,
@@ -517,12 +519,12 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
-						Skip:  modelStrings([]string{"file1.txt", "file2.txt", "file4.txt"}),
+						Paths: mdl.Strings("."),
+						Skip:  mdl.Strings("file1.txt", "file2.txt", "file4.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
 				"file2.txt":                 {Mode: 0o600, Contents: "file 2 contents"},
 				"file3.txt":                 {Mode: 0o600, Contents: "file 3 contents"},
@@ -530,7 +532,7 @@ func TestActionInclude(t *testing.T) {
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 		},
@@ -539,12 +541,12 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"*.txt"}),
-						Skip:  modelStrings([]string{"file1.txt", "file2.txt", "file4.txt"}),
+						Paths: mdl.Strings("*.txt"),
+						Skip:  mdl.Strings("file1.txt", "file2.txt", "file4.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
 				"file2.txt":                 {Mode: 0o600, Contents: "file 2 contents"},
 				"file3.txt":                 {Mode: 0o600, Contents: "file 3 contents"},
@@ -552,7 +554,7 @@ func TestActionInclude(t *testing.T) {
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 		},
@@ -561,19 +563,19 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"subfolder"}),
-						Skip:  modelStrings([]string{"subfolder/file2.txt"}),
+						Paths: mdl.Strings("subfolder"),
+						Skip:  mdl.Strings("subfolder/file2.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":                 {Mode: 0o600, Contents: "file 1 contents"},
 				"subfolder/file2.txt":       {Mode: 0o600, Contents: "file 2 contents"},
 				"subfolder/file3.txt":       {Mode: 0o600, Contents: "file 3 contents"},
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"subfolder/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
 		},
@@ -582,19 +584,19 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"subfolder"}),
-						Skip:  modelStrings([]string{"subfolder/*.txt"}),
+						Paths: mdl.Strings("subfolder"),
+						Skip:  mdl.Strings("subfolder/*.txt"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"subfolder/skip1.txt":       {Mode: 0o600, Contents: "skip 1 contents"},
 				"subfolder/skip2.txt":       {Mode: 0o600, Contents: "skip 2 contents"},
 				"subfolder/include.md":      {Mode: 0o600, Contents: "include contents"},
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"subfolder/include.md": {Mode: 0o600, Contents: "include contents"},
 			},
 		},
@@ -603,19 +605,19 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"folder1"}),
-						Skip:  modelStrings([]string{"folder1/folder2"}),
+						Paths: mdl.Strings("folder1"),
+						Skip:  mdl.Strings("folder1/folder2"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
 				"folder1/folder2/file2.txt": {Mode: 0o600, Contents: "file 2 contents"},
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"folder1/file1.txt":         {Mode: 0o600, Contents: "file 1 contents"},
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 2 contents"},
 			},
@@ -625,19 +627,19 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("."),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
 			wantIncludedFromDest: []string{"file1.txt"},
@@ -647,20 +649,20 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"subdir"}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("subdir"),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
 			wantIncludedFromDest: []string{"subdir/file2.txt"},
@@ -670,21 +672,21 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"*.txt"}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("*.txt"),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt":        {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file3.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
@@ -698,20 +700,20 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"file1.txt", "subdir/file2.txt"}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("file1.txt", "subdir/file2.txt"),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"spec.yaml":                 {Mode: 0o600, Contents: "spec contents"},
 				"testdata/golden/test.yaml": {Mode: 0o600, Contents: "some yaml"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
@@ -722,16 +724,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("."),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			ignorePatterns: modelStrings([]string{"folder0", "file1.txt", "folder1/folder2"}),
-			templateContents: map[string]common.ModeAndContents{
+			ignorePatterns: mdl.Strings("folder0", "file1.txt", "folder1/folder2"),
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder1/folder0/file0.txt": {Mode: 0o600, Contents: "file 0 contents"},
@@ -741,7 +743,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder2/file2.txt":         {Mode: 0o600, Contents: "file 2 contents"},
 				"folder1/folder3/file3.txt":         {Mode: 0o600, Contents: "file 3 contents"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file0 contents"},
 				"folder1/folder1/folder0/file0.txt": {Mode: 0o600, Contents: "file 0 contents"},
@@ -750,7 +752,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder2/file2.txt":         {Mode: 0o600, Contents: "file2 contents"},
 				"file2.txt":                         {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 				"file2.txt":                 {Mode: 0o600, Contents: "file2 contents"},
 			},
@@ -761,16 +763,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("."),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			ignorePatterns: modelStrings([]string{"*older0", "*1.txt", "folder1/*2"}),
-			templateContents: map[string]common.ModeAndContents{
+			ignorePatterns: mdl.Strings("*older0", "*1.txt", "folder1/*2"),
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder1/folder0/file0.txt": {Mode: 0o600, Contents: "file 0 contents"},
@@ -780,7 +782,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder2/file2.txt":         {Mode: 0o600, Contents: "file 2 contents"},
 				"folder1/folder3/file3.txt":         {Mode: 0o600, Contents: "file 3 contents"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file0 contents"},
 				"folder1/folder1/folder0/file0.txt": {Mode: 0o600, Contents: "file0 contents"},
@@ -790,7 +792,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder2/file2.txt":         {Mode: 0o600, Contents: "file2 contents"},
 				"file2.txt":                         {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 				"file2.txt":                 {Mode: 0o600, Contents: "file2 contents"},
 			},
@@ -801,16 +803,16 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("."),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			ignorePatterns: modelStrings([]string{"/folder0", "/file1.txt", "/folder1/folder2"}),
-			templateContents: map[string]common.ModeAndContents{
+			ignorePatterns: mdl.Strings("/folder0", "/file1.txt", "/folder1/folder2"),
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                 {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder1/folder0/file0.txt": {Mode: 0o600, Contents: "file 0 contents"},
@@ -820,7 +822,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder2/file2.txt":         {Mode: 0o600, Contents: "file 2 contents"},
 				"folder1/folder3/file3.txt":         {Mode: 0o600, Contents: "file 3 contents"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"folder0/file0.txt":                      {Mode: 0o600, Contents: "file0 contents"},
 				"dest_folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file0 contents"},
 				"dest_folder1/folder1/folder0/file0.txt": {Mode: 0o600, Contents: "file0 contents"},
@@ -830,7 +832,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder2/file2.txt":              {Mode: 0o600, Contents: "file2 contents"},
 				"file2.txt":                              {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"folder1/folder0/file0.txt":              {Mode: 0o600, Contents: "file 0 contents"},
 				"folder1/folder1/folder0/file0.txt":      {Mode: 0o600, Contents: "file 0 contents"},
 				"dest_folder1/folder0/file0.txt":         {Mode: 0o600, Contents: "file0 contents"},
@@ -855,25 +857,25 @@ func TestActionInclude(t *testing.T) {
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
-						Paths: modelStrings([]string{"."}),
+						Paths: mdl.Strings("."),
 					},
 					{
-						Paths: modelStrings([]string{"."}),
-						From:  model.String{Val: "destination"},
+						Paths: mdl.Strings("."),
+						From:  mdl.S("destination"),
 					},
 				},
 			},
-			templateContents: map[string]common.ModeAndContents{
+			templateContents: map[string]abctestutil.ModeAndContents{
 				"folder1/file1.txt":      {Mode: 0o600, Contents: "file 1 contents"},
 				".bin/file2.txt":         {Mode: 0o600, Contents: "file 2 contents"},
 				"folder1/.bin/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 			},
-			destDirContents: map[string]common.ModeAndContents{
+			destDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt":              {Mode: 0o600, Contents: "file1 contents"},
 				".bin/file2.txt":         {Mode: 0o600, Contents: "file2 contents"},
 				"folder1/.bin/file3.txt": {Mode: 0o600, Contents: "file3 contents"},
 			},
-			wantScratchContents: map[string]common.ModeAndContents{
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"folder1/file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
 				"file1.txt":         {Mode: 0o600, Contents: "file1 contents"},
 			},
@@ -889,26 +891,23 @@ func TestActionInclude(t *testing.T) {
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
-			// Convert to OS-specific paths
-			toPlatformPaths(tc.wantIncludedFromDest)
-
 			tempDir := t.TempDir()
-			templateDir := filepath.Join(tempDir, paths.TemplateDirNamePart)
-			scratchDir := filepath.Join(tempDir, paths.ScratchDirNamePart)
+			templateDir := filepath.Join(tempDir, tempdir.TemplateDirNamePart)
+			scratchDir := filepath.Join(tempDir, tempdir.ScratchDirNamePart)
 			destDir := filepath.Join(tempDir, "dest")
 
-			common.WriteAll(t, templateDir, tc.templateContents)
+			abctestutil.WriteAllMode(t, templateDir, tc.templateContents)
 
 			// For testing "include from destination"
-			common.WriteAll(t, destDir, tc.destDirContents)
+			abctestutil.WriteAllMode(t, destDir, tc.destDirContents)
 
 			sp := &stepParams{
 				ignorePatterns: tc.ignorePatterns,
-				scope:          common.NewScope(tc.inputs),
+				scope:          common.NewScope(tc.inputs, nil),
 				scratchDir:     scratchDir,
 				templateDir:    templateDir,
 				rp: &Params{
-					DestDir: destDir,
+					OutDir: destDir,
 
 					FS: &common.ErrorFS{
 						FS:      &common.RealFS{},
@@ -922,13 +921,13 @@ func TestActionInclude(t *testing.T) {
 				t.Error(diff)
 			}
 
-			gotTemplateContents := common.LoadDirContents(t, filepath.Join(tempDir, paths.TemplateDirNamePart))
-			if diff := cmp.Diff(gotTemplateContents, tc.templateContents, common.CmpFileMode); diff != "" {
+			gotTemplateContents := abctestutil.LoadDirMode(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart))
+			if diff := cmp.Diff(gotTemplateContents, tc.templateContents); diff != "" {
 				t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
 			}
 
-			gotScratchContents := common.LoadDirContents(t, filepath.Join(tempDir, paths.ScratchDirNamePart))
-			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents, common.CmpFileMode); diff != "" {
+			gotScratchContents := abctestutil.LoadDirMode(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart))
+			if diff := cmp.Diff(gotScratchContents, tc.wantScratchContents); diff != "" {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
@@ -936,16 +935,5 @@ func TestActionInclude(t *testing.T) {
 				t.Errorf("includedFromDest was not as expected (-got,+want): %s", diff)
 			}
 		})
-	}
-}
-
-// toPlatformPaths converts each element of each input slice from a/b/c style
-// forward slash paths to platform-specific file paths. The slices are modified
-// in place.
-func toPlatformPaths(slices ...[]string) {
-	for _, s := range slices {
-		for i, elem := range s {
-			s[i] = filepath.FromSlash(elem)
-		}
 	}
 }

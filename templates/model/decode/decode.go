@@ -24,28 +24,35 @@ import (
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/model"
 	goldentestv1alpha1 "github.com/abcxyz/abc/templates/model/goldentest/v1alpha1"
 	goldentestv1beta3 "github.com/abcxyz/abc/templates/model/goldentest/v1beta3"
+	goldentestv1beta4 "github.com/abcxyz/abc/templates/model/goldentest/v1beta4"
 	"github.com/abcxyz/abc/templates/model/header"
 	manifestv1alpha1 "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	specv1alpha1 "github.com/abcxyz/abc/templates/model/spec/v1alpha1"
 	specv1beta1 "github.com/abcxyz/abc/templates/model/spec/v1beta1"
 	specv1beta2 "github.com/abcxyz/abc/templates/model/spec/v1beta2"
 	specv1beta3 "github.com/abcxyz/abc/templates/model/spec/v1beta3"
+	specv1beta4 "github.com/abcxyz/abc/templates/model/spec/v1beta4"
+	specv1beta6 "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 )
 
 var (
 	KindTemplate   = "Template"   // the value of the "kind" field in a spec.yaml file
 	KindGoldenTest = "GoldenTest" // ... a test.yaml file
 	KindManifest   = "Manifest"   // ... a manifest.yaml file
-
-	// LatestAPIVersion is the most up-to-date API version.
-	LatestAPIVersion = apiVersions[len(apiVersions)-1].apiVersion
 )
 
 type apiVersionDef struct {
 	apiVersion string
+
+	// Set this to true for api_versions that are still under construction and
+	// should not be supported in official release builds. We don't want real
+	// users using unreleased api_versions which are still under construction
+	// and may receive breaking changes.
+	unreleased bool
 
 	// Map keys are the "kind" values found in the YAML files.
 	kinds map[string]model.ValidatorUpgrader
@@ -93,6 +100,33 @@ var apiVersions = []apiVersionDef{
 			KindManifest:   &manifestv1alpha1.Manifest{},
 		},
 	},
+	{
+		apiVersion: "cli.abcxyz.dev/v1beta4",
+		kinds: map[string]model.ValidatorUpgrader{
+			KindTemplate:   &specv1beta4.Spec{},
+			KindGoldenTest: &goldentestv1beta4.Test{},
+			KindManifest:   &manifestv1alpha1.Manifest{},
+		},
+	},
+	// Why is v1beta5 the same as v1beta4? It's a simple hack that works around
+	// a bug in abc versions <=0.5.0, for reasons that are very difficult to
+	// understand. See github.com/abcxyz/abc/pull/431 for rationale.
+	{
+		apiVersion: "cli.abcxyz.dev/v1beta5",
+		kinds: map[string]model.ValidatorUpgrader{
+			KindTemplate:   &specv1beta4.Spec{},
+			KindGoldenTest: &goldentestv1beta4.Test{},
+			KindManifest:   &manifestv1alpha1.Manifest{},
+		},
+	},
+	{
+		apiVersion: "cli.abcxyz.dev/v1beta6",
+		kinds: map[string]model.ValidatorUpgrader{
+			KindTemplate:   &specv1beta6.Spec{},
+			KindGoldenTest: &goldentestv1beta4.Test{},
+			KindManifest:   &manifestv1alpha1.Manifest{},
+		},
+	},
 }
 
 // Decode parses the given YAML contents of r into a struct and returns it. The
@@ -101,7 +135,7 @@ var apiVersions = []apiVersionDef{
 // non-empty, then we'll also validate that the "kind" of the YAML file matches
 // requireKind, and return error if not. This also calls Validate() on
 // the returned struct and returns error if invalid.
-func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, string, error) {
+func Decode(r io.Reader, filename, requireKind string, isReleaseBuild bool) (model.ValidatorUpgrader, string, error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, "", fmt.Errorf("error reading file %s: %w", filename, err)
@@ -133,6 +167,10 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 		return nil, "", fmt.Errorf("file %s has kind %q, but %q is required", filename, cf.Kind.Val, requireKind)
 	}
 
+	if apiVersion > LatestSupportedAPIVersion(isReleaseBuild) {
+		return nil, "", fmt.Errorf("api_version %q is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation", apiVersion)
+	}
+
 	vu, err := decodeFromVersionKind(filename, apiVersion, cf.Kind.Val, buf)
 	if err == nil {
 		return vu, apiVersion, nil
@@ -161,7 +199,7 @@ func Decode(r io.Reader, filename, requireKind string) (model.ValidatorUpgrader,
 // then repeatedly calls Upgrade() and Validate() on it until it's the newest version, then
 // returns it. requireKind has the same meaning as in Decode().
 func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, error) {
-	vu, apiVersion, err := Decode(r, filename, requireKind)
+	vu, apiVersion, err := Decode(r, filename, requireKind, version.IsReleaseBuild())
 	if err != nil {
 		return nil, err
 	}
@@ -218,4 +256,28 @@ func decodeFromVersionKind(filename, apiVersion, kind string, buf []byte) (model
 	}
 
 	return vu, nil
+}
+
+// LatestSupportedAPIVersion is the most up-to-date API version. It's
+// in the format "cli.abcxyz.dev/v1beta4".
+//
+// isReleaseBuild is the value of version.IsReleaseBuild(), but for testing
+// purposes we make it an argument rather than hardcoding.
+func LatestSupportedAPIVersion(isReleaseBuild bool) string {
+	// Release builds (like "I am the official release of version 1.2.3") will
+	// read and write only officially released, finalized api_versions. Other
+	// builds (e.g. CI builds, local dev builds, devs running "go test" on
+	// workstations) are more permissive and will read and write the most recent
+	// unreleased work-in-progress api_version.
+	if !isReleaseBuild {
+		return apiVersions[len(apiVersions)-1].apiVersion
+	}
+	for i := len(apiVersions) - 1; i > 0; i-- {
+		if !apiVersions[i].unreleased {
+			return apiVersions[i].apiVersion
+		}
+	}
+	// Justification for why it's OK to panic here: if this passes unit tests,
+	// it will never fail on a user's machine.
+	panic("internal error: there are no apiVersions that are marked as released")
 }
