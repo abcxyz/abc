@@ -790,7 +790,7 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	manifestFullPath := filepath.Join(templateDir, "/manifest.yaml")
+	manifestFullPath := filepath.Join(templateDir, "manifest.yaml")
 	if err := os.WriteFile(manifestFullPath, buf, common.OwnerRWPerms); err != nil {
 		t.Fatal(err)
 	}
