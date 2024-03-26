@@ -86,8 +86,12 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	// Even though we don't care about the contents of stderr, we still have to
 	// read from the pipe to prevent any writes to the pipe from blocking.
 	go func() {
-		buf := make([]byte, 1_000_000) // size is arbitrary
-		_, _ = stderrReader.Read(buf)
+		buf := make([]byte, 1_000) // size is arbitrary
+		for {
+			if _, err := stderrReader.Read(buf); err == io.EOF {
+				return
+			}
+		}
 	}()
 
 	// Start a background goroutine to wait for the waitgroup and close a
