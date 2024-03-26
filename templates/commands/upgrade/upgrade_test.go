@@ -390,14 +390,6 @@ steps:
 
 			cmd := &Command{skipPromptTTYCheck: true}
 
-			// stdinReader, stdinWriter := io.Pipe()
-			// stdoutReader, stdoutWriter := io.Pipe()
-			// _, stderrWriter := io.Pipe()
-
-			// cmd.SetStdin(stdinReader)
-			// cmd.SetStdout(stdoutWriter)
-			// cmd.SetStderr(stderrWriter)
-
 			manifestBaseName := findManifest(t, manifestDir)
 			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
 
