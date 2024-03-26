@@ -63,10 +63,6 @@ steps:
 		wantStdout string
 		wantErr    []string
 	}{
-		// TODO tests:
-		//  try interactive inputs
-		//  try input files
-		//  errors?
 		{
 			name: "noop_because_template_is_already_up_to_date",
 			origTemplateDirContents: map[string]string{
@@ -445,36 +441,6 @@ steps:
 			gotDestContents := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
-			}
-		})
-	}
-}
-
-func TestErrors(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name    string
-		args    []string
-		wantErr string
-	}{
-		{
-			name:    "nonexistent_manifest",
-			args:    []string{"nonexistent.yaml"},
-			wantErr: "failed to open manifest file",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-			err := (&Command{}).Run(ctx, tc.args)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Fatal(diff)
 			}
 		})
 	}

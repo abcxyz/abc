@@ -33,7 +33,7 @@ type Command struct {
 	cli.BaseCommand
 	flags Flags
 
-	// Used in prompt tests to bypass "is the input a terminal" check..
+	// Used in prompt tests to bypass "is the input a terminal" check.
 	skipPromptTTYCheck bool
 }
 
