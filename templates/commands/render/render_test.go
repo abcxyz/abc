@@ -17,12 +17,10 @@ package render
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -240,33 +238,10 @@ Enter value: `,
 			args = append(args, sourceDir)
 
 			r := &Command{skipPromptTTYCheck: true}
-			stdinReader, stdinWriter := io.Pipe()
-			stdoutReader, stdoutWriter := io.Pipe()
-			_, stderrWriter := io.Pipe()
 
-			r.SetStdin(stdinReader)
-			r.SetStdout(stdoutWriter)
-			r.SetStderr(stderrWriter)
-
-			errCh := make(chan error)
-			go func() {
-				defer close(errCh)
-				err := r.Run(ctx, args)
-				errCh <- err
-			}()
-
-			for _, ds := range tc.dialog {
-				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
-				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
-			}
-
-			select {
-			case err := <-errCh:
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("timed out waiting for background goroutine to finish")
+			err := abctestutil.DialogTest(ctx, t, tc.dialog, r, args)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
 			}
 
 			gotDestContents := abctestutil.LoadDir(t, dest)
