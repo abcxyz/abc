@@ -24,11 +24,14 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/decode"
+	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
@@ -757,6 +760,51 @@ steps:
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 			}
 		})
+	}
+}
+
+func TestUpgrade_NonCanonical(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tempBase := t.TempDir()
+	templateDir := filepath.Join(tempBase, "template_dir")
+	if err := os.MkdirAll(templateDir, common.OwnerRWXPerms); err != nil {
+		t.Fatal(err)
+	}
+
+	m := &manifest.WithHeader{
+		Header: &header.Fields{
+			NewStyleAPIVersion: model.String{Val: "cli.abcxyz.dev/v1beta6"},
+			Kind:               model.String{Val: decode.KindManifest},
+		},
+		Wrapped: &manifest.ForMarshaling{
+			TemplateLocation: model.String{Val: ""},
+			LocationType:     model.String{Val: ""},
+			TemplateDirhash:  model.String{Val: "asdfasdfasdfasdfasdf"},
+		},
+	}
+
+	buf, err := yaml.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifestFullPath := filepath.Join(templateDir, "/manifest.yaml")
+	if err := os.WriteFile(manifestFullPath, buf, common.OwnerRWPerms); err != nil {
+		t.Fatal(err)
+	}
+
+	params := &Params{
+		CWD:          tempBase,
+		FS:           &common.RealFS{},
+		ManifestPath: manifestFullPath,
+	}
+
+	_, err = Upgrade(ctx, params)
+	wantErr := "this template can't be upgraded because its manifest doesn't contain a template_location"
+	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
+		t.Fatal(diff)
 	}
 }
 

@@ -189,6 +189,13 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err
 	}
 
+	if oldManifest.TemplateLocation.Val == "" {
+		// TODO(upgrade): add a flag to manually specify template location, to
+		// be used if the template location changes or if it was installed from
+		// a non-canonical location.
+		return nil, fmt.Errorf("this template can't be upgraded because its manifest doesn't contain a template_location. This happens when the template is installed from a non-canonical location, such as a local temp dir, instead of from a permanent location like a remote github repo")
+	}
+
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
