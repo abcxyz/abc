@@ -18,13 +18,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/benbjohnson/clock"
 	"github.com/google/go-cmp/cmp"
@@ -393,49 +390,28 @@ steps:
 
 			cmd := &Command{skipPromptTTYCheck: true}
 
-			stdinReader, stdinWriter := io.Pipe()
-			stdoutReader, stdoutWriter := io.Pipe()
-			_, stderrWriter := io.Pipe()
+			// stdinReader, stdinWriter := io.Pipe()
+			// stdoutReader, stdoutWriter := io.Pipe()
+			// _, stderrWriter := io.Pipe()
 
-			cmd.SetStdin(stdinReader)
-			cmd.SetStdout(stdoutWriter)
-			cmd.SetStderr(stderrWriter)
+			// cmd.SetStdin(stdinReader)
+			// cmd.SetStdout(stdoutWriter)
+			// cmd.SetStderr(stderrWriter)
 
 			manifestBaseName := findManifest(t, manifestDir)
 			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
 
 			abctestutil.WriteAll(t, templateDir, tc.upgradedTemplate)
 
-			errCh := make(chan error)
-			go func() {
-				defer close(errCh)
-				args := []string{fmt.Sprintf("--prompt=%t", tc.prompt)}
-				if len(tc.inputFileContents) > 0 {
-					args = append(args, "--input-file="+inputFileName)
-				}
-				args = append(args, manifestFullPath)
-				errCh <- cmd.Run(ctx, args)
-			}()
+			args := []string{fmt.Sprintf("--prompt=%t", tc.prompt)}
+			if len(tc.inputFileContents) > 0 {
+				args = append(args, "--input-file="+inputFileName)
+			}
+			args = append(args, manifestFullPath)
 
-			// TODO factor out dialog test function
-			go func() {
-				for _, ds := range tc.dialog {
-					abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
-					abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
-				}
-			}()
-
-			select {
-			case err := <-errCh:
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
-			case <-time.After(time.Second):
-				t.Errorf("timed out waiting for background goroutine to finish")
-				buf := make([]byte, 1_000_000)
-				length := runtime.Stack(buf, true)
-				t.Logf("Stack trace:\n%s", buf[:length])
-				t.FailNow()
+			err = abctestutil.DialogTest(ctx, t, tc.dialog, cmd, args)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
 			}
 
 			gotDestContents := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))

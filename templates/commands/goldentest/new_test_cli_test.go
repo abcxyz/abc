@@ -18,7 +18,6 @@ package goldentest
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 	"testing"
 

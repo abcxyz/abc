@@ -31,34 +31,36 @@ import (
 // communicating over stdin and stdout. The expected conversation is defined as
 // a sequence of DialogSteps.
 //
-// If the observed dialog doesn't match the expected dialog, then tb.Fatalf()
-// will be called. If the the
+// If the observed dialog doesn't match the expected dialog, or if the test
+// times out, then tb.Fatalf() will be called. In either of these cases, a
+// goroutine could be leaked, but we consider that OK, because this is just a
+// test.
 func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.Command, runArgs []string) error {
 	tb.Helper()
 
 	stdinReader, stdinWriter := io.Pipe()
 	stdoutReader, stdoutWriter := io.Pipe()
 	stderrReader, stderrWriter := io.Pipe()
-	defer stdinWriter.Close()
-	defer stdinReader.Close()
-	defer stdoutWriter.Close()
-	defer stdoutWriter.Close()
-	defer stderrWriter.Close()
+
+	defer func() {
+		stderrWriter.Close()
+		stdoutWriter.Close()
+		stdinWriter.Close()
+		stderrReader.Close()
+		stdoutReader.Close()
+		stdinReader.Close()
+	}()
 
 	cmd.SetStdin(stdinReader)
 	cmd.SetStdout(stdoutWriter)
 	cmd.SetStderr(stderrWriter)
 
 	wg := new(sync.WaitGroup)
-	// errCh := make(chan error, 1)
 	var err error
 	wg.Add(1)
 	go func() {
-		// defer close(errCh)
 		defer wg.Done()
 		err = cmd.Run(ctx, runArgs)
-		// errCh <- cmd.Run(ctx, runArgs)
-		// errCh <- cmd(stdinReader, stdoutWriter, stderrWriter)
 	}()
 
 	wg.Add(1)
@@ -66,7 +68,9 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 		defer wg.Done()
 		for _, ds := range steps {
 			ReadWithTimeout(tb, stdoutReader, ds.WaitForPrompt)
-			WriteWithTimeout(tb, stdinWriter, ds.ThenRespond)
+			if ds.ThenRespond != "" {
+				WriteWithTimeout(tb, stdinWriter, ds.ThenRespond)
+			}
 		}
 	}()
 
@@ -98,43 +102,25 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	return nil
 }
 
-func ReadAndExpect(tb testing.TB, r io.Reader, wantSubstr string) {
-	buf := make([]byte, 1_000_000)
-	tb.Log("to Read")
-	n, err := r.Read(buf)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	got := string(buf[:n])
-
-	if !strings.Contains(got, wantSubstr) {
-		tb.Fatalf("got a prompt %q, but wanted a prompt containing %q", got, wantSubstr)
-	}
-}
-
-// TODO remove?
 // ReadWithTimeout does a single read from the given reader. It calls Fatal if
 // that read fails or the returned string doesn't contain wantSubStr. May leak a
 // goroutine on timeout.
 func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 	tb.Helper()
 
-	tb.Logf("readWith starting with %q", wantSubstr)
-
 	var got string
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
-		ReadAndExpect(tb, r, wantSubstr)
-		// buf := make([]byte, 64*1_000)
-		// tb.Log("to Read")
-		// n, err := r.Read(buf)
-		// if err != nil {
-		// 	errCh <- err
-		// 	return
-		// }
-		// got = string(buf[:n])
-		tb.Logf("Read returned: %s", got)
+		buf := make([]byte, 64*1_000)
+		tb.Log("dialoger goroutine trying to read")
+		n, err := r.Read(buf)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		got = string(buf[:n])
+		tb.Logf("dialoger goroutine read: %q", got)
 	}()
 
 	select {
@@ -142,29 +128,26 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(time.Second):
-		tb.Fatalf("timed out waiting to read %q", wantSubstr)
+	case <-time.After(50 * time.Millisecond):
+		tb.Fatalf("dialoger goroutine imed out waiting to read %q", wantSubstr)
 	}
 
-	// if !strings.Contains(got, wantSubstr) {
-	// 	tb.Fatalf("got a prompt %q, but wanted a prompt containing %q", got, wantSubstr)
-	// }
+	if !strings.Contains(got, wantSubstr) {
+		tb.Fatalf("got a prompt %q, but wanted a prompt containing %q", got, wantSubstr)
+	}
 }
 
-// TODO remove?
 // WriteWithTimeout does a single write to the given writer. It calls Fatal
 // if that read doesn't contain wantSubStr. May leak a goroutine on timeout.
 func WriteWithTimeout(tb testing.TB, w io.Writer, msg string) {
 	tb.Helper()
 
-	tb.Logf("WriteWithTimeout starting with %q", msg)
-
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
-		tb.Log("to Write")
+		tb.Logf("dialoger goroutine trying to write %q", msg)
 		_, err := w.Write([]byte(msg))
-		tb.Log("from Write")
+		tb.Logf("dialoger goroutine wrote %q", msg)
 		errCh <- err
 	}()
 
@@ -174,11 +157,11 @@ func WriteWithTimeout(tb testing.TB, w io.Writer, msg string) {
 			tb.Fatal(err)
 		}
 	case <-time.After(time.Second):
-		tb.Fatalf("timed out waiting to write %q", msg)
+		tb.Fatalf("dialoger goroutine timed out waiting to write %q", msg)
 	}
 }
 
-// DialogStep describe the prompt and respond msg.
+// DialogStep describes the prompt and respond msg.
 type DialogStep struct {
 	WaitForPrompt string
 	ThenRespond   string // should end with newline
