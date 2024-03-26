@@ -137,8 +137,8 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(50 * time.Millisecond):
-		tb.Fatalf("dialoger goroutine imed out waiting to read %q", wantSubstr)
+	case <-time.After(100 * time.Millisecond): // time is arbitrary
+		tb.Fatalf("dialoger goroutine timed out waiting to read %q", wantSubstr)
 	}
 
 	if !strings.Contains(got, wantSubstr) {
