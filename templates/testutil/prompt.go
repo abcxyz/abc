@@ -35,6 +35,15 @@ import (
 // times out, then tb.Fatalf() will be called. In either of these cases, a
 // goroutine could be leaked, but we consider that OK, because this is just a
 // test.
+//
+// cmd.Run() will be called with runArgs. If Run() returns an error, that error
+// will be returned from this function. That is the only error that will ever be
+// returned by this function.
+//
+// If *both* (1) cmd.Run() returns error and (2) the observed dialog doesn't
+// match the expected dialog, then tb.Fatalf() will be called (so no error will
+// be returned. This allows the dialog to be verified even for cases that return
+// error.
 func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.Command, runArgs []string) error {
 	tb.Helper()
 
@@ -77,10 +86,16 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	// Even though we don't care about the contents of stderr, we still have to
 	// read from the pipe to prevent any writes to the pipe from blocking.
 	go func() {
-		buf := make([]byte, 1_000_000) // size is arbitrary
-		_, _ = stderrReader.Read(buf)
+		buf := make([]byte, 1_000) // size is arbitrary
+		for {
+			if _, err := stderrReader.Read(buf); err == io.EOF {
+				return
+			}
+		}
 	}()
 
+	// Start a background goroutine to wait for the waitgroup and close a
+	// channel, so we can wait for the waitgroup in a "select".
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -88,7 +103,7 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	}()
 
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(time.Second): // time is arbitrary
 		buf := make([]byte, 1_000_000) // size is arbitrary
 		length := runtime.Stack(buf, true)
 		tb.Fatalf("timed out waiting for background goroutine to finish. Here's a stack trace to show where things are blocked: %s", buf[:length])
@@ -96,7 +111,7 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	}
 
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	return nil
@@ -112,7 +127,7 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
-		buf := make([]byte, 64*1_000)
+		buf := make([]byte, 64*1_000) // size is arbitrary
 		tb.Log("dialoger goroutine trying to read")
 		n, err := r.Read(buf)
 		if err != nil {
@@ -128,8 +143,8 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(50 * time.Millisecond):
-		tb.Fatalf("dialoger goroutine imed out waiting to read %q", wantSubstr)
+	case <-time.After(100 * time.Millisecond): // time is arbitrary
+		tb.Fatalf("dialoger goroutine timed out waiting to read %q", wantSubstr)
 	}
 
 	if !strings.Contains(got, wantSubstr) {
@@ -156,7 +171,7 @@ func WriteWithTimeout(tb testing.TB, w io.Writer, msg string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(100 * time.Millisecond): // time is arbitrary
 		tb.Fatalf("dialoger goroutine timed out waiting to write %q", msg)
 	}
 }
