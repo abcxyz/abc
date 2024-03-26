@@ -90,6 +90,8 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 		_, _ = stderrReader.Read(buf)
 	}()
 
+	// Start a background goroutine to wait for the waitgroup and close a
+	// channel, so we can wait for the waitgroup in a "select".
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -97,7 +99,7 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	}()
 
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(time.Second): // time is arbitrary
 		buf := make([]byte, 1_000_000) // size is arbitrary
 		length := runtime.Stack(buf, true)
 		tb.Fatalf("timed out waiting for background goroutine to finish. Here's a stack trace to show where things are blocked: %s", buf[:length])
@@ -121,7 +123,7 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
-		buf := make([]byte, 64*1_000)
+		buf := make([]byte, 64*1_000) // size is arbitrary
 		tb.Log("dialoger goroutine trying to read")
 		n, err := r.Read(buf)
 		if err != nil {
@@ -165,7 +167,7 @@ func WriteWithTimeout(tb testing.TB, w io.Writer, msg string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(100 * time.Millisecond): // time is arbitrary
 		tb.Fatalf("dialoger goroutine timed out waiting to write %q", msg)
 	}
 }
