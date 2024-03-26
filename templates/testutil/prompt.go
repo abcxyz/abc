@@ -17,6 +17,7 @@ package testutil
 
 import (
 	"context"
+	"errors"
 	"io"
 	"runtime"
 	"strings"
@@ -88,7 +89,7 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	go func() {
 		buf := make([]byte, 1_000) // size is arbitrary
 		for {
-			if _, err := stderrReader.Read(buf); err == io.EOF {
+			if _, err := stderrReader.Read(buf); errors.Is(err, io.EOF) {
 				return
 			}
 		}
