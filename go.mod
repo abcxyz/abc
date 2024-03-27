@@ -6,7 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/abcxyz/abc-updater v0.0.2
+	github.com/abcxyz/abc-updater v0.0.3
 	github.com/abcxyz/pkg v1.0.4
 	github.com/benbjohnson/clock v1.3.5
 	github.com/fatih/color v1.16.0

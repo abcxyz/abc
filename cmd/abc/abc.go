@@ -24,7 +24,7 @@ import (
 	"syscall"
 	"time"
 
-	abcupdater "github.com/abcxyz/abc-updater/sdk/go/abc-updater"
+	"github.com/abcxyz/abc-updater/pkg/abcupdater"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
