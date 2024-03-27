@@ -12,7 +12,7 @@ function pre_gen_go {
   if [ ! -f "$1/go.mod" ]; then
     # Create the file
     cd $1
-    go mod init github.com/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME
+    go mod init REPLACE_GO_GAR_REPOSITORY_LOCATION-go.pkg.dev/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME
     cd -
   fi
 }
