@@ -537,13 +537,6 @@ func TestProcessGlobs(t *testing.T) {
 			if err != nil {
 				return // err was expected as part of the test
 			}
-			if diff := testutil.DiffErrString(err, tc.wantNonGlobErr); diff != "" {
-				t.Error(diff)
-			}
-			if err != nil {
-				return // err was expected as part of the test
-			}
-
 			relGotPaths := make([]model.String, 0, len(gotPaths))
 			for _, p := range gotPaths {
 				relPath, err := filepath.Rel(tempDir, p.Val)
