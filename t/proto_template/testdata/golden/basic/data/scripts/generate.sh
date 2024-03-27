@@ -61,6 +61,9 @@ function post_gen_node {
 }
 
 function main {
+  # delete the gen folder and recreate from scratch
+  rm -rf gen
+
   pre_gen_go gen/go
   pre_gen_node gen/node
 

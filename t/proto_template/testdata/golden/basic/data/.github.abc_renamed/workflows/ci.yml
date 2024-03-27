@@ -55,10 +55,8 @@ jobs:
   build:
     runs-on: 'ubuntu-latest'
     steps:
-      - name: 'Checkout PR branch'
+      - name: 'Checkout branch'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
-        with:
-          ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Buf CLI'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
@@ -79,10 +77,8 @@ jobs:
     runs-on: 'ubuntu-latest'
     needs: 'build'
     steps:
-      - name: 'Checkout PR branch'
+      - name: 'Checkout branch'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
-        with:
-          ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Buf CLI'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
@@ -105,10 +101,8 @@ jobs:
       - 'build'
       - 'version'
     steps:
-      - name: 'Checkout PR branch'
+      - name: 'Checkout branch'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
-        with:
-          ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Go'
         uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
@@ -131,10 +125,9 @@ jobs:
         shell: 'bash'
         run: |
           make generate
-          git_status=$(git status --porcelain)
-          echo ${git_status}
-          if ! [[ -z "${git_status}" ]]; then
-            echo "::error::Files were not generated from latest proto changes, run make generate and push the latest changes."
+          if [ -n "$(git status -s -uall)" ]; then
+            echo "::error title=Files were not generated from latest proto changes, run make generate and push the latest changes."
+            git -c color.ui=always diff
             exit 1
           fi
 
@@ -144,10 +137,8 @@ jobs:
       - 'build'
       - 'upload_source_protos'
     steps:
-      - name: 'Checkout PR branch'
+      - name: 'Checkout branch'
         uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
-        with:
-          ref: '${{ github.event.pull_request.head.ref }}'
 
       - name: 'Setup Buf CLI'
         uses: 'abcxyz/pkg/.github/actions/setup-binary@cfc3ba96621bb047468244993c7fb8cdd63b3352' # ratchet:abcxyz/pkg/.github/actions/setup-binary@main
