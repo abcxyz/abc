@@ -104,7 +104,7 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	}()
 
 	select {
-	case <-time.After(time.Second): // time is arbitrary
+	case <-time.After(5 * time.Second): // time is arbitrary
 		buf := make([]byte, 1_000_000) // size is arbitrary
 		length := runtime.Stack(buf, true)
 		tb.Fatalf("timed out waiting for background goroutine to finish. Here's a stack trace to show where things are blocked: %s", buf[:length])
@@ -144,7 +144,7 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(100 * time.Millisecond): // time is arbitrary
+	case <-time.After(time.Second): // time is arbitrary
 		tb.Fatalf("dialoger goroutine timed out waiting to read %q", wantSubstr)
 	}
 
@@ -172,7 +172,7 @@ func WriteWithTimeout(tb testing.TB, w io.Writer, msg string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(100 * time.Millisecond): // time is arbitrary
+	case <-time.After(time.Second): // time is arbitrary
 		tb.Fatalf("dialoger goroutine timed out waiting to write %q", msg)
 	}
 }

@@ -112,12 +112,10 @@ steps:
 		wantErr                      string
 	}{
 		// TODO(upgrade): tests to add:
-		//  remote git template
 		//  a chain of upgrades
 		//  extra inputs needed:
 		//    inputs from file
 		//    inputs provided as flags
-		//    prompt for inputs
 		//    upgraded template removes input(s)
 
 		{
