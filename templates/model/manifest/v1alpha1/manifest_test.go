@@ -84,7 +84,6 @@ output_hashes:
 			name: "fields_missing",
 			in:   `api_version: "foo"`,
 			wantValidateErr: []string{
-				`at line 1 column 1: field "template_location" is required`,
 				`at line 1 column 1: field "template_dirhash" is required`,
 			},
 		},
