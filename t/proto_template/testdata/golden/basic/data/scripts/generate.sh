@@ -12,7 +12,7 @@ function pre_gen_go {
   if [ ! -f "$1/go.mod" ]; then
     # Create the file
     cd $1
-    go mod init github.com/my-org/my-repo
+    go mod init us-go.pkg.dev/my-org/my-repo
     cd -
   fi
 }
