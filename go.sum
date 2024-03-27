@@ -1,7 +1,7 @@
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
-github.com/abcxyz/abc-updater v0.0.2 h1:88fh3JiHwqr75kOfxn+AVrBsEf4Py6IqAOlywS/Qqbo=
-github.com/abcxyz/abc-updater v0.0.2/go.mod h1:9BUkFU7/y5Bba/3GXJfWc/LTSEwGxisnM59A3FYeHf4=
+github.com/abcxyz/abc-updater v0.0.3 h1:n8cRAV+IHQvM3UgQFmea9hL9PRyNu7GERfxg6Oj5cbI=
+github.com/abcxyz/abc-updater v0.0.3/go.mod h1:9BUkFU7/y5Bba/3GXJfWc/LTSEwGxisnM59A3FYeHf4=
 github.com/abcxyz/pkg v1.0.4 h1:0C38LHfKDflehnFDnWuU2zRYOV9qHBotCT4cnEcetDc=
 github.com/abcxyz/pkg v1.0.4/go.mod h1:ibdYDJSLgKg/6sMRv9q18KseLhrD83HulBl4J1yHnt8=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
