@@ -99,7 +99,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 					//     (indicating an intent to modify a preexisting file in
 					//     place).
 					//  2. The same path is `include`d normally (not with
-					//     from==destination. This represents a completely
+					//     from==destination). This represents a completely
 					//     separate file that comes from the template dir and
 					//     not from the dest dir.
 					//  3. The second include should completely replace the
