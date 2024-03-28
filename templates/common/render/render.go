@@ -77,6 +77,9 @@ type Params struct {
 	// This is optional. If unset, the value of OutDir will be used.
 	DestDir string
 
+	// TODO doc
+	DestReader DestReader
+
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
 
@@ -132,6 +135,8 @@ type Params struct {
 	// except in testing.
 	TempDirBase string
 }
+
+type DestReader func(fs common.FS, filename string) ([]byte, error)
 
 // Render does the full sequence of steps involved in rendering a template. It
 // downloads the template, parses the spec file, read template inputs, conditionally
