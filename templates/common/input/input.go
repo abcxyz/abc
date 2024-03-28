@@ -103,7 +103,7 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 	} else {
 		insertDefaultInputs(rp.Spec, inputs)
 		if missing := checkInputsMissing(rp.Spec, inputs); len(missing) > 0 {
-			return nil, fmt.Errorf("missing input(s): %s", strings.Join(missing, ", "))
+			return nil, fmt.Errorf("missing input(s): %s, you may want to use one of the flags --prompt, --input, or --input-file", strings.Join(missing, ", "))
 		}
 	}
 
