@@ -112,12 +112,11 @@ steps:
 		wantErr                      string
 	}{
 		// TODO(upgrade): tests to add:
-		//  remote git template
 		//  a chain of upgrades
 		//  extra inputs needed:
 		//    inputs from file
 		//    inputs provided as flags
-		//    prompt for inputs
+		//    upgraded template removes input(s)
 
 		{
 			name: "new_template_has_updated_file_without_local_edits",
@@ -251,11 +250,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				filename := filepath.Join(installedDir, "another_file.txt")
-				newContents := []byte("my edited contents")
-				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
-					t.Fatal(err)
-				}
+				overwrite(tb, installedDir, "another_file.txt", "my edited contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "hello\n",
@@ -348,11 +343,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				filename := filepath.Join(installedDir, "out.txt")
-				newContents := []byte("my edited contents")
-				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
-					t.Fatal(err)
-				}
+				overwrite(tb, installedDir, "out.txt", "my edited contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "goodbye",
@@ -497,11 +488,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				filename := filepath.Join(installedDir, "out.txt")
-				newContents := []byte("modified contents")
-				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
-					t.Fatal(err)
-				}
+				overwrite(tb, installedDir, "out.txt", "modified contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "initial contents",
@@ -552,11 +539,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				filename := filepath.Join(installedDir, "out.txt")
-				newContents := []byte("my cool new file")
-				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
-					t.Fatal(err)
-				}
+				overwrite(tb, installedDir, "out.txt", "my cool new file")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "template now outputs this",
@@ -617,11 +600,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				filename := filepath.Join(installedDir, "out.txt")
-				newContents := []byte("identical contents")
-				if err := os.WriteFile(filename, newContents, common.OwnerRWPerms); err != nil {
-					t.Fatal(err)
-				}
+				overwrite(tb, installedDir, "out.txt", "identical contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "identical contents",
@@ -658,11 +637,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				newFile := filepath.Join(installedDir, "foo.abcmerge_locally_added")
-				contents := []byte("whatever")
-				if err := os.WriteFile(newFile, contents, common.OwnerRWPerms); err != nil {
-					t.Fatal(err)
-				}
+				overwrite(tb, installedDir, "foo.abcmerge_locally_added", "whatever")
 			},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
@@ -755,8 +730,8 @@ steps:
 
 			assertManifest(ctx, t, "after upgrade", tc.wantManifestAfterUpgrade, manifestFullPath)
 
-			gotInstalledDirContentsAfter := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
-			if diff := cmp.Diff(gotInstalledDirContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
+			gotDestContentsAfter := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+			if diff := cmp.Diff(gotDestContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -879,4 +854,12 @@ func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manife
 	out := *m
 	change(&out)
 	return &out
+}
+
+func overwrite(tb testing.TB, dir, baseName, contents string) {
+	tb.Helper()
+	filename := filepath.Join(dir, baseName)
+	if err := os.WriteFile(filename, []byte(contents), common.OwnerRWPerms); err != nil {
+		tb.Fatal(err)
+	}
 }

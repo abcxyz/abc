@@ -98,7 +98,7 @@ type Params struct {
 
 	// Used in tests to do prompting for inputs even though the input is not a
 	// TTY.
-	skipPromptTTYCheck bool
+	SkipPromptTTYCheck bool
 
 	// The output stream used to print prompts when Prompt==true.
 	Stdout io.Writer
@@ -253,7 +253,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		Prompt:              p.Prompt,
 		Prompter:            p.Prompter,
 		SkipInputValidation: p.SkipInputValidation,
-		SkipPromptTTYCheck:  p.skipPromptTTYCheck,
+		SkipPromptTTYCheck:  p.SkipPromptTTYCheck,
 		SourceForMessages:   oldManifest.TemplateLocation.Val,
 		Stdout:              p.Stdout,
 		TempDirBase:         p.TempDirBase,
