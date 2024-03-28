@@ -227,14 +227,15 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	}
 
 	sp := &stepParams{
-		debugDiffsDir:  debugStepDiffsDir,
-		ignorePatterns: spec.Ignore,
-		extraPrintVars: extraPrintVars,
-		features:       spec.Features,
-		rp:             p,
-		scope:          scope,
-		scratchDir:     scratchDir,
-		templateDir:    templateDir,
+		debugDiffsDir:    debugStepDiffsDir,
+		ignorePatterns:   spec.Ignore,
+		includedFromDest: make(map[string]struct{}),
+		extraPrintVars:   extraPrintVars,
+		features:         spec.Features,
+		rp:               p,
+		scope:            scope,
+		scratchDir:       scratchDir,
+		templateDir:      templateDir,
 	}
 
 	logger.DebugContext(ctx, "executing template steps")
@@ -246,7 +247,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	logger.DebugContext(ctx, "committing rendered output")
 	if err := commitTentatively(ctx, p, &commitParams{
 		dlMeta:           dlMeta,
-		includedFromDest: sliceToSet(sp.includedFromDest),
+		includedFromDest: sp.includedFromDest,
 		inputs:           resolvedInputs,
 		scratchDir:       scratchDir,
 		templateDir:      templateDir,
@@ -397,7 +398,7 @@ type stepParams struct {
 	// These are paths relative to the --dest directory (which is the same thing
 	// as being relative to the scratch directory, the paths within these dirs
 	// are the same).
-	includedFromDest []string
+	includedFromDest map[string]struct{}
 
 	// scope contains all variable names that are in scope. This includes
 	// user-provided scope, as well as any programmatically created variables
@@ -647,12 +648,4 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		logger.InfoContext(ctx, "template render succeeded")
 	}
 	return params.OutHashes, nil
-}
-
-func sliceToSet[T comparable](vals []T) map[T]struct{} {
-	out := make(map[T]struct{}, len(vals))
-	for _, v := range vals {
-		out[v] = struct{}{}
-	}
-	return out
 }

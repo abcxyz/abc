@@ -222,8 +222,9 @@ func TestWalkAndModify(t *testing.T) {
 			abctestutil.WriteAll(t, scratchDir, tc.initialContents)
 
 			sp := &stepParams{
-				scope:      common.NewScope(nil, nil),
-				scratchDir: scratchDir,
+				scope:            common.NewScope(nil, nil),
+				scratchDir:       scratchDir,
+				includedFromDest: make(map[string]struct{}),
 				rp: &Params{
 					FS: &common.ErrorFS{
 						FS:           &common.RealFS{},
