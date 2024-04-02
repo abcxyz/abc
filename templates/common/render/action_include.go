@@ -143,7 +143,8 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	// that already exist in the destination.
 	fromDir := sp.templateDir
 	if inc.From.Val == "destination" {
-		fromDir = sp.rp.OutDir
+		fromDir = sp.rp.DestDir
+		// fromDir = sp.rp.OutDir
 	}
 
 	skipPaths, err := processPaths(inc.Skip, sp.scope)

@@ -77,8 +77,8 @@ type Params struct {
 	// This is optional. If unset, the value of OutDir will be used.
 	DestDir string
 
-	// TODO doc
-	DestReader DestReader
+	// // TODO doc
+	// DestReader DestReader
 
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
@@ -136,7 +136,7 @@ type Params struct {
 	TempDirBase string
 }
 
-type DestReader func(fs common.FS, filename string) ([]byte, error)
+// type DestReader func(fs common.FS, filename string) (string, error)
 
 // Render does the full sequence of steps involved in rendering a template. It
 // downloads the template, parses the spec file, read template inputs, conditionally
@@ -159,6 +159,10 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
+	p = copyParams(p)
+	if p.DestDir == "" {
+		p.DestDir = p.OutDir
+	}
 	destDir := p.DestDir
 	if destDir == "" {
 		destDir = p.OutDir
@@ -171,6 +175,11 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"destination", templateDir)
 
 	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
+}
+
+func copyParams(p *Params) *Params {
+	cp := *p
+	return &cp
 }
 
 // RenderAlreadyDownloaded is for the unusual case where the template has
@@ -545,6 +554,26 @@ type commitParams struct {
 // directory. We first do a dry-run to check that the copy is likely to succeed,
 // so we don't leave a half-done mess in the user's dest directory.
 func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
+	// Design decision: it's OK to hold these patches in memory. It's unlikely
+	// that anyone will create such huge patches with abc that they'll run out
+	// of RAM.
+	includeFromDestPatches := map[string]string{}
+
+	// For each file that was included-from-destination, create a patch that
+	// reverses the change. This might be used in the future during a template
+	// upgrade operation.
+	for relPath := range cp.includedFromDest {
+		destPath := filepath.Join(p.DestDir, relPath)
+		srcPath := filepath.Join(cp.scratchDir, relPath)
+		diff, err := common.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, p.DestDir)
+		if err != nil {
+			return err
+		}
+		if diff != "" {
+			includeFromDestPatches[relPath] = diff
+		}
+	}
+
 	for _, dryRun := range []bool{true, false} {
 		outputHashes, err := commit(ctx, dryRun, p, cp.scratchDir, cp.includedFromDest)
 		if err != nil {
@@ -553,15 +582,16 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 
 		if p.Manifest {
 			if err := writeManifest(&writeManifestParams{
-				clock:        p.Clock,
-				cwd:          p.Cwd,
-				dlMeta:       cp.dlMeta,
-				destDir:      p.OutDir,
-				dryRun:       dryRun,
-				fs:           p.FS,
-				inputs:       cp.inputs,
-				outputHashes: outputHashes,
-				templateDir:  cp.templateDir,
+				clock:                  p.Clock,
+				cwd:                    p.Cwd,
+				dlMeta:                 cp.dlMeta,
+				destDir:                p.OutDir,
+				dryRun:                 dryRun,
+				fs:                     p.FS,
+				includeFromDestPatches: includeFromDestPatches,
+				inputs:                 cp.inputs,
+				outputHashes:           outputHashes,
+				templateDir:            cp.templateDir,
 			}); err != nil {
 				return err
 			}
@@ -649,3 +679,8 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 	}
 	return params.OutHashes, nil
 }
+
+// func writePatch(dryRun bool, p *Params, relPath string) error {
+// 	patchFrom :=
+// 	common.Run(ctx,
+// }

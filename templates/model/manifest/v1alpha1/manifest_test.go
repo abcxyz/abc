@@ -49,7 +49,7 @@ inputs:
     value: 'my_value_1'
   - name: 'my_input_2'
     value: 'my_value_2'
-output_hashes:
+output_files:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'
   - file: 'd/e/f.txt'
@@ -68,7 +68,7 @@ output_hashes:
 						Value: mdl.S("my_value_2"),
 					},
 				},
-				OutputHashes: []*OutputHash{
+				OutputFiles: []*OutputFile{
 					{
 						File: mdl.S("a/b/c.txt"),
 						Hash: mdl.S("h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"),
@@ -95,7 +95,7 @@ template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - value: 'my_value_1'
-output_hashes:
+output_files:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
 			wantValidateErr: []string{`at line 6 column 5: field "name" is required`},
@@ -108,13 +108,13 @@ template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
 inputs:
   - name: 'my_input_1'
-output_hashes:
+output_files:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
 			wantValidateErr: []string{`at line 6 column 5: field "value" is required`},
 		},
 		{
-			name: "output_hash_missing_file",
+			name: "missing_file",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
@@ -122,12 +122,12 @@ template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846
 inputs:
   - name: 'my_input_1'
     value: 'my_value_1'
-output_hashes:
+output_files:
   - hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
 			wantValidateErr: []string{`at line 9 column 5: field "file" is required`},
 		},
 		{
-			name: "output_hash_missing_file",
+			name: "missing_hash",
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
@@ -135,12 +135,12 @@ template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846
 inputs:
   - name: 'my_input_1'
     value: 'my_value_1'
-output_hashes:
+output_files:
   - file: 'a/b/c.txt'`,
 			wantValidateErr: []string{`at line 9 column 5: field "hash" is required`},
 		},
 		{
-			name: "no_hashes", // It's rare but legal for a template to have no output files
+			name: "no_files", // It's rare but legal for a template to have no output files
 			in: `
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
@@ -166,13 +166,13 @@ inputs:
 api_version: 'cli.abcxyz.dev/v1alpha1'
 template_location: 'github.com/abcxyz/abc/t/rest_server@latest'
 template_dirhash: 'h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03'
-output_hashes:
+output_files:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'`,
 			want: &Manifest{
 				TemplateLocation: mdl.S("github.com/abcxyz/abc/t/rest_server@latest"),
 				TemplateDirhash:  mdl.S("h1:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"),
-				OutputHashes: []*OutputHash{
+				OutputFiles: []*OutputFile{
 					{
 						File: mdl.S("a/b/c.txt"),
 						Hash: mdl.S("h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"),

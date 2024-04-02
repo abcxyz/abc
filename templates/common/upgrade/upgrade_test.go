@@ -50,6 +50,7 @@ func TestUpgrade(t *testing.T) {
 	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
 	afterUpgradeTime := beforeUpgradeTime.Add(time.Hour)
 
+	// This spec file is used for some (but not all) of the tests.
 	includeDotSpec := `
 api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
@@ -70,7 +71,7 @@ steps:
 		TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
 		LocationType:     mdl.S("local_git"),
 		Inputs:           []*manifest.Input{},
-		OutputHashes: []*manifest.OutputHash{
+		OutputFiles: []*manifest.OutputFile{
 			{
 				File: mdl.S("out.txt"),
 			},
@@ -88,6 +89,8 @@ steps:
 		// origTemplateDirContents is used as the template for the initial
 		// render operation.
 		origTemplateDirContents map[string]string
+
+		origDestContents map[string]string
 
 		// Only one of templateUnionForUpgrade or templateReplacementForUpgrade
 		// may be set.
@@ -180,7 +183,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -201,7 +204,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -240,7 +243,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -292,7 +295,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -336,7 +339,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -379,7 +382,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -426,7 +429,7 @@ steps:
 				"spec.yaml":                      includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("template_changes_this_file.txt"),
 					},
@@ -457,7 +460,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("template_changes_this_file.txt"),
 					},
@@ -478,7 +481,7 @@ steps:
 				"some_other_file.txt": "foo",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -507,7 +510,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -532,7 +535,7 @@ steps:
 				"some_other_file.txt": "some other file contents",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("some_other_file.txt"),
 					},
@@ -569,7 +572,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -593,7 +596,7 @@ steps:
 				"some_other_file.txt": "some other file contents",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("some_other_file.txt"),
 					},
@@ -619,7 +622,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -652,6 +655,103 @@ steps:
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
 			wantErr:                  "already an upgrade in progress",
 		},
+		{
+			name: "include_from_destination",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+			},
+			origDestContents: map[string]string{
+				"file.txt": "purple is my favorite color",
+			},
+			wantManifestBeforeUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
+\ No newline at end of file
++purple is my favorite color
+\ No newline at end of file
+`),
+					},
+				},
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'yellow'  
+`,
+			},
+			want: &Result{
+				AlreadyUpToDate: false,
+				NonConflicts: []ActionTaken{
+					{
+						Action:      "noop",
+						Explanation: "the new template outputs the same contents as the old template, ",
+						Path:        "file.txt",
+					},
+				},
+			},
+			wantManifestAfterUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: afterUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						// TODO(upgrade): once patch-reversing is implemented,
+						// then there will be a patch here.
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				// TODO(upgrade): once patch-reversing is implemented, this will
+				// be "yellow is my favorite color".
+				"file.txt": "red is my favorite color",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -668,17 +768,16 @@ steps:
 			// Make tempBase into a valid git repo.
 			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
+			abctestutil.WriteAll(t, destDir, tc.origDestContents)
+
 			ctx := context.Background()
 
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 			clk := clock.NewMock()
 			clk.Set(beforeUpgradeTime)
-			renderAndVerify(t, ctx, clk, tempBase, templateDir, destDir)
+			mustRender(t, ctx, clk, tempBase, templateDir, destDir)
 
-			manifestBaseName, err := findManifest(manifestDir)
-			if err != nil {
-				t.Fatal(err)
-			}
+			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
 			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
 
 			assertManifest(ctx, t, "before upgrade", tc.wantManifestBeforeUpgrade, manifestFullPath)
@@ -797,7 +896,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 
 		// Don't force test author to compute hashes when writing test/updating test cases.
 		cmpopts.IgnoreFields(manifest.Manifest{}, "TemplateDirhash"),
-		cmpopts.IgnoreFields(manifest.OutputHash{}, "Hash"),
+		cmpopts.IgnoreFields(manifest.OutputFile{}, "Hash"),
 	}
 	if diff := cmp.Diff(got, want, opts...); diff != "" {
 		tb.Errorf("at %q, manifest was not as expected (-got,+want): %s", whereAreWe, diff)
@@ -808,14 +907,14 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 	if len(got.TemplateDirhash.Val) < minHashLen {
 		tb.Errorf("dirhash %q is too short", got.TemplateDirhash.Val)
 	}
-	for _, oh := range got.OutputHashes {
+	for _, oh := range got.OutputFiles {
 		if len(oh.Hash.Val) < minHashLen {
 			tb.Errorf("output hash %q for file %q is too short", oh.Hash.Val, oh.File.Val)
 		}
 	}
 }
 
-func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) {
+func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) {
 	tb.Helper()
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
@@ -837,12 +936,6 @@ func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBa
 		TempDirBase: tempBase,
 	}); err != nil {
 		tb.Fatal(err)
-	}
-
-	wantContents := abctestutil.LoadDir(tb, templateDir, abctestutil.SkipGlob("spec.yaml"))
-	got := abctestutil.LoadDir(tb, destDir, abctestutil.SkipGlob(".abc/manifest*"))
-	if diff := cmp.Diff(got, wantContents); diff != "" {
-		tb.Fatalf("installed directory contents before upgrading were not as expected, there's something wrong with test setup (-got,+want): %s", diff)
 	}
 }
 

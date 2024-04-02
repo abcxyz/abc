@@ -78,7 +78,7 @@ inputs:
       value: deal with it
     - name: pizza
       value: hawaiian
-output_hashes:
+output_files:
     - file: a.txt
       hash: h1:ZmFrZV9vdXRwdXRfaGFzaF8zMl9ieXRlc19zaGEyNTY=
 `,
@@ -123,7 +123,7 @@ inputs:
       value: deal with it
     - name: pizza
       value: hawaiian
-output_hashes:
+output_files:
     - file: a.txt
       hash: h1:ZmFrZV9vdXRwdXRfaGFzaF8zMl9ieXRlc19zaGEyNTY=
 `,
@@ -182,7 +182,7 @@ location_type: ""
 template_version: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs: []
-output_hashes:
+output_files:
     - file: a.txt
       hash: h1:ZmFrZV9vdXRwdXRfaGFzaF8zMl9ieXRlc19zaGEyNTY=
 `,
@@ -218,7 +218,7 @@ inputs:
       value: deal with it
     - name: pizza
       value: hawaiian
-output_hashes: []
+output_files: []
 `,
 			},
 		},

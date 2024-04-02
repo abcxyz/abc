@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/benbjohnson/clock"
@@ -168,7 +167,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 				tc.localEdits(t, destDir)
 			}
 
-			manifestBaseName := findManifest(t, manifestDir)
+			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
 			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
 
 			if err := os.RemoveAll(templateDir); err != nil {
@@ -390,7 +389,7 @@ steps:
 
 			cmd := &Command{skipPromptTTYCheck: true}
 
-			manifestBaseName := findManifest(t, manifestDir)
+			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
 			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
 
 			abctestutil.WriteAll(t, templateDir, tc.upgradedTemplate)
@@ -412,25 +411,6 @@ steps:
 			}
 		})
 	}
-}
-
-func findManifest(tb testing.TB, dir string) string {
-	tb.Helper()
-
-	joined := filepath.Join(dir, "manifest*.yaml")
-	matches, err := filepath.Glob(joined)
-	if err != nil {
-		tb.Fatalf("filepath.Glob(%q): %v", joined, err)
-	}
-
-	if len(matches) == 0 {
-		tb.Fatalf("no manifest was found in %q", dir)
-	}
-	if len(matches) > 1 {
-		tb.Fatalf("multiple manifests were found in %q: %s", dir, strings.Join(matches, ", "))
-	}
-
-	return filepath.Base(matches[0])
 }
 
 func overwrite(tb testing.TB, dir, baseName, contents string) {

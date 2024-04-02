@@ -19,7 +19,7 @@ import (
 )
 
 // HashesAsMap transforms the list of OutputHashes into a map of path->hash.
-func HashesAsMap(hs []*manifest.OutputHash) map[string]string {
+func HashesAsMap(hs []*manifest.OutputFile) map[string]string {
 	out := make(map[string]string, len(hs))
 	for _, entry := range hs {
 		out[entry.File.Val] = entry.Hash.Val

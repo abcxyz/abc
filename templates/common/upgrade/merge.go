@@ -212,8 +212,8 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 // in the general case is a mix of files output by previous template
 // render/upgrade operations, together with some local customizations.
 func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken, error) {
-	oldHashes := manifestutil.HashesAsMap(p.oldManifest.OutputHashes)
-	newHashes := manifestutil.HashesAsMap(p.newManifest.OutputHashes)
+	oldHashes := manifestutil.HashesAsMap(p.oldManifest.OutputFiles)
+	newHashes := manifestutil.HashesAsMap(p.newManifest.OutputFiles)
 	filesUnion := maps.Keys(sets.UnionMapKeys(oldHashes, newHashes))
 	sort.Strings(filesUnion)
 
