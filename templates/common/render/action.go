@@ -140,7 +140,9 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string, ski
 	out := make([]model.String, 0, len(paths))
 
 	for _, p := range paths {
-		// This supports older api_versions which didn't have glob support.
+		// This supports older api_versions which didn't have glob support. When
+		// not globbing, we don't try to determine whether the file exists or
+		// not. That's a job for a later phase.
 		if skipGlobs {
 			out = append(out, model.String{
 				Val: filepath.Join(fromDir, p.Val),

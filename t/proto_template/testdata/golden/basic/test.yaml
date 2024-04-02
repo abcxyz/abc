@@ -3,6 +3,8 @@ kind: 'GoldenTest'
 inputs:
   - name: 'project_id'
     value: 'example.com:my-project'
+  - name: 'go_gar_module_domain'
+    value: 'github.com'
   - name: 'go_gar_repository_name'
     value: 'my-go-gar'
   - name: 'go_gar_repository_location'

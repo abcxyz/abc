@@ -679,8 +679,3 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 	}
 	return params.OutHashes, nil
 }
-
-// func writePatch(dryRun bool, p *Params, relPath string) error {
-// 	patchFrom :=
-// 	common.Run(ctx,
-// }
