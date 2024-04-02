@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render/gotmpl/funcs"
 	"github.com/abcxyz/abc/templates/common/rules"
+	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
@@ -363,7 +364,7 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 		{"git", "--git-dir", out, "config", "user.email", "abc@abcxyz.com"},
 	}
 
-	if _, _, err := common.RunMany(ctx, cmds...); err != nil {
+	if _, _, err := run.RunMany(ctx, cmds...); err != nil {
 		return "", fmt.Errorf("failed initializing git repo for --debug-step-diffs: %w", err)
 	}
 	return out, nil
@@ -435,7 +436,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 				{"git", "--git-dir", sp.debugDiffsDir, "add", "-A"},
 				{"git", "--git-dir", sp.debugDiffsDir, "commit", "-a", "-m", m, "--allow-empty", "--no-gpg-sign"},
 			}
-			if _, _, err := common.RunMany(ctx, cmds...); err != nil {
+			if _, _, err := run.RunMany(ctx, cmds...); err != nil {
 				return fmt.Errorf("failed committing to git for --debug-step-diffs: %w", err)
 			}
 		}
