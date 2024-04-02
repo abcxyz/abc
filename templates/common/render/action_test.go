@@ -386,12 +386,12 @@ func TestProcessGlobs(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name           string
-		dirContents    map[string]abctestutil.ModeAndContents
-		paths          []model.String
-		wantPaths      []model.String
-		wantGlobErr    string
-		wantNonGlobErr string
+		name        string
+		dirContents map[string]abctestutil.ModeAndContents
+		paths       []model.String
+		wantPaths   []model.String
+		skipGlobs   bool
+		wantErr     string
 	}{
 		{
 			name: "non_glob_paths",
@@ -505,10 +505,17 @@ func TestProcessGlobs(t *testing.T) {
 			),
 		},
 		{
-			name:           "no_glob_matches",
-			paths:          mdl.Strings("file_not_found.txt"),
-			wantGlobErr:    fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
-			wantNonGlobErr: fmt.Sprintf(`include path doesn't exist: %q`, "file_not_found.txt"),
+			name:      "no_glob_matches_with_globs",
+			paths:     mdl.Strings("file_not_found.txt"),
+			skipGlobs: false,
+			wantErr:   fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
+		},
+		{
+			name:      "no_glob_matches_with_skipglobs",
+			paths:     mdl.Strings("file_not_found.txt"),
+			skipGlobs: true,
+			// When not globbing, paths are returned regardless of whether they exist
+			wantPaths: mdl.Strings("file_not_found.txt"),
 		},
 		{
 			name: "character_range_paths",
@@ -531,14 +538,8 @@ func TestProcessGlobs(t *testing.T) {
 			abctestutil.WriteAllMode(t, tempDir, tc.dirContents)
 			ctx := context.Background()
 
-			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false) // with globbing enabled
-			if diff := testutil.DiffErrString(err, tc.wantGlobErr); diff != "" {
-				t.Error(diff)
-			}
-			if err != nil {
-				return // err was expected as part of the test
-			}
-			if diff := testutil.DiffErrString(err, tc.wantNonGlobErr); diff != "" {
+			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, tc.skipGlobs)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
 			if err != nil {
