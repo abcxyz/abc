@@ -4,7 +4,7 @@ version: 'v1'
 managed:
   enabled: true
   go_package_prefix:
-    default: 'us-go.pkg.dev/my-org/my-repo'
+    default: 'github.com/my-org/my-repo'
 
 # remote plugins so you dont need to install locally
 plugins:
