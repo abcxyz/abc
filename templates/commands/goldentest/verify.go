@@ -31,6 +31,7 @@ import (
 	"github.com/mattn/go-isatty"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
 )
@@ -173,7 +174,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 
 			// Set checklines to false: avoid a line-level diff which is faster
 			// however less optimal.
-			diff, err := common.RunDiff(ctx, useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)
+			diff, err := run.RunDiff(ctx, useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)
 			if err != nil {
 				return err
 			}
@@ -200,7 +201,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 				tempStdoutFile = "/dev/null"
 			}
 
-			stdoutDiff, err := common.RunDiff(ctx, useColor, goldenStdoutFile, goldenDataDir, tempStdoutFile, tempDataDir)
+			stdoutDiff, err := run.RunDiff(ctx, useColor, goldenStdoutFile, goldenDataDir, tempStdoutFile, tempDataDir)
 			if err != nil {
 				return fmt.Errorf("failed to compare stdout:%w", err)
 			}

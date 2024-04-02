@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package run
 
 import (
 	"bytes"
@@ -163,7 +163,7 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
-		if IsStatNotExistErr(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
 		return false, err
