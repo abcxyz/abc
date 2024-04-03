@@ -1,6 +1,7 @@
 api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 
+
 inputs:
   - name: 'my_input_without_default'
     value: 'foo'
