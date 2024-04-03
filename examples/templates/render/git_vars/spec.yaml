@@ -18,37 +18,24 @@ kind: 'Template'
 desc: 'An example of using builtin git variables in a template'
 
 steps:
-  - desc: 'Include an empty file that we can append to'
-    action: 'include'
-    params:
-      paths: ['out.txt']
   - desc: 'Print a message if being rendered from git'
-    action: 'append'
+    action: 'print'
     if: '_git_sha != ""'
     params:
-      paths: ['out.txt']
-      with: |-
-        This template is rendered from git. The git short SHA is
-        {{._git_short_sha}} and the full SHA is {{._git_sha}}.
+      message: 'This template is rendered from git. The git short SHA is
+        {{._git_short_sha}} and the full SHA is {{._git_sha}}.'
   - desc: 'Print the git tag if there is one'
-    action: 'append'
+    action: 'print'
     if: '_git_tag != ""'
     params:
-      paths: ['out.txt']
-      with: |-
-        And furthermore, the git tag associated with that SHA is {{._git_tag}}.
+      message: 'And furthermore, the git tag associated with that SHA is {{._git_tag}}.'
   - desc: "If we're rendering from git and there's no tag, then say that"
-    action: 'append'
+    action: 'print'
     if: '_git_sha != "" && _git_tag == ""'
     params:
-      paths: ['out.txt']
-      with: |-
-        There isn't a tag pointing to this SHA.
-
+      message: 'There is not a tag pointing to this SHA.'
   - desc: 'Print a message if NOT being rendered from git'
-    action: 'append'
+    action: 'print'
     if: '_git_sha == ""'
     params:
-      paths: ['out.txt']
-      with: |-
-        This template isn't being rendered from git, so there's no SHA or tag.
+      message: 'This template is not being rendered from git, so there is no SHA or tag.'
