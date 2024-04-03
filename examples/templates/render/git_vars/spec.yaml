@@ -39,4 +39,3 @@ steps:
     if: '_git_sha == ""'
     params:
       message: 'This template is not being rendered from git, so there is no SHA or tag.'
-      
