@@ -58,10 +58,11 @@ steps:
   - desc: 'Print input values'
     action: 'print'
     params:
-      message: 'The variable values are:
+      message: |
+        The variable values are:
           my_input_with_default={{.my_input_with_default}}
           my_input_without_default={{.my_input_without_default}}
           my_input_with_default_empty_string={{.my_input_with_default_empty_string}}
           my_length_limited_input={{.my_length_limited_input}}
           my_service_account={{.my_service_account}}
-          my_service_account_id={{.my_service_account_id}}'
+          my_service_account_id={{.my_service_account_id}}
