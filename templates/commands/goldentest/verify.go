@@ -174,7 +174,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 
 			// Set checklines to false: avoid a line-level diff which is faster
 			// however less optimal.
-			diff, err := execDiff(ctx, useColor, goldenFile, tempFile)
+			diff, err := run.RunDiff(ctx, useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)
 			if err != nil {
 				return err
 			}
@@ -192,15 +192,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 			goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 			tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 
-			// Nonexistent stdout is treated as empty.
-			if _, err := os.Stat(goldenStdoutFile); errors.Is(err, os.ErrNotExist) {
-				goldenStdoutFile = "/dev/null"
-			}
-			if _, err := os.Stat(tempStdoutFile); errors.Is(err, os.ErrNotExist) {
-				tempStdoutFile = "/dev/null"
-			}
-
-			stdoutDiff, err := execDiff(ctx, useColor, goldenStdoutFile, tempStdoutFile)
+			stdoutDiff, err := run.RunDiff(ctx, useColor, goldenStdoutFile, goldenDataDir, tempStdoutFile, tempDataDir)
 			if err != nil {
 				return fmt.Errorf("failed to compare stdout:%w", err)
 			}
@@ -273,21 +265,4 @@ func addTestFiles(fileSet map[string]struct{}, testDataDir string) error {
 		return fmt.Errorf("fs.WalkDir: %w", err)
 	}
 	return nil
-}
-
-// Returns len > 0 if there's a diff. Returns unified diff format.
-func execDiff(ctx context.Context, color bool, file1, file2 string) (string, error) {
-	args := []string{"diff", "-u"}
-	if color {
-		args = append(args, "--color=always")
-	}
-	args = append(args, file1, file2)
-	stdout, stderr, exitCode, err := run.RunAllowNonzero(ctx, args...)
-	if err != nil {
-		return "", fmt.Errorf("error exec'ing diff: %w", err)
-	}
-	if exitCode == 2 { // docs for diff say it returns code 2 on error
-		return "", fmt.Errorf("error exec'ing diff: %s", stderr)
-	}
-	return stdout, nil
 }

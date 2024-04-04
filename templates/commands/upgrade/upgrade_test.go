@@ -82,7 +82,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				overwrite(tb, installedDir, "greet.txt", "goodbye\n")
+				abctestutil.Overwrite(tb, installedDir, "greet.txt", "goodbye\n")
 			},
 			upgradedTemplate: map[string]string{
 				"spec.yaml": includeDotSpec,
@@ -103,8 +103,8 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
-				overwrite(tb, installedDir, "color.txt", "red\n")
+				abctestutil.Overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
+				abctestutil.Overwrite(tb, installedDir, "color.txt", "red\n")
 			},
 			wantStdout: mergeInstructions + `
 
@@ -431,13 +431,4 @@ func findManifest(tb testing.TB, dir string) string {
 	}
 
 	return filepath.Base(matches[0])
-}
-
-func overwrite(tb testing.TB, dir, baseName, contents string) {
-	tb.Helper()
-
-	filename := filepath.Join(dir, baseName)
-	if err := os.WriteFile(filename, []byte(contents), common.OwnerRWPerms); err != nil {
-		tb.Fatal(err)
-	}
 }
