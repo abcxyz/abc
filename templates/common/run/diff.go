@@ -67,11 +67,11 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		// return empty string, meaning "no diff".
 		file1Exists, err := exists(file1)
 		if err != nil {
-			return "", err //nolint:wrapcheck
+			return "", err
 		}
 		file2Exists, err := exists(file2)
 		if err != nil {
-			return "", err //nolint:wrapcheck
+			return "", err
 		}
 		if !file1Exists && !file2Exists {
 			return "", nil
@@ -87,7 +87,7 @@ func exists(path string) (bool, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
-		return false, err
+		return false, err //nolint:wrapcheck
 	}
 	return true, nil
 }

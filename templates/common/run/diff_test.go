@@ -19,8 +19,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/google/go-cmp/cmp"
+
+	abctestutil "github.com/abcxyz/abc/templates/testutil"
 )
 
 func TestDiff(t *testing.T) {
@@ -30,13 +31,11 @@ func TestDiff(t *testing.T) {
 		name        string
 		dirContents map[string]string
 		color       bool
-		// file1Contents string
-		// file2Contents string
-		file1      string
-		file1RelTo string
-		file2      string
-		file2RelTo string
-		want       string
+		file1       string
+		file1RelTo  string
+		file2       string
+		file2RelTo  string
+		want        string
 	}{
 		{
 			name: "both_empty",
@@ -153,6 +152,7 @@ func TestDiff(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
