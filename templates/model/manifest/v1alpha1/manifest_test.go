@@ -52,6 +52,12 @@ inputs:
 output_files:
   - file: 'a/b/c.txt'
     hash: 'h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c'
+    patch: |
+        --- a/myfile.txt
+        +++ b/myfile.txt
+        @@ -1 +1 @@
+        -red is my favorite color
+        +purple is my favorite color
   - file: 'd/e/f.txt'
     hash: 'h1:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730'`,
 			want: &Manifest{
@@ -72,6 +78,12 @@ output_files:
 					{
 						File: mdl.S("a/b/c.txt"),
 						Hash: mdl.S("h1:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"),
+						Patch: mdl.SP(`--- a/myfile.txt
++++ b/myfile.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
 					},
 					{
 						File: mdl.S("d/e/f.txt"),
