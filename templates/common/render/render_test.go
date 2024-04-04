@@ -184,7 +184,7 @@ inputs:
       value: '!'
     - name: name_to_greet
       value: Bob
-output_hashes:
+output_files:
     - file: dir1/file_in_dir.txt
       hash: h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M=
     - file: dir2/file2.txt

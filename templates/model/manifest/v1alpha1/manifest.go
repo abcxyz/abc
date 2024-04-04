@@ -61,7 +61,7 @@ type Manifest struct {
 	Inputs []*Input `yaml:"inputs"`
 
 	// The hash of each output file created by the template.
-	OutputHashes []*OutputHash `yaml:"output_hashes"`
+	OutputFiles []*OutputFile `yaml:"output_files"`
 }
 
 // This absurdity is a workaround for a bug github.com/go-yaml/yaml/issues/817
@@ -86,7 +86,7 @@ func (m *Manifest) Validate() error {
 	return errors.Join(
 		model.NotZeroModel(&m.Pos, m.TemplateDirhash, "template_dirhash"),
 		model.ValidateEach(m.Inputs),
-		model.ValidateEach(m.OutputHashes),
+		model.ValidateEach(m.OutputFiles),
 	)
 }
 
@@ -114,25 +114,32 @@ func (i *Input) Validate() error {
 	)
 }
 
-// OutputHash records a checksum of a single file as it was created during
+// OutputFile records a checksum of a single file as it was created during
 // template rendering.
-type OutputHash struct {
+type OutputFile struct {
 	Pos model.ConfigPos `yaml:"-"`
 
 	// The path, relative to the destination directory, of this file.
 	File model.String `yaml:"file"`
+
 	// The dirhash-style hash (see https://pkg.go.dev/golang.org/x/mod/sumdb/dirhash)
 	// of this file. The format looks like "h1:0a1b2c3d...".
 	Hash model.String `yaml:"hash"`
+
+	// In the (somewhat rare) case where this file is a modified version of one
+	// of the user's preexisting files using the "include from destination"
+	// feature, then we save a patch here that is the inverse of our change.
+	// This allows our change to be un-done in the future.
+	Patch *model.String `yaml:"patch,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (f *OutputHash) UnmarshalYAML(n *yaml.Node) error {
+func (f *OutputFile) UnmarshalYAML(n *yaml.Node) error {
 	return model.UnmarshalPlain(n, f, &f.Pos) //nolint:wrapcheck
 }
 
 // Validate() implements model.Validator.
-func (f *OutputHash) Validate() error {
+func (f *OutputFile) Validate() error {
 	return errors.Join(
 		model.NotZeroModel(&f.Pos, f.File, "file"),
 		model.NotZeroModel(&f.Pos, f.Hash, "hash"),

@@ -70,7 +70,7 @@ steps:
 		TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
 		LocationType:     mdl.S("local_git"),
 		Inputs:           []*manifest.Input{},
-		OutputHashes: []*manifest.OutputHash{
+		OutputFiles: []*manifest.OutputFile{
 			{
 				File: mdl.S("out.txt"),
 			},
@@ -180,7 +180,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -201,7 +201,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -240,7 +240,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -292,7 +292,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("another_file.txt"),
 					},
@@ -336,7 +336,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -379,7 +379,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -426,7 +426,7 @@ steps:
 				"spec.yaml":                      includeDotSpec,
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("template_changes_this_file.txt"),
 					},
@@ -457,7 +457,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("template_changes_this_file.txt"),
 					},
@@ -478,7 +478,7 @@ steps:
 				"some_other_file.txt": "foo",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -507,7 +507,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -532,7 +532,7 @@ steps:
 				"some_other_file.txt": "some other file contents",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("some_other_file.txt"),
 					},
@@ -569,7 +569,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -593,7 +593,7 @@ steps:
 				"some_other_file.txt": "some other file contents",
 			},
 			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("some_other_file.txt"),
 					},
@@ -619,7 +619,7 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime.UTC()
-				m.OutputHashes = []*manifest.OutputHash{
+				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
 					},
@@ -797,7 +797,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 
 		// Don't force test author to compute hashes when writing test/updating test cases.
 		cmpopts.IgnoreFields(manifest.Manifest{}, "TemplateDirhash"),
-		cmpopts.IgnoreFields(manifest.OutputHash{}, "Hash"),
+		cmpopts.IgnoreFields(manifest.OutputFile{}, "Hash"),
 	}
 	if diff := cmp.Diff(got, want, opts...); diff != "" {
 		tb.Errorf("at %q, manifest was not as expected (-got,+want): %s", whereAreWe, diff)
@@ -808,7 +808,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 	if len(got.TemplateDirhash.Val) < minHashLen {
 		tb.Errorf("dirhash %q is too short", got.TemplateDirhash.Val)
 	}
-	for _, oh := range got.OutputHashes {
+	for _, oh := range got.OutputFiles {
 		if len(oh.Hash.Val) < minHashLen {
 			tb.Errorf("output hash %q for file %q is too short", oh.Hash.Val, oh.File.Val)
 		}

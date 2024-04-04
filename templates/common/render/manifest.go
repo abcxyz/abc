@@ -159,12 +159,12 @@ func buildManifest(p *writeManifestParams, dlMeta *templatesource.DownloadMetada
 		})
 	}
 
-	outputList := make([]*manifest.OutputHash, 0, len(p.outputHashes))
+	outputList := make([]*manifest.OutputFile, 0, len(p.outputHashes))
 	for file, hash := range p.outputHashes {
 		// For consistency with dirhash, we'll encode our hashes as
 		// base64 with an "h1:" prefix indicating SHA256.
 		hashStr := "h1:" + base64.StdEncoding.EncodeToString(hash)
-		outputList = append(outputList, &manifest.OutputHash{
+		outputList = append(outputList, &manifest.OutputFile{
 			File: model.String{Val: file},
 			Hash: model.String{Val: hashStr},
 		})
@@ -195,7 +195,7 @@ func buildManifest(p *writeManifestParams, dlMeta *templatesource.DownloadMetada
 			CreationTime:     now,
 			ModificationTime: now,
 			Inputs:           inputList,
-			OutputHashes:     outputList,
+			OutputFiles:      outputList,
 		},
 	}, nil
 }
