@@ -250,7 +250,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				overwrite(tb, installedDir, "another_file.txt", "my edited contents")
+				abctestutil.Overwrite(tb, installedDir, "another_file.txt", "my edited contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "hello\n",
@@ -343,7 +343,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				overwrite(tb, installedDir, "out.txt", "my edited contents")
+				abctestutil.Overwrite(tb, installedDir, "out.txt", "my edited contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "goodbye",
@@ -488,7 +488,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				overwrite(tb, installedDir, "out.txt", "modified contents")
+				abctestutil.Overwrite(tb, installedDir, "out.txt", "modified contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "initial contents",
@@ -539,7 +539,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				overwrite(tb, installedDir, "out.txt", "my cool new file")
+				abctestutil.Overwrite(tb, installedDir, "out.txt", "my cool new file")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "template now outputs this",
@@ -600,7 +600,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				overwrite(tb, installedDir, "out.txt", "identical contents")
+				abctestutil.Overwrite(tb, installedDir, "out.txt", "identical contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "identical contents",
@@ -637,7 +637,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				overwrite(tb, installedDir, "foo.abcmerge_locally_added", "whatever")
+				abctestutil.Overwrite(tb, installedDir, "foo.abcmerge_locally_added", "whatever")
 			},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
@@ -854,12 +854,4 @@ func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manife
 	out := *m
 	change(&out)
 	return &out
-}
-
-func overwrite(tb testing.TB, dir, baseName, contents string) {
-	tb.Helper()
-	filename := filepath.Join(dir, baseName)
-	if err := os.WriteFile(filename, []byte(contents), common.OwnerRWPerms); err != nil {
-		tb.Fatal(err)
-	}
 }

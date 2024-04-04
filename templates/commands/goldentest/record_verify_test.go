@@ -24,8 +24,8 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-// TestRecordVerify tests that the output of the record command can be verified by the verify
-// command.
+// TestRecordVerify tests that the output of the record command can be verified
+// by the verify command.
 func TestRecordVerify(t *testing.T) {
 	t.Parallel()
 
