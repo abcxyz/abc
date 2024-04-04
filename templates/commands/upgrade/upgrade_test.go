@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/benbjohnson/clock"
@@ -81,7 +82,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				overwrite(tb, installedDir, "greet.txt", "goodbye\n")
+				abctestutil.Overwrite(tb, installedDir, "greet.txt", "goodbye\n")
 			},
 			upgradedTemplate: map[string]string{
 				"spec.yaml": includeDotSpec,
@@ -102,8 +103,8 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
-				overwrite(tb, installedDir, "color.txt", "red\n")
+				abctestutil.Overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
+				abctestutil.Overwrite(tb, installedDir, "color.txt", "red\n")
 			},
 			wantStdout: mergeInstructions + `
 
@@ -413,11 +414,21 @@ steps:
 	}
 }
 
-func overwrite(tb testing.TB, dir, baseName, contents string) {
+func findManifest(tb testing.TB, dir string) string {
 	tb.Helper()
 
-	filename := filepath.Join(dir, baseName)
-	if err := os.WriteFile(filename, []byte(contents), common.OwnerRWPerms); err != nil {
-		tb.Fatal(err)
+	joined := filepath.Join(dir, "manifest*.yaml")
+	matches, err := filepath.Glob(joined)
+	if err != nil {
+		tb.Fatalf("filepath.Glob(%q): %v", joined, err)
 	}
+
+	if len(matches) == 0 {
+		tb.Fatalf("no manifest was found in %q", dir)
+	}
+	if len(matches) > 1 {
+		tb.Fatalf("multiple manifests were found in %q: %s", dir, strings.Join(matches, ", "))
+	}
+
+	return filepath.Base(matches[0])
 }

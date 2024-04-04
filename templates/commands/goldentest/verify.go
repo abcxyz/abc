@@ -172,11 +172,9 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedTempFile, err)
 			}
 
-			// Set checklines to false: avoid a line-level diff which is faster
-			// however less optimal.
 			diff, err := run.RunDiff(ctx, useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)
 			if err != nil {
-				return err
+				return fmt.Errorf("error diffing actual vs expected output: %w", err)
 			}
 
 			if len(diff) > 0 {
@@ -191,15 +189,6 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		if !tc.TestConfig.Features.SkipStdout {
 			goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
 			tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
-
-			// TODO remove?
-			// Nonexistent stdout is treated as empty.
-			if _, err := os.Stat(goldenStdoutFile); errors.Is(err, os.ErrNotExist) {
-				goldenStdoutFile = "/dev/null"
-			}
-			if _, err := os.Stat(tempStdoutFile); errors.Is(err, os.ErrNotExist) {
-				tempStdoutFile = "/dev/null"
-			}
 
 			stdoutDiff, err := run.RunDiff(ctx, useColor, goldenStdoutFile, goldenDataDir, tempStdoutFile, tempDataDir)
 			if err != nil {
