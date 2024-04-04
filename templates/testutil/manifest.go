@@ -26,7 +26,8 @@ import (
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 )
 
-// TODO doc
+// MustFindManifest is a wrapper around FindManifest that calls Fatal if there's
+// an error or if there's no manifest.
 func MustFindManifest(tb testing.TB, dir string) string {
 	tb.Helper()
 
