@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/benbjohnson/clock"
@@ -412,23 +411,4 @@ steps:
 			}
 		})
 	}
-}
-
-func findManifest(tb testing.TB, dir string) string {
-	tb.Helper()
-
-	joined := filepath.Join(dir, "manifest*.yaml")
-	matches, err := filepath.Glob(joined)
-	if err != nil {
-		tb.Fatalf("filepath.Glob(%q): %v", joined, err)
-	}
-
-	if len(matches) == 0 {
-		tb.Fatalf("no manifest was found in %q", dir)
-	}
-	if len(matches) > 1 {
-		tb.Fatalf("multiple manifests were found in %q: %s", dir, strings.Join(matches, ", "))
-	}
-
-	return filepath.Base(matches[0])
 }

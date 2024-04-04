@@ -172,7 +172,7 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 		if ok {
 			patchModel = &model.String{Val: patch}
 		}
-		
+
 		outputList = append(outputList, &manifest.OutputFile{
 			File:  model.String{Val: file},
 			Hash:  model.String{Val: hashStr},

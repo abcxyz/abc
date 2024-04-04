@@ -48,7 +48,7 @@ func FindManifest(dir string) (string, error) {
 	joined := filepath.Join(dir, "manifest*.yaml")
 	matches, err := filepath.Glob(joined)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	if len(matches) == 0 {
@@ -63,6 +63,8 @@ func FindManifest(dir string) (string, error) {
 
 // MustLoadManifest parses the given manifest file.
 func MustLoadManifest(ctx context.Context, tb testing.TB, path string) *manifest.Manifest {
+	tb.Helper()
+
 	f, err := os.Open(path)
 	if err != nil {
 		tb.Fatalf("failed to open manifest file at %q: %v", path, err)

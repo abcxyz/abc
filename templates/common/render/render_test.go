@@ -1377,6 +1377,8 @@ steps:
 }
 
 func verifyManifest(ctx context.Context, tb testing.TB, want *manifest.Manifest, manifestDir string) {
+	tb.Helper()
+
 	baseName, err := abctestutil.FindManifest(manifestDir)
 	if err != nil {
 		tb.Fatal(err)

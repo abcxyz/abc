@@ -78,9 +78,6 @@ type Params struct {
 	// This is optional. If unset, the value of OutDir will be used.
 	DestDir string
 
-	// // TODO doc
-	// DestReader DestReader
-
 	// The downloader that will provide the template.
 	Downloader templatesource.Downloader
 
@@ -137,8 +134,6 @@ type Params struct {
 	TempDirBase string
 }
 
-// type DestReader func(fs common.FS, filename string) (string, error)
-
 // Render does the full sequence of steps involved in rendering a template. It
 // downloads the template, parses the spec file, read template inputs, conditionally
 // prompts the user for missing inputs, runs all the template actions, commits the
@@ -164,11 +159,7 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	if p.DestDir == "" {
 		p.DestDir = p.OutDir
 	}
-	destDir := p.DestDir
-	if destDir == "" {
-		destDir = p.OutDir
-	}
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, destDir)
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
@@ -178,6 +169,8 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
 }
 
+// copyParams returns a shallow copy of the input params. This lets us fill in
+// default values without affect the caller's copy of the params.
 func copyParams(p *Params) *Params {
 	cp := *p
 	return &cp
@@ -568,7 +561,7 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 		srcPath := filepath.Join(cp.scratchDir, relPath)
 		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, p.DestDir)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 		if diff != "" {
 			includeFromDestPatches[relPath] = diff
