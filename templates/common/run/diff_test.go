@@ -31,6 +31,7 @@ func TestDiff(t *testing.T) {
 		name        string
 		dirContents map[string]string
 		color       bool
+		skip        bool
 		file1       string
 		file1RelTo  string
 		file2       string
@@ -103,8 +104,15 @@ func TestDiff(t *testing.T) {
 `,
 		},
 		{
-			name:  "files_differ_with_color",
+			name:  "files_differ_with_color_on_machine_with_color_support",
 			color: true,
+			skip: func() bool {
+				hasColor, err := diffColorSupported(context.Background())
+				if err != nil {
+					t.Fatal(err)
+				}
+				return !hasColor
+			}(),
 			dirContents: map[string]string{
 				"file1.txt": "file1 contents\n",
 				"file2.txt": "file2 contents\n",
@@ -114,6 +122,26 @@ func TestDiff(t *testing.T) {
 			file2:      "file2.txt",
 			file2RelTo: ".",
 			want:       "\x1b[1m--- a/file1.txt\x1b[0m\n\x1b[1m+++ b/file2.txt\x1b[0m\n\x1b[36m@@ -1 +1 @@\x1b[0m\n\x1b[31m-file1 contents\x1b[0m\n\x1b[32m+file2 contents\x1b[0m\n",
+		},
+		{
+			name:  "files_differ_with_color_on_machine_without_color_support",
+			color: false,
+			skip: func() bool {
+				hasColor, err := diffColorSupported(context.Background())
+				if err != nil {
+					t.Fatal(err)
+				}
+				return hasColor
+			}(),
+			dirContents: map[string]string{
+				"file1.txt": "file1 contents\n",
+				"file2.txt": "file2 contents\n",
+			},
+			file1:      "file1.txt",
+			file1RelTo: ".",
+			file2:      "file2.txt",
+			file2RelTo: ".",
+			want:       "--- a/file1.txt\n+++ b/file2.txt\n@@ -1 +1 @@\n-file1 contents\n+file2 contents\n",
 		},
 		{
 			name: "relative_to_different_subdirs",
@@ -156,6 +184,9 @@ func TestDiff(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			if tc.skip {
+				t.Skip("presence or absence of diff color support on this machine requires skipping this subtest")
+			}
 			tempDir := t.TempDir()
 			abctestutil.WriteAll(t, tempDir, tc.dirContents)
 
