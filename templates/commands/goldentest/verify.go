@@ -31,6 +31,7 @@ import (
 	"github.com/mattn/go-isatty"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
 )
@@ -281,7 +282,7 @@ func execDiff(ctx context.Context, color bool, file1, file2 string) (string, err
 		args = append(args, "--color=always")
 	}
 	args = append(args, file1, file2)
-	stdout, stderr, exitCode, err := common.RunAllowNonzero(ctx, args...)
+	stdout, stderr, exitCode, err := run.RunAllowNonzero(ctx, args...)
 	if err != nil {
 		return "", fmt.Errorf("error exec'ing diff: %w", err)
 	}
