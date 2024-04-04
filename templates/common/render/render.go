@@ -155,11 +155,11 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	destDir := p.DestDir
-	if destDir == "" {
-		destDir = p.OutDir
+	p = copyParams(p)
+	if p.DestDir == "" {
+		p.DestDir = p.OutDir
 	}
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, destDir)
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
@@ -167,6 +167,13 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"destination", templateDir)
 
 	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
+}
+
+// copyParams returns a shallow copy of the input params. This lets us fill in
+// default values without affect the caller's copy of the params.
+func copyParams(p *Params) *Params {
+	cp := *p
+	return &cp
 }
 
 // RenderAlreadyDownloaded is for the unusual case where the template has
