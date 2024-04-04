@@ -21,6 +21,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
+	"sync"
 )
 
 // RunDiff execs the diff binary. Returns len > 0 if there's a diff. Returns
@@ -52,7 +54,13 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 	}
 
 	if color {
-		args = slices.Insert(args, 1, "--color=always")
+		colorSupported, err := diffColorSupported(ctx)
+		if err != nil {
+			return "", err
+		}
+		if colorSupported {
+			args = slices.Insert(args, 1, "--color=always")
+		}
 	}
 
 	stdout, stderr, exitCode, err := RunAllowNonzero(ctx, args...)
@@ -64,7 +72,7 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		// A quirk of the diff command: the -N flag means "treat nonexistent
 		// files as empty", but it still fails if both inputs are absent. Our
 		// workaround is to detect the case where both files are nonexistent and
-		// return empty string, meaning "no diff".
+		// return empty string.
 		file1Exists, err := exists(file1)
 		if err != nil {
 			return "", err
@@ -79,6 +87,39 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		return "", fmt.Errorf("error exec'ing diff: %s", stderr)
 	}
 	return stdout, nil
+}
+
+var (
+	diffColorOnce    sync.Once
+	diffColorSupport bool
+	diffColorErr     error //nolint:errname
+)
+
+// diffColorSupported returns whether we're running on a machine that supports
+// --color=always. MacOS <= 12 seems not to have this.
+func diffColorSupported(ctx context.Context) (bool, error) {
+	diffColorOnce.Do(func() {
+		diffColorSupport, diffColorErr = diffColorCheck(ctx)
+	})
+	return diffColorSupport, diffColorErr
+}
+
+// diffColorCheck tests whether we're running on a machine that supports
+// --color=always. MacOS <= 12 seems not to have this.
+func diffColorCheck(ctx context.Context) (bool, error) {
+	_, stderr, exitCode, err := RunAllowNonzero(ctx, "diff", "--color=always", "/dev/null", "/dev/null")
+	if err != nil {
+		return false, fmt.Errorf("failed determining whether the diff command supports color: %w", err)
+	}
+
+	if exitCode == 2 && strings.Contains(stderr, "unrecognized option `--color=always'") {
+		return false, nil
+	}
+	if exitCode != 0 {
+		return false, fmt.Errorf("something strange happened when testing diff for color support. Exit code %d, stderr: %q", exitCode, stderr)
+	}
+
+	return true, nil
 }
 
 func exists(path string) (bool, error) {
