@@ -1,4 +1,4 @@
-api_version: 'cli.abcxyz.dev/v1beta3'
+api_version: 'cli.abcxyz.dev/v1beta5'
 kind: 'GoldenTest'
 
 inputs:
