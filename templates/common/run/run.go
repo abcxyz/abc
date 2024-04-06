@@ -29,7 +29,7 @@ import (
 // arbitrarily.
 const DefaultRunTimeout = time.Minute
 
-// Simple is a wrapper around Run() that captures stdout and stderr as strings.
+// Simple is a wrapper around [Run] that captures stdout and stderr as strings.
 // This is intended to be used for commands that run non-interactively then
 // exit.
 //
@@ -108,7 +108,7 @@ func RunMany(ctx context.Context, args ...[]string) (stdouts, stderrs []string, 
 	return stdouts, stderrs, nil
 }
 
-// Option implements the functional options pattern for Run().
+// Option implements the functional options pattern for [Run].
 type Option struct {
 	allowNonZeroExit bool
 	stdin            io.Reader
@@ -117,9 +117,9 @@ type Option struct {
 }
 
 // AllowNonzeroExit is an option that will NOT treat a nonzero exit code from
-// the command as an error (so Run() won't return error). The default behavior
-// is that if a command exits with a nonzero status code, then that becomes a
-// Go error.
+// the command as an error (so [Run] won't return error). The default behavior
+// of [Run] is that if a command exits with a nonzero status code, then that
+// becomes a Go error.
 func AllowNonzeroExit() *Option {
 	return &Option{allowNonZeroExit: true}
 }
