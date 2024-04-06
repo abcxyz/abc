@@ -45,8 +45,8 @@ func TestRun(t *testing.T) {
 		},
 		{
 			name:         "simple_stderr",
-			args:         []string{"ls", "nonexistent"},
-			wantErr:      "exec of [ls nonexistent] failed",
+			args:         []string{"diff", "nonexistent1", "nonexistent2"},
+			wantErr:      "exec of [diff nonexistent1 nonexistent2] failed",
 			wantStderr:   "No such file or directory",
 			wantExitCode: 2,
 		},
