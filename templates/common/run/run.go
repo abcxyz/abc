@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"time"
 )
@@ -28,72 +29,76 @@ import (
 // arbitrarily.
 const DefaultRunTimeout = time.Minute
 
-// Run is a wrapper around exec.CommandContext and Run() that captures stdout
-// and stderr as strings. The input args must have len>=1.
-//
+// Simple is a wrapper around Run() that captures stdout and stderr as strings.
 // This is intended to be used for commands that run non-interactively then
 // exit.
 //
-// This doesn't execute a shell (unless of course args[0] is the name of a shell
-// binary).
+// If the command exits with a nonzero status code, an *os.ExitError will be
+// returned.
+//
+// If the command fails, the error message will include the contents of stdout
+// and stderr. This saves boilerplate in the caller.
+func Simple(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
+	stdoutBuf := &bytes.Buffer{}
+	stderrBuf := &bytes.Buffer{}
+	_, err := Run(ctx, []*Option{
+		WithStdout(stdoutBuf),
+		WithStderr(stderrBuf),
+	}, args...)
+	return stdoutBuf.String(), stderrBuf.String(), err
+}
+
+// Run runs the command provided by args, using the options in opts. By default,
+// if the command returns a nonzero exit code, an error is returned, but this
+// behavior may be overridden by the AllowNonzeroExit option.
 //
 // If the incoming context doesn't already have a timeout, then a default
 // timeout will be added (see DefaultRunTimeout).
 //
-// If the command fails, the error message will include the contents of stdout
-// and stderr. This saves boilerplate in the caller.
-func Run(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
-	stdout, stderr, _, err := run(ctx, false, args...)
-	return stdout, stderr, err
-}
-
-// RunAllowNonzero is like Run, except that if the command has a nonzero exit
-// code, that doesn't cause an error to be returned.
-func RunAllowNonzero(ctx context.Context, args ...string) (stdout, stderr string, exitCode int, _ error) {
-	return run(ctx, true, args...)
-}
-
-// if "allowNonzeroExit" is false, then a nonzero exit code from the command
-// will cause an error to be returned.
-func run(ctx context.Context, allowNonZeroExit bool, args ...string) (stdout, stderr string, exitCode int, _ error) {
+// The input args must have len>=1. opts may be nil if no special options are
+// needed.
+//
+// This doesn't execute a shell (unless of course args[0] is the name of a shell
+// binary).
+func Run(ctx context.Context, opts []*Option, args ...string) (exitCode int, _ error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, DefaultRunTimeout)
 		defer cancel()
 	}
+
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec // exec'ing the input args is fundamentally the whole point
 
-	stdoutBuf := &bytes.Buffer{}
-	stderrBuf := &bytes.Buffer{}
-	cmd.Stdout = stdoutBuf
-	cmd.Stderr = stderrBuf
+	// any of these can be nil
+	compiledOpts := compileOpts(opts)
+	cmd.Stdout = compiledOpts.stdout
+	cmd.Stderr = compiledOpts.stderr
+	cmd.Stdin = compiledOpts.stdin
 
 	err := cmd.Run()
-	stdout, stderr = stdoutBuf.String(), stderrBuf.String()
-
 	if err != nil {
 		// Don't return error if both (a) the caller indicated they're OK with a
 		// nonzero exit code and (b) the error is of a type that means the only
 		// problem was a nonzero exit code.
 		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && allowNonZeroExit {
+		if errors.As(err, &exitErr) && compiledOpts.allowNonZeroExit {
 			err = nil
 		} else {
 			err = fmt.Errorf(`exec of %v failed: error was "%w", context error was "%w"\nstdout: %s\nstderr: %s`,
 				args, err, ctx.Err(), cmd.Stdout, cmd.Stderr)
 		}
 	}
-	return stdout, stderr, cmd.ProcessState.ExitCode(), err
+	return cmd.ProcessState.ExitCode(), err
 }
 
-// RunMany calls [Run] for each command in args. If any command returns error,
+// RunMany calls [Simple] for each command in args. If any command returns error,
 // then no further commands will be run, and that error will be returned. For
 // any commands that were actually executed (not aborted by a previous error),
 // their stdout and stderr will be returned. It's guaranteed that
 // len(stdouts)==len(stderrs).
 func RunMany(ctx context.Context, args ...[]string) (stdouts, stderrs []string, _ error) {
 	for _, cmd := range args {
-		stdout, stderr, err := Run(ctx, cmd...)
+		stdout, stderr, err := Simple(ctx, cmd...)
 		stdouts = append(stdouts, stdout)
 		stderrs = append(stderrs, stderr)
 		if err != nil {
@@ -101,4 +106,61 @@ func RunMany(ctx context.Context, args ...[]string) (stdouts, stderrs []string, 
 		}
 	}
 	return stdouts, stderrs, nil
+}
+
+// Option implements the functional options pattern for Run().
+type Option struct {
+	allowNonZeroExit bool
+	stdin            io.Reader
+	stdout           io.Writer
+	stderr           io.Writer
+}
+
+// AllowNonzeroExit is an option that will NOT treat a nonzero exit code from
+// the command as an error (so Run() won't return error). The default behavior
+// is that if a command exits with a nonzero status code, then that becomes a
+// Go error.
+func AllowNonzeroExit() *Option {
+	return &Option{allowNonZeroExit: true}
+}
+
+// WithStdin passes the given reader as the command's standard input.
+func WithStdin(stdin io.Reader) *Option {
+	return &Option{stdin: stdin}
+}
+
+// WithStdinStr is a convenient wrapper around WithStdin that passes the given
+// string as the command's standard input.
+func WithStdinStr(stdin string) *Option {
+	return WithStdin(bytes.NewBufferString(stdin))
+}
+
+// WithStdout writes the command's standard output to the given writer.
+func WithStdout(stdout io.Writer) *Option {
+	return &Option{stdout: stdout}
+}
+
+// WithStderr writes the command's standard error to the given writer.
+func WithStderr(stderr io.Writer) *Option {
+	return &Option{stderr: stderr}
+}
+
+func compileOpts(opts []*Option) *Option {
+	var out Option
+	for _, opt := range opts {
+		if opt.allowNonZeroExit {
+			out.allowNonZeroExit = true
+		}
+		if opt.stdin != nil {
+			out.stdin = opt.stdin
+		}
+		if opt.stdout != nil {
+			out.stdout = opt.stdout
+		}
+		if opt.stderr != nil {
+			out.stderr = opt.stderr
+		}
+	}
+
+	return &out
 }
