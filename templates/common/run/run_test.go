@@ -45,9 +45,9 @@ func TestRun(t *testing.T) {
 		},
 		{
 			name:         "simple_stderr",
-			args:         []string{"ls", "--nonexistent"},
-			wantErr:      "exec of [ls --nonexistent] failed",
-			wantStderr:   "ls: unrecognized option",
+			args:         []string{"ls", "nonexistent"},
+			wantErr:      "exec of [ls nonexistent] failed",
+			wantStderr:   "No such file or directory",
 			wantExitCode: 2,
 		},
 		{
