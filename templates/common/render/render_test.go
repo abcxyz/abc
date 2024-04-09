@@ -1347,6 +1347,7 @@ steps:
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
+			// The manifest is verified separately, hence the SkipGlob().
 			gotDestContents := abctestutil.LoadDir(t, outDir, abctestutil.SkipGlob(".abc/manifest*"))
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
