@@ -138,14 +138,30 @@ func isGlob(matchedPaths []model.String, originalPath, matchedPath string) bool 
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
-	// By default, we copy from the template directory. We also support
-	// grabbing files from the destination directory, so we can modify files
-	// that already exist in the destination.
-	fromDir := sp.templateDir
+	// By default, we copy from the template directory.
+	fromDirs := []string{sp.templateDir}
 	if inc.From.Val == "destination" {
-		fromDir = sp.rp.DestDir
+		// We also support including files from the destination directory, so we
+		// can modify files that already exist in the destination.
+		fromDirs = []string{sp.rp.DestDir}
+		if sp.rp.IncludeFromDestExtraDir != "" {
+			// For complicated reasons related to upgrading, we sometimes add
+			// another include source directory that contains files after having
+			// had their include-from-destination patch reversed as part of the
+			// upgrade process.
+			fromDirs = append(fromDirs, sp.rp.IncludeFromDestExtraDir)
+		}
 	}
 
+	for _, fromDir := range fromDirs {
+		if err := includeFromOneDir(ctx, inc, sp, fromDir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func includeFromOneDir(ctx context.Context, inc *spec.IncludePath, sp *stepParams, fromDir string) error {
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
 		return err

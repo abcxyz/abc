@@ -678,7 +678,7 @@ steps:
 `,
 			},
 			origDestContents: map[string]string{
-				"file.txt": "purple is my favorite color",
+				"file.txt": "purple is my favorite color\n",
 			},
 			wantManifestBeforeUpgrade: &manifest.Manifest{
 				CreationTime:     beforeUpgradeTime,
@@ -694,9 +694,7 @@ steps:
 +++ b/file.txt
 @@ -1 +1 @@
 -red is my favorite color
-\ No newline at end of file
 +purple is my favorite color
-\ No newline at end of file
 `),
 					},
 				},
@@ -725,9 +723,8 @@ steps:
 				AlreadyUpToDate: false,
 				NonConflicts: []ActionTaken{
 					{
-						Action:      "noop",
-						Explanation: "the new template outputs the same contents as the old template, ",
-						Path:        "file.txt",
+						Action: WriteNew,
+						Path:   "file.txt",
 					},
 				},
 			},
@@ -741,17 +738,231 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("file.txt"),
-						// TODO(upgrade): once patch-reversing is implemented,
-						// then there will be a patch here.
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-yellow is my favorite color
++purple is my favorite color
+`),
 					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
-				// TODO(upgrade): once patch-reversing is implemented, this will
-				// be "yellow is my favorite color".
-				"file.txt": "red is my favorite color",
+				"file.txt": "yellow is my favorite color\n",
 			},
 		},
+		{
+			name: "rejected_reversal_include_from_destination_with_local_edits",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+			},
+			origDestContents: map[string]string{
+				"file.txt": "purple is my favorite color\n",
+			},
+			wantManifestBeforeUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
+				abctestutil.Overwrite(tb, installedDir, "file.txt", "green is my favorite color\n")
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'yellow'  
+`,
+			},
+			want: &Result{
+				ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+			},
+			// manifest should be unchanged if there's a reversal conflict
+			wantManifestAfterUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"file.txt": "green is my favorite color\n",
+				"file.txt.rej": `--- file.txt
++++ file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`,
+			},
+		},
+
+		{
+			name: "fuzzy_patch_reversal",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+			},
+			origDestContents: map[string]string{
+				"file.txt": "purple is my favorite color\n",
+			},
+			wantManifestBeforeUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
+				abctestutil.Prepend(tb, installedDir, "file.txt", "an arbitrary line of text to trigger fuzzy patching\n")
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'yellow'  
+`,
+			},
+			want: &Result{
+				NonConflicts: []ActionTaken{
+					{
+						Action: "writeNew",
+						Path:   "file.txt",
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"file.txt": `an arbitrary line of text to trigger fuzzy patching
+yellow is my favorite color
+`,
+			},
+			wantManifestAfterUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: afterUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1,2 +1,2 @@
+ an arbitrary line of text to trigger fuzzy patching
+-yellow is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+		},
+
+		// TODO test:
+		//  multiple conflicting files
+		//  multiple templates targeting same file causing reversal conflict
+		//  some hunks applied and some rejected
+		//  a previous regular-included file becomes ifd
+		//  an ifd file becomes regular-included
+		//  IFD with all conflicts: add-add, add-edit, EditDelete, DeleteEdit
 	}
 
 	for _, tc := range cases {

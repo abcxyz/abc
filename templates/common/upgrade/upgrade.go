@@ -17,6 +17,7 @@
 package upgrade
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -34,19 +35,21 @@ import (
 	"github.com/abcxyz/abc/templates/common/dirhash"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
 	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
+	"github.com/abcxyz/pkg/logging"
 )
 
 // TODO(upgrade):
 //   - add "abort if conflict" feature
+//   - validate that manifest paths don't contain traversals
 //   - add "check for update and exit" feature
 //   - add "upgrade all template installations within directory"
-//   - handle "include from destination"
 //   - maybe switch file hashes to SHA1, so then we can opportunistically get
 //     the common base from the installedDir repo or template repo (which might
 //     be the same repo), so then we can do a 3-way merge (`git merge-file`)
@@ -107,16 +110,28 @@ type Params struct {
 	TempDirBase string
 }
 
+// Result is returned from Upgrade if there's no error. It may indicate that
+// there were merge conflicts requiring manual resolution.
 type Result struct {
 	// If no upgrade was done because this installation of the template is
 	// already on the latest version, then this will be true and all other
 	// fields in this struct will have zero values.
 	AlreadyUpToDate bool
 
+	// TODO implement
+	// defined as len(ReversalConflicts)==0 and len(Conflicts)==0.
+	ActionNeeded bool
+
+	// TODO doc
+	ReversalConflicts []*ReversalConflict
+
 	// Conflicts is the set of files that require manual intervention by the
 	// user to resolve a merge conflict. For example, there may be a file that
 	// was edited by the user and that edit conflicts with changes to that same
 	// file by the upgraded version of the template.
+	//
+	// If the length is 0, then the upgrade was fully successful and no action
+	// is needed
 	Conflicts []ActionTaken
 
 	// NonConflicts is the set of template output files that do NOT require any
@@ -237,26 +252,39 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err //nolint:wrapcheck
 	}
 
+	reversedDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.ReversedPatchDirNamePart)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+	reversalConflicts, err := reversePatches(ctx, installedDir, reversedDir, oldManifest)
+	if err != nil {
+		return nil, err
+	}
+	if len(reversalConflicts) > 0 {
+		return &Result{ReversalConflicts: reversalConflicts}, nil
+	}
+
 	if err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
-		Clock:               p.Clock,
-		Cwd:                 p.CWD,
-		DebugStepDiffs:      p.DebugStepDiffs,
-		DestDir:             installedDir,
-		Downloader:          downloader,
-		FS:                  p.FS,
-		GitProtocol:         p.GitProtocol,
-		InputFiles:          p.InputFiles,
-		Inputs:              inputsToMap(oldManifest.Inputs),
-		KeepTempDirs:        p.KeepTempDirs,
-		Manifest:            true,
-		OutDir:              mergeDir,
-		Prompt:              p.Prompt,
-		Prompter:            p.Prompter,
-		SkipInputValidation: p.SkipInputValidation,
-		SkipPromptTTYCheck:  p.SkipPromptTTYCheck,
-		SourceForMessages:   oldManifest.TemplateLocation.Val,
-		Stdout:              p.Stdout,
-		TempDirBase:         p.TempDirBase,
+		Clock:                   p.Clock,
+		Cwd:                     p.CWD,
+		DebugStepDiffs:          p.DebugStepDiffs,
+		DestDir:                 installedDir,
+		Downloader:              downloader,
+		FS:                      p.FS,
+		GitProtocol:             p.GitProtocol,
+		InputFiles:              p.InputFiles,
+		IncludeFromDestExtraDir: reversedDir,
+		Inputs:                  inputsToMap(oldManifest.Inputs),
+		KeepTempDirs:            p.KeepTempDirs,
+		Manifest:                true,
+		OutDir:                  mergeDir,
+		Prompt:                  p.Prompt,
+		Prompter:                p.Prompter,
+		SkipInputValidation:     p.SkipInputValidation,
+		SkipPromptTTYCheck:      p.SkipPromptTTYCheck,
+		SourceForMessages:       oldManifest.TemplateLocation.Val,
+		Stdout:                  p.Stdout,
+		TempDirBase:             p.TempDirBase,
 	}); err != nil {
 		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
@@ -272,12 +300,13 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 
 	commitParams := &commitParams{
-		fs:              p.FS,
-		installedDir:    installedDir,
-		mergeDir:        mergeDir,
-		oldManifestPath: p.ManifestPath,
-		oldManifest:     oldManifest,
-		newManifest:     newManifest,
+		fs:               p.FS,
+		installedDir:     installedDir,
+		mergeDir:         mergeDir,
+		oldManifestPath:  p.ManifestPath,
+		oldManifest:      oldManifest,
+		newManifest:      newManifest,
+		reversedPatchDir: reversedDir,
 	}
 	actionsTaken, err := mergeTentatively(ctx, commitParams)
 	if err != nil {
@@ -325,6 +354,9 @@ type commitParams struct {
 	// The temp directory into which the new/upgraded template version was
 	// rendered.
 	mergeDir string
+
+	// TODO doc
+	reversedPatchDir string
 
 	// The path to the manifest describing the original template installation
 	// that we're upgrading from. This is also overwritten with the new
@@ -481,4 +513,88 @@ func partitionConflicts(actionsTaken []ActionTaken) (conflicts, nonConflicts []A
 		nonConflicts = append(nonConflicts, a)
 	}
 	return conflicts, nonConflicts
+}
+
+type ReversalConflict struct {
+	Path string
+}
+
+func reversePatches(ctx context.Context, installedDir, reversedDir string, oldManifest *manifest.Manifest) ([]*ReversalConflict, error) {
+	var out []*ReversalConflict
+	for _, f := range oldManifest.OutputFiles {
+		if f.Patch != nil && len(f.Patch.Val) > 0 {
+			conflict, err := reverseOnePatch(ctx, installedDir, reversedDir, f)
+			if err != nil {
+				return nil, err
+			}
+			if conflict != nil {
+				out = append(out, conflict)
+			}
+		}
+	}
+	return out, nil
+}
+
+func reverseOnePatch(ctx context.Context, installedDir, reversedDir string, f *manifest.OutputFile) (*ReversalConflict, error) {
+	logger := logging.FromContext(ctx).With("logger", "reverseOnePatch")
+
+	outPath := filepath.Join(reversedDir, f.File.Val)
+	if err := os.MkdirAll(filepath.Base(outPath), common.OwnerRWXPerms); err != nil {
+		return nil, fmt.Errorf("failed creating output directory for patch reversal: %w", err)
+	}
+	installedPath := filepath.Join(installedDir, f.File.Val)
+	rejectPath := installedPath + ".rej"
+
+	var stdout, stderr bytes.Buffer
+	opts := []*run.Option{
+		run.AllowNonzeroExit(),
+		run.WithStdinStr(f.Patch.Val),
+		run.WithStdout(&stdout),
+		run.WithStderr(&stderr),
+	}
+	// Alternative considered: use the --merge flag to the patch command to put
+	// merge conflicts inline in the target file. Why don't we? Two reasons:
+	//  - the --merge flag doesn't exist on mac
+	//  - the --merge flag is mutually exclusive with the --fuzz flag
+	//
+	// TODO(upgrade): consider using "git apply" for uniformity across OSes
+	exitCode, err := run.Run(ctx, opts,
+		"patch",
+		"--unified",    // the diff was originally generated with "diff -u"
+		"--strip", "1", // the diff has prefixes like "a/" in "a/file.txt" that need to be removed
+		"--output", outPath, // write the patched file to the reversedDir
+		"--fuzz", "999", // try super hard to patch even if surrounding context has changed
+		"--reject-file", rejectPath, // Patch hunks that fail to apply will be saved here
+		installedPath,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error running patch command on included-from-destination file %q: %w", f.File.Val, err)
+	}
+	// TODO(upgrade): support backups, maybe with patch -b
+	switch exitCode {
+	case 0:
+		if stdout.Len() > 0 {
+			logger.DebugContext(ctx, "exec of patch to reverse include-from-destination succeeded",
+			"stdout", stdout.String())
+		}
+		return nil, nil
+	case 1:
+		logger.WarnContext(ctx, "reversal patch didn't apply cleanly",
+			"stdout", stdout.String(),
+			"stderr", stderr.String(),
+			"installed_path", installedPath,
+			"reject_path", rejectPath,
+		)
+		// // TODO(upgrade): save a backup file before overwriting
+		// TODO delete this, we only do this with --merge
+		// if err := common.Copy(ctx, &common.RealFS{}, outPath, installedPath); err != nil {
+		// 	return nil, fmt.Errorf("error copying merge-conflict file from %q to %q: %w", outPath, installedPath, err)
+		// }
+		return &ReversalConflict{
+			Path: f.File.Val, // TODO(upgrade): should this be absolute instead?
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("when reversing a patch from the manifest for included-from-destination files, the patch command failed unexpectedly: %s", stderr.String())
+	}
 }

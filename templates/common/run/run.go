@@ -54,6 +54,9 @@ func Simple(ctx context.Context, args ...string) (stdout, stderr string, _ error
 // If the incoming context doesn't already have a timeout, then a default
 // timeout will be added (see DefaultRunTimeout).
 //
+// If the command fails, the error message will include the contents of stdout
+// and stderr. This saves boilerplate in the caller.
+//
 // The input args must have len>=1. opts may be nil if no special options are
 // needed.
 //
@@ -90,12 +93,12 @@ func Run(ctx context.Context, opts []*Option, args ...string) (exitCode int, _ e
 	return cmd.ProcessState.ExitCode(), err
 }
 
-// RunMany calls [Simple] for each command in args. If any command returns error,
+// Many calls [Simple] for each command in args. If any command returns error,
 // then no further commands will be run, and that error will be returned. For
 // any commands that were actually executed (not aborted by a previous error),
 // their stdout and stderr will be returned. It's guaranteed that
 // len(stdouts)==len(stderrs).
-func RunMany(ctx context.Context, args ...[]string) (stdouts, stderrs []string, _ error) {
+func Many(ctx context.Context, args ...[]string) (stdouts, stderrs []string, _ error) {
 	for _, cmd := range args {
 		stdout, stderr, err := Simple(ctx, cmd...)
 		stdouts = append(stdouts, stdout)

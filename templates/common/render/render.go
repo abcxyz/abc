@@ -90,6 +90,14 @@ type Params struct {
 	// The value of --git-protocol.
 	GitProtocol string
 
+	// An optional extra directory that will be copied from in the case where an
+	// "include" action has "from: destination". This is in addition to DestDir
+	// above. The include action will copy from DestDir first and then from this
+	// directory afterward, so files in this directory will take precedence.
+	// Essentially, files in this dir are overlaid on top of other includes
+	// files in an include-from-destination operation.
+	IncludeFromDestExtraDir string
+
 	// The value of --input-files.
 	InputFiles []string
 
@@ -155,10 +163,7 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	p = copyParams(p)
-	if p.DestDir == "" {
-		p.DestDir = p.OutDir
-	}
+
 	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
@@ -169,13 +174,6 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
 }
 
-// copyParams returns a shallow copy of the input params. This lets us fill in
-// default values without affect the caller's copy of the params.
-func copyParams(p *Params) *Params {
-	cp := *p
-	return &cp
-}
-
 // RenderAlreadyDownloaded is for the unusual case where the template has
 // already been downloaded to the local filesystem. Most callers should prefer
 // to call Render() instead.
@@ -183,6 +181,8 @@ func copyParams(p *Params) *Params {
 // The Params.Downloader field is ignored by this function.
 func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.DownloadMetadata, templateDir string, p *Params) (rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "RenderAlreadyDownloaded")
+
+	p = fillDefaults(p)
 
 	logger.DebugContext(ctx, "loading spec file")
 	spec, err := specutil.Load(ctx, p.FS, templateDir, p.SourceForMessages)
@@ -371,7 +371,7 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 		{"git", "--git-dir", out, "config", "user.email", "abc@abcxyz.com"},
 	}
 
-	if _, _, err := run.RunMany(ctx, cmds...); err != nil {
+	if _, _, err := run.Many(ctx, cmds...); err != nil {
 		return "", fmt.Errorf("failed initializing git repo for --debug-step-diffs: %w", err)
 	}
 	return out, nil
@@ -443,7 +443,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 				{"git", "--git-dir", sp.debugDiffsDir, "add", "-A"},
 				{"git", "--git-dir", sp.debugDiffsDir, "commit", "-a", "-m", m, "--allow-empty", "--no-gpg-sign"},
 			}
-			if _, _, err := run.RunMany(ctx, cmds...); err != nil {
+			if _, _, err := run.Many(ctx, cmds...); err != nil {
 				return fmt.Errorf("failed committing to git for --debug-step-diffs: %w", err)
 			}
 		}
@@ -557,9 +557,13 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 	// reverses the change. This might be used in the future during a template
 	// upgrade operation.
 	for relPath := range cp.includedFromDest {
-		destPath := filepath.Join(p.DestDir, relPath)
+		destRoot, err := diffBaseRootDir(p, relPath)
+		if err != nil {
+			return err
+		}
+		destPath := filepath.Join(destRoot, relPath)
 		srcPath := filepath.Join(cp.scratchDir, relPath)
-		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, p.DestDir)
+		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, destRoot)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
@@ -592,6 +596,21 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 		}
 	}
 	return nil
+}
+
+// TODO doc
+func diffBaseRootDir(p *Params, relPath string) (string, error) {
+	if p.IncludeFromDestExtraDir != "" {
+		pathInExtraDir := filepath.Join(p.IncludeFromDestExtraDir, relPath)
+		ok, err := common.Exists(pathInExtraDir)
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return p.IncludeFromDestExtraDir, nil
+		}
+	}
+	return p.DestDir, nil
 }
 
 // commit copies the contents of scratchDir to rp.Dest. If dryRun==true, then
@@ -672,4 +691,12 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		logger.InfoContext(ctx, "template render succeeded")
 	}
 	return params.OutHashes, nil
+}
+
+func fillDefaults(p *Params) *Params {
+	out := *p
+	if out.DestDir == "" {
+		out.DestDir = out.OutDir
+	}
+	return &out
 }
