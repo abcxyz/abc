@@ -77,7 +77,7 @@ type writeManifestParams struct {
 // writeManifest creates a manifest struct, marshals it as YAML, and writes it
 // to destDir/.abc/ .
 func writeManifest(p *writeManifestParams) (rErr error) {
-	m, err := buildManifest(p, p.dlMeta)
+	m, err := buildManifest(p)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func writeManifest(p *writeManifestParams) (rErr error) {
 		return fmt.Errorf("failed marshaling Manifest when writing: %w", err)
 	}
 
-	baseName := manifestBaseName(p, p.dlMeta)
+	baseName := manifestBaseName(p)
 	manifestDir := filepath.Join(p.destDir, common.ABCInternalDir)
 	manifestPath := filepath.Join(manifestDir, baseName)
 
@@ -126,10 +126,10 @@ func writeManifest(p *writeManifestParams) (rErr error) {
 	return nil
 }
 
-func manifestBaseName(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) string {
+func manifestBaseName(p *writeManifestParams) string {
 	namePart := "nolocation"
-	if dlMeta.IsCanonical {
-		namePart = url.PathEscape(dlMeta.CanonicalSource)
+	if p.dlMeta.IsCanonical {
+		namePart = url.PathEscape(p.dlMeta.CanonicalSource)
 	}
 
 	// We include the creation time in the filename to disambiguate between
@@ -145,7 +145,7 @@ func manifestBaseName(p *writeManifestParams, dlMeta *templatesource.DownloadMet
 // buildManifest constructs the manifest struct for the given parameters.
 // canonicalSource is optional, it will be empty in the case where the template
 // location is non-canonical (i.e. installing from ~/mytemplate).
-func buildManifest(p *writeManifestParams, dlMeta *templatesource.DownloadMetadata) (*manifest.WithHeader, error) {
+func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 	templateDirhash, err := dirhash.HashLatest(p.templateDir)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -189,7 +189,7 @@ func buildManifest(p *writeManifestParams, dlMeta *templatesource.DownloadMetada
 		},
 		Wrapped: &manifest.ForMarshaling{
 			TemplateLocation: model.String{Val: p.dlMeta.CanonicalSource}, // may be empty string if location isn't canonical
-			LocationType:     model.String{Val: dlMeta.LocationType},
+			LocationType:     model.String{Val: p.dlMeta.LocationType},
 			TemplateDirhash:  model.String{Val: templateDirhash},
 			TemplateVersion:  model.String{Val: p.dlMeta.Version},
 			CreationTime:     now,
