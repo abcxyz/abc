@@ -50,6 +50,7 @@ func TestUpgrade(t *testing.T) {
 	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
 	afterUpgradeTime := beforeUpgradeTime.Add(time.Hour)
 
+	// This spec file is used for some (but not all) of the tests.
 	includeDotSpec := `
 api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
@@ -88,6 +89,8 @@ steps:
 		// origTemplateDirContents is used as the template for the initial
 		// render operation.
 		origTemplateDirContents map[string]string
+
+		origDestContents map[string]string
 
 		// Only one of templateUnionForUpgrade or templateReplacementForUpgrade
 		// may be set.
@@ -652,6 +655,103 @@ steps:
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
 			wantErr:                  "already an upgrade in progress",
 		},
+		{
+			name: "include_from_destination",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+			},
+			origDestContents: map[string]string{
+				"file.txt": "purple is my favorite color",
+			},
+			wantManifestBeforeUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
+\ No newline at end of file
++purple is my favorite color
+\ No newline at end of file
+`),
+					},
+				},
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'yellow'  
+`,
+			},
+			want: &Result{
+				AlreadyUpToDate: false,
+				NonConflicts: []ActionTaken{
+					{
+						Action:      "noop",
+						Explanation: "the new template outputs the same contents as the old template, ",
+						Path:        "file.txt",
+					},
+				},
+			},
+			wantManifestAfterUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: afterUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						// TODO(upgrade): once patch-reversing is implemented,
+						// then there will be a patch here.
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				// TODO(upgrade): once patch-reversing is implemented, this will
+				// be "yellow is my favorite color".
+				"file.txt": "red is my favorite color",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -668,17 +768,16 @@ steps:
 			// Make tempBase into a valid git repo.
 			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
+			abctestutil.WriteAll(t, destDir, tc.origDestContents)
+
 			ctx := context.Background()
 
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 			clk := clock.NewMock()
 			clk.Set(beforeUpgradeTime)
-			renderAndVerify(t, ctx, clk, tempBase, templateDir, destDir)
+			mustRender(t, ctx, clk, tempBase, templateDir, destDir)
 
-			manifestBaseName, err := findManifest(manifestDir)
-			if err != nil {
-				t.Fatal(err)
-			}
+			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
 			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
 
 			assertManifest(ctx, t, "before upgrade", tc.wantManifestBeforeUpgrade, manifestFullPath)
@@ -815,7 +914,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 	}
 }
 
-func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) {
+func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) {
 	tb.Helper()
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
@@ -837,12 +936,6 @@ func renderAndVerify(tb testing.TB, ctx context.Context, clk clock.Clock, tempBa
 		TempDirBase: tempBase,
 	}); err != nil {
 		tb.Fatal(err)
-	}
-
-	wantContents := abctestutil.LoadDir(tb, templateDir, abctestutil.SkipGlob("spec.yaml"))
-	got := abctestutil.LoadDir(tb, destDir, abctestutil.SkipGlob(".abc/manifest*"))
-	if diff := cmp.Diff(got, wantContents); diff != "" {
-		tb.Fatalf("installed directory contents before upgrading were not as expected, there's something wrong with test setup (-got,+want): %s", diff)
 	}
 }
 

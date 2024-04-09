@@ -62,6 +62,8 @@ type writeManifestParams struct {
 	// A fakeable filesystem for testing errors.
 	fs common.FS
 
+	includeFromDestPatches map[string]string
+
 	// The set of values that were used as the template inputs; combined from
 	// --input, --input-file, prompts, and defaults.
 	inputs map[string]string
@@ -164,9 +166,17 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 		// For consistency with dirhash, we'll encode our hashes as
 		// base64 with an "h1:" prefix indicating SHA256.
 		hashStr := "h1:" + base64.StdEncoding.EncodeToString(hash)
+
+		var patchModel *model.String
+		patch, ok := p.includeFromDestPatches[file]
+		if ok {
+			patchModel = &model.String{Val: patch}
+		}
+
 		outputList = append(outputList, &manifest.OutputFile{
-			File: model.String{Val: file},
-			Hash: model.String{Val: hashStr},
+			File:  model.String{Val: file},
+			Hash:  model.String{Val: hashStr},
+			Patch: patchModel,
 		})
 	}
 

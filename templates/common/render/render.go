@@ -548,6 +548,26 @@ type commitParams struct {
 // directory. We first do a dry-run to check that the copy is likely to succeed,
 // so we don't leave a half-done mess in the user's dest directory.
 func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
+	// Design decision: it's OK to hold these patches in memory. It's unlikely
+	// that anyone will create such huge patches with abc that they'll run out
+	// of RAM.
+	includeFromDestPatches := map[string]string{}
+
+	// For each file that was included-from-destination, create a patch that
+	// reverses the change. This might be used in the future during a template
+	// upgrade operation.
+	for relPath := range cp.includedFromDest {
+		destPath := filepath.Join(p.DestDir, relPath)
+		srcPath := filepath.Join(cp.scratchDir, relPath)
+		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, p.DestDir)
+		if err != nil {
+			return err //nolint:wrapcheck
+		}
+		if diff != "" {
+			includeFromDestPatches[relPath] = diff
+		}
+	}
+
 	for _, dryRun := range []bool{true, false} {
 		outputHashes, err := commit(ctx, dryRun, p, cp.scratchDir, cp.includedFromDest)
 		if err != nil {
@@ -556,15 +576,16 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 
 		if p.Manifest {
 			if err := writeManifest(&writeManifestParams{
-				clock:        p.Clock,
-				cwd:          p.Cwd,
-				dlMeta:       cp.dlMeta,
-				destDir:      p.OutDir,
-				dryRun:       dryRun,
-				fs:           p.FS,
-				inputs:       cp.inputs,
-				outputHashes: outputHashes,
-				templateDir:  cp.templateDir,
+				clock:                  p.Clock,
+				cwd:                    p.Cwd,
+				dlMeta:                 cp.dlMeta,
+				destDir:                p.OutDir,
+				dryRun:                 dryRun,
+				fs:                     p.FS,
+				includeFromDestPatches: includeFromDestPatches,
+				inputs:                 cp.inputs,
+				outputHashes:           outputHashes,
+				templateDir:            cp.templateDir,
 			}); err != nil {
 				return err
 			}
