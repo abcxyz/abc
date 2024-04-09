@@ -15,6 +15,7 @@
 package run
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -63,7 +64,13 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		}
 	}
 
-	stdout, stderr, exitCode, err := RunAllowNonzero(ctx, args...)
+	var stdout, stderr bytes.Buffer
+	opts := []*Option{
+		WithStdout(&stdout),
+		WithStderr(&stderr),
+		AllowNonzeroExit(),
+	}
+	exitCode, err := Run(ctx, opts, args...)
 	if err != nil {
 		return "", fmt.Errorf("error exec'ing diff: %w", err)
 	}
@@ -84,9 +91,9 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		if !file1Exists && !file2Exists {
 			return "", nil
 		}
-		return "", fmt.Errorf("error exec'ing diff: %s", stderr)
+		return "", fmt.Errorf("error exec'ing diff: %s", stderr.String())
 	}
-	return stdout, nil
+	return stdout.String(), nil
 }
 
 var (
@@ -107,12 +114,17 @@ func diffColorSupported(ctx context.Context) (bool, error) {
 // diffColorCheck tests whether we're running on a machine that supports
 // --color=always. MacOS <= 12 seems not to have this.
 func diffColorCheck(ctx context.Context) (bool, error) {
-	_, stderr, exitCode, err := RunAllowNonzero(ctx, "diff", "--color=always", "/dev/null", "/dev/null")
+	var stderr bytes.Buffer
+	opts := []*Option{
+		WithStderr(&stderr),
+		AllowNonzeroExit(),
+	}
+	exitCode, err := Run(ctx, opts, "diff", "--color=always", "/dev/null", "/dev/null")
 	if err != nil {
 		return false, fmt.Errorf("failed determining whether the diff command supports color: %w", err)
 	}
 
-	if exitCode == 2 && strings.Contains(stderr, "unrecognized option `--color=always'") {
+	if exitCode == 2 && strings.Contains(stderr.String(), "unrecognized option `--color=always'") {
 		return false, nil
 	}
 	if exitCode != 0 {
