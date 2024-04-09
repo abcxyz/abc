@@ -39,11 +39,10 @@ const DefaultRunTimeout = time.Minute
 // If the command fails, the error message will include the contents of stdout
 // and stderr. This saves boilerplate in the caller.
 func Simple(ctx context.Context, args ...string) (stdout, stderr string, _ error) {
-	stdoutBuf := &bytes.Buffer{}
-	stderrBuf := &bytes.Buffer{}
+	var stdoutBuf, stderrBuf bytes.Buffer
 	_, err := Run(ctx, []*Option{
-		WithStdout(stdoutBuf),
-		WithStderr(stderrBuf),
+		WithStdout(&stdoutBuf),
+		WithStderr(&stderrBuf),
 	}, args...)
 	return stdoutBuf.String(), stderrBuf.String(), err
 }
