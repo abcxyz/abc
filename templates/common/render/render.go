@@ -693,6 +693,10 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 	return params.OutHashes, nil
 }
 
+// fillDefaults takes the user-provided upgrade parameters and inserts default
+// values for fields that were unfilled that actually have defaults. It returns
+// a shallow copy of the input to avoid mutating the Params struct that the user
+// can see.
 func fillDefaults(p *Params) *Params {
 	out := *p
 	if out.DestDir == "" {

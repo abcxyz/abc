@@ -430,7 +430,7 @@ func JoinIfRelative(cwd, path string) string {
 
 // Exists returns whether the given path is a file or directory that exists. We
 // wrote this wrapper because it's a little complex and irritating to deal with
-// os.Stat() considering nonexistence to be an error.
+// the way that os.Stat() considers nonexistence to be an error.
 func Exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -441,17 +441,3 @@ func Exists(path string) (bool, error) {
 	}
 	return true, nil
 }
-
-// // TODO doc. error if none exist.
-// func FirstExists(paths []string) (string, error) {
-// 	for _, p := range paths {
-// 		ok, err := Exists(p)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		if ok {
-// 			return p, nil
-// 		}
-// 	}
-// 	return "", fmt.Errorf("none of these paths exist: %v", paths)
-// }

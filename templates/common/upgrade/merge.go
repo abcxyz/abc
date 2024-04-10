@@ -121,8 +121,9 @@ type decideMergeParams struct {
 	// contents.
 	OldFileMatchesNewHash hashResult
 
-	// TODO doc
-	IsIFD bool
+	// True if this file was included by the "include" action from the
+	// destination folder rather than the template folder (somewhat rare).
+	IsIncludedFromDestination bool
 }
 
 // decideMerge is the core of the algorithm that merges the template output with
@@ -156,7 +157,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	// Case: this file was output by the old template version, but not by the new template version.
 	case o.IsInOldManifest && !o.IsInNewManifest:
 		switch {
-		case o.OldFileMatchesOldHash == match || o.IsIFD:
+		case o.OldFileMatchesOldHash == match || o.IsIncludedFromDestination:
 			return &mergeDecision{
 				action:           DeleteAction,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
@@ -182,7 +183,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 			}, nil
 		}
 		switch {
-		case o.OldFileMatchesOldHash == match || o.IsIFD:
+		case o.OldFileMatchesOldHash == match || o.IsIncludedFromDestination:
 			return &mergeDecision{
 				action:           WriteNew,
 				humanExplanation: "this file was not modified by the user, and the new template has changes to this file",
@@ -255,12 +256,12 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 
 		// TODO lower case these field names?
 		hr := &decideMergeParams{
-			IsInOldManifest:       isInOldManifest,
-			IsInNewManifest:       isInNewManifest,
-			OldFileMatchesOldHash: oldFileMatchesOldHash,
-			NewFileMatchesOldHash: newFileMatchesOldHash,
-			OldFileMatchesNewHash: oldFileMatchesNewHash,
-			IsIFD:                 paths.fromReversed != "",
+			IsInOldManifest:           isInOldManifest,
+			IsInNewManifest:           isInNewManifest,
+			OldFileMatchesOldHash:     oldFileMatchesOldHash,
+			NewFileMatchesOldHash:     newFileMatchesOldHash,
+			OldFileMatchesNewHash:     oldFileMatchesNewHash,
+			IsIncludedFromDestination: paths.fromReversed != "",
 		}
 
 		decision, err := decideMerge(hr)
@@ -289,9 +290,10 @@ const (
 	conflictSuffixBegins = ".abcmerge_"
 )
 
-// TODO remove? I think the hash should never be computed on the reversed file.
+// oneFileMergePaths contains the paths for all the different versions of a
+// file.
 type oneFileMergePaths struct {
-	// TODO doc and maybe rename all these fields
+	// TODO doc and maybe rename all these fields.
 	relative string
 
 	// Subtle point: this file path can point to inside the the user-visible
@@ -299,7 +301,9 @@ type oneFileMergePaths struct {
 	// reversed-patch directory (for files that were included-from-destination).
 	fromOldLocal string
 
-	// TODO optional, doc.
+	// Optional. In the (somewhat rare) case where this file was
+	// included-from-destination, this field will be set. It points to the
+	// contents of the file
 	fromReversed string
 
 	// This path only has one case. It always points inside the template
@@ -307,7 +311,6 @@ type oneFileMergePaths struct {
 	fromNewTemplate string
 }
 
-// TODO remove? I think the hash should never be computed on the reversed file.
 func newMergePaths(p *commitParams, relPath string) (*oneFileMergePaths, error) {
 	fromReversed := filepath.Join(p.reversedPatchDir, relPath)
 	if ok, err := common.Exists(fromReversed); err != nil {
@@ -410,13 +413,6 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 		return ActionTaken{}, fmt.Errorf("internal error: unrecognized merged action %v", decision.action)
 	}
 }
-
-// func renameOrDryRun(fs common.FS, dryRun bool, from, to string) error {
-// 	if dryRun {
-// 		return nil
-// 	}
-// 	return fs.Rename(from, to) //nolint:wrapcheck
-// }
 
 func removeOrDryRun(fs common.FS, dryRun bool, path string) error {
 	if dryRun {

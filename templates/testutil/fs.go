@@ -268,3 +268,12 @@ func Prepend(tb testing.TB, dir, baseName, contents string) {
 	}
 	Overwrite(tb, dir, baseName, contents+string(buf))
 }
+
+func Remove(tb testing.TB, dir, baseName string) {
+	tb.Helper()
+
+	filename := filepath.Join(dir, baseName)
+	if err := os.Remove(filename); err != nil {
+		tb.Fatal(err)
+	}
+}

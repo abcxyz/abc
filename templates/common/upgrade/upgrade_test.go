@@ -972,6 +972,9 @@ yellow is my favorite color
 			t.Parallel()
 
 			tempBase := t.TempDir()
+			// Make tempBase into a valid git repo.
+			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
 			destDir := filepath.Join(tempBase, "dest_dir")
 			manifestDir := filepath.Join(destDir, common.ABCInternalDir)
 			templateDir := filepath.Join(tempBase, "template_dir")
@@ -1090,6 +1093,171 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 	wantErr := "this template can't be upgraded because its manifest doesn't contain a template_location"
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 		t.Fatal(diff)
+	}
+}
+
+func TestPatchReversalManualResolution(t *testing.T) {
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		t.Fatalf("time.LoadLocation(): %v", err)
+	}
+	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
+
+	tempBase := t.TempDir()
+	// Make tempBase into a valid git repo.
+	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
+	destDir := filepath.Join(tempBase, "dest_dir")
+	manifestDir := filepath.Join(destDir, common.ABCInternalDir)
+	templateDir := filepath.Join(tempBase, "template_dir")
+
+	origTemplateDirContents := map[string]string{
+		"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+	}
+	abctestutil.WriteAll(t, templateDir, origTemplateDirContents)
+
+	origDestContents := map[string]string{
+		"file.txt": "purple is my favorite color\n",
+	}
+	abctestutil.WriteAll(t, destDir, origDestContents)
+
+	ctx := context.Background()
+	clk := clock.NewMock()
+	clk.Set(beforeUpgradeTime)
+	mustRender(t, ctx, clk, tempBase, templateDir, destDir)
+
+	wantManifestBeforeUpgrade := &manifest.Manifest{
+		CreationTime:     beforeUpgradeTime,
+		ModificationTime: beforeUpgradeTime,
+		TemplateLocation: mdl.S("../template_dir"),
+		LocationType:     mdl.S("local_git"),
+		TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+		Inputs:           []*manifest.Input{},
+		OutputFiles: []*manifest.OutputFile{
+			{
+				File: mdl.S("file.txt"),
+				Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+			},
+		},
+	}
+	manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
+	manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+	assertManifest(ctx, t, "before upgrade", wantManifestBeforeUpgrade, manifestFullPath)
+
+	templateReplacementForUpgrade := map[string]string{
+		"spec.yaml": `
+		api_version: 'cli.abcxyz.dev/v1beta6'
+		kind: 'Template'
+		desc: 'my template'
+		steps:
+		- desc: 'include a file to be modified in place'
+		action: 'include'
+		params:
+		
+			from: 'destination'
+			paths: ['file.txt']
+		
+		- desc: 'Change favorite color'
+		action: 'string_replace'
+		params:
+		
+			  paths: ['file.txt']
+			  replacements:
+				- to_replace: 'purple'
+				  with: 'yellow'
+		
+		`,
+	}
+	if err := os.RemoveAll(templateDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(templateDir, common.OwnerRWXPerms); err != nil {
+		t.Fatal(err)
+	}
+	abctestutil.WriteAll(t, templateDir, templateReplacementForUpgrade)
+
+	// Simulate the user making some edits to the included-from-destination file
+	// after the render operation but before the upgrade
+	abctestutil.Overwrite(t, destDir, "file.txt", "green is my favorite color\n")
+
+	upgradeParams := &Params{
+		Clock:        clk,
+		CWD:          destDir,
+		FS:           &common.RealFS{},
+		ManifestPath: manifestFullPath,
+		Stdout:       os.Stdout,
+	}
+
+	gotReversalConflictResult, err := Upgrade(ctx, upgradeParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantReversalConflictResult := &Result{
+		ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+	}
+	opts := []cmp.Option{
+		cmpopts.EquateEmpty(),
+		cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
+	}
+	if diff := cmp.Diff(gotReversalConflictResult, wantReversalConflictResult, opts...); diff != "" {
+		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
+	}
+
+	// manifest should be unchanged if there's a reversal conflict
+	wantDestContentsAfterUpgrade := map[string]string{
+		"file.txt": "green is my favorite color\n",
+		"file.txt.rej": `--- file.txt
++++ file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`,
+	}
+
+	wantManifestAfterFailedUpgrade := wantManifestBeforeUpgrade
+	assertManifest(ctx, t, "after upgrade", wantManifestAfterFailedUpgrade, manifestFullPath)
+
+	gotDestContentsAfter := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+	if diff := cmp.Diff(gotDestContentsAfter, wantDestContentsAfterUpgrade); diff != "" {
+		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
+	}
+
+	// Resolve the merge conflict
+	abctestutil.Overwrite(t, destDir, "file.txt", "purple is my favorite color\n")
+	abctestutil.Remove(t, destDir, "file.txt")
+
+	upgradeParams.ReversalAlreadyDone = true
+
+	// TODO try a successful upgrade
+	gotResult, err := Upgrade(ctx, upgradeParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantResult := &Result{} // TODO
+	if diff := cmp.Diff(gotResult, wantResult, opts...); diff != "" {
+		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 	}
 }
 

@@ -96,6 +96,9 @@ type Params struct {
 	Prompt   bool
 	Prompter input.Prompter
 
+	// TODO doc
+	ReversalAlreadyDone bool
+
 	// The value of --skip-input-validation.
 	SkipInputValidation bool
 
@@ -117,10 +120,6 @@ type Result struct {
 	// already on the latest version, then this will be true and all other
 	// fields in this struct will have zero values.
 	AlreadyUpToDate bool
-
-	// TODO implement
-	// defined as len(ReversalConflicts)==0 and len(Conflicts)==0.
-	ActionNeeded bool
 
 	// TODO doc
 	ReversalConflicts []*ReversalConflict
@@ -256,12 +255,15 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
-	reversalConflicts, err := reversePatches(ctx, installedDir, reversedDir, oldManifest)
-	if err != nil {
-		return nil, err
-	}
-	if len(reversalConflicts) > 0 {
-		return &Result{ReversalConflicts: reversalConflicts}, nil
+
+	if !p.ReversalAlreadyDone {
+		reversalConflicts, err := reversePatches(ctx, installedDir, reversedDir, oldManifest)
+		if err != nil {
+			return nil, err
+		}
+		if len(reversalConflicts) > 0 {
+			return &Result{ReversalConflicts: reversalConflicts}, nil
+		}
 	}
 
 	if err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
@@ -563,7 +565,7 @@ func reverseOnePatch(ctx context.Context, installedDir, reversedDir string, f *m
 		"--unified",    // the diff was originally generated with "diff -u"
 		"--strip", "1", // the diff has prefixes like "a/" in "a/file.txt" that need to be removed
 		"--output", outPath, // write the patched file to the reversedDir
-		"--fuzz", "999", // try super hard to patch even if surrounding context has changed
+		"--fuzz", "999", // try super hard to patch even if surrounding context has changed and the patch doesn't apply cleanly. Number was chosen arbitrarily.
 		"--reject-file", rejectPath, // Patch hunks that fail to apply will be saved here
 		installedPath,
 	)
@@ -575,7 +577,7 @@ func reverseOnePatch(ctx context.Context, installedDir, reversedDir string, f *m
 	case 0:
 		if stdout.Len() > 0 {
 			logger.DebugContext(ctx, "exec of patch to reverse include-from-destination succeeded",
-			"stdout", stdout.String())
+				"stdout", stdout.String())
 		}
 		return nil, nil
 	case 1:
