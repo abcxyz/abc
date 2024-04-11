@@ -171,18 +171,6 @@ kind: 'GoldenTest'`
 			},
 		},
 		{
-			name:      "test_data_not_exists",
-			testNames: []string{"test1"},
-			filesContent: map[string]string{
-				"spec.yaml":                       specYaml,
-				"a.txt":                           "file A content",
-				"testdata/golden/test2/test.yaml": testYaml,
-				"testdata/golden/test2/data/.abc/.gitkeep": "",
-				"testdata/golden/test2/data/a.txt":         "file A content",
-			},
-			wantErrs: []string{"error opening test config"},
-		},
-		{
 			name: "multiple_mismatch_catched_in_one_test",
 			filesContent: map[string]string{
 				"spec.yaml":                      specYaml,

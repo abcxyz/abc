@@ -52,7 +52,7 @@ anticipated outcome akin to expected output in unit test).
 The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be recorded.
 
-The "<location>" is the location of the template. 
+The "<location>" is the location of the templates. 
 If no "<location>" is given, default to current directory.
 
 For every test case, it is expected that
@@ -72,7 +72,21 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	testCases, err := parseTestCases(ctx, c.flags.Location, c.flags.TestNames)
+	templateLocations, err := parseTemplateLocations(c.flags.Location)
+	if err != nil {
+		return fmt.Errorf("failed to parse template locations")
+	}
+	var merr error
+	for _, templateLocation := range templateLocations {
+		merr = errors.Join(merr, record(ctx, templateLocation, c.flags.TestNames))
+	}
+	return merr
+}
+
+func record(ctx context.Context, templateLocation string, testNames []string) (rErr error) {
+	logger := logging.FromContext(ctx)
+	logger.InfoContext(ctx, "recording test for template location", "template_location", templateLocation)
+	testCases, err := parseTestCases(ctx, templateLocation, testNames)
 	if err != nil {
 		return fmt.Errorf("failed to parse golden test: %w", err)
 	}
@@ -85,18 +99,17 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 	// Create a temporary directory to validate golden tests rendered with no
 	// error. If any test fails, no data should be written to file system
 	// for atomicity purpose.
-	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
+	tempDir, err := renderTestCases(ctx, testCases, templateLocation)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
 	tempTracker.Track(tempDir)
 
 	var merr error
-	logger := logging.FromContext(ctx)
 
 	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
-		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
+		testDir := filepath.Join(templateLocation, goldenTestDir, tc.TestName, testDataDir)
 		if err := os.RemoveAll(testDir); err != nil {
 			return fmt.Errorf("failed to clear test directory: %w", err)
 		}
@@ -139,6 +152,5 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if merr != nil {
 		return fmt.Errorf("failed to write golden test data: %w", merr)
 	}
-
 	return nil
 }

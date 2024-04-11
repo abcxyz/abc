@@ -79,12 +79,13 @@ func parseTestCases(ctx context.Context, location string, testNames []string) ([
 
 	if len(testNames) > 0 {
 		for _, testName := range testNames {
-			testCase, err := buildTestCase(ctx, testDir, testName)
-			if err != nil {
-				return nil, err
+			if _, err := os.Stat(filepath.Join(testDir, testName)); err == nil {
+				testCase, err := buildTestCase(ctx, testDir, testName)
+				if err != nil {
+					return nil, err
+				}
+				testCases = append(testCases, testCase)
 			}
-
-			testCases = append(testCases, testCase)
 		}
 		return testCases, nil
 	}
@@ -251,4 +252,25 @@ func renameGitDirsAndFiles(dir string) error {
 		}
 	}
 	return nil
+}
+
+func parseTemplateLocations(dir string) ([]string, error) {
+	var out []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if _, err := os.Stat(filepath.Join(path, "spec.yaml")); err == nil {
+				out = append(out, path)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
+	}
+
+	return out, nil
 }

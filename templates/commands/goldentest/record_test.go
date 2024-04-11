@@ -303,6 +303,148 @@ kind: 'GoldenTest'`,
 	}
 }
 
+func TestRecordAllCommand(t *testing.T) {
+	t.Parallel()
+
+	specYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
+kind: 'Template'
+
+desc: 'A simple template'
+
+steps:
+  - desc: 'Include some files and directories'
+    action: 'include'
+    params:
+      paths: ['.']
+`
+	testYaml := `api_version: 'cli.abcxyz.dev/v1beta5'
+kind: 'GoldenTest'`
+
+	cases := []struct {
+		name                string
+		testNames           []string
+		filesContent        map[string]string
+		expectedFileContent map[string]string
+		wantErr             string
+	}{
+		{
+			name: "simple_test_succeeds",
+			filesContent: map[string]string{
+				"template1/spec.yaml":                      specYaml,
+				"template1/a.txt":                          "template 1 file A content",
+				"template1/b.txt":                          "template 1 file B content",
+				"template1/testdata/golden/test/test.yaml": testYaml,
+				"template2/spec.yaml":                      specYaml,
+				"template2/a.txt":                          "template 2 file A content",
+				"template2/b.txt":                          "template 2 file B content",
+				"template2/testdata/golden/test/test.yaml": testYaml,
+			},
+			expectedFileContent: map[string]string{
+				"template1/spec.yaml":                               specYaml,
+				"template1/a.txt":                                   "template 1 file A content",
+				"template1/b.txt":                                   "template 1 file B content",
+				"template1/testdata/golden/test/test.yaml":          testYaml,
+				"template1/testdata/golden/test/data/.abc/.gitkeep": "",
+				"template1/testdata/golden/test/data/a.txt":         "template 1 file A content",
+				"template1/testdata/golden/test/data/b.txt":         "template 1 file B content",
+				"template2/spec.yaml":                               specYaml,
+				"template2/a.txt":                                   "template 2 file A content",
+				"template2/b.txt":                                   "template 2 file B content",
+				"template2/testdata/golden/test/test.yaml":          testYaml,
+				"template2/testdata/golden/test/data/.abc/.gitkeep": "",
+				"template2/testdata/golden/test/data/a.txt":         "template 2 file A content",
+				"template2/testdata/golden/test/data/b.txt":         "template 2 file B content",
+			},
+		},
+		{
+			name: "test_name_specified",
+			filesContent: map[string]string{
+				"template1/spec.yaml":                       specYaml,
+				"template1/a.txt":                           "template 1 file A content",
+				"template1/b.txt":                           "template 1 file B content",
+				"template1/testdata/golden/test1/test.yaml": testYaml,
+				"template2/spec.yaml":                       specYaml,
+				"template2/a.txt":                           "template 2 file A content",
+				"template2/b.txt":                           "template 2 file B content",
+				"template2/testdata/golden/test/test.yaml":  testYaml,
+			},
+			testNames: []string{"test1"},
+			expectedFileContent: map[string]string{
+				"template1/spec.yaml":                                specYaml,
+				"template1/a.txt":                                    "template 1 file A content",
+				"template1/b.txt":                                    "template 1 file B content",
+				"template1/testdata/golden/test1/test.yaml":          testYaml,
+				"template1/testdata/golden/test1/data/.abc/.gitkeep": "",
+				"template1/testdata/golden/test1/data/a.txt":         "template 1 file A content",
+				"template1/testdata/golden/test1/data/b.txt":         "template 1 file B content",
+				"template2/spec.yaml":                                specYaml,
+				"template2/a.txt":                                    "template 2 file A content",
+				"template2/b.txt":                                    "template 2 file B content",
+				"template2/testdata/golden/test/test.yaml":           testYaml,
+			},
+		},
+		{
+			name: "template1_record_err_template2_success",
+			filesContent: map[string]string{
+				"template1/spec.yaml":                      specYaml,
+				"template1/a.txt":                          "template 1 file A content",
+				"template1/b.txt":                          "template 1 file B content",
+				"template1/testdata/golden/test/test.yaml": "broken yaml",
+				"template2/spec.yaml":                      specYaml,
+				"template2/a.txt":                          "template 2 file A content",
+				"template2/b.txt":                          "template 2 file B content",
+				"template2/testdata/golden/test/test.yaml": testYaml,
+			},
+			expectedFileContent: map[string]string{
+				"template1/spec.yaml":                               specYaml,
+				"template1/a.txt":                                   "template 1 file A content",
+				"template1/b.txt":                                   "template 1 file B content",
+				"template1/testdata/golden/test/test.yaml":          "broken yaml",
+				"template2/spec.yaml":                               specYaml,
+				"template2/a.txt":                                   "template 2 file A content",
+				"template2/b.txt":                                   "template 2 file B content",
+				"template2/testdata/golden/test/test.yaml":          testYaml,
+				"template2/testdata/golden/test/data/.abc/.gitkeep": "",
+				"template2/testdata/golden/test/data/a.txt":         "template 2 file A content",
+				"template2/testdata/golden/test/data/b.txt":         "template 2 file B content",
+			},
+			wantErr: "failed to parse golden test",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+			args := []string{}
+			if len(tc.testNames) > 0 {
+				args = append(args, "--test-name", strings.Join(tc.testNames, ","))
+			}
+			args = append(args, tempDir)
+
+			r := &RecordCommand{}
+			if err := r.Run(ctx, args); err != nil {
+				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+					t.Fatal(diff)
+				}
+			}
+
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir))
+			if diff := cmp.Diff(gotDestContents, tc.expectedFileContent); diff != "" {
+				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
 func TestNewRecordFlags_Parse(t *testing.T) {
 	t.Parallel()
 
