@@ -67,7 +67,7 @@ const (
 	abcRenameSuffix = ".abc_renamed"
 )
 
-// parseTestCases returns a list of test cases to record or verify.
+// parseTestCases returns a list of test cases to recordTestCases or verify.
 func parseTestCases(ctx context.Context, location string, testNames []string) ([]*TestCase, error) {
 	if _, err := os.Stat(location); err != nil {
 		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)
@@ -161,8 +161,7 @@ func renderTestCases(ctx context.Context, testCases []*TestCase, location string
 
 	var merr error
 	for _, tc := range testCases {
-		renderErr := renderTestCase(ctx, location, tempDir, tc)
-		if renderErr != nil {
+		if err := renderTestCase(ctx, location, tempDir, tc); err != nil {
 			merr = errors.Join(merr, fmt.Errorf("failed to render test case [%s] for template location [%s]: %w", tc.TestName, location, err))
 		}
 	}
@@ -273,7 +272,7 @@ func crawlTemplateLocations(dir string) ([]string, error) {
 		if !d.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(path, goldenTestDir) && d.IsDir() {
+		if strings.HasSuffix(path, goldenTestDir) {
 			return fs.SkipDir
 		}
 		if _, err := os.Stat(filepath.Join(path, "spec.yaml")); err == nil {
