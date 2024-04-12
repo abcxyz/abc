@@ -12,7 +12,7 @@ function pre_gen_go {
   if [ ! -f "$1/go.mod" ]; then
     # Create the file
     cd $1
-    go mod init github.com/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME
+    go mod init REPLACE_GO_GAR_MODULE_DOMAIN/REPLACE_GITHUB_ORG_NAME/REPLACE_GITHUB_REPO_NAME
     cd -
   fi
 }
@@ -61,6 +61,9 @@ function post_gen_node {
 }
 
 function main {
+  # delete the gen folder and recreate from scratch
+  rm -rf gen
+
   pre_gen_go gen/go
   pre_gen_node gen/node
 

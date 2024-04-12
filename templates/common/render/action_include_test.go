@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/tempdir"
@@ -43,7 +44,7 @@ func TestActionInclude(t *testing.T) {
 		inputs               map[string]string
 		ignorePatterns       []model.String
 		wantScratchContents  map[string]abctestutil.ModeAndContents
-		wantIncludedFromDest []string
+		wantIncludedFromDest map[string]struct{}
 		statErr              error
 		wantErr              string
 	}{
@@ -642,7 +643,7 @@ func TestActionInclude(t *testing.T) {
 			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantIncludedFromDest: []string{"file1.txt"},
+			wantIncludedFromDest: map[string]struct{}{"file1.txt": {}},
 		},
 		{
 			name: "include_subdir_from_destination",
@@ -665,7 +666,7 @@ func TestActionInclude(t *testing.T) {
 			wantScratchContents: map[string]abctestutil.ModeAndContents{
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantIncludedFromDest: []string{"subdir/file2.txt"},
+			wantIncludedFromDest: map[string]struct{}{"subdir/file2.txt": {}},
 		},
 		{
 			name: "include_glob_from_destination",
@@ -690,9 +691,9 @@ func TestActionInclude(t *testing.T) {
 				"file1.txt": {Mode: 0o600, Contents: "file1 contents"},
 				"file2.txt": {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantIncludedFromDest: []string{
-				"file1.txt",
-				"file2.txt",
+			wantIncludedFromDest: map[string]struct{}{
+				"file1.txt": {},
+				"file2.txt": {},
 			},
 		},
 		{
@@ -717,7 +718,10 @@ func TestActionInclude(t *testing.T) {
 				"file1.txt":        {Mode: 0o600, Contents: "file1 contents"},
 				"subdir/file2.txt": {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantIncludedFromDest: []string{"file1.txt", "subdir/file2.txt"},
+			wantIncludedFromDest: map[string]struct{}{
+				"file1.txt":        {},
+				"subdir/file2.txt": {},
+			},
 		},
 		{
 			name: "skip_paths_with_custom_ignore",
@@ -756,7 +760,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 				"file2.txt":                 {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantIncludedFromDest: []string{"file2.txt"},
+			wantIncludedFromDest: map[string]struct{}{"file2.txt": {}},
 		},
 		{
 			name: "skip_paths_with_custom_ignore_glob",
@@ -796,7 +800,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder3/file3.txt": {Mode: 0o600, Contents: "file 3 contents"},
 				"file2.txt":                 {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantIncludedFromDest: []string{"file2.txt"},
+			wantIncludedFromDest: map[string]struct{}{"file2.txt": {}},
 		},
 		{
 			name: "skip_paths_with_custom_ignore_leading_slash",
@@ -844,12 +848,12 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder3/file3.txt":              {Mode: 0o600, Contents: "file 3 contents"},
 				"file2.txt":                              {Mode: 0o600, Contents: "file2 contents"},
 			},
-			wantIncludedFromDest: []string{
-				"dest_folder1/file1.txt",
-				"dest_folder1/folder0/file0.txt",
-				"dest_folder1/folder1/file1.txt",
-				"dest_folder1/folder1/folder0/file0.txt",
-				"file2.txt",
+			wantIncludedFromDest: map[string]struct{}{
+				"dest_folder1/file1.txt":                 {},
+				"dest_folder1/folder0/file0.txt":         {},
+				"dest_folder1/folder1/file1.txt":         {},
+				"dest_folder1/folder1/folder0/file0.txt": {},
+				"file2.txt":                              {},
 			},
 		},
 		{
@@ -879,7 +883,31 @@ func TestActionInclude(t *testing.T) {
 				"folder1/file1.txt": {Mode: 0o600, Contents: "file 1 contents"},
 				"file1.txt":         {Mode: 0o600, Contents: "file1 contents"},
 			},
-			wantIncludedFromDest: []string{"file1.txt"},
+			wantIncludedFromDest: map[string]struct{}{"file1.txt": {}},
+		},
+		{
+			name: "include_from_dest_forgotten_on_reinclude",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: mdl.Strings("."),
+						From:  mdl.S("destination"),
+					},
+					{
+						Paths: mdl.Strings("."),
+					},
+				},
+			},
+			templateContents: map[string]abctestutil.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file 1 template contents"},
+			},
+			destDirContents: map[string]abctestutil.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file 1 dest contents"},
+			},
+			wantScratchContents: map[string]abctestutil.ModeAndContents{
+				"file1.txt": {Mode: 0o600, Contents: "file 1 template contents"},
+			},
+			wantIncludedFromDest: map[string]struct{}{},
 		},
 	}
 
@@ -902,12 +930,13 @@ func TestActionInclude(t *testing.T) {
 			abctestutil.WriteAllMode(t, destDir, tc.destDirContents)
 
 			sp := &stepParams{
-				ignorePatterns: tc.ignorePatterns,
-				scope:          common.NewScope(tc.inputs, nil),
-				scratchDir:     scratchDir,
-				templateDir:    templateDir,
+				ignorePatterns:   tc.ignorePatterns,
+				includedFromDest: make(map[string]struct{}),
+				scope:            common.NewScope(tc.inputs, nil),
+				scratchDir:       scratchDir,
+				templateDir:      templateDir,
 				rp: &Params{
-					OutDir: destDir,
+					DestDir: destDir,
 
 					FS: &common.ErrorFS{
 						FS:      &common.RealFS{},
@@ -931,7 +960,7 @@ func TestActionInclude(t *testing.T) {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			if diff := cmp.Diff(sp.includedFromDest, tc.wantIncludedFromDest); diff != "" {
+			if diff := cmp.Diff(sp.includedFromDest, tc.wantIncludedFromDest, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("includedFromDest was not as expected (-got,+want): %s", diff)
 			}
 		})

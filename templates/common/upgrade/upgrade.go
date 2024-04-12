@@ -98,7 +98,7 @@ type Params struct {
 
 	// Used in tests to do prompting for inputs even though the input is not a
 	// TTY.
-	skipPromptTTYCheck bool
+	SkipPromptTTYCheck bool
 
 	// The output stream used to print prompts when Prompt==true.
 	Stdout io.Writer
@@ -189,6 +189,13 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err
 	}
 
+	if oldManifest.TemplateLocation.Val == "" {
+		// TODO(upgrade): add a flag to manually specify template location, to
+		// be used if the template location changes or if it was installed from
+		// a non-canonical location.
+		return nil, fmt.Errorf("this template can't be upgraded because its manifest doesn't contain a template_location. This happens when the template is installed from a non-canonical location, such as a local temp dir, instead of from a permanent location like a remote github repo")
+	}
+
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
@@ -246,7 +253,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		Prompt:              p.Prompt,
 		Prompter:            p.Prompter,
 		SkipInputValidation: p.SkipInputValidation,
-		SkipPromptTTYCheck:  p.skipPromptTTYCheck,
+		SkipPromptTTYCheck:  p.SkipPromptTTYCheck,
 		SourceForMessages:   oldManifest.TemplateLocation.Val,
 		Stdout:              p.Stdout,
 		TempDirBase:         p.TempDirBase,

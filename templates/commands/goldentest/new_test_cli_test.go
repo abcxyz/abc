@@ -18,10 +18,8 @@ package goldentest
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -408,34 +406,12 @@ builtin_vars:
 
 			r := &NewTestCommand{}
 			r.skipPromptTTYCheck = true
-			stdinReader, stdinWriter := io.Pipe()
-			stdoutReader, stdoutWriter := io.Pipe()
-			_, stderrWriter := io.Pipe()
 
-			r.SetStdin(stdinReader)
-			r.SetStdout(stdoutWriter)
-			r.SetStderr(stderrWriter)
-
-			errCh := make(chan error)
-			go func() {
-				defer close(errCh)
-				err := r.Run(ctx, args)
-				errCh <- err
-			}()
-
-			for _, ds := range tc.dialog {
-				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
-				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
+			err := abctestutil.DialogTest(ctx, t, tc.dialog, r, args)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
 			}
 
-			select {
-			case err := <-errCh:
-				if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-					t.Fatal(diff)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("timed out waiting for background goroutine to finish")
-			}
 			gotContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/", tc.newTestName))
 			if diff := cmp.Diff(gotContents, tc.expectedContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)

@@ -4,6 +4,8 @@ github.com/abcxyz/abc-updater v0.0.3 h1:n8cRAV+IHQvM3UgQFmea9hL9PRyNu7GERfxg6Oj5
 github.com/abcxyz/abc-updater v0.0.3/go.mod h1:9BUkFU7/y5Bba/3GXJfWc/LTSEwGxisnM59A3FYeHf4=
 github.com/abcxyz/pkg v1.0.4 h1:0C38LHfKDflehnFDnWuU2zRYOV9qHBotCT4cnEcetDc=
 github.com/abcxyz/pkg v1.0.4/go.mod h1:ibdYDJSLgKg/6sMRv9q18KseLhrD83HulBl4J1yHnt8=
+github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d h1:licZJFw2RwpHMqeKTCYkitsPqHNxTmd4SNR5r94FGM8=
+github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d/go.mod h1:asat636LX7Bqt5lYEZ27JNDcqxfjdBQuJ/MM4CN/Lzo=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
 github.com/antlr4-go/antlr/v4 v4.13.0/go.mod h1:pfChB/xh/Unjila75QW7+VU4TSnWnnk9UTnmpPaOR2g=
 github.com/benbjohnson/clock v1.3.5 h1:VvXlSJBzZpA/zum6Sj74hxwYI2DIxRWuNIoXAzHZz5o=

@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render/gotmpl/funcs"
 	"github.com/abcxyz/abc/templates/common/rules"
+	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
@@ -154,11 +155,11 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	destDir := p.DestDir
-	if destDir == "" {
-		destDir = p.OutDir
+	p = copyParams(p)
+	if p.DestDir == "" {
+		p.DestDir = p.OutDir
 	}
-	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, destDir)
+	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
 	if err != nil {
 		return fmt.Errorf("failed to download/copy template: %w", err)
 	}
@@ -166,6 +167,13 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 		"destination", templateDir)
 
 	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
+}
+
+// copyParams returns a shallow copy of the input params. This lets us fill in
+// default values without affect the caller's copy of the params.
+func copyParams(p *Params) *Params {
+	cp := *p
+	return &cp
 }
 
 // RenderAlreadyDownloaded is for the unusual case where the template has
@@ -222,14 +230,15 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	}
 
 	sp := &stepParams{
-		debugDiffsDir:  debugStepDiffsDir,
-		ignorePatterns: spec.Ignore,
-		extraPrintVars: extraPrintVars,
-		features:       spec.Features,
-		rp:             p,
-		scope:          scope,
-		scratchDir:     scratchDir,
-		templateDir:    templateDir,
+		debugDiffsDir:    debugStepDiffsDir,
+		ignorePatterns:   spec.Ignore,
+		includedFromDest: make(map[string]struct{}),
+		extraPrintVars:   extraPrintVars,
+		features:         spec.Features,
+		rp:               p,
+		scope:            scope,
+		scratchDir:       scratchDir,
+		templateDir:      templateDir,
 	}
 
 	logger.DebugContext(ctx, "executing template steps")
@@ -241,7 +250,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	logger.DebugContext(ctx, "committing rendered output")
 	if err := commitTentatively(ctx, p, &commitParams{
 		dlMeta:           dlMeta,
-		includedFromDest: sliceToSet(sp.includedFromDest),
+		includedFromDest: sp.includedFromDest,
 		inputs:           resolvedInputs,
 		scratchDir:       scratchDir,
 		templateDir:      templateDir,
@@ -362,7 +371,7 @@ func initDebugStepDiffsDir(ctx context.Context, p *Params, scratchDir string) (s
 		{"git", "--git-dir", out, "config", "user.email", "abc@abcxyz.com"},
 	}
 
-	if _, _, err := common.RunMany(ctx, cmds...); err != nil {
+	if _, _, err := run.RunMany(ctx, cmds...); err != nil {
 		return "", fmt.Errorf("failed initializing git repo for --debug-step-diffs: %w", err)
 	}
 	return out, nil
@@ -392,7 +401,7 @@ type stepParams struct {
 	// These are paths relative to the --dest directory (which is the same thing
 	// as being relative to the scratch directory, the paths within these dirs
 	// are the same).
-	includedFromDest []string
+	includedFromDest map[string]struct{}
 
 	// scope contains all variable names that are in scope. This includes
 	// user-provided scope, as well as any programmatically created variables
@@ -434,7 +443,7 @@ func executeSteps(ctx context.Context, steps []*spec.Step, sp *stepParams) error
 				{"git", "--git-dir", sp.debugDiffsDir, "add", "-A"},
 				{"git", "--git-dir", sp.debugDiffsDir, "commit", "-a", "-m", m, "--allow-empty", "--no-gpg-sign"},
 			}
-			if _, _, err := common.RunMany(ctx, cmds...); err != nil {
+			if _, _, err := run.RunMany(ctx, cmds...); err != nil {
 				return fmt.Errorf("failed committing to git for --debug-step-diffs: %w", err)
 			}
 		}
@@ -539,6 +548,26 @@ type commitParams struct {
 // directory. We first do a dry-run to check that the copy is likely to succeed,
 // so we don't leave a half-done mess in the user's dest directory.
 func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
+	// Design decision: it's OK to hold these patches in memory. It's unlikely
+	// that anyone will create such huge patches with abc that they'll run out
+	// of RAM.
+	includeFromDestPatches := map[string]string{}
+
+	// For each file that was included-from-destination, create a patch that
+	// reverses the change. This might be used in the future during a template
+	// upgrade operation.
+	for relPath := range cp.includedFromDest {
+		destPath := filepath.Join(p.DestDir, relPath)
+		srcPath := filepath.Join(cp.scratchDir, relPath)
+		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, p.DestDir)
+		if err != nil {
+			return err //nolint:wrapcheck
+		}
+		if diff != "" {
+			includeFromDestPatches[relPath] = diff
+		}
+	}
+
 	for _, dryRun := range []bool{true, false} {
 		outputHashes, err := commit(ctx, dryRun, p, cp.scratchDir, cp.includedFromDest)
 		if err != nil {
@@ -547,15 +576,16 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 
 		if p.Manifest {
 			if err := writeManifest(&writeManifestParams{
-				clock:        p.Clock,
-				cwd:          p.Cwd,
-				dlMeta:       cp.dlMeta,
-				destDir:      p.OutDir,
-				dryRun:       dryRun,
-				fs:           p.FS,
-				inputs:       cp.inputs,
-				outputHashes: outputHashes,
-				templateDir:  cp.templateDir,
+				clock:                  p.Clock,
+				cwd:                    p.Cwd,
+				dlMeta:                 cp.dlMeta,
+				destDir:                p.OutDir,
+				dryRun:                 dryRun,
+				fs:                     p.FS,
+				includeFromDestPatches: includeFromDestPatches,
+				inputs:                 cp.inputs,
+				outputHashes:           outputHashes,
+				templateDir:            cp.templateDir,
 			}); err != nil {
 				return err
 			}
@@ -642,12 +672,4 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		logger.InfoContext(ctx, "template render succeeded")
 	}
 	return params.OutHashes, nil
-}
-
-func sliceToSet[T comparable](vals []T) map[T]struct{} {
-	out := make(map[T]struct{}, len(vals))
-	for _, v := range vals {
-		out[v] = struct{}{}
-	}
-	return out
 }

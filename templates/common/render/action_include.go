@@ -90,8 +90,24 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 					Skip: true,
 				}, nil
 			}
-			if !de.IsDir() && fromVal == "destination" {
-				sp.includedFromDest = append(sp.includedFromDest, relToFromDir)
+			if !de.IsDir() {
+				if fromVal == "destination" {
+					sp.includedFromDest[relToFromDir] = struct{}{}
+				} else {
+					// Edge case: suppose this sequence of events occurs:
+					//  1. A given path is `include`d with from==destination
+					//     (indicating an intent to modify a preexisting file in
+					//     place).
+					//  2. The same path is `include`d normally (not with
+					//     from==destination). This represents a completely
+					//     separate file that comes from the template dir and
+					//     not from the dest dir.
+					//  3. The second include should completely replace the
+					//     first. In the metadata that tracks whether the file
+					//     was included from destination, we should delete the
+					//     record of this path being included from destination.
+					delete(sp.includedFromDest, relToFromDir)
+				}
 			}
 
 			return common.CopyHint{
@@ -127,7 +143,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	// that already exist in the destination.
 	fromDir := sp.templateDir
 	if inc.From.Val == "destination" {
-		fromDir = sp.rp.OutDir
+		fromDir = sp.rp.DestDir
 	}
 
 	skipPaths, err := processPaths(inc.Skip, sp.scope)

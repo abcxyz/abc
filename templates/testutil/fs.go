@@ -245,3 +245,13 @@ func TestMustGlob(tb testing.TB, glob string) (string, bool) {
 	tb.Fatalf("got %d matches for glob %q, wanted 1: %s", len(matches), glob, matches)
 	panic("unreachable") // silence compiler warning for "missing return"
 }
+
+// Overwrite writes the given contents to dir/baseName, failing the test on
+// error.
+func Overwrite(tb testing.TB, dir, baseName, contents string) {
+	tb.Helper()
+	filename := filepath.Join(dir, baseName)
+	if err := os.WriteFile(filename, []byte(contents), 0o600); err != nil {
+		tb.Fatal(err)
+	}
+}
