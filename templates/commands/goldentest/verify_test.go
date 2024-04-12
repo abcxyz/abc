@@ -224,8 +224,8 @@ steps:
 				"testdata/golden/test2/data/b.txt":         "file B content",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
-				"golden test test2 fails",
+				"golden test [test1] fails",
+				"golden test [test2] fails",
 			},
 		},
 		{
@@ -245,8 +245,8 @@ steps:
 				"testdata/golden/test3/data/a.txt":         "wrong file",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
-				"golden test test2 fails",
+				"golden test [test1] fails",
+				"golden test [test2] fails",
 			},
 		},
 		{
@@ -267,7 +267,7 @@ steps:
 				"testdata/golden/test1/data/.abc/stdout":   "Bob\n",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
+				"golden test [test1] fails",
 				"the printed messages differ between the recorded golden output and the actual output",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
@@ -281,7 +281,7 @@ steps:
 				"testdata/golden/test1/data/.abc/.gitkeep": "",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
+				"golden test [test1] fails",
 				"the printed messages differ between the recorded golden output and the actual output",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
@@ -336,7 +336,7 @@ kind: 'GoldenTest'`,
 				"testdata/golden/test1/data/.gitignore.abc_renamed": "not matched gitignore contents",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
+				"golden test [test1] fails",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
 				".gitignore] file content mismatch",
@@ -388,7 +388,7 @@ kind: 'GoldenTest'`,
 kind: 'GoldenTest'`,
 			},
 			wantErrs: []string{
-				"please run `recordTestCases` command to recordTestCases the template rendering result to golden tests",
+				"please run `record` command to record the template rendering result to golden tests",
 			},
 		},
 	}

@@ -79,7 +79,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 
 	templateLocations, err := crawlTemplateLocations(c.flags.Location)
 	if err != nil {
-		return fmt.Errorf("failed to parse template locations")
+		return fmt.Errorf("failed to crawl template locations: %w", err)
 	}
 	var merr error
 	for _, templateLocation := range templateLocations {
@@ -140,7 +140,7 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 		if err != nil {
 			if common.IsStatNotExistErr(err) {
 				return fmt.Errorf("no recorded test data in %q, "+
-					"please run `recordTestCases` command to recordTestCases the template rendering result to golden tests", goldenDataDir)
+					"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
 			}
 			return fmt.Errorf("failed to stat %q, %w", goldenDataDir, err)
 		}
@@ -219,19 +219,19 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 		}
 
 		if outputMismatch {
-			failureText := red(fmt.Sprintf("golden test [%s] didn't match actual output, you might "+
-				"need to run 'record' command to capture it as the new expected output for template location %s", tc.TestName, templateLocation))
+			failureText := red(fmt.Sprintf("template location [%s] golden test [%s] didn't match actual output, you might "+
+				"need to run 'record' command to capture it as the new expected output", templateLocation, tc.TestName))
 			err := fmt.Errorf(failureText)
 			tcErr = errors.Join(tcErr, err)
 		}
 
 		if tcErr != nil {
-			result := red(fmt.Sprintf("[x] golden test %s fails for template location %s", tc.TestName, templateLocation))
+			result := red(fmt.Sprintf("[x] template location [%s] golden test [%s] fails", templateLocation, tc.TestName))
 			tcErr := fmt.Errorf("%s:\n %w", result, tcErr)
 			merr = errors.Join(merr, tcErr)
 			resultReport += result
 		} else {
-			resultReport += green(fmt.Sprintf("[✓] golden test %s succeeds for template location %s", tc.TestName, templateLocation))
+			resultReport += green(fmt.Sprintf("[✓] template location [%s] golden test [%s] succeeds", templateLocation, tc.TestName))
 		}
 
 		resultReport += "\n"
