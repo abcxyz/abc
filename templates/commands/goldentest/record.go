@@ -108,7 +108,7 @@ func recordTestCases(ctx context.Context, templateLocation string, testNames []s
 	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
 		if err := recordTestCase(ctx, templateLocation, tc, tempDir, rfs); err != nil {
-			rErr = errors.Join(rErr, fmt.Errorf("failed to render test case [%s] for template location [%s]: %w", tc.TestName, templateLocation, err))
+			rErr = errors.Join(rErr, fmt.Errorf("failed to record test case [%s] for template location [%s]: %w", tc.TestName, templateLocation, err))
 		}
 	}
 	return rErr
