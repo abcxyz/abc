@@ -77,7 +77,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	templateLocations, err := parseTemplateLocations(c.flags.Location)
+	templateLocations, err := crawlTemplateLocations(c.flags.Location)
 	if err != nil {
 		return fmt.Errorf("failed to parse template locations")
 	}

@@ -79,13 +79,20 @@ func parseTestCases(ctx context.Context, location string, testNames []string) ([
 
 	if len(testNames) > 0 {
 		for _, testName := range testNames {
-			if _, err := os.Stat(filepath.Join(testDir, testName)); err == nil {
-				testCase, err := buildTestCase(ctx, testDir, testName)
-				if err != nil {
-					return nil, err
+			testPath := filepath.Join(testDir, testName)
+			_, err := os.Stat(testPath)
+			if err != nil {
+				if !common.IsStatNotExistErr(err) {
+					return nil, fmt.Errorf("failed to stat %q, %w", testPath, err)
 				}
-				testCases = append(testCases, testCase)
+				// skip test case build as this test doesn't exist for the template.
+				continue
 			}
+			testCase, err := buildTestCase(ctx, testDir, testName)
+			if err != nil {
+				return nil, err
+			}
+			testCases = append(testCases, testCase)
 		}
 		return testCases, nil
 	}
@@ -154,7 +161,10 @@ func renderTestCases(ctx context.Context, testCases []*TestCase, location string
 
 	var merr error
 	for _, tc := range testCases {
-		merr = errors.Join(merr, renderTestCase(ctx, location, tempDir, tc))
+		renderErr := renderTestCase(ctx, location, tempDir, tc)
+		if renderErr != nil {
+			merr = errors.Join(merr, fmt.Errorf("failed to render test case [%s] for template location [%s]: %w", tc.TestName, location, err))
+		}
 	}
 	if merr != nil {
 		return "", fmt.Errorf("failed to render golden tests: %w", merr)
@@ -254,16 +264,20 @@ func renameGitDirsAndFiles(dir string) error {
 	return nil
 }
 
-func parseTemplateLocations(dir string) ([]string, error) {
+func crawlTemplateLocations(dir string) ([]string, error) {
 	var out []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
-			if _, err := os.Stat(filepath.Join(path, "spec.yaml")); err == nil {
-				out = append(out, path)
-			}
+		if !d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, goldenTestDir) && d.IsDir() {
+			return fs.SkipDir
+		}
+		if _, err := os.Stat(filepath.Join(path, "spec.yaml")); err == nil {
+			out = append(out, path)
 		}
 
 		return nil

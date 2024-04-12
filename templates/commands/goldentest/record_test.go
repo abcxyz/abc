@@ -128,6 +128,31 @@ kind: 'GoldenTest'`
 			},
 		},
 		{
+			name: "failed_to_render_test_case",
+			filesContent: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta5'
+kind: 'Template'
+
+
+inputs:
+  - name: 'my_input_without_default'
+    desc: 'An input without a default'
+
+steps:
+  - desc: 'Print input values'
+    action: 'print'
+    params:
+      message: |
+        The variable values are:
+          my_input_without_default={{.my_input_without_default}}`,
+				"testdata/golden/test/test.yaml": testYaml,
+			},
+			expectedGoldenContent: map[string]string{
+				"test/test.yaml": testYaml,
+			},
+			wantErr: "failed to render test case [test] for template location",
+		},
+		{
 			name:      "test_name_specified",
 			testNames: []string{"test1"},
 			filesContent: map[string]string{
@@ -409,6 +434,26 @@ kind: 'GoldenTest'`
 				"template2/testdata/golden/test/data/b.txt":         "template 2 file B content",
 			},
 			wantErr: "failed to parse golden test",
+		},
+		{
+			name: "ignore_golden_test_dir_spec_yaml",
+			filesContent: map[string]string{
+				"template1/spec.yaml":                      specYaml,
+				"template1/a.txt":                          "template 1 file A content",
+				"template1/b.txt":                          "template 1 file B content",
+				"template1/testdata/golden/test/test.yaml": testYaml,
+				"template1/testdata/golden/test/spec.yaml": specYaml,
+			},
+			expectedFileContent: map[string]string{
+				"template1/spec.yaml":                               specYaml,
+				"template1/a.txt":                                   "template 1 file A content",
+				"template1/b.txt":                                   "template 1 file B content",
+				"template1/testdata/golden/test/test.yaml":          testYaml,
+				"template1/testdata/golden/test/spec.yaml":          specYaml,
+				"template1/testdata/golden/test/data/.abc/.gitkeep": "",
+				"template1/testdata/golden/test/data/a.txt":         "template 1 file A content",
+				"template1/testdata/golden/test/data/b.txt":         "template 1 file B content",
+			},
 		},
 	}
 

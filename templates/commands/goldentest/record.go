@@ -72,7 +72,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	templateLocations, err := parseTemplateLocations(c.flags.Location)
+	templateLocations, err := crawlTemplateLocations(c.flags.Location)
 	if err != nil {
 		return fmt.Errorf("failed to parse template locations")
 	}
@@ -88,7 +88,7 @@ func record(ctx context.Context, templateLocation string, testNames []string) (r
 	logger.InfoContext(ctx, "recording test for template location", "template_location", templateLocation)
 	testCases, err := parseTestCases(ctx, templateLocation, testNames)
 	if err != nil {
-		return fmt.Errorf("failed to parse golden test: %w", err)
+		return fmt.Errorf("failed to parse golden test for template location %v: %w", templateLocation, err)
 	}
 
 	rfs := &common.RealFS{}
@@ -109,6 +109,7 @@ func record(ctx context.Context, templateLocation string, testNames []string) (r
 
 	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
+		logger.InfoContext(ctx, "recording test for test name", "testname", tc.TestName)
 		testDir := filepath.Join(templateLocation, goldenTestDir, tc.TestName, testDataDir)
 		if err := os.RemoveAll(testDir); err != nil {
 			return fmt.Errorf("failed to clear test directory: %w", err)
