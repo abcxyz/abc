@@ -162,7 +162,7 @@ func TestWalkAndModify(t *testing.T) {
 			relPaths:        []string{"nonexistent"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc foo def"},
-			wantErr:         `glob "nonexistent" did not match any files`,
+			wantErr:         `no paths were matched by: [nonexistent]`,
 		},
 		{
 			name:            "absolute_path_should_become_relative",
@@ -390,7 +390,6 @@ func TestProcessGlobs(t *testing.T) {
 		dirContents map[string]abctestutil.ModeAndContents
 		paths       []model.String
 		wantPaths   []model.String
-		skipGlobs   bool
 		wantErr     string
 	}{
 		{
@@ -505,19 +504,6 @@ func TestProcessGlobs(t *testing.T) {
 			),
 		},
 		{
-			name:      "no_glob_matches_with_globs",
-			paths:     mdl.Strings("file_not_found.txt"),
-			skipGlobs: false,
-			wantErr:   fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
-		},
-		{
-			name:      "no_glob_matches_with_skipglobs",
-			paths:     mdl.Strings("file_not_found.txt"),
-			skipGlobs: true,
-			// When not globbing, paths are returned regardless of whether they exist
-			wantPaths: mdl.Strings("file_not_found.txt"),
-		},
-		{
 			name: "character_range_paths",
 			dirContents: map[string]abctestutil.ModeAndContents{
 				"abc.txt": {Mode: 0o600, Contents: "bcd contents"},
@@ -538,7 +524,7 @@ func TestProcessGlobs(t *testing.T) {
 			abctestutil.WriteAllMode(t, tempDir, tc.dirContents)
 			ctx := context.Background()
 
-			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, tc.skipGlobs)
+			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

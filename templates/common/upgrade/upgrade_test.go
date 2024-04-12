@@ -1223,7 +1223,7 @@ steps:
 	}
 
 	// manifest should be unchanged if there's a reversal conflict
-	wantDestContentsAfterUpgrade := map[string]string{
+	wantDestContentsAfterFailedUpgrade := map[string]string{
 		"file.txt": "green is my favorite color\n",
 		"file.txt.rej": `--- file.txt
 +++ file.txt
@@ -1236,8 +1236,8 @@ steps:
 	wantManifestAfterFailedUpgrade := wantManifestBeforeUpgrade
 	assertManifest(ctx, t, "after upgrade", wantManifestAfterFailedUpgrade, manifestFullPath)
 
-	gotDestContentsAfter := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
-	if diff := cmp.Diff(gotDestContentsAfter, wantDestContentsAfterUpgrade); diff != "" {
+	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+	if diff := cmp.Diff(gotDestContentsAfterFailedUpgrade, wantDestContentsAfterFailedUpgrade); diff != "" {
 		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 	}
 
@@ -1253,9 +1253,24 @@ steps:
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantResult := &Result{} // TODO
+	wantResult := &Result{
+		NonConflicts: []ActionTaken{
+			{
+				Action: "writeNew",
+				Path:   "file.txt",
+			},
+		},
+	}
 	if diff := cmp.Diff(gotResult, wantResult, opts...); diff != "" {
 		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
+	}
+
+	wantDestContentsAfterSuccessfulUpgrade := map[string]string{
+		"file.txt": "yellow is my favorite color\n",
+	}
+	gotDestContentsAfterSuccessfulUpgrade := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+	if diff := cmp.Diff(gotDestContentsAfterSuccessfulUpgrade, wantDestContentsAfterSuccessfulUpgrade); diff != "" {
+		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 	}
 }
 

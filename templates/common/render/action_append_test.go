@@ -119,7 +119,7 @@ func TestActionAppend(t *testing.T) {
 			with:            "foo",
 			initialContents: map[string]string{},
 			want:            map[string]string{},
-			wantErr:         `glob "my_file.txt" did not match any files`,
+			wantErr:         `no paths were matched by: [my_file.txt]`,
 		},
 		{
 			name:            "templated_name_and_text_should_succeed",

@@ -181,7 +181,7 @@ func TestActionInclude(t *testing.T) {
 			templateContents: map[string]abctestutil.ModeAndContents{
 				"myfile.txt": {Mode: 0o600, Contents: "my file contents"},
 			},
-			wantErr: `glob "nonexistent" did not match any files`,
+			wantErr: `paths did not match any files: [nonexistent]`,
 		},
 		{
 			// Note: we don't exhaustively test every possible FS error here. That's

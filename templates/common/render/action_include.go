@@ -153,10 +153,20 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		}
 	}
 
+	anyMatches := false
 	for _, fromDir := range fromDirs {
-		if err := includeFromOneDir(ctx, inc, sp, fromDir); err != nil {
+		matched, err := includeFromOneDir(ctx, inc, sp, fromDir)
+		if err != nil {
 			return err
 		}
+		anyMatches = anyMatches || matched
+	}
+	if !anyMatches {
+		var pathStrings []string
+		for _, p := range inc.Paths {
+			pathStrings = append(pathStrings, p.Val)
+		}
+		return inc.Pos.Errorf("paths did not match any files: %v", pathStrings)
 	}
 	return nil
 }
@@ -165,7 +175,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 func includeFromOneDir(ctx context.Context, inc *spec.IncludePath, sp *stepParams, fromDir string) (matchedAny bool, _ error) {
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if fromDir == sp.templateDir {
 		// If we're copying the template root directory, automatically skip
@@ -202,6 +212,7 @@ func includeFromOneDir(ctx context.Context, inc *spec.IncludePath, sp *stepParam
 		}
 
 		for _, absSrc := range matchedPaths {
+			anyMatches = true
 			relSrc, err := filepath.Rel(fromDir, absSrc.Val)
 			if err != nil {
 				return false, fmt.Errorf("internal error making relative path: %w", err)
@@ -226,7 +237,7 @@ func includeFromOneDir(ctx context.Context, inc *spec.IncludePath, sp *stepParam
 			}
 		}
 	}
-	return nil
+	return anyMatches, nil
 }
 
 // checkIgnore checks the given path against the given patterns, if given
