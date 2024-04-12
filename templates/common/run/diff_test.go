@@ -17,8 +17,10 @@ package run
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/acarl005/stripansi"
 	"github.com/google/go-cmp/cmp"
 
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
@@ -37,6 +39,7 @@ func TestDiff(t *testing.T) {
 		file2       string
 		file2RelTo  string
 		want        string
+		wantColor   bool
 	}{
 		{
 			name: "both_empty",
@@ -121,7 +124,8 @@ func TestDiff(t *testing.T) {
 			file1RelTo: ".",
 			file2:      "file2.txt",
 			file2RelTo: ".",
-			want:       "\x1b[1m--- a/file1.txt\x1b[0m\n\x1b[1m+++ b/file2.txt\x1b[0m\n\x1b[36m@@ -1 +1 @@\x1b[0m\n\x1b[31m-file1 contents\x1b[0m\n\x1b[32m+file2 contents\x1b[0m\n",
+			wantColor:  true,
+			want:       "--- a/file1.txt\n+++ b/file2.txt\n@@ -1 +1 @@\n-file1 contents\n+file2 contents\n",
 		},
 		{
 			name:  "files_differ_with_color_on_machine_without_color_support",
@@ -198,7 +202,15 @@ func TestDiff(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(gotDiff, tc.want); diff != "" {
+
+			// Hex 1b is the ASCII "escape" char, which always appears when setting colors.
+			outputHasColor := strings.Contains(gotDiff, "\x1b")
+			if outputHasColor != tc.wantColor {
+				t.Errorf("hasColor=%t, but want hasColor=%t", outputHasColor, tc.wantColor)
+			}
+
+			colorStripped := stripansi.Strip(gotDiff)
+			if diff := cmp.Diff(colorStripped, tc.want); diff != "" {
 				t.Errorf("diff was not as expected (-got,+want): %s", diff)
 			}
 		})
