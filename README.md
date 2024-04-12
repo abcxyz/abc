@@ -142,22 +142,22 @@ Examples:
 - `abc templates golden-test new-test basic examples/templates/render/hello_jupiter`
   creates a new golden-test for the specific named test called `basic` for the
   given template
-- `abc templates golden-test verify examples/templates/render/hello_jupiter`:
+- `abc templates golden-test verify examples/templates/render/hello_jupiter`
   runs all golden-tests for the given template
-- `abc templates golden-test verify --test-name=example_test examples/templates/render/hello_jupiter`:
+- `abc templates golden-test verify --test-name=example_test examples/templates/render/hello_jupiter`
   same as above, but only for the specific named tests
-- `abc templates golden-test verify examples/templates`:
+- `abc templates golden-test verify examples/templates`
   runs all golden-tests for the templates included in `examples/templates`
-- `abc templates golden-test verify --test-name=example examples/templates`:
+- `abc templates golden-test verify --test-name=example examples/templates`
   same as above, but only for the specific named tests
-- `abc templates golden-test record examples/templates/render/hello_jupiter`:
+- `abc templates golden-test record examples/templates/render/hello_jupiter`
   record the current template output as the desired/expected output for all
   tests within the given template, saving to `testdata/golden/<test_name>/data`.
-- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`:
+- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
   same as above, but only for the specific named tests.
-- `abc templates golden-test record examples/templates`:
+- `abc templates golden-test record examples/templates`
   record the all template outputs as the desired/expected outputs for all test cases.
-- `abc templates golden-test record --test-name=example examples/templates`:
+- `abc templates golden-test record --test-name=example examples/templates`
   same as above, but only for the specific named tests.
 
 For `record` and `verify` subcommand, the `<test_name>` parameter gives the test names to record or verify, if not
