@@ -204,8 +204,9 @@ func TestDiff(t *testing.T) {
 			}
 
 			// Hex 1b is the ASCII "escape" char, which always appears when setting colors.
-			if tc.wantColor && !strings.Contains(gotDiff, "\x1b") {
-				t.Error("got non-colorized output, but want colorized output")
+			outputHasColor := strings.Contains(gotDiff, "\x1b")
+			if outputHasColor != tc.wantColor {
+				t.Errorf("hasColor=%t, but want hasColor=%t", outputHasColor, tc.wantColor)
 			}
 
 			colorStripped := stripansi.Strip(gotDiff)
