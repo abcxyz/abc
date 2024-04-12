@@ -541,7 +541,7 @@ func reversePatches(ctx context.Context, fs common.FS, preReversed []string, ins
 		outPath := filepath.Join(reversedDir, f.File.Val)
 		if slices.Contains(preReversed, f.File.Val) {
 			if err := common.Copy(ctx, fs, filepath.Join(installedDir, f.File.Val), outPath); err != nil {
-				return nil, err
+				return nil, err //nolint:wrapcheck
 			}
 			continue
 		}

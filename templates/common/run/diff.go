@@ -82,11 +82,11 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		// return empty string.
 		file1Exists, err := common.Exists(file1)
 		if err != nil {
-			return "", err
+			return "", err //nolint:wrapcheck
 		}
 		file2Exists, err := common.Exists(file2)
 		if err != nil {
-			return "", err
+			return "", err //nolint:wrapcheck
 		}
 		if !file1Exists && !file2Exists {
 			return "", nil

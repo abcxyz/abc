@@ -171,7 +171,12 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	return nil
 }
 
-// TODO doc
+// includeFromOneDir does the include action for a single source directory. This
+// is needed because in some cases there's more than one source directory, and
+// this function will be called multiple times for a single path in a single
+// include action. The multiple source directories are effectively "overlaid" so
+// that we're actually including from all of them, with later ones taking
+// precedence over earlier ones, if the same file exists in all of them.
 func includeFromOneDir(ctx context.Context, inc *spec.IncludePath, sp *stepParams, fromDir string) (matchedAny bool, _ error) {
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {

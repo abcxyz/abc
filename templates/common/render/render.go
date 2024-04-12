@@ -142,11 +142,19 @@ type Params struct {
 	TempDirBase string
 }
 
-// TODO doc
+// Result gives some metadata about the outcome of the render operation.
 type Result struct {
-	// TODO doc
+	// IncludedFromDestination is a set of files that were the subject of an
+	// "include" action that had "from: destination". This exists primarily for
+	// the sake of the "upgrade" command, which needs to know this. Other
+	// callers should not use this field.
 	IncludedFromDestination map[string]struct{}
-	ManifestPath            string
+
+	// ManifestPath, if set, is the relative path to the manifest file, starting
+	// from the destination directory (e.g. ".abc/manifest_123.yaml"). If
+	// manifest output wasn't enabled (see the --manifest flag), then this will
+	// be empty.
+	ManifestPath string
 }
 
 // Render does the full sequence of steps involved in rendering a template. It
@@ -568,6 +576,7 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 	// reverses the change. This might be used in the future during a template
 	// upgrade operation.
 	for relPath := range cp.includedFromDest {
+		// This file could be coming from either the TODO
 		destRoot, err := diffBaseRootDir(p, relPath)
 		if err != nil {
 			return "", err
@@ -609,13 +618,13 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 	return manifestPath, nil
 }
 
-// TODO doc
+// diffBaseRootDir TODO
 func diffBaseRootDir(p *Params, relPath string) (string, error) {
 	if p.IncludeFromDestExtraDir != "" {
 		pathInExtraDir := filepath.Join(p.IncludeFromDestExtraDir, relPath)
 		ok, err := common.Exists(pathInExtraDir)
 		if err != nil {
-			return "", err
+			return "", err //nolint:wrapcheck
 		}
 		if ok {
 			return p.IncludeFromDestExtraDir, nil

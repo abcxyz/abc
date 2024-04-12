@@ -1098,6 +1098,8 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 }
 
 func TestPatchReversalManualResolution(t *testing.T) {
+	t.Parallel()
+
 	loc, err := time.LoadLocation("America/Los_Angeles")
 	if err != nil {
 		t.Fatalf("time.LoadLocation(): %v", err)

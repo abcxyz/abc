@@ -296,7 +296,7 @@ type oneFileMergePaths struct {
 	// TODO doc and maybe rename all these fields.
 	relative string
 
-	// Subtle point: this file path can point to inside the the user-visible
+	// Subtle point: this file path can point to inside the user-visible
 	// destination folder (for files included normally) or inside the
 	// reversed-patch directory (for files that were included-from-destination).
 	fromOldLocal string
@@ -314,7 +314,7 @@ type oneFileMergePaths struct {
 func newMergePaths(p *commitParams, relPath string) (*oneFileMergePaths, error) {
 	fromReversed := filepath.Join(p.reversedPatchDir, relPath)
 	if ok, err := common.Exists(fromReversed); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	} else if !ok {
 		fromReversed = ""
 	}
@@ -371,7 +371,7 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 	case EditDeleteConflict:
 		renamedPath := installedPath + suffixWantToDelete
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
-			return ActionTaken{}, err
+			return ActionTaken{}, err //nolint:wrapcheck
 		}
 		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
 			return ActionTaken{}, err
@@ -383,7 +383,7 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 		incomingPath := installedPath + suffixFromNewTemplate
 		// TODO the source should probably be the reversed file, when showing a merge conflict
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
-			return ActionTaken{}, err
+			return ActionTaken{}, err //nolint:wrapcheck
 		}
 		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
 			return ActionTaken{}, err
@@ -397,7 +397,7 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 	case AddAddConflict:
 		renamedPath := installedPath + suffixLocallyAdded
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
-			return ActionTaken{}, err
+			return ActionTaken{}, err //nolint:wrapcheck
 		}
 		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
 			return ActionTaken{}, err
