@@ -67,7 +67,7 @@ const (
 	abcRenameSuffix = ".abc_renamed"
 )
 
-// parseTestCases returns a list of test cases to recordTestCases or verify.
+// parseTestCases returns a list of test cases to record or verify.
 func parseTestCases(ctx context.Context, location string, testNames []string) ([]*TestCase, error) {
 	if _, err := os.Stat(location); err != nil {
 		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)

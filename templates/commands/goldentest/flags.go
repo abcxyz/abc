@@ -32,7 +32,7 @@ type Flags struct {
 
 	// Flag arguments (--foo):
 
-	// Testnames are the name of the test cases to recordTestCases or verify. If no
+	// Testnames are the name of the test cases to record or verify. If no
 	// test name is specified, all gold tests will be run against.
 	//
 	// Optional.
@@ -47,7 +47,7 @@ func (r *Flags) Register(set *cli.FlagSet) {
 		Aliases: []string{"t"},
 		Example: "test_case_1",
 		Target:  &r.TestNames,
-		Usage:   "The name of the test cases to recordTestCases or verify.",
+		Usage:   "The name of the test cases to record or verify.",
 	})
 
 	// Default location to the first CLI argument, if given.

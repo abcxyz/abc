@@ -15,7 +15,7 @@
 // Package goldentest implements golden test related subcommands.
 package goldentest
 
-// This file implements the "templates golden-test recordTestCases" subcommand.
+// This file implements the "templates golden-test record" subcommand.
 
 import (
 	"context"
