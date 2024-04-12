@@ -38,7 +38,7 @@ type RecordCommand struct {
 }
 
 func (c *RecordCommand) Desc() string {
-	return "recordTestCases the template rendering result to golden tests " +
+	return "record the template rendering result to golden tests " +
 		"(capture the anticipated outcome akin to expected output in unit test)"
 }
 
@@ -74,7 +74,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 
 	templateLocations, err := crawlTemplateLocations(c.flags.Location)
 	if err != nil {
-		return fmt.Errorf("failed to parse template locations")
+		return fmt.Errorf("failed to crawl template locations [%s]: %w", c.flags.Location, err)
 	}
 	var merr error
 	for _, templateLocation := range templateLocations {

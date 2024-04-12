@@ -220,7 +220,7 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 
 		if outputMismatch {
 			failureText := red(fmt.Sprintf("golden test [%s] didn't match actual output, you might "+
-				"need to run 'recordTestCases' command to capture it as the new expected output for template location %s", tc.TestName, templateLocation))
+				"need to run 'record' command to capture it as the new expected output for template location %s", tc.TestName, templateLocation))
 			err := fmt.Errorf(failureText)
 			tcErr = errors.Join(tcErr, err)
 		}

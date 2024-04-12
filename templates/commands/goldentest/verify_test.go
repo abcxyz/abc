@@ -97,7 +97,7 @@ kind: 'GoldenTest'`
 			wantErrs: []string{
 				"b.txt] generated, however not recorded in test data",
 				"golden test [test] didn't match actual output, you might " +
-					"need to run 'recordTestCases' command to capture it as the new expected output",
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
@@ -148,7 +148,7 @@ steps:
 			wantErrs: []string{
 				"a.txt] file content mismatch",
 				"golden test [test] didn't match actual output, you might " +
-					"need to run 'recordTestCases' command to capture it as the new expected output",
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
@@ -163,7 +163,7 @@ steps:
 			wantErrs: []string{
 				"a.txt] file content mismatch",
 				"golden test [test] didn't match actual output, you might " +
-					"need to run 'recordTestCases' command to capture it as the new expected output",
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
@@ -208,7 +208,7 @@ steps:
 				"a.txt] file content mismatch",
 				"b.txt] generated, however not recorded in test data",
 				"golden test [test] didn't match actual output, you might " +
-					"need to run 'recordTestCases' command to capture it as the new expected output",
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
@@ -270,7 +270,7 @@ steps:
 				"golden test test1 fails",
 				"the printed messages differ between the recorded golden output and the actual output",
 				"golden test [test1] didn't match actual output, you might " +
-					"need to run 'recordTestCases' command to capture it as the new expected output",
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
@@ -284,7 +284,7 @@ steps:
 				"golden test test1 fails",
 				"the printed messages differ between the recorded golden output and the actual output",
 				"golden test [test1] didn't match actual output, you might " +
-					"need to run 'recordTestCases' command to capture it as the new expected output",
+					"need to run 'record' command to capture it as the new expected output",
 			},
 		},
 		{
@@ -338,7 +338,7 @@ kind: 'GoldenTest'`,
 			wantErrs: []string{
 				"golden test test1 fails",
 				"golden test [test1] didn't match actual output, you might " +
-					"need to run 'recordTestCases' command to capture it as the new expected output",
+					"need to run 'record' command to capture it as the new expected output",
 				".gitignore] file content mismatch",
 			},
 		},
