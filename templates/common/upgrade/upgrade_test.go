@@ -963,6 +963,7 @@ yellow is my favorite color
 		//  a previous regular-included file becomes ifd
 		//  an ifd file becomes regular-included
 		//  IFD with all conflicts: add-add, add-edit, EditDelete, DeleteEdit
+		//  a mix of included-from-dest and regular-include
 	}
 
 	for _, tc := range cases {
@@ -1168,27 +1169,23 @@ steps:
 
 	templateReplacementForUpgrade := map[string]string{
 		"spec.yaml": `
-		api_version: 'cli.abcxyz.dev/v1beta6'
-		kind: 'Template'
-		desc: 'my template'
-		steps:
-		- desc: 'include a file to be modified in place'
-		action: 'include'
-		params:
-		
-			from: 'destination'
-			paths: ['file.txt']
-		
-		- desc: 'Change favorite color'
-		action: 'string_replace'
-		params:
-		
-			  paths: ['file.txt']
-			  replacements:
-				- to_replace: 'purple'
-				  with: 'yellow'
-		
-		`,
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements:
+        - to_replace: 'purple'
+          with: 'yellow'
+`,
 	}
 	if err := os.RemoveAll(templateDir); err != nil {
 		t.Fatal(err)
@@ -1246,9 +1243,10 @@ steps:
 
 	// Resolve the merge conflict
 	abctestutil.Overwrite(t, destDir, "file.txt", "purple is my favorite color\n")
-	abctestutil.Remove(t, destDir, "file.txt")
+	abctestutil.Remove(t, destDir, "file.txt.rej")
 
-	upgradeParams.ReversalAlreadyDone = true
+	// Inform the upgrade command that patch reversal has already happened
+	upgradeParams.ReversalAlreadyDone = []string{"file.txt"}
 
 	// TODO try a successful upgrade
 	gotResult, err := Upgrade(ctx, upgradeParams)
@@ -1304,7 +1302,8 @@ func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, t
 		tb.Fatal(err)
 	}
 
-	if err := render.Render(ctx, &render.Params{
+	// TODO check result?
+	if _, err := render.Render(ctx, &render.Params{
 		Clock:       clk,
 		Cwd:         tempBase,
 		DestDir:     destDir,

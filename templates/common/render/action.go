@@ -54,6 +54,13 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	if err != nil {
 		return err
 	}
+	if len(globbedPaths) == 0 {
+		var pathStrings []string
+		for _, p := range paths {
+			pathStrings = append(pathStrings, p.Val)
+		}
+		return fmt.Errorf("no paths were matched by: %v", pathStrings)
+	}
 
 	for _, absPath := range globbedPaths {
 		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
@@ -148,25 +155,25 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string, ski
 				Val: filepath.Join(fromDir, p.Val),
 				Pos: p.Pos,
 			})
-		} else {
-			globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
-			if err != nil {
-				return nil, p.Pos.Errorf("file globbing error: %w", err)
-			}
-			if len(globPaths) == 0 {
-				return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
-			}
-			logger.DebugContext(ctx, "glob path expanded:",
-				"glob", p.Val,
-				"matches", globPaths)
-			for _, globPath := range globPaths {
-				if _, ok := seenPaths[globPath]; !ok {
-					out = append(out, model.String{
-						Val: globPath,
-						Pos: p.Pos,
-					})
-					seenPaths[globPath] = struct{}{}
-				}
+			continue
+		}
+		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
+		if err != nil {
+			return nil, p.Pos.Errorf("file globbing error: %w", err)
+		}
+		// if len(globPaths) == 0 {
+		// 	return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
+		// }
+		logger.DebugContext(ctx, "glob path expanded:",
+			"glob", p.Val,
+			"matches", globPaths)
+		for _, globPath := range globPaths {
+			if _, ok := seenPaths[globPath]; !ok {
+				out = append(out, model.String{
+					Val: globPath,
+					Pos: p.Pos,
+				})
+				seenPaths[globPath] = struct{}{}
 			}
 		}
 	}

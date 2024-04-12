@@ -24,6 +24,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -97,7 +98,8 @@ type Params struct {
 	Prompter input.Prompter
 
 	// TODO doc
-	ReversalAlreadyDone bool
+	// Relative paths where patch reversal has already happened.
+	ReversalAlreadyDone []string
 
 	// The value of --skip-input-validation.
 	SkipInputValidation bool
@@ -119,6 +121,7 @@ type Result struct {
 	// If no upgrade was done because this installation of the template is
 	// already on the latest version, then this will be true and all other
 	// fields in this struct will have zero values.
+	// TODO(upgrade): make this an enum with the various possible results
 	AlreadyUpToDate bool
 
 	// TODO doc
@@ -256,17 +259,19 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err //nolint:wrapcheck
 	}
 
-	if !p.ReversalAlreadyDone {
-		reversalConflicts, err := reversePatches(ctx, installedDir, reversedDir, oldManifest)
-		if err != nil {
-			return nil, err
-		}
-		if len(reversalConflicts) > 0 {
-			return &Result{ReversalConflicts: reversalConflicts}, nil
-		}
+	reversalConflicts, err := reversePatches(ctx, p.FS, p.ReversalAlreadyDone, installedDir, reversedDir, oldManifest)
+	if err != nil {
+		return nil, err
 	}
+	if len(reversalConflicts) > 0 {
+		return &Result{ReversalConflicts: reversalConflicts}, nil
+	}
+	// else {
+	// 	// TODO somehow provide reversed files to render. Maybe just empty out
+	// 	// reversedDir so the render op doesn't try to find them there?
+	// }
 
-	if err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
+	if _, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
 		Clock:                   p.Clock,
 		Cwd:                     p.CWD,
 		DebugStepDiffs:          p.DebugStepDiffs,
@@ -521,27 +526,40 @@ type ReversalConflict struct {
 	Path string
 }
 
-func reversePatches(ctx context.Context, installedDir, reversedDir string, oldManifest *manifest.Manifest) ([]*ReversalConflict, error) {
+func reversePatches(ctx context.Context, fs common.FS, preReversed []string, installedDir, reversedDir string, oldManifest *manifest.Manifest) ([]*ReversalConflict, error) {
+	// preReversedAsSet := make(map[string]struct{}, len(preReversed))
+	// for _, ar := range preReversed {
+	// 	preReversedAsSet[ar] = struct{}{}
+	// }
+
 	var out []*ReversalConflict
 	for _, f := range oldManifest.OutputFiles {
-		if f.Patch != nil && len(f.Patch.Val) > 0 {
-			conflict, err := reverseOnePatch(ctx, installedDir, reversedDir, f)
-			if err != nil {
+		if f.Patch == nil || len(f.Patch.Val) == 0 {
+			continue
+		}
+
+		outPath := filepath.Join(reversedDir, f.File.Val)
+		if slices.Contains(preReversed, f.File.Val) {
+			if err := common.Copy(ctx, fs, filepath.Join(installedDir, f.File.Val), outPath); err != nil {
 				return nil, err
 			}
-			if conflict != nil {
-				out = append(out, conflict)
-			}
+			continue
+		}
+		conflict, err := reverseOnePatch(ctx, installedDir, outPath, f)
+		if err != nil {
+			return nil, err
+		}
+		if conflict != nil {
+			out = append(out, conflict)
 		}
 	}
 	return out, nil
 }
 
-func reverseOnePatch(ctx context.Context, installedDir, reversedDir string, f *manifest.OutputFile) (*ReversalConflict, error) {
+func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manifest.OutputFile) (*ReversalConflict, error) {
 	logger := logging.FromContext(ctx).With("logger", "reverseOnePatch")
 
-	outPath := filepath.Join(reversedDir, f.File.Val)
-	if err := os.MkdirAll(filepath.Base(outPath), common.OwnerRWXPerms); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outPath), common.OwnerRWXPerms); err != nil {
 		return nil, fmt.Errorf("failed creating output directory for patch reversal: %w", err)
 	}
 	installedPath := filepath.Join(installedDir, f.File.Val)

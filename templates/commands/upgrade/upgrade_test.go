@@ -150,7 +150,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 
 			clk := clock.NewMock()
 
-			if err := render.Render(ctx, &render.Params{
+			if _, err := render.Render(ctx, &render.Params{
 				Clock:       clk,
 				Cwd:         tempBase,
 				DestDir:     destDir,
@@ -374,7 +374,7 @@ steps:
 				t.Fatal(err)
 			}
 
-			if err := render.Render(ctx, &render.Params{
+			if _, err := render.Render(ctx, &render.Params{
 				Clock:       clock.New(),
 				Cwd:         tempBase,
 				DestDir:     destDir,
