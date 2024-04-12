@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -107,56 +106,21 @@ func setLogEnvVars() {
 	}
 }
 
-// checkForUpdates asynchronously checks for updates and prints results to
-// returned buffer.
-// A sync.WaitGroup is returned so main can wait for completion before exiting.
-func checkForUpdates(ctx context.Context) func() {
-	updatesCh := make(chan string, 1)
-
-	go func() {
-		defer close(updatesCh)
-
-		var b bytes.Buffer
-		if err := abcupdater.CheckAppVersion(ctx, &abcupdater.CheckVersionParams{
-			AppID: version.Name,
-			// Version: version.Version,
-			Version: "0.4.0", // intentionally older than cur version to test
-			Writer:  &b,
-		}); err != nil {
-			logging.FromContext(ctx).WarnContext(ctx, "failed to check for new versions",
-				"error", err)
-		}
-
-		select {
-		case updatesCh <- b.String():
-		default:
-		}
-	}()
-
-	return func() {
-		select {
-		case <-ctx.Done():
-			// Context was cancelled
-		case msg := <-updatesCh:
-			logging.FromContext(ctx).WarnContext(ctx, msg)
-		case <-time.After(time.Second):
-			// Give up after some time. This is how long to wait after termination has
-			// finished. The command has most likely be running for a few seconds, and
-			// we don't want to block the control flow for an exceedingly long time.
-			//
-			// This technicall leaks both the timer and the channel, but we're about
-			// to terminate, so the memory will free anyway.
-		}
-	}
-}
-
 func realMain(ctx context.Context) error {
-	report := checkForUpdates(ctx)
-	defer report()
-
 	if runtime.GOOS == "windows" {
 		return fmt.Errorf("windows os is not supported in abc cli")
 	}
+
+	// Timeout updater after 1 second.
+	updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
+	defer updaterDone()
+	report := abcupdater.CheckAppVersion(updaterCtx, &abcupdater.CheckVersionParams{
+		AppID: version.Name,
+		// Version: version.Version,
+		Version: "0.4.0", // intentionally older than cur version to test
+	}, func(s string) { fmt.Fprintln(os.Stderr, s) })
+
+	defer report()
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }
