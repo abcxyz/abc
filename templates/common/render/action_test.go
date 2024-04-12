@@ -224,7 +224,7 @@ func TestWalkAndModify(t *testing.T) {
 			sp := &stepParams{
 				scope:            common.NewScope(nil, nil),
 				scratchDir:       scratchDir,
-				includedFromDest: make(map[string]struct{}),
+				includedFromDest: make(map[string]string),
 				rp: &Params{
 					FS: &common.ErrorFS{
 						FS:           &common.RealFS{},

@@ -148,7 +148,7 @@ type Result struct {
 	// "include" action that had "from: destination". This exists primarily for
 	// the sake of the "upgrade" command, which needs to know this. Other
 	// callers should not use this field.
-	IncludedFromDestination map[string]struct{}
+	IncludedFromDestination []string
 
 	// ManifestPath, if set, is the relative path to the manifest file, starting
 	// from the destination directory (e.g. ".abc/manifest_123.yaml"). If
@@ -247,7 +247,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	sp := &stepParams{
 		debugDiffsDir:    debugStepDiffsDir,
 		ignorePatterns:   spec.Ignore,
-		includedFromDest: make(map[string]struct{}),
+		includedFromDest: make(map[string]string),
 		extraPrintVars:   extraPrintVars,
 		features:         spec.Features,
 		rp:               p,
@@ -287,7 +287,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	logger.DebugContext(ctx, "render operation complete", "source", p.SourceForMessages)
 
 	return &Result{
-		IncludedFromDestination: sp.includedFromDest,
+		IncludedFromDestination: maps.Keys(sp.includedFromDest),
 		ManifestPath:            manifestRelPath,
 	}, nil
 }
@@ -420,7 +420,7 @@ type stepParams struct {
 	// These are paths relative to the --dest directory (which is the same thing
 	// as being relative to the scratch directory, the paths within these dirs
 	// are the same).
-	includedFromDest map[string]struct{}
+	includedFromDest map[string]string
 
 	// scope contains all variable names that are in scope. This includes
 	// user-provided scope, as well as any programmatically created variables
@@ -559,7 +559,7 @@ type commitParams struct {
 	dlMeta           *templatesource.DownloadMetadata
 	scratchDir       string
 	templateDir      string
-	includedFromDest map[string]struct{}
+	includedFromDest map[string]string
 	inputs           map[string]string
 }
 
@@ -575,15 +575,10 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 	// For each file that was included-from-destination, create a patch that
 	// reverses the change. This might be used in the future during a template
 	// upgrade operation.
-	for relPath := range cp.includedFromDest {
-		// This file could be coming from either the TODO
-		destRoot, err := diffBaseRootDir(p, relPath)
-		if err != nil {
-			return "", err
-		}
-		destPath := filepath.Join(destRoot, relPath)
+	for relPath, fromDir := range cp.includedFromDest {
+		destPath := filepath.Join(fromDir, relPath)
 		srcPath := filepath.Join(cp.scratchDir, relPath)
-		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, destRoot)
+		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, fromDir)
 		if err != nil {
 			return "", err //nolint:wrapcheck
 		}
@@ -618,21 +613,6 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 	return manifestPath, nil
 }
 
-// diffBaseRootDir TODO
-func diffBaseRootDir(p *Params, relPath string) (string, error) {
-	if p.IncludeFromDestExtraDir != "" {
-		pathInExtraDir := filepath.Join(p.IncludeFromDestExtraDir, relPath)
-		ok, err := common.Exists(pathInExtraDir)
-		if err != nil {
-			return "", err //nolint:wrapcheck
-		}
-		if ok {
-			return p.IncludeFromDestExtraDir, nil
-		}
-	}
-	return p.DestDir, nil
-}
-
 // commit copies the contents of scratchDir to rp.Dest. If dryRun==true, then
 // files are read but nothing is written to the destination. includedFromDest is
 // a set of files that were the subject of an "include" action that set "from:
@@ -641,7 +621,7 @@ func diffBaseRootDir(p *Params, relPath string) (string, error) {
 // The return value is a map containing a SHA256 hash of each file in
 // scratchDir. The keys are paths relative to scratchDir, using forward slashes
 // regardless of the OS.
-func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, includedFromDest map[string]struct{}) (map[string][]byte, error) {
+func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, includedFromDest map[string]string) (map[string][]byte, error) {
 	logger := logging.FromContext(ctx).With("logger", "commit")
 
 	if !dryRun {

@@ -53,7 +53,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 	}
 
 	params := &common.CopyParams{
-		DryRun:  false,
+		DryRun:  false, // This copy targets a temp directory, so always do it.
 		DstRoot: absDst,
 		FS:      sp.rp.FS,
 		SrcRoot: absSrc,
@@ -92,7 +92,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 			}
 			if !de.IsDir() {
 				if fromVal == "destination" {
-					sp.includedFromDest[relToFromDir] = struct{}{}
+					sp.includedFromDest[relToFromDir] = fromDir
 				} else {
 					// Edge case: suppose this sequence of events occurs:
 					//  1. A given path is `include`d with from==destination
