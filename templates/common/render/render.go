@@ -420,6 +420,7 @@ type stepParams struct {
 	// These are paths relative to the --dest directory (which is the same thing
 	// as being relative to the scratch directory, the paths within these dirs
 	// are the same).
+	// TODO update doc
 	includedFromDest map[string]string
 
 	// scope contains all variable names that are in scope. This includes
