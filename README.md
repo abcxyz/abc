@@ -134,8 +134,9 @@ Usage:
 - `abc templates golden-test record [--test-name=<test_name>] [<location>]`
 - `abc templates golden-test verify [--test-name=<test_name>] [<location>]`
 
-Note: for `new-test`, the `<location>` parameter gives the location of the template.
-for `record` and `verify`,  the `<location>` parameter gives the location that include one or more templates.
+Note: For `new-test`, the `<location>` parameter gives the location of the template.
+For `record` and `verify`, `<location>` parameter gives the location that include one or more templates and abc cli
+will recursively search for templates and tests under the given `<location>`. 
 
 Examples:
 
@@ -150,15 +151,19 @@ Examples:
   runs all golden-tests for the templates included in `examples/templates`
 - `abc templates golden-test verify --test-name=example examples/templates`
   same as above, but only for the specific named tests
+- `abc templates golden-test verify`
+  runs all golden-tests for the templates included in the current directory
 - `abc templates golden-test record examples/templates/render/hello_jupiter`
   record the current template output as the desired/expected output for all
   tests within the given template, saving to `testdata/golden/<test_name>/data`.
 - `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
   same as above, but only for the specific named tests.
 - `abc templates golden-test record examples/templates`
-  record the all template outputs as the desired/expected outputs for all test cases.
+  record the all template outputs as the desired/expected outputs for all test cases for the templates under `example/templates` directory.
 - `abc templates golden-test record --test-name=example examples/templates`
   same as above, but only for the specific named tests.
+- `abc templates golden-test record`
+  record the all template outputs as the desired/expected outputs for all test cases for the templates under current directory.
 
 For `record` and `verify` subcommand, the `<test_name>` parameter gives the test names to record or verify, if not
 specified, all tests will be run against. This flag may be repeated, like
