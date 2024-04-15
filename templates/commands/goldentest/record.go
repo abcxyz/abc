@@ -52,7 +52,7 @@ anticipated outcome akin to expected output in unit test).
 The "<test_name>" is the name of the test. If no <test_name> is specified,
 all tests will be recorded.
 
-The "<location>" is the location of the template. 
+The "<location>" is the location of the templates. 
 If no "<location>" is given, default to current directory.
 
 For every test case, it is expected that
@@ -72,9 +72,23 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	testCases, err := parseTestCases(ctx, c.flags.Location, c.flags.TestNames)
+	templateLocations, err := crawlTemplateLocations(c.flags.Location)
 	if err != nil {
-		return fmt.Errorf("failed to parse golden test: %w", err)
+		return fmt.Errorf("failed to crawl template locations [%s]: %w", c.flags.Location, err)
+	}
+	var merr error
+	for _, templateLocation := range templateLocations {
+		merr = errors.Join(merr, recordTestCases(ctx, templateLocation, c.flags.TestNames))
+	}
+	return merr
+}
+
+func recordTestCases(ctx context.Context, templateLocation string, testNames []string) (rErr error) {
+	logger := logging.FromContext(ctx)
+	logger.InfoContext(ctx, "recording test for template location", "template_location", templateLocation)
+	testCases, err := parseTestCases(ctx, templateLocation, testNames)
+	if err != nil {
+		return fmt.Errorf("failed to parse golden test for template location %v: %w", templateLocation, err)
 	}
 
 	rfs := &common.RealFS{}
@@ -85,60 +99,64 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
 	// Create a temporary directory to validate golden tests rendered with no
 	// error. If any test fails, no data should be written to file system
 	// for atomicity purpose.
-	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
+	tempDir, err := renderTestCases(ctx, testCases, templateLocation)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
 	tempTracker.Track(tempDir)
 
-	var merr error
-	logger := logging.FromContext(ctx)
-
 	// Recursively copy files from tempDir to template golden test directory.
 	for _, tc := range testCases {
-		testDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
-		if err := os.RemoveAll(testDir); err != nil {
-			return fmt.Errorf("failed to clear test directory: %w", err)
-		}
-
-		visitor := func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
-			if !de.IsDir() {
-				logger.InfoContext(ctx, "recording",
-					"testname", tc.TestName,
-					"testdata", relToAbsSrc)
-			}
-			return common.CopyHint{
-				Overwrite: true,
-			}, nil
-		}
-		params := &common.CopyParams{
-			DstRoot: testDir,
-			SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir),
-			FS:      rfs,
-			Visitor: visitor,
-		}
-		merr = errors.Join(merr, common.CopyRecursive(ctx, nil, params))
-
-		abcInternal := filepath.Join(testDir, common.ABCInternalDir)
-		if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
-			return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)
-		}
-
-		if !tc.TestConfig.Features.SkipABCRenamed {
-			if err := renameGitDirsAndFiles(testDir); err != nil {
-				return fmt.Errorf("failed renaming git related dirs and files for test case %q: %w", tc.TestName, err)
-			}
-		}
-
-		// git won't commit an empty directory, so add a placeholder file.
-		gitKeep := filepath.Join(abcInternal, ".gitkeep")
-		if err := os.WriteFile(gitKeep, []byte{}, common.OwnerRWPerms); err != nil {
-			return fmt.Errorf("failed creating %q: %w", gitKeep, err)
+		if err := recordTestCase(ctx, templateLocation, tc, tempDir, rfs); err != nil {
+			rErr = errors.Join(rErr, fmt.Errorf("failed to record test case [%s] for template location [%s]: %w", tc.TestName, templateLocation, err))
 		}
 	}
-	if merr != nil {
-		return fmt.Errorf("failed to write golden test data: %w", merr)
+	return rErr
+}
+
+func recordTestCase(ctx context.Context, templateLocation string, tc *TestCase, tempDir string, rfs *common.RealFS) error {
+	logger := logging.FromContext(ctx)
+	logger.InfoContext(ctx, "recording test for test name", "testname", tc.TestName)
+	testDir := filepath.Join(templateLocation, goldenTestDir, tc.TestName, testDataDir)
+	if err := os.RemoveAll(testDir); err != nil {
+		return fmt.Errorf("failed to clear test directory: %w", err)
 	}
 
+	visitor := func(relToAbsSrc string, de fs.DirEntry) (common.CopyHint, error) {
+		if !de.IsDir() {
+			logger.InfoContext(ctx, "recording",
+				"testname", tc.TestName,
+				"testdata", relToAbsSrc)
+		}
+		return common.CopyHint{
+			Overwrite: true,
+		}, nil
+	}
+	params := &common.CopyParams{
+		DstRoot: testDir,
+		SrcRoot: filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir),
+		FS:      rfs,
+		Visitor: visitor,
+	}
+	if err := common.CopyRecursive(ctx, nil, params); err != nil {
+		return fmt.Errorf("failed to copy recursive: %w", err)
+	}
+
+	abcInternal := filepath.Join(testDir, common.ABCInternalDir)
+	if err := os.MkdirAll(abcInternal, common.OwnerRWXPerms); err != nil {
+		return fmt.Errorf("failed to create dir %q: %w", abcInternal, err)
+	}
+
+	if !tc.TestConfig.Features.SkipABCRenamed {
+		if err := renameGitDirsAndFiles(testDir); err != nil {
+			return fmt.Errorf("failed renaming git related dirs and files for test case %q: %w", tc.TestName, err)
+		}
+	}
+
+	// git won't commit an empty directory, so add a placeholder file.
+	gitKeep := filepath.Join(abcInternal, ".gitkeep")
+	if err := os.WriteFile(gitKeep, []byte{}, common.OwnerRWPerms); err != nil {
+		return fmt.Errorf("failed creating %q: %w", gitKeep, err)
+	}
 	return nil
 }
