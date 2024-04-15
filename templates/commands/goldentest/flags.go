@@ -25,7 +25,7 @@ import (
 type Flags struct {
 	// Positional arguments:
 
-	// Location is the file system location of the template to be tested.
+	// Location is the file system location of the templates to be tested.
 	//
 	// Example: t/rest_server.
 	Location string
@@ -50,7 +50,7 @@ func (r *Flags) Register(set *cli.FlagSet) {
 		Usage:   "The name of the test cases to record or verify.",
 	})
 
-	// Default template location to the first CLI argument, if given.
+	// Default location to the first CLI argument, if given.
 	// If not given, default to current directory.
 	set.AfterParse(func(existingErr error) error {
 		r.Location = strings.TrimSpace(set.Arg(0))

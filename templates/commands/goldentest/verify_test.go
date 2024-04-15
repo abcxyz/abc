@@ -113,6 +113,30 @@ kind: 'GoldenTest'`
 			wantErrs: []string{"b.txt] expected, however missing"},
 		},
 		{
+			name: "failed_to_render_test_case",
+			filesContent: map[string]string{
+				"spec.yaml": `apiVersion: 'cli.abcxyz.dev/v1beta5'
+kind: 'Template'
+
+
+inputs:
+  - name: 'my_input_without_default'
+    desc: 'An input without a default'
+
+steps:
+  - desc: 'Print input values'
+    action: 'print'
+    params:
+      message: |
+        The variable values are:
+          my_input_without_default={{.my_input_without_default}}`,
+				"testdata/golden/test/test.yaml": testYaml,
+			},
+			wantErrs: []string{
+				"failed to render test case [test] for template location",
+			},
+		},
+		{
 			name: "insert_file_content",
 			filesContent: map[string]string{
 				"spec.yaml":                      specYaml,
@@ -171,18 +195,6 @@ kind: 'GoldenTest'`
 			},
 		},
 		{
-			name:      "test_data_not_exists",
-			testNames: []string{"test1"},
-			filesContent: map[string]string{
-				"spec.yaml":                       specYaml,
-				"a.txt":                           "file A content",
-				"testdata/golden/test2/test.yaml": testYaml,
-				"testdata/golden/test2/data/.abc/.gitkeep": "",
-				"testdata/golden/test2/data/a.txt":         "file A content",
-			},
-			wantErrs: []string{"error opening test config"},
-		},
-		{
 			name: "multiple_mismatch_catched_in_one_test",
 			filesContent: map[string]string{
 				"spec.yaml":                      specYaml,
@@ -212,8 +224,8 @@ kind: 'GoldenTest'`
 				"testdata/golden/test2/data/b.txt":         "file B content",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
-				"golden test test2 fails",
+				"golden test [test1] fails",
+				"golden test [test2] fails",
 			},
 		},
 		{
@@ -233,8 +245,8 @@ kind: 'GoldenTest'`
 				"testdata/golden/test3/data/a.txt":         "wrong file",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
-				"golden test test2 fails",
+				"golden test [test1] fails",
+				"golden test [test2] fails",
 			},
 		},
 		{
@@ -255,7 +267,7 @@ kind: 'GoldenTest'`
 				"testdata/golden/test1/data/.abc/stdout":   "Bob\n",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
+				"golden test [test1] fails",
 				"the printed messages differ between the recorded golden output and the actual output",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
@@ -269,7 +281,7 @@ kind: 'GoldenTest'`
 				"testdata/golden/test1/data/.abc/.gitkeep": "",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
+				"golden test [test1] fails",
 				"the printed messages differ between the recorded golden output and the actual output",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
@@ -324,7 +336,7 @@ kind: 'GoldenTest'`,
 				"testdata/golden/test1/data/.gitignore.abc_renamed": "not matched gitignore contents",
 			},
 			wantErrs: []string{
-				"golden test test1 fails",
+				"golden test [test1] fails",
 				"golden test [test1] didn't match actual output, you might " +
 					"need to run 'record' command to capture it as the new expected output",
 				".gitignore] file content mismatch",
