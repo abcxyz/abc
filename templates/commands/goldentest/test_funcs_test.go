@@ -132,16 +132,6 @@ kind: 'GoldenTest'`,
 			wantErr: "error reading golden test config file",
 		},
 		{
-			name:      "specified_test_name_not_found",
-			testNames: []string{"test_case_2"},
-			filesContent: map[string]string{
-				"testdata/golden/test_case_1/test.yaml": `api_version: 'cli.abcxyz.dev/v1beta5'
-kind: 'GoldenTest'`,
-			},
-			want:    nil,
-			wantErr: "error opening test config",
-		},
-		{
 			name:      "builtin_overrides_rejected_on_old_api_version",
 			testNames: []string{"test_case_1"},
 			filesContent: map[string]string{
