@@ -54,6 +54,13 @@ func walkAndModify(ctx context.Context, sp *stepParams, rawPaths []model.String,
 	if err != nil {
 		return err
 	}
+	if len(globbedPaths) == 0 {
+		var pathStrings []string
+		for _, p := range paths {
+			pathStrings = append(pathStrings, p.Val)
+		}
+		return fmt.Errorf("no paths were matched by: %v", pathStrings)
+	}
 
 	for _, absPath := range globbedPaths {
 		err := filepath.WalkDir(absPath.Val, func(path string, d fs.DirEntry, err error) error {
@@ -131,42 +138,57 @@ func templateAndCompileRegexes(regexes []model.String, scope *common.Scope) ([]*
 	return compiled, merr
 }
 
-// processGlobs processes a list of relative input String paths for simple file globbing.
-// Returned paths are converted from relative to absolute.
-// Used after processPaths where applicable.
+// processGlobs processes a list of relative input String paths for simple file
+// globbing (if glob support is enabled by the spec file's api_version).
+// Returned paths are absolute.
+//
+// Only files that actually exist on the filesystem will be returned. It is not
+// an error if the input paths don't match any files. This supports use cases
+// where multiple fromDirs are tried sequentially.
+//
+// When processPaths and processGlobs are both used, processPaths should be
+// called first.
 func processGlobs(ctx context.Context, paths []model.String, fromDir string, skipGlobs bool) ([]model.String, error) {
 	logger := logging.FromContext(ctx).With("logger", "processGlobs")
 	seenPaths := map[string]struct{}{}
 	out := make([]model.String, 0, len(paths))
 
 	for _, p := range paths {
-		// This supports older api_versions which didn't have glob support. When
-		// not globbing, we don't try to determine whether the file exists or
-		// not. That's a job for a later phase.
 		if skipGlobs {
+			// This supports older api_versions which didn't have glob support.
+			absPath := filepath.Join(fromDir, p.Val)
+			if _, ok := seenPaths[absPath]; ok {
+				continue
+			}
+			seenPaths[absPath] = struct{}{}
+			exists, err := common.Exists(absPath)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				continue
+			}
 			out = append(out, model.String{
-				Val: filepath.Join(fromDir, p.Val),
+				Val: absPath,
 				Pos: p.Pos,
 			})
-		} else {
-			globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
-			if err != nil {
-				return nil, p.Pos.Errorf("file globbing error: %w", err)
-			}
-			if len(globPaths) == 0 {
-				return nil, p.Pos.Errorf("glob %q did not match any files", p.Val)
-			}
-			logger.DebugContext(ctx, "glob path expanded:",
-				"glob", p.Val,
-				"matches", globPaths)
-			for _, globPath := range globPaths {
-				if _, ok := seenPaths[globPath]; !ok {
-					out = append(out, model.String{
-						Val: globPath,
-						Pos: p.Pos,
-					})
-					seenPaths[globPath] = struct{}{}
-				}
+			continue
+		}
+
+		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
+		if err != nil {
+			return nil, p.Pos.Errorf("file globbing error: %w", err)
+		}
+		logger.DebugContext(ctx, "glob path expanded:",
+			"glob", p.Val,
+			"matches", globPaths)
+		for _, globPath := range globPaths {
+			if _, ok := seenPaths[globPath]; !ok {
+				out = append(out, model.String{
+					Val: globPath,
+					Pos: p.Pos,
+				})
+				seenPaths[globPath] = struct{}{}
 			}
 		}
 	}

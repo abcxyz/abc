@@ -184,7 +184,7 @@ func TestActionInclude(t *testing.T) {
 			templateContents: map[string]string{
 				"myfile.txt": "my file contents",
 			},
-			wantErr: `glob "nonexistent" did not match any files`,
+			wantErr: `include paths did not match any files: [nonexistent]`,
 		},
 		{
 			// Note: we don't exhaustively test every possible FS error here. That's
@@ -727,7 +727,7 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name: "skip_paths_with_custom_ignore",
+			name: "ignore_paths_with_custom_ignore",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
@@ -766,7 +766,7 @@ func TestActionInclude(t *testing.T) {
 			wantIncludedFromDest: map[string]string{"file2.txt": destDirBaseName},
 		},
 		{
-			name: "skip_paths_with_custom_ignore_glob",
+			name: "signore_paths_with_custom_ignore_glob",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
@@ -806,7 +806,7 @@ func TestActionInclude(t *testing.T) {
 			wantIncludedFromDest: map[string]string{"file2.txt": destDirBaseName},
 		},
 		{
-			name: "skip_paths_with_custom_ignore_leading_slash",
+			name: "ignore_paths_with_custom_ignore_leading_slash",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
@@ -860,7 +860,7 @@ func TestActionInclude(t *testing.T) {
 			},
 		},
 		{
-			name: "skip_paths_with_default_ignore",
+			name: "default_ignore",
 			include: &spec.Include{
 				Paths: []*spec.IncludePath{
 					{
@@ -911,6 +911,18 @@ func TestActionInclude(t *testing.T) {
 				"file1.txt": "file 1 template contents",
 			},
 			wantIncludedFromDest: map[string]string{},
+		},
+		{
+			name: "include_from_dest_matches_no_files",
+			include: &spec.Include{
+				Paths: []*spec.IncludePath{
+					{
+						Paths: mdl.Strings("nonexistent.txt"),
+						From:  mdl.S("destination"),
+					},
+				},
+			},
+			wantErr: "include paths did not match any files: [nonexistent.txt]",
 		},
 	}
 
