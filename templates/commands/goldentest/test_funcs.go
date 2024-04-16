@@ -182,7 +182,6 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 
 	stdoutBuf := &strings.Builder{}
 
-	// TODO check result
 	_, err = render.Render(ctx, &render.Params{
 		Clock:               clock.New(),
 		Cwd:                 cwd,
