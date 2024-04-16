@@ -966,3 +966,55 @@ func TestActionInclude(t *testing.T) {
 		})
 	}
 }
+
+func TestPermissionsPreserved(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	templateDir := filepath.Join(tempDir, tempdir.TemplateDirNamePart)
+	scratchDir := filepath.Join(tempDir, tempdir.ScratchDirNamePart)
+
+	include := &spec.Include{
+		Paths: []*spec.IncludePath{
+			{
+				Paths: mdl.Strings("myfile.sh"),
+			},
+		},
+	}
+	templateContents := map[string]abctestutil.ModeAndContents{
+		"myfile.sh": {Mode: common.OwnerRWXPerms, Contents: "my executable file"},
+	}
+
+	abctestutil.WriteAllMode(t, templateDir, templateContents)
+
+	sp := &stepParams{
+		scope:       common.NewScope(nil, nil),
+		scratchDir:  scratchDir,
+		templateDir: templateDir,
+		rp: &Params{
+			FS: &common.ErrorFS{
+				FS: &common.RealFS{},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	err := actionInclude(ctx, include, sp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotTemplateContents := abctestutil.LoadDirMode(t, filepath.Join(tempDir, tempdir.TemplateDirNamePart))
+	if diff := cmp.Diff(gotTemplateContents, templateContents); diff != "" {
+		t.Errorf("template directory should not have been touched (-got,+want): %s", diff)
+	}
+
+	wantScratchContents := map[string]abctestutil.ModeAndContents{
+		"myfile.sh": {Mode: common.OwnerRWXPerms, Contents: "my executable file"},
+	}
+
+	gotScratchContents := abctestutil.LoadDirMode(t, filepath.Join(tempDir, tempdir.ScratchDirNamePart))
+	if diff := cmp.Diff(gotScratchContents, wantScratchContents); diff != "" {
+		t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
+	}
+}
