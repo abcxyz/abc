@@ -266,12 +266,8 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	if len(reversalConflicts) > 0 {
 		return &Result{ReversalConflicts: reversalConflicts}, nil
 	}
-	// else {
-	// 	// TODO somehow provide reversed files to render. Maybe just empty out
-	// 	// reversedDir so the render op doesn't try to find them there?
-	// }
 
-	if _, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
+	renderResult, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
 		Clock:                   p.Clock,
 		Cwd:                     p.CWD,
 		DebugStepDiffs:          p.DebugStepDiffs,
@@ -292,16 +288,12 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		SourceForMessages:       oldManifest.TemplateLocation.Val,
 		Stdout:                  p.Stdout,
 		TempDirBase:             p.TempDirBase,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
 
-	newManifestPath, err := findManifest(filepath.Join(mergeDir, common.ABCInternalDir))
-	if err != nil {
-		return nil, err
-	}
-
-	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, common.ABCInternalDir, newManifestPath))
+	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
 	if err != nil {
 		return nil, err
 	}
@@ -456,27 +448,6 @@ func inputsToMap(inputs []*manifest.Input) map[string]string {
 		out[input.Name.Val] = input.Value.Val
 	}
 	return out
-}
-
-// Finds a manifest file in the given directory by globbing. If there's not
-// exactly one match, that's an error. The returned string is just the basename,
-// with no directory.
-func findManifest(dir string) (string, error) {
-	joined := filepath.Join(dir, "manifest*.yaml")
-	matches, err := filepath.Glob(joined)
-	if err != nil {
-		return "", fmt.Errorf("filepath.Glob(%q): %w", joined, err)
-	}
-
-	if len(matches) == 0 {
-		return "", fmt.Errorf("no manifest was found in %q", dir)
-	}
-	if len(matches) > 1 {
-		return "", fmt.Errorf("multiple manifests were found in %q: %s",
-			dir, strings.Join(matches, ", "))
-	}
-
-	return filepath.Base(matches[0]), nil
 }
 
 // detectUnmergedConflicts looks for any *.abcmerge_* files in the given directory,
