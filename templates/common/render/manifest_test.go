@@ -241,7 +241,6 @@ output_files: []
 			abctestutil.WriteAll(t, templateDir, tc.templateContents)
 			abctestutil.WriteAll(t, destDir, tc.destDirContents)
 
-			// TODO wantManifestPath
 			gotPath, err := writeManifest(&writeManifestParams{
 				clock:        clk,
 				destDir:      destDir,
