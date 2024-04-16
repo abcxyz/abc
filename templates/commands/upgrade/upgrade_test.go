@@ -130,7 +130,6 @@ incoming file: greet.txt.abcmerge_from_new_template
 
 			tempBase := t.TempDir()
 			destDir := filepath.Join(tempBase, "dest_dir")
-			manifestDir := filepath.Join(destDir, common.ABCInternalDir)
 			templateDir := filepath.Join(tempBase, "template_dir")
 
 			// Make tempBase into a valid git repo.
@@ -150,7 +149,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 
 			clk := clock.NewMock()
 
-			if err := render.Render(ctx, &render.Params{
+			renderResult, err := render.Render(ctx, &render.Params{
 				Clock:       clk,
 				Cwd:         tempBase,
 				DestDir:     destDir,
@@ -159,7 +158,8 @@ incoming file: greet.txt.abcmerge_from_new_template
 				Manifest:    true,
 				OutDir:      destDir,
 				TempDirBase: tempBase,
-			}); err != nil {
+			})
+			if err != nil {
 				t.Fatal(err)
 			}
 
@@ -167,8 +167,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 				tc.localEdits(t, destDir)
 			}
 
-			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
-			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
 			if err := os.RemoveAll(templateDir); err != nil {
 				t.Fatal(err)
@@ -360,7 +359,6 @@ steps:
 			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
 			destDir := filepath.Join(tempBase, "dest_dir")
-			manifestDir := filepath.Join(destDir, common.ABCInternalDir)
 			templateDir := filepath.Join(tempBase, "template_dir")
 			ctx := context.Background()
 
@@ -374,7 +372,7 @@ steps:
 				t.Fatal(err)
 			}
 
-			if err := render.Render(ctx, &render.Params{
+			renderResult, err := render.Render(ctx, &render.Params{
 				Clock:       clock.New(),
 				Cwd:         tempBase,
 				DestDir:     destDir,
@@ -383,14 +381,14 @@ steps:
 				Manifest:    true,
 				OutDir:      destDir,
 				TempDirBase: tempBase,
-			}); err != nil {
+			})
+			if err != nil {
 				t.Fatal(err)
 			}
 
 			cmd := &Command{skipPromptTTYCheck: true}
 
-			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
-			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
 			abctestutil.WriteAll(t, templateDir, tc.upgradedTemplate)
 

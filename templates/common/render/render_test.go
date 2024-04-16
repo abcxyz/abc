@@ -1314,7 +1314,8 @@ steps:
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			err := Render(ctx, p)
+			// TODO check result
+			result, err := Render(ctx, p)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
@@ -1323,6 +1324,9 @@ steps:
 				if strings.Count(errStr, " at line ") > 1 {
 					t.Errorf(`this error message reported the "at line" location more than once: %q`, errStr)
 				}
+			}
+			if err == nil {
+				verifyManifest(ctx, t, result.ManifestPath != "", filepath.Join(outDir, result.ManifestPath), tc.wantManifest)
 			}
 
 			if diff := cmp.Diff(stdoutBuf.String(), tc.wantStdout); diff != "" {
@@ -1353,8 +1357,6 @@ steps:
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			verifyManifest(ctx, t, tc.wantManifest, filepath.Join(outDir, ".abc"))
-
 			var gotBackupContents map[string]string
 			backupSubdir, ok := abctestutil.TestMustGlob(t, filepath.Join(backupDir, "*")) // When a backup directory is created, an unpredictable timestamp is added, hence the "*"
 			if ok {
@@ -1377,23 +1379,18 @@ steps:
 	}
 }
 
-func verifyManifest(ctx context.Context, tb testing.TB, want *manifest.Manifest, manifestDir string) {
+func verifyManifest(ctx context.Context, tb testing.TB, gotManifest bool, manifestPath string, want *manifest.Manifest) {
 	tb.Helper()
 
-	baseName, err := abctestutil.FindManifest(manifestDir)
-	if err != nil {
-		tb.Fatal(err)
+	if !gotManifest {
+		if want == nil {
+			// No manifest was outputted, and none was expected, so that's a success
+			return
+		}
+		tb.Errorf("got no manifest, but wanted %v", want)
 	}
 
-	if baseName == "" && want == nil {
-		// No manifest was outputted, and none was expected, so that's a success
-		return
-	}
-
-	var got *manifest.Manifest
-	if baseName != "" {
-		got = abctestutil.MustLoadManifest(ctx, tb, filepath.Join(manifestDir, baseName))
-	}
+	got := abctestutil.MustLoadManifest(ctx, tb, manifestPath)
 
 	opts := []cmp.Option{
 		// Don't force test authors to assert the line and column numbers
