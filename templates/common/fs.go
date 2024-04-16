@@ -423,7 +423,6 @@ func JoinIfRelative(cwd, path string) string {
 	return filepath.Join(cwd, path)
 }
 
-
 // Exists returns whether the given path is a file or directory that exists. We
 // wrote this wrapper because it's a little complex and irritating to deal with
 // the way that os.Stat() considers nonexistence to be an error.

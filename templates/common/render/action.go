@@ -163,7 +163,7 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string, ski
 			seenPaths[absPath] = struct{}{}
 			exists, err := common.Exists(absPath)
 			if err != nil {
-				return nil, err
+				return nil, err //nolint:wrapcheck
 			}
 			if !exists {
 				continue
