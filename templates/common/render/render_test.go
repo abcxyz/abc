@@ -1314,7 +1314,6 @@ steps:
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
-			// TODO check result
 			result, err := Render(ctx, p)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
