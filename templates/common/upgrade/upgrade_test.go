@@ -137,6 +137,7 @@ steps:
       with: 'world'`,
 			},
 			want: &Result{
+				Type:         Success,
 				NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -148,7 +149,7 @@ steps:
 		},
 		{
 			name: "short_circuit_if_already_latest_version",
-			want: &Result{AlreadyUpToDate: true},
+			want: &Result{Type: AlreadyUpToDate},
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -172,6 +173,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -218,6 +220,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: DeleteAction, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -260,6 +263,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				NonConflicts: []ActionTaken{
 					{
 						Action: Noop,
@@ -315,6 +319,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -353,6 +358,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				Conflicts: []ActionTaken{
 					{
 						Action:               EditEditConflict,
@@ -399,6 +405,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				Conflicts: []ActionTaken{
 					{
 						Action:               DeleteEditConflict,
@@ -450,6 +457,7 @@ steps:
 				"spec.yaml":                      includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "template_changes_this_file.txt"},
 					{Action: Noop, Path: "user_deletes_this_file.txt"},
@@ -499,6 +507,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "out.txt"},
 					{Action: WriteNew, Path: "some_other_file.txt"},
@@ -550,6 +559,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				NonConflicts: []ActionTaken{
 					{
 						Action: "noop",
@@ -611,6 +621,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: "noop", Path: "out.txt"},
 					{Action: "noop", Path: "some_other_file.txt"},
@@ -722,7 +733,7 @@ steps:
 `,
 			},
 			want: &Result{
-				AlreadyUpToDate: false,
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{
 						Action:      "noop",
