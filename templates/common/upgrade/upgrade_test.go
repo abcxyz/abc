@@ -762,7 +762,6 @@ steps:
 
 			tempBase := t.TempDir()
 			destDir := filepath.Join(tempBase, "dest_dir")
-			manifestDir := filepath.Join(destDir, common.ABCInternalDir)
 			templateDir := filepath.Join(tempBase, "template_dir")
 
 			// Make tempBase into a valid git repo.
@@ -775,10 +774,9 @@ steps:
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 			clk := clock.NewMock()
 			clk.Set(beforeUpgradeTime)
-			mustRender(t, ctx, clk, tempBase, templateDir, destDir)
+			renderResult := mustRender(t, ctx, clk, tempBase, templateDir, destDir)
 
-			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
-			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
 			assertManifest(ctx, t, "before upgrade", tc.wantManifestBeforeUpgrade, manifestFullPath)
 
@@ -914,7 +912,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 	}
 }
 
-func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) {
+func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) *render.Result {
 	tb.Helper()
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
@@ -925,7 +923,7 @@ func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, t
 		tb.Fatal(err)
 	}
 
-	if err := render.Render(ctx, &render.Params{
+	result, err := render.Render(ctx, &render.Params{
 		Clock:       clk,
 		Cwd:         tempBase,
 		DestDir:     destDir,
@@ -934,9 +932,11 @@ func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, t
 		Manifest:    true,
 		OutDir:      destDir,
 		TempDirBase: tempBase,
-	}); err != nil {
+	})
+	if err != nil {
 		tb.Fatal(err)
 	}
+	return result
 }
 
 // A convenience function for "I want a copy of this manifest but with one small

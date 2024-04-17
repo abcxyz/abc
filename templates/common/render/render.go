@@ -90,6 +90,14 @@ type Params struct {
 	// The value of --git-protocol.
 	GitProtocol string
 
+	// An optional extra directory that will be copied from in the case where an
+	// "include" action has "from: destination". This is in addition to DestDir
+	// above. The include action will copy from DestDir first and then from this
+	// directory afterward, so files in this directory will take precedence.
+	// Essentially, files in this dir are overlaid on top of other includes
+	// files in an include-from-destination operation.
+	IncludeFromDestExtraDir string
+
 	// The value of --input-files.
 	InputFiles []string
 
@@ -134,6 +142,21 @@ type Params struct {
 	TempDirBase string
 }
 
+// Result gives some metadata about the outcome of the render operation.
+type Result struct {
+	// IncludedFromDestination is a set of files that were the subject of an
+	// "include" action that had "from: destination". This exists primarily for
+	// the sake of the "upgrade" command, which needs to know this. Other
+	// callers should not use this field.
+	IncludedFromDestination []string
+
+	// ManifestPath, if set, is the relative path to the manifest file, starting
+	// from the destination directory (e.g. ".abc/manifest_123.yaml"). If
+	// manifest output wasn't enabled (see the --manifest flag), then this will
+	// be empty.
+	ManifestPath string
+}
+
 // Render does the full sequence of steps involved in rendering a template. It
 // downloads the template, parses the spec file, read template inputs, conditionally
 // prompts the user for missing inputs, runs all the template actions, commits the
@@ -141,7 +164,7 @@ type Params struct {
 //
 // This is a library function because template rendering is a reusable operation
 // that is called as a subroutine by "golden-test" and "upgrade" commands.
-func Render(ctx context.Context, p *Params) (rErr error) {
+func Render(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "Render")
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
@@ -149,19 +172,16 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 
 	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
 	if err != nil {
-		return err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "created temporary template directory",
 		"path", templateDir)
 
 	logger.DebugContext(ctx, "downloading/copying template")
-	p = copyParams(p)
-	if p.DestDir == "" {
-		p.DestDir = p.OutDir
-	}
+
 	dlMeta, err := p.Downloader.Download(ctx, p.Cwd, templateDir, p.DestDir)
 	if err != nil {
-		return fmt.Errorf("failed to download/copy template: %w", err)
+		return nil, fmt.Errorf("failed to download/copy template: %w", err)
 	}
 	logger.DebugContext(ctx, "downloaded source template to temporary directory",
 		"destination", templateDir)
@@ -169,25 +189,20 @@ func Render(ctx context.Context, p *Params) (rErr error) {
 	return RenderAlreadyDownloaded(ctx, dlMeta, templateDir, p)
 }
 
-// copyParams returns a shallow copy of the input params. This lets us fill in
-// default values without affect the caller's copy of the params.
-func copyParams(p *Params) *Params {
-	cp := *p
-	return &cp
-}
-
 // RenderAlreadyDownloaded is for the unusual case where the template has
 // already been downloaded to the local filesystem. Most callers should prefer
 // to call Render() instead.
 //
 // The Params.Downloader field is ignored by this function.
-func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.DownloadMetadata, templateDir string, p *Params) (rErr error) {
+func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.DownloadMetadata, templateDir string, p *Params) (_ *Result, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "RenderAlreadyDownloaded")
+
+	p = fillDefaults(p)
 
 	logger.DebugContext(ctx, "loading spec file")
 	spec, err := specutil.Load(ctx, p.FS, templateDir, p.SourceForMessages)
 	if err != nil {
-		return err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	logger.DebugContext(ctx, "resolving inputs")
@@ -202,7 +217,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 		Spec:                spec,
 	})
 	if err != nil {
-		return err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
@@ -210,23 +225,23 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 
 	scratchDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.ScratchDirNamePart)
 	if err != nil {
-		return err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 	logger.DebugContext(ctx, "created temporary scratch directory",
 		"path", scratchDir)
 
 	debugStepDiffsDir, err := initDebugStepDiffsDir(ctx, p, scratchDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	scope, extraPrintVars, err := scopes(resolvedInputs, p, spec.Features, dlMeta.Vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := rules.ValidateRules(ctx, scope, spec.Rules); err != nil {
-		return err //nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	sp := &stepParams{
@@ -244,18 +259,19 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	logger.DebugContext(ctx, "executing template steps")
 
 	if err := executeSteps(ctx, spec.Steps, sp); err != nil {
-		return err
+		return nil, err
 	}
 
 	logger.DebugContext(ctx, "committing rendered output")
-	if err := commitTentatively(ctx, p, &commitParams{
+	manifestRelPath, err := commitTentatively(ctx, p, &commitParams{
 		dlMeta:           dlMeta,
 		includedFromDest: sp.includedFromDest,
 		inputs:           resolvedInputs,
 		scratchDir:       scratchDir,
 		templateDir:      templateDir,
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	if p.DebugStepDiffs {
@@ -270,7 +286,10 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 
 	logger.DebugContext(ctx, "render operation complete", "source", p.SourceForMessages)
 
-	return nil
+	return &Result{
+		IncludedFromDestination: maps.Keys(sp.includedFromDest),
+		ManifestPath:            manifestRelPath,
+	}, nil
 }
 
 // scopes returns two things:
@@ -546,7 +565,7 @@ type commitParams struct {
 // commitTentatively writes the contents of the scratch directory to the output
 // directory. We first do a dry-run to check that the copy is likely to succeed,
 // so we don't leave a half-done mess in the user's dest directory.
-func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
+func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manifestPath string, _ error) {
 	// Design decision: it's OK to hold these patches in memory. It's unlikely
 	// that anyone will create such huge patches with abc that they'll run out
 	// of RAM.
@@ -555,12 +574,12 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 	// For each file that was included-from-destination, create a patch that
 	// reverses the change. This might be used in the future during a template
 	// upgrade operation.
-	for relPath := range cp.includedFromDest {
-		destPath := filepath.Join(p.DestDir, relPath)
+	for relPath, fromDir := range cp.includedFromDest {
+		destPath := filepath.Join(fromDir, relPath)
 		srcPath := filepath.Join(cp.scratchDir, relPath)
-		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, p.DestDir)
+		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, fromDir)
 		if err != nil {
-			return err //nolint:wrapcheck
+			return "", err //nolint:wrapcheck
 		}
 		if diff != "" {
 			includeFromDestPatches[relPath] = diff
@@ -570,11 +589,11 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 	for _, dryRun := range []bool{true, false} {
 		outputHashes, err := commit(ctx, dryRun, p, cp.scratchDir, cp.includedFromDest)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		if p.Manifest {
-			if err := writeManifest(&writeManifestParams{
+			if manifestPath, err = writeManifest(&writeManifestParams{
 				clock:                  p.Clock,
 				cwd:                    p.Cwd,
 				dlMeta:                 cp.dlMeta,
@@ -586,11 +605,11 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 				outputHashes:           outputHashes,
 				templateDir:            cp.templateDir,
 			}); err != nil {
-				return err
+				return "", err
 			}
 		}
 	}
-	return nil
+	return manifestPath, nil
 }
 
 // commit copies the contents of scratchDir to rp.Dest. If dryRun==true, then
@@ -671,4 +690,16 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		logger.InfoContext(ctx, "template render succeeded")
 	}
 	return params.OutHashes, nil
+}
+
+// fillDefaults takes the user-provided upgrade parameters and inserts default
+// values for fields that were unfilled that actually have defaults. It returns
+// a shallow copy of the input to avoid mutating the Params struct that the user
+// can see.
+func fillDefaults(p *Params) *Params {
+	out := *p
+	if out.DestDir == "" {
+		out.DestDir = out.OutDir
+	}
+	return &out
 }

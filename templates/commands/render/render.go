@@ -107,7 +107,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err //nolint:wrapcheck
 	}
 
-	return render.Render(ctx, &render.Params{ //nolint:wrapcheck
+	_, err = render.Render(ctx, &render.Params{
 		BackupDir:            backupDir,
 		Backups:              true,
 		Clock:                clock.New(),
@@ -130,6 +130,8 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		SourceForMessages:    c.flags.Source,
 		Stdout:               c.Stdout(),
 	})
+
+	return err //nolint:wrapcheck
 }
 
 // destOK makes sure that the output directory looks sane.
