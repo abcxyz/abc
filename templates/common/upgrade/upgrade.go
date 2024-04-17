@@ -116,16 +116,39 @@ type Params struct {
 	TempDirBase string
 }
 
+type ResultType string
+
+const (
+	// This is the value of Result.Type when the upgrade was vacuously
+	// successful because the template is already on the latest version.
+	AlreadyUpToDate ResultType = "already_up_to_date"
+
+	// This is the value of Result.Type when there was an upgrade and it was
+	// successful, and no user intervention is needed.
+	Success ResultType = "success"
+
+	// This is the value of Result.Type when abc tried to apply the reversal
+	// patches from the manifest to included-from-destination files, and the
+	// patches could not be applied cleanly. User intervention is needed, and
+	// the ReversalConflicts field should be used.
+	PatchReversalConflict ResultType = "patch_reversal_conflict"
+
+	// The new version of the template conflicted with local modifications and
+	// manual resolution is required. The Conflicts field should be used.
+	MergeConflict ResultType = "merge_conflict"
+)
+
 // Result is returned from Upgrade if there's no error. It may indicate that
 // there were merge conflicts requiring manual resolution.
 type Result struct {
 	// If no upgrade was done because this installation of the template is
 	// already on the latest version, then this will be true and all other
 	// fields in this struct will have zero values.
-	// TODO(upgrade): make this an enum with the various possible results
-	AlreadyUpToDate bool
+	Type ResultType
 
-	// TODO doc
+	// The paths to files where abc tried to apply the reversal
+	// patches from the manifest to included-from-destination files, and the
+	// patches could not be applied cleanly. Manual resolution is needed.
 	ReversalConflicts []*ReversalConflict
 
 	// Conflicts is the set of files that require manual intervention by the
@@ -143,6 +166,14 @@ type Result struct {
 	// This is mutually exclusive with "Conflicts". Each file is in only one of
 	// the two lists.
 	NonConflicts []ActionTaken
+}
+
+// ReversalConflict happens when abc tried to apply the reversal
+// patches from the manifest to included-from-destination files, and the patches
+// could not be applied cleanly.
+type ReversalConflict struct {
+	// The relative path to the file that needs manual resolution.
+	Path string
 }
 
 // ActionTaken represents an output of the merge operation. Every file that's
@@ -244,7 +275,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
-		return &Result{AlreadyUpToDate: true}, nil
+		return &Result{Type: AlreadyUpToDate}, nil
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
@@ -315,7 +346,12 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 
 	conflicts, nonConflicts := partitionConflicts(actionsTaken)
 
+	resultType := MergeConflict
+	if len(conflicts) == 0 {
+		resultType = Success
+	}
 	return &Result{
+		Type:         resultType,
 		Conflicts:    conflicts,
 		NonConflicts: nonConflicts,
 	}, nil
@@ -492,10 +528,6 @@ func partitionConflicts(actionsTaken []ActionTaken) (conflicts, nonConflicts []A
 		nonConflicts = append(nonConflicts, a)
 	}
 	return conflicts, nonConflicts
-}
-
-type ReversalConflict struct {
-	Path string
 }
 
 func reversePatches(ctx context.Context, fs common.FS, preReversed []string, installedDir, reversedDir string, oldManifest *manifest.Manifest) ([]*ReversalConflict, error) {

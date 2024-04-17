@@ -17,6 +17,7 @@ package upgrade
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -56,8 +57,9 @@ steps:
 		localEdits              func(tb testing.TB, installedDir string)
 		upgradedTemplate        map[string]string
 
-		wantStdout string
-		wantErr    []string
+		wantExitCode int
+		wantStdout   string
+		wantErr      []string
 	}{
 		{
 			name: "noop_because_template_is_already_up_to_date",
@@ -105,6 +107,8 @@ steps:
 				abctestutil.Overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
 				abctestutil.Overwrite(tb, installedDir, "color.txt", "red\n")
 			},
+			wantExitCode: 2,
+			wantErr:      []string{"exit code 2"},
 			wantStdout: mergeInstructions + `
 
 --
@@ -120,6 +124,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 --
 `,
 		},
+		// TODO(upgrade): tests for patch reversal conflicts
 	}
 
 	for _, tc := range cases {
@@ -189,11 +194,20 @@ incoming file: greet.txt.abcmerge_from_new_template
 					t.Error(diff)
 				}
 			}
+
+			gotExitCode := 0
+			var exitCodeErr *common.ExitCodeError
+			if errors.As(err, &exitCodeErr) {
+				gotExitCode = exitCodeErr.Code
+			}
+			if gotExitCode != tc.wantExitCode {
+				t.Errorf("got exit code %d, want %d", gotExitCode, tc.wantExitCode)
+			}
+
 			if err != nil && len(tc.wantErr) == 0 {
 				t.Fatal(err)
 			}
 
-			t.Logf("stdout was:\n%s", stdout.String())
 			if diff := cmp.Diff(stdout.String(), tc.wantStdout); diff != "" {
 				t.Errorf("stdout was not as expected (-got,+want): %s", diff)
 			}
