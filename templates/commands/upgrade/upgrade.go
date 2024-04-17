@@ -140,29 +140,32 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err //nolint:wrapcheck
 	}
 
-	if r.AlreadyUpToDate {
+	switch r.Type {
+	case upgrade.AlreadyUpToDate:
 		fmt.Fprintf(c.Stdout(), "Already up to date with latest template version\n")
 		return nil
-	}
-
-	if len(r.Conflicts) == 0 {
+	case upgrade.Success:
 		fmt.Fprintf(c.Stdout(), "Upgrade complete with no conflicts\n")
 		return nil
-	}
-
-	// TODO(upgrade):
-	//  - suggest diff / meld / vim commands?
-	fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n--\n")
-	for _, cf := range r.Conflicts {
-		fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
-		fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
-		if cf.OursPath != "" {
-			fmt.Fprintf(c.Stdout(), "our file was renamed to: %s\n", cf.OursPath)
+	case upgrade.MergeConflict:
+		// TODO(upgrade):
+		//  - suggest diff / meld / vim commands?
+		fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n--\n")
+		for _, cf := range r.Conflicts {
+			fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
+			fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
+			if cf.OursPath != "" {
+				fmt.Fprintf(c.Stdout(), "our file was renamed to: %s\n", cf.OursPath)
+			}
+			if cf.IncomingTemplatePath != "" {
+				fmt.Fprintf(c.Stdout(), "incoming file: %s\n", cf.IncomingTemplatePath)
+			}
+			fmt.Fprintf(c.Stdout(), "--\n")
 		}
-		if cf.IncomingTemplatePath != "" {
-			fmt.Fprintf(c.Stdout(), "incoming file: %s\n", cf.IncomingTemplatePath)
-		}
-		fmt.Fprintf(c.Stdout(), "--\n")
+		return &common.ExitCodeErr{Code: 2}
+	case upgrade.PatchReversalConflict:
+		// TODO(upgrade): include instructions for resolving these conflicts
+		return &common.ExitCodeErr{Code: 3}
 	}
 
 	return nil
