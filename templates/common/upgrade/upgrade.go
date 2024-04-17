@@ -604,11 +604,6 @@ func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manif
 			"installed_path", installedPath,
 			"reject_path", rejectPath,
 		)
-		// // TODO(upgrade): save a backup file before overwriting
-		// TODO delete this, we only do this with --merge
-		// if err := common.Copy(ctx, &common.RealFS{}, outPath, installedPath); err != nil {
-		// 	return nil, fmt.Errorf("error copying merge-conflict file from %q to %q: %w", outPath, installedPath, err)
-		// }
 		return &ReversalConflict{
 			Path: f.File.Val, // TODO(upgrade): should this be absolute instead?
 		}, nil

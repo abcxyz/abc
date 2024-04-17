@@ -96,34 +96,34 @@ type decideMergeParams struct {
 	// Is this file in the "old" manifest? If so, that means it was output by
 	// the template version that was installed prior to the template version
 	// that we're upgrading to right now.
-	IsInOldManifest bool
+	isInOldManifest bool
 
 	// Is this file in the "new" manifest? If so, that means it is being output
 	// by the new, upgraded version of the template.
-	IsInNewManifest bool
+	isInNewManifest bool
 
 	// Only used if IsInOldManifest==true. Does the preexisting file on the
 	// filesystem (before the upgrade began) match the hash value in the old
 	// manifest? If the hash doesn't match, that means the user made some
 	// customizations.
-	OldFileMatchesOldHash hashResult // TODO make this a bool?
+	oldFileMatchesOldHash hashResult // TODO make this a bool?
 
 	// Only used if IsInNewManifest==true. Does the new file being output by
 	// the new version of the template match the hash value in the old
 	// manifest? If the hash matches, that means that the current template
 	// outputs identical file contents to the old template.
-	NewFileMatchesOldHash hashResult // TODO make this a hashresult?
+	newFileMatchesOldHash hashResult // TODO make this a hashresult?
 
 	// Only used if IsInNewManifest==true and isInOldManifest==false. Does the
 	// preexisting file on the filesystem (before the upgrade began) match the
 	// hash value in the new manifest? If so, that means that an add/add
 	// conflict can be avoided because the both parties added identical file
 	// contents.
-	OldFileMatchesNewHash hashResult
+	oldFileMatchesNewHash hashResult
 
 	// True if this file was included by the "include" action from the
 	// destination folder rather than the template folder (somewhat rare).
-	IsIncludedFromDestination bool
+	isIncludedFromDestination bool
 }
 
 // decideMerge is the core of the algorithm that merges the template output with
@@ -135,8 +135,8 @@ type decideMergeParams struct {
 func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	switch {
 	// Case: this file was not output by the old template version, but is output by this template version.
-	case !o.IsInOldManifest && o.IsInNewManifest:
-		switch o.OldFileMatchesNewHash {
+	case !o.isInOldManifest && o.isInNewManifest:
+		switch o.oldFileMatchesNewHash {
 		case match:
 			return &mergeDecision{
 				action:           Noop,
@@ -155,19 +155,19 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		}
 
 	// Case: this file was output by the old template version, but not by the new template version.
-	case o.IsInOldManifest && !o.IsInNewManifest:
+	case o.isInOldManifest && !o.isInNewManifest:
 		switch {
-		case o.OldFileMatchesOldHash == match || o.IsIncludedFromDestination:
+		case o.oldFileMatchesOldHash == match || o.isIncludedFromDestination:
 			return &mergeDecision{
 				action:           DeleteAction,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
 			}, nil
-		case o.OldFileMatchesOldHash == mismatch:
+		case o.oldFileMatchesOldHash == mismatch:
 			return &mergeDecision{
 				action:           EditDeleteConflict,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were local edits",
 			}, nil
-		case o.OldFileMatchesOldHash == absent:
+		case o.oldFileMatchesOldHash == absent:
 			return &mergeDecision{
 				action:           Noop,
 				humanExplanation: "this file was deleted locally by the user, and the new template no longer outputs this file, so we can leave it deleted",
@@ -175,25 +175,25 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		}
 
 	// Case: this file was output by the old template version AND the new template version.
-	case o.IsInOldManifest && o.IsInNewManifest:
-		if o.NewFileMatchesOldHash == match {
+	case o.isInOldManifest && o.isInNewManifest:
+		if o.newFileMatchesOldHash == match {
 			return &mergeDecision{
 				action:           Noop,
 				humanExplanation: "the new template outputs the same contents as the old template, therefore local edits (if any) can remain without needing resolution",
 			}, nil
 		}
 		switch {
-		case o.OldFileMatchesOldHash == match || o.IsIncludedFromDestination:
+		case o.oldFileMatchesOldHash == match || o.isIncludedFromDestination:
 			return &mergeDecision{
 				action:           WriteNew,
 				humanExplanation: "this file was not modified by the user, and the new template has changes to this file",
 			}, nil
-		case o.OldFileMatchesOldHash == mismatch:
+		case o.oldFileMatchesOldHash == mismatch:
 			return &mergeDecision{
 				action:           EditEditConflict,
 				humanExplanation: "this file was modified by the user, and the template wants to update it, so manual conflict resolution is required",
 			}, nil
-		case o.OldFileMatchesOldHash == absent:
+		case o.oldFileMatchesOldHash == absent:
 			// This is the case where the new template has a version of this
 			// file that's different than the previous template version, but the
 			// user deleted their copy. It's *probably* safe to just leave the
@@ -208,7 +208,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	}
 
 	return nil, fmt.Errorf("this is a bug in abc, please report it at https://github.com/abcxyz/abc/issues/new?template=bug.yaml with this text: IsInOldManifest=%t IsInNewManifest=%t OldFileMatchesOldHash=%q NewFileMatchesOldHash=%q OldFileMatchesNewHash=%q",
-		o.IsInOldManifest, o.IsInNewManifest, o.OldFileMatchesOldHash, o.NewFileMatchesOldHash, o.OldFileMatchesNewHash)
+		o.isInOldManifest, o.isInNewManifest, o.oldFileMatchesOldHash, o.newFileMatchesOldHash, o.oldFileMatchesNewHash)
 }
 
 // mergeAll incorporates the output of the upgraded template version in mergeDir
@@ -254,14 +254,13 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 			}
 		}
 
-		// TODO lower case these field names?
 		hr := &decideMergeParams{
-			IsInOldManifest:           isInOldManifest,
-			IsInNewManifest:           isInNewManifest,
-			OldFileMatchesOldHash:     oldFileMatchesOldHash,
-			NewFileMatchesOldHash:     newFileMatchesOldHash,
-			OldFileMatchesNewHash:     oldFileMatchesNewHash,
-			IsIncludedFromDestination: paths.fromReversed != "",
+			isInOldManifest:           isInOldManifest,
+			isInNewManifest:           isInNewManifest,
+			oldFileMatchesOldHash:     oldFileMatchesOldHash,
+			newFileMatchesOldHash:     newFileMatchesOldHash,
+			oldFileMatchesNewHash:     oldFileMatchesNewHash,
+			isIncludedFromDestination: paths.fromReversed != "",
 		}
 
 		decision, err := decideMerge(hr)
@@ -293,12 +292,11 @@ const (
 // oneFileMergePaths contains the paths for all the different versions of a
 // file.
 type oneFileMergePaths struct {
-	// TODO doc and maybe rename all these fields.
+	// relative is the path within the scratch directory of the file we're
+	// considering.
 	relative string
 
-	// Subtle point: this file path can point to inside the user-visible
-	// destination folder (for files included normally) or inside the
-	// reversed-patch directory (for files that were included-from-destination).
+	// TODO
 	fromOldLocal string
 
 	// Optional. In the (somewhat rare) case where this file was

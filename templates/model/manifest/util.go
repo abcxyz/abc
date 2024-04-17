@@ -26,6 +26,3 @@ func HashesAsMap(hs []*manifest.OutputFile) map[string]string {
 	}
 	return out
 }
-
-// // FileSet returns a "set" containing the filenames in the manifest.
-// func FileSet(
