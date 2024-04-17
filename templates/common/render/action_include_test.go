@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -36,6 +37,8 @@ import (
 func TestActionInclude(t *testing.T) {
 	t.Parallel()
 
+	const destDirBaseName = "dest"
+
 	cases := []struct {
 		name                 string
 		include              *spec.Include
@@ -44,7 +47,7 @@ func TestActionInclude(t *testing.T) {
 		inputs               map[string]string
 		ignorePatterns       []model.String
 		wantScratchContents  map[string]string
-		wantIncludedFromDest map[string]struct{}
+		wantIncludedFromDest map[string]string
 		statErr              error
 		wantErr              string
 	}{
@@ -643,7 +646,7 @@ func TestActionInclude(t *testing.T) {
 			wantScratchContents: map[string]string{
 				"file1.txt": "file1 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{"file1.txt": {}},
+			wantIncludedFromDest: map[string]string{"file1.txt": destDirBaseName},
 		},
 		{
 			name: "include_subdir_from_destination",
@@ -666,7 +669,7 @@ func TestActionInclude(t *testing.T) {
 			wantScratchContents: map[string]string{
 				"subdir/file2.txt": "file2 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{"subdir/file2.txt": {}},
+			wantIncludedFromDest: map[string]string{"subdir/file2.txt": destDirBaseName},
 		},
 		{
 			name: "include_glob_from_destination",
@@ -691,9 +694,9 @@ func TestActionInclude(t *testing.T) {
 				"file1.txt": "file1 contents",
 				"file2.txt": "file1 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{
-				"file1.txt": {},
-				"file2.txt": {},
+			wantIncludedFromDest: map[string]string{
+				"file1.txt": destDirBaseName,
+				"file2.txt": destDirBaseName,
 			},
 		},
 		{
@@ -718,9 +721,9 @@ func TestActionInclude(t *testing.T) {
 				"file1.txt":        "file1 contents",
 				"subdir/file2.txt": "file2 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{
-				"file1.txt":        {},
-				"subdir/file2.txt": {},
+			wantIncludedFromDest: map[string]string{
+				"file1.txt":        destDirBaseName,
+				"subdir/file2.txt": destDirBaseName,
 			},
 		},
 		{
@@ -760,7 +763,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder3/file3.txt": "file 3 contents",
 				"file2.txt":                 "file2 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{"file2.txt": {}},
+			wantIncludedFromDest: map[string]string{"file2.txt": destDirBaseName},
 		},
 		{
 			name: "skip_paths_with_custom_ignore_glob",
@@ -800,7 +803,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder3/file3.txt": "file 3 contents",
 				"file2.txt":                 "file2 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{"file2.txt": {}},
+			wantIncludedFromDest: map[string]string{"file2.txt": destDirBaseName},
 		},
 		{
 			name: "skip_paths_with_custom_ignore_leading_slash",
@@ -848,12 +851,12 @@ func TestActionInclude(t *testing.T) {
 				"folder1/folder3/file3.txt":              "file 3 contents",
 				"file2.txt":                              "file2 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{
-				"dest_folder1/file1.txt":                 {},
-				"dest_folder1/folder0/file0.txt":         {},
-				"dest_folder1/folder1/file1.txt":         {},
-				"dest_folder1/folder1/folder0/file0.txt": {},
-				"file2.txt":                              {},
+			wantIncludedFromDest: map[string]string{
+				"dest_folder1/file1.txt":                 destDirBaseName,
+				"dest_folder1/folder0/file0.txt":         destDirBaseName,
+				"dest_folder1/folder1/file1.txt":         destDirBaseName,
+				"dest_folder1/folder1/folder0/file0.txt": destDirBaseName,
+				"file2.txt":                              destDirBaseName,
 			},
 		},
 		{
@@ -883,7 +886,7 @@ func TestActionInclude(t *testing.T) {
 				"folder1/file1.txt": "file 1 contents",
 				"file1.txt":         "file1 contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{"file1.txt": {}},
+			wantIncludedFromDest: map[string]string{"file1.txt": destDirBaseName},
 		},
 		{
 			name: "include_from_dest_forgotten_on_reinclude",
@@ -907,7 +910,7 @@ func TestActionInclude(t *testing.T) {
 			wantScratchContents: map[string]string{
 				"file1.txt": "file 1 template contents",
 			},
-			wantIncludedFromDest: map[string]struct{}{},
+			wantIncludedFromDest: map[string]string{},
 		},
 	}
 
@@ -931,7 +934,7 @@ func TestActionInclude(t *testing.T) {
 
 			sp := &stepParams{
 				ignorePatterns:   tc.ignorePatterns,
-				includedFromDest: make(map[string]struct{}),
+				includedFromDest: make(map[string]string),
 				scope:            common.NewScope(tc.inputs, nil),
 				scratchDir:       scratchDir,
 				templateDir:      templateDir,
@@ -960,7 +963,19 @@ func TestActionInclude(t *testing.T) {
 				t.Errorf("scratch directory contents were not as expected (-got,+want): %s", diff)
 			}
 
-			if diff := cmp.Diff(sp.includedFromDest, tc.wantIncludedFromDest, cmpopts.EquateEmpty()); diff != "" {
+			opts := []cmp.Option{
+				cmpopts.EquateEmpty(),
+				cmp.Comparer(func(s1, s2 string) bool {
+					// We can't write our test assertions to include the temp
+					// directory, so dynamically rewrite the paths in the output
+					// files to remove the temp directory name.
+					trim := func(s string) string {
+						return strings.TrimPrefix(s, tempDir+"/")
+					}
+					return trim(s1) == trim(s2)
+				}),
+			}
+			if diff := cmp.Diff(sp.includedFromDest, tc.wantIncludedFromDest, opts...); diff != "" {
 				t.Errorf("includedFromDest was not as expected (-got,+want): %s", diff)
 			}
 		})

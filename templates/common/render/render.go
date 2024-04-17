@@ -232,7 +232,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	sp := &stepParams{
 		debugDiffsDir:    debugStepDiffsDir,
 		ignorePatterns:   spec.Ignore,
-		includedFromDest: make(map[string]struct{}),
+		includedFromDest: make(map[string]string),
 		extraPrintVars:   extraPrintVars,
 		features:         spec.Features,
 		rp:               p,
@@ -389,19 +389,18 @@ type stepParams struct {
 	// ignored while being copied to destination directory.
 	ignorePatterns []model.String
 
-	// includedFromDest is a list of every file (no directories) that was copied
-	// from the destination directory into the scratch directory. We want to
-	// track these because they are treated specially in the final phase of
-	// rendering. When we commit the template output from the scratch directory
-	// into the destination directory, these paths are always allowed to be
-	// overwritten. For other files not in this list, it's an error to try to
-	// write to an existing file. This whole scheme supports the feature of
-	// modifying files that already exist in the destination.
-	//
-	// These are paths relative to the --dest directory (which is the same thing
-	// as being relative to the scratch directory, the paths within these dirs
-	// are the same).
-	includedFromDest map[string]struct{}
+	// includedFromDest tracks files (no directories) that were copied from the
+	// destination directory into the scratch directory. The map keys are the
+	// location of the file in the scratch directory, and the map values are the
+	// directory from which the file was taken (sometimes this gets complicated
+	// there are multiple "destination" directories. We want to track these
+	// because they are treated specially in the final phase of rendering. When
+	// we commit the template output from the scratch directory into the
+	// destination directory, these paths are always allowed to be overwritten.
+	// For other files not in this list, it's an error to try to write to an
+	// existing file. This whole scheme supports the feature of modifying files
+	// that already exist in the destination.
+	includedFromDest map[string]string
 
 	// scope contains all variable names that are in scope. This includes
 	// user-provided scope, as well as any programmatically created variables
@@ -540,7 +539,7 @@ type commitParams struct {
 	dlMeta           *templatesource.DownloadMetadata
 	scratchDir       string
 	templateDir      string
-	includedFromDest map[string]struct{}
+	includedFromDest map[string]string
 	inputs           map[string]string
 }
 
@@ -602,7 +601,7 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) error {
 // The return value is a map containing a SHA256 hash of each file in
 // scratchDir. The keys are paths relative to scratchDir, using forward slashes
 // regardless of the OS.
-func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, includedFromDest map[string]struct{}) (map[string][]byte, error) {
+func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, includedFromDest map[string]string) (map[string][]byte, error) {
 	logger := logging.FromContext(ctx).With("logger", "commit")
 
 	if !dryRun {
