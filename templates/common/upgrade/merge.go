@@ -290,25 +290,29 @@ const (
 )
 
 // oneFileMergePaths contains the paths for all the different versions of a
-// file.
+// file, used by the merge logic that merges the output of the new template with
+// the user's existing template output directory.
 type oneFileMergePaths struct {
 	// relative is the path within the scratch directory of the file we're
 	// considering.
 	relative string
 
-	// TODO
+	// The absolute path of this file in the directory where the template is
+	// already installed.
 	fromOldLocal string
 
-	// Optional. In the (somewhat rare) case where this file was
-	// included-from-destination, this field will be set. It points to the
-	// contents of the file
+	// Optional. In the case where this file was included-from-destination, this
+	// field will be set. It is the absolute path of the file that was output by
+	// the "patch" command.
 	fromReversed string
 
-	// This path only has one case. It always points inside the template
-	// directory.
+	// The absolute path of this file in the merge directory (the temp directory
+	// into which the new template version was rendered).
 	fromNewTemplate string
 }
 
+// newMergePaths locates the various files that might be needed by the merge
+// algorithm.
 func newMergePaths(p *commitParams, relPath string) (*oneFileMergePaths, error) {
 	fromReversed := filepath.Join(p.reversedPatchDir, relPath)
 	if ok, err := common.Exists(fromReversed); err != nil {
@@ -325,6 +329,8 @@ func newMergePaths(p *commitParams, relPath string) (*oneFileMergePaths, error) 
 	}, nil
 }
 
+// actuateMergeDecision actually moves/deletes/copies files to accomplish the
+// result decided on by the merge algorithm.
 func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, decision *mergeDecision, paths *oneFileMergePaths) (ActionTaken, error) {
 	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
 
@@ -338,7 +344,6 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 		"explanation", decision.humanExplanation)
 
 	installedPath := filepath.Join(p.installedDir, paths.relative)
-	// mergePath := filepath.Join(p.mergeDir, relPath)
 
 	actionTaken := ActionTaken{
 		Action:      decision.action,

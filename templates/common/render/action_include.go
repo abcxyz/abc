@@ -146,10 +146,9 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		// can modify files that already exist in the destination.
 		fromDirs = []string{sp.rp.DestDir}
 		if sp.rp.IncludeFromDestExtraDir != "" {
-			// For complicated reasons related to upgrading, we sometimes add
-			// another include source directory that contains files after having
-			// had their include-from-destination patch reversed as part of the
-			// upgrade process.
+			// When upgrading, there are multiple folders to use as sources for
+			// "included-from-destination" files (this is the "reversed patch"
+			// folder, see common/upgrade.go).
 			fromDirs = append(fromDirs, sp.rp.IncludeFromDestExtraDir)
 		}
 	}

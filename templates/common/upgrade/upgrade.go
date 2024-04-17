@@ -100,6 +100,7 @@ type Params struct {
 	// Relative paths where patch reversal has already happened. This is a flag
 	// supplied by the user. This will be set if there were merge conflicts
 	// during patch reversal that were manually resolved by the user.
+	// TODO(upgrade): add this as a CLI flag and plumb it through to here.
 	ReversalAlreadyDone []string
 
 	// The value of --skip-input-validation.
@@ -149,6 +150,8 @@ type Result struct {
 	// The paths to files where abc tried to apply the reversal
 	// patches from the manifest to included-from-destination files, and the
 	// patches could not be applied cleanly. Manual resolution is needed.
+	//
+	// This field should only be used when Type==PatchReversalConflict.
 	ReversalConflicts []*ReversalConflict
 
 	// Conflicts is the set of files that require manual intervention by the
@@ -156,15 +159,16 @@ type Result struct {
 	// was edited by the user and that edit conflicts with changes to that same
 	// file by the upgraded version of the template.
 	//
-	// If the length is 0, then the upgrade was fully successful and no action
-	// is needed
+	// This field should only be used wben Type==MergeConflict.
 	Conflicts []ActionTaken
 
 	// NonConflicts is the set of template output files that do NOT require any
 	// action by the user. Callers are free to ignore this.
 	//
-	// This is mutually exclusive with "Conflicts". Each file is in only one of
-	// the two lists.
+	// This is mutually exclusive with "Conflicts". Each file is in at most one
+	// of the two lists.
+	//
+	// This field should only be used when Type is Success or MergeConflict.
 	NonConflicts []ActionTaken
 }
 
@@ -391,7 +395,8 @@ type commitParams struct {
 	// rendered.
 	mergeDir string
 
-	// TODO doc
+	// The directory that contains files that have already had their
+	// reverse-include-from-destination patches automatically applied.
 	reversedPatchDir string
 
 	// The path to the manifest describing the original template installation
@@ -530,21 +535,44 @@ func partitionConflicts(actionsTaken []ActionTaken) (conflicts, nonConflicts []A
 	return conflicts, nonConflicts
 }
 
-func reversePatches(ctx context.Context, fs common.FS, preReversed []string, installedDir, reversedDir string, oldManifest *manifest.Manifest) ([]*ReversalConflict, error) {
+// reversePatchParams contains the parameters to the reversePatches function.
+type reversePatchesParams struct {
+	fs common.FS
+
+	// The set of files whose patches have already been applied by the user, so
+	// they should be skipped by the user. This comes from a command line flag.
+	preReversed []string
+
+	// installedDir is the directory where the template output is going.
+	installedDir string
+
+	// reversedDir is where reversePatches will store the patches files after
+	// the patches from the manifest have been successfully applied.
+	reversedDir string
+
+	oldManifest *manifest.Manifest
+}
+
+// reversePatches applies each patch stored in the given manifest to its
+// associated file from the manifest. These patches were created by the previous
+// render operation (before the current upgrade operation). There's one patch
+// per file that was included-from-destination, and the patch has the effect of
+// undoing the changes that were made by that template version.
+func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalConflict, error) {
 	var out []*ReversalConflict
-	for _, f := range oldManifest.OutputFiles {
+	for _, f := range p.oldManifest.OutputFiles {
 		if f.Patch == nil || len(f.Patch.Val) == 0 {
 			continue
 		}
 
-		outPath := filepath.Join(reversedDir, f.File.Val)
-		if slices.Contains(preReversed, f.File.Val) {
-			if err := common.Copy(ctx, fs, filepath.Join(installedDir, f.File.Val), outPath); err != nil {
+		outPath := filepath.Join(p.reversedDir, f.File.Val)
+		if slices.Contains(p.preReversed, f.File.Val) {
+			if err := common.Copy(ctx, p.fs, filepath.Join(p.installedDir, f.File.Val), outPath); err != nil {
 				return nil, err //nolint:wrapcheck
 			}
 			continue
 		}
-		conflict, err := reverseOnePatch(ctx, installedDir, outPath, f)
+		conflict, err := reverseOnePatch(ctx, p.installedDir, outPath, f)
 		if err != nil {
 			return nil, err
 		}
@@ -555,6 +583,8 @@ func reversePatches(ctx context.Context, fs common.FS, preReversed []string, ins
 	return out, nil
 }
 
+// reverseOnePatch is a helper for reversePatches that applies a single patch
+// to a single file.
 func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manifest.OutputFile) (*ReversalConflict, error) {
 	logger := logging.FromContext(ctx).With("logger", "reverseOnePatch")
 
@@ -575,8 +605,6 @@ func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manif
 	// merge conflicts inline in the target file. Why don't we? Two reasons:
 	//  - the --merge flag doesn't exist on mac
 	//  - the --merge flag is mutually exclusive with the --fuzz flag
-	//
-	// TODO(upgrade): consider using "git apply" for uniformity across OSes
 	exitCode, err := run.Run(ctx, opts,
 		"patch",
 		"--unified",    // the diff was originally generated with "diff -u"
