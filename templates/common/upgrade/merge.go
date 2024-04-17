@@ -96,30 +96,34 @@ type decideMergeParams struct {
 	// Is this file in the "old" manifest? If so, that means it was output by
 	// the template version that was installed prior to the template version
 	// that we're upgrading to right now.
-	IsInOldManifest bool
+	isInOldManifest bool
 
 	// Is this file in the "new" manifest? If so, that means it is being output
 	// by the new, upgraded version of the template.
-	IsInNewManifest bool
+	isInNewManifest bool
 
 	// Only used if IsInOldManifest==true. Does the preexisting file on the
 	// filesystem (before the upgrade began) match the hash value in the old
 	// manifest? If the hash doesn't match, that means the user made some
 	// customizations.
-	OldFileMatchesOldHash hashResult // TODO make this a bool?
+	oldFileMatchesOldHash hashResult // TODO make this a bool?
 
 	// Only used if IsInNewManifest==true. Does the new file being output by
 	// the new version of the template match the hash value in the old
 	// manifest? If the hash matches, that means that the current template
 	// outputs identical file contents to the old template.
-	NewFileMatchesOldHash hashResult // TODO make this a hashresult?
+	newFileMatchesOldHash hashResult // TODO make this a hashresult?
 
 	// Only used if IsInNewManifest==true and isInOldManifest==false. Does the
 	// preexisting file on the filesystem (before the upgrade began) match the
 	// hash value in the new manifest? If so, that means that an add/add
 	// conflict can be avoided because the both parties added identical file
 	// contents.
-	OldFileMatchesNewHash hashResult
+	oldFileMatchesNewHash hashResult
+
+	// True if this file was included by the "include" action from the
+	// destination folder rather than the template folder (somewhat rare).
+	isIncludedFromDestination bool
 }
 
 // decideMerge is the core of the algorithm that merges the template output with
@@ -131,8 +135,8 @@ type decideMergeParams struct {
 func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	switch {
 	// Case: this file was not output by the old template version, but is output by this template version.
-	case !o.IsInOldManifest && o.IsInNewManifest:
-		switch o.OldFileMatchesNewHash {
+	case !o.isInOldManifest && o.isInNewManifest:
+		switch o.oldFileMatchesNewHash {
 		case match:
 			return &mergeDecision{
 				action:           Noop,
@@ -151,19 +155,19 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		}
 
 	// Case: this file was output by the old template version, but not by the new template version.
-	case o.IsInOldManifest && !o.IsInNewManifest:
-		switch o.OldFileMatchesOldHash {
-		case match:
+	case o.isInOldManifest && !o.isInNewManifest:
+		switch {
+		case o.oldFileMatchesOldHash == match || o.isIncludedFromDestination:
 			return &mergeDecision{
 				action:           DeleteAction,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
 			}, nil
-		case mismatch:
+		case o.oldFileMatchesOldHash == mismatch:
 			return &mergeDecision{
 				action:           EditDeleteConflict,
 				humanExplanation: "this file was output by the old template but is no longer output by the new template, and there were local edits",
 			}, nil
-		case absent:
+		case o.oldFileMatchesOldHash == absent:
 			return &mergeDecision{
 				action:           Noop,
 				humanExplanation: "this file was deleted locally by the user, and the new template no longer outputs this file, so we can leave it deleted",
@@ -171,25 +175,25 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		}
 
 	// Case: this file was output by the old template version AND the new template version.
-	case o.IsInOldManifest && o.IsInNewManifest:
-		if o.NewFileMatchesOldHash == match {
+	case o.isInOldManifest && o.isInNewManifest:
+		if o.newFileMatchesOldHash == match {
 			return &mergeDecision{
 				action:           Noop,
 				humanExplanation: "the new template outputs the same contents as the old template, therefore local edits (if any) can remain without needing resolution",
 			}, nil
 		}
-		switch o.OldFileMatchesOldHash {
-		case match:
+		switch {
+		case o.oldFileMatchesOldHash == match || o.isIncludedFromDestination:
 			return &mergeDecision{
 				action:           WriteNew,
 				humanExplanation: "this file was not modified by the user, and the new template has changes to this file",
 			}, nil
-		case mismatch:
+		case o.oldFileMatchesOldHash == mismatch:
 			return &mergeDecision{
 				action:           EditEditConflict,
 				humanExplanation: "this file was modified by the user, and the template wants to update it, so manual conflict resolution is required",
 			}, nil
-		case absent:
+		case o.oldFileMatchesOldHash == absent:
 			// This is the case where the new template has a version of this
 			// file that's different than the previous template version, but the
 			// user deleted their copy. It's *probably* safe to just leave the
@@ -204,7 +208,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	}
 
 	return nil, fmt.Errorf("this is a bug in abc, please report it at https://github.com/abcxyz/abc/issues/new?template=bug.yaml with this text: IsInOldManifest=%t IsInNewManifest=%t OldFileMatchesOldHash=%q NewFileMatchesOldHash=%q OldFileMatchesNewHash=%q",
-		o.IsInOldManifest, o.IsInNewManifest, o.OldFileMatchesOldHash, o.NewFileMatchesOldHash, o.OldFileMatchesNewHash)
+		o.isInOldManifest, o.isInNewManifest, o.oldFileMatchesOldHash, o.newFileMatchesOldHash, o.oldFileMatchesNewHash)
 }
 
 // mergeAll incorporates the output of the upgraded template version in mergeDir
@@ -223,35 +227,40 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 		oldHash, isInOldManifest := oldHashes[relPath]
 		newHash, isInNewManifest := newHashes[relPath]
 
-		pathOld := filepath.Join(p.installedDir, relPath)
+		paths, err := newMergePaths(p, relPath)
+		if err != nil {
+			return nil, err
+		}
 
 		// Each file is presumed missing until we see it.
 		oldFileMatchesNewHash, oldFileMatchesOldHash, newFileMatchesOldHash := absent, absent, absent
 
-		var err error
 		if isInOldManifest {
-			oldFileMatchesOldHash, err = hashAndCompare(pathOld, oldHash)
+			var err error
+			oldFileMatchesOldHash, err = hashAndCompare(paths.fromOldLocal, oldHash)
 			if err != nil {
 				return nil, err
 			}
-			newFileMatchesOldHash, err = hashAndCompare(filepath.Join(p.mergeDir, relPath), oldHash)
+
+			newFileMatchesOldHash, err = hashAndCompare(paths.fromNewTemplate, oldHash)
 			if err != nil {
 				return nil, err
 			}
 		}
 		if isInNewManifest {
-			oldFileMatchesNewHash, err = hashAndCompare(pathOld, newHash)
+			oldFileMatchesNewHash, err = hashAndCompare(paths.fromOldLocal, newHash)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		hr := &decideMergeParams{
-			IsInOldManifest:       isInOldManifest,
-			IsInNewManifest:       isInNewManifest,
-			OldFileMatchesOldHash: oldFileMatchesOldHash,
-			NewFileMatchesOldHash: newFileMatchesOldHash,
-			OldFileMatchesNewHash: oldFileMatchesNewHash,
+			isInOldManifest:           isInOldManifest,
+			isInNewManifest:           isInNewManifest,
+			oldFileMatchesOldHash:     oldFileMatchesOldHash,
+			newFileMatchesOldHash:     newFileMatchesOldHash,
+			oldFileMatchesNewHash:     oldFileMatchesNewHash,
+			isIncludedFromDestination: paths.fromReversed != "",
 		}
 
 		decision, err := decideMerge(hr)
@@ -259,7 +268,7 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 			return nil, err
 		}
 
-		action, err := actuateMergeDecision(ctx, p, dryRun, decision, relPath)
+		action, err := actuateMergeDecision(ctx, p, dryRun, decision, paths)
 		if err != nil {
 			return nil, fmt.Errorf("failed filesystem operation during merge: %w", err)
 		}
@@ -280,28 +289,66 @@ const (
 	conflictSuffixBegins = ".abcmerge_"
 )
 
-func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, decision *mergeDecision, relPath string) (ActionTaken, error) {
+// oneFileMergePaths contains the paths for all the different versions of a
+// file.
+type oneFileMergePaths struct {
+	// relative is the path within the scratch directory of the file we're
+	// considering.
+	relative string
+
+	// TODO
+	fromOldLocal string
+
+	// Optional. In the (somewhat rare) case where this file was
+	// included-from-destination, this field will be set. It points to the
+	// contents of the file
+	fromReversed string
+
+	// This path only has one case. It always points inside the template
+	// directory.
+	fromNewTemplate string
+}
+
+func newMergePaths(p *commitParams, relPath string) (*oneFileMergePaths, error) {
+	fromReversed := filepath.Join(p.reversedPatchDir, relPath)
+	if ok, err := common.Exists(fromReversed); err != nil {
+		return nil, err //nolint:wrapcheck
+	} else if !ok {
+		fromReversed = ""
+	}
+
+	return &oneFileMergePaths{
+		relative:        relPath,
+		fromOldLocal:    filepath.Join(p.installedDir, relPath),
+		fromNewTemplate: filepath.Join(p.mergeDir, relPath),
+		fromReversed:    fromReversed,
+	}, nil
+}
+
+func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, decision *mergeDecision, paths *oneFileMergePaths) (ActionTaken, error) {
 	// TODO(upgrade): support backups (eg BackupDirMaker), like in common/render/render.go.
 
 	logger := logging.FromContext(ctx).With("logger", "actuateMergeDecision")
 	logger.DebugContext(ctx, "merging one file",
 		"dry_run", dryRun,
-		"rel_path", relPath,
 		"action", decision.action,
+		"rel_path", paths.relative,
+		"old_path", paths.fromOldLocal,
+		"new_path", paths.fromNewTemplate,
 		"explanation", decision.humanExplanation)
 
-	installedPath := filepath.Join(p.installedDir, relPath)
-	mergePath := filepath.Join(p.mergeDir, relPath)
+	installedPath := filepath.Join(p.installedDir, paths.relative)
+	// mergePath := filepath.Join(p.mergeDir, relPath)
 
 	actionTaken := ActionTaken{
 		Action:      decision.action,
 		Explanation: decision.humanExplanation,
-		Path:        relPath,
+		Path:        paths.relative,
 	}
 
 	switch decision.action {
 	case WriteNew:
-		if err := common.CopyFile(ctx, nil, p.fs, mergePath, installedPath, dryRun, nil); err != nil {
+		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, installedPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
 		return actionTaken, nil
@@ -314,52 +361,55 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 		return actionTaken, nil
 	case DeleteEditConflict:
 		dstPath := installedPath + suffixFromNewTemplateLocallyDeleted
-		if err := common.CopyFile(ctx, nil, p.fs, mergePath, dstPath, dryRun, nil); err != nil {
+		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, dstPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.IncomingTemplatePath = relPath + suffixFromNewTemplateLocallyDeleted
+		actionTaken.IncomingTemplatePath = paths.relative + suffixFromNewTemplateLocallyDeleted
 		return actionTaken, nil
 	case EditDeleteConflict:
 		renamedPath := installedPath + suffixWantToDelete
-		if err := renameOrDryRun(p.fs, dryRun, installedPath, renamedPath); err != nil {
+		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
+			return ActionTaken{}, err //nolint:wrapcheck
+		}
+		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
 			return ActionTaken{}, err
 		}
-		actionTaken.OursPath = relPath + suffixWantToDelete
+		actionTaken.OursPath = paths.relative + suffixWantToDelete
 		return actionTaken, nil
 	case EditEditConflict:
 		renamedPath := installedPath + suffixLocallyEdited
 		incomingPath := installedPath + suffixFromNewTemplate
-		if err := renameOrDryRun(p.fs, dryRun, installedPath, renamedPath); err != nil {
-			return ActionTaken{}, err
-		}
-		if err := common.CopyFile(ctx, nil, p.fs, mergePath, incomingPath, dryRun, nil); err != nil {
+		// TODO the source should probably be the reversed file, when showing a merge conflict
+		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.OursPath = relPath + suffixLocallyEdited
-		actionTaken.IncomingTemplatePath = relPath + suffixFromNewTemplate
+		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
+			return ActionTaken{}, err
+		}
+		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, incomingPath, dryRun, nil); err != nil {
+			return ActionTaken{}, err //nolint:wrapcheck
+		}
+		actionTaken.OursPath = paths.relative + suffixLocallyEdited
+		actionTaken.IncomingTemplatePath = paths.relative + suffixFromNewTemplate
 		return actionTaken, nil
 	case AddAddConflict:
 		renamedPath := installedPath + suffixLocallyAdded
-		if err := renameOrDryRun(p.fs, dryRun, installedPath, renamedPath); err != nil {
+		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
+			return ActionTaken{}, err //nolint:wrapcheck
+		}
+		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
 			return ActionTaken{}, err
 		}
 		incomingPath := installedPath + suffixFromNewTemplate
-		if err := common.CopyFile(ctx, nil, p.fs, mergePath, incomingPath, dryRun, nil); err != nil {
+		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, incomingPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.OursPath = relPath + suffixLocallyAdded
-		actionTaken.IncomingTemplatePath = relPath + suffixFromNewTemplate
+		actionTaken.OursPath = paths.relative + suffixLocallyAdded
+		actionTaken.IncomingTemplatePath = paths.relative + suffixFromNewTemplate
 		return actionTaken, nil
 	default:
 		return ActionTaken{}, fmt.Errorf("internal error: unrecognized merged action %v", decision.action)
 	}
-}
-
-func renameOrDryRun(fs common.FS, dryRun bool, from, to string) error {
-	if dryRun {
-		return nil
-	}
-	return fs.Rename(from, to) //nolint:wrapcheck
 }
 
 func removeOrDryRun(fs common.FS, dryRun bool, path string) error {

@@ -145,14 +145,13 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		// We also support including files from the destination directory, so we
 		// can modify files that already exist in the destination.
 		fromDirs = []string{sp.rp.DestDir}
-		// TODO(upgrade): add this field in an upcoming PR
-		// if sp.rp.IncludeFromDestExtraDir != "" {
-		// For complicated reasons related to upgrading, we sometimes add
-		// another include source directory that contains files after having
-		// had their include-from-destination patch reversed as part of the
-		// upgrade process.
-		//	fromDirs = append(fromDirs, sp.rp.IncludeFromDestExtraDir)
-		// }
+		if sp.rp.IncludeFromDestExtraDir != "" {
+			// For complicated reasons related to upgrading, we sometimes add
+			// another include source directory that contains files after having
+			// had their include-from-destination patch reversed as part of the
+			// upgrade process.
+			fromDirs = append(fromDirs, sp.rp.IncludeFromDestExtraDir)
+		}
 	}
 
 	anyMatches := false

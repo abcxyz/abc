@@ -22,4 +22,5 @@ const (
 	ScratchDirNamePart        = "scratch-"
 	TemplateDirNamePart       = "template-copy-"
 	UpgradeMergeDirNamePart   = "upgrade-merge-"
+	ReversedPatchDirNamePart  = "reversed-patch-"
 )
