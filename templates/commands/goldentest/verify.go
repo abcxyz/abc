@@ -139,7 +139,8 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 		exists, err := common.Exists(goldenDataDir)
 		if err != nil {
 			return err //nolint:wrapcheck
-		} else if !exists {
+		}
+		if !exists {
 			return fmt.Errorf("no recorded test data in %q, "+
 				"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
 		}
