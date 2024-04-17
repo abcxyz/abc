@@ -138,7 +138,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 func destOK(fs fs.StatFS, dest string) error {
 	fi, err := fs.Stat(dest)
 	if err != nil {
-		if common.IsStatNotExistErr(err) {
+		if common.IsNotExistErr(err) {
 			return nil
 		}
 		return fmt.Errorf("os.Stat(%s): %w", dest, err)

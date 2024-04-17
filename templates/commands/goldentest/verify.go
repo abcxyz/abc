@@ -136,13 +136,12 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 
 		fileSet := make(map[string]struct{})
 
-		_, err = os.Stat(goldenDataDir)
+		exists, err := common.Exists(goldenDataDir)
 		if err != nil {
-			if common.IsStatNotExistErr(err) {
-				return fmt.Errorf("no recorded test data in %q, "+
-					"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
-			}
-			return fmt.Errorf("failed to stat %q, %w", goldenDataDir, err)
+			return err //nolint:wrapcheck
+		} else if !exists {
+			return fmt.Errorf("no recorded test data in %q, "+
+				"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
 		}
 
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
@@ -167,25 +166,27 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 			abcRenameTrimmedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
 			abcRenameTrimmedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
 
-			if _, err := os.Stat(goldenFile); err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
-					err := fmt.Errorf(failureText)
-					tcErr = errors.Join(tcErr, err)
-					outputMismatch = true
-					continue
-				}
+			exists, err := common.Exists(goldenFile)
+			if err != nil {
 				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedGoldenFile, err)
 			}
+			if !exists {
+				failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
+				err := fmt.Errorf(failureText)
+				tcErr = errors.Join(tcErr, err)
+				outputMismatch = true
+				continue
+			}
 
-			if _, err := os.Stat(tempFile); err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
-					err := fmt.Errorf(failureText)
-					tcErr = errors.Join(tcErr, err)
-					continue
-				}
+			exists, err = common.Exists(tempFile)
+			if err != nil {
 				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedTempFile, err)
+			}
+			if !exists {
+				failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
+				err := fmt.Errorf(failureText)
+				tcErr = errors.Join(tcErr, err)
+				continue
 			}
 
 			diff, err := run.RunDiff(ctx, useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)

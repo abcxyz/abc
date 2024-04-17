@@ -69,7 +69,7 @@ func hashAndCompare(path, wantHash string) (hashResult, error) {
 
 	inFile, err := os.Open(path)
 	if err != nil {
-		if common.IsStatNotExistErr(err) {
+		if common.IsNotExistErr(err) {
 			return absent, nil
 		}
 		return "", fmt.Errorf("Open(%q): %w", path, err)
