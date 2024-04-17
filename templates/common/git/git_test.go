@@ -140,9 +140,11 @@ func TestClone(t *testing.T) {
 
 			// We check for an arbitrary file to ensure that the clone really happened.
 			wantFile := "README.md"
-			if exists, err := common.Exists(filepath.Join(outDir, wantFile)); err != nil {
+			exists, err := common.Exists(filepath.Join(outDir, wantFile))
+			if err != nil {
 				t.Error(err)
-			} else if !exists {
+			}
+			if !exists {
 				t.Fatalf("git clone seemed to work but the output didn't contain %q, something weird happened", wantFile)
 			}
 		})
