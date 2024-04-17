@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
@@ -389,6 +390,7 @@ func TestProcessGlobs(t *testing.T) {
 		name        string
 		dirContents map[string]abctestutil.ModeAndContents
 		paths       []model.String
+		skipGlobs   bool
 		wantPaths   []model.String
 		wantErr     string
 	}{
@@ -504,6 +506,16 @@ func TestProcessGlobs(t *testing.T) {
 			),
 		},
 		{
+			name:      "no_glob_matches_with_globs",
+			paths:     mdl.Strings("file_not_found.txt"),
+			skipGlobs: false,
+		},
+		{
+			name:      "no_glob_matches_with_skipglobs",
+			paths:     mdl.Strings("file_not_found.txt"),
+			skipGlobs: true,
+		},
+		{
 			name: "character_range_paths",
 			dirContents: map[string]abctestutil.ModeAndContents{
 				"abc.txt": {Mode: 0o600, Contents: "bcd contents"},
@@ -524,7 +536,7 @@ func TestProcessGlobs(t *testing.T) {
 			abctestutil.WriteAllMode(t, tempDir, tc.dirContents)
 			ctx := context.Background()
 
-			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, false)
+			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, tc.skipGlobs)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
@@ -543,7 +555,7 @@ func TestProcessGlobs(t *testing.T) {
 					Pos: p.Pos,
 				})
 			}
-			if diff := cmp.Diff(relGotPaths, tc.wantPaths); diff != "" {
+			if diff := cmp.Diff(relGotPaths, tc.wantPaths, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("resulting paths should match expected glob paths from input (-got,+want): %s", diff)
 			}
 		})
