@@ -95,7 +95,7 @@ func writeManifest(p *writeManifestParams) (path string, rErr error) {
 
 	if p.dryRun {
 		if exists, err := common.ExistsFS(p.fs, manifestPath); err != nil {
-			return "", err
+			return "", err //nolint:wrapcheck
 		} else if exists {
 			return "", fmt.Errorf("dry run failed, the output manifest file %q already exists", manifestPath)
 		} else {

@@ -46,7 +46,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
 	if exists, err := common.ExistsFS(sp.rp.FS, absSrc); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	} else if !exists {
 		return pos.Errorf("include path doesn't exist: %q", absSrc)
 	}
