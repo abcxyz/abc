@@ -45,9 +45,11 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
-	if exists, err := common.ExistsFS(sp.rp.FS, absSrc); err != nil {
+	exists, err := common.ExistsFS(sp.rp.FS, absSrc)
+	if err != nil {
 		return err //nolint:wrapcheck
-	} else if !exists {
+	}
+	if !exists {
 		return pos.Errorf("include path doesn't exist: %q", absSrc)
 	}
 

@@ -166,9 +166,11 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 			abcRenameTrimmedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
 			abcRenameTrimmedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
 
-			if exists, err := common.Exists(goldenFile); err != nil {
+			exists, err := common.Exists(goldenFile)
+			if err != nil {
 				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedGoldenFile, err)
-			} else if !exists {
+			}
+			if !exists {
 				failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
 				err := fmt.Errorf(failureText)
 				tcErr = errors.Join(tcErr, err)
@@ -176,9 +178,11 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 				continue
 			}
 
-			if exists, err := common.Exists(tempFile); err != nil {
+			exists, err = common.Exists(tempFile)
+			if err != nil {
 				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedTempFile, err)
-			} else if !exists {
+			}
+			if !exists {
 				failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
 				err := fmt.Errorf(failureText)
 				tcErr = errors.Join(tcErr, err)

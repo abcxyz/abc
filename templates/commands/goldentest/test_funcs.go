@@ -80,9 +80,11 @@ func parseTestCases(ctx context.Context, location string, testNames []string) ([
 	if len(testNames) > 0 {
 		for _, testName := range testNames {
 			testPath := filepath.Join(testDir, testName)
-			if exists, err := common.Exists(testPath); err != nil {
+			exists, err := common.Exists(testPath)
+			if err != nil {
 				return nil, fmt.Errorf("failed to stat %q, %w", testPath, err)
-			} else if !exists {
+			}
+			if !exists {
 				// skip test case build as this test doesn't exist for the template.
 				continue
 			}

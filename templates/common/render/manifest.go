@@ -94,15 +94,16 @@ func writeManifest(p *writeManifestParams) (path string, rErr error) {
 	manifestPath := filepath.Join(manifestDir, baseName)
 
 	if p.dryRun {
-		if exists, err := common.ExistsFS(p.fs, manifestPath); err != nil {
+		exists, err := common.ExistsFS(p.fs, manifestPath)
+		if err != nil {
 			return "", err //nolint:wrapcheck
-		} else if exists {
-			return "", fmt.Errorf("dry run failed, the output manifest file %q already exists", manifestPath)
-		} else {
-			// This is good. We don't want to overwrite an existing manifest file,
-			// so that fact that it doesn't already exist is good news.
-			return "", nil
 		}
+		if exists {
+			return "", fmt.Errorf("dry run failed, the output manifest file %q already exists", manifestPath)
+		}
+		// This is good. We don't want to overwrite an existing manifest file,
+		// so that fact that it doesn't already exist is good news.
+		return "", nil
 	}
 
 	if err := p.fs.MkdirAll(manifestDir, common.OwnerRWXPerms); err != nil {
