@@ -97,8 +97,9 @@ type Params struct {
 	Prompt   bool
 	Prompter input.Prompter
 
-	// TODO doc
-	// Relative paths where patch reversal has already happened.
+	// Relative paths where patch reversal has already happened. This is a flag
+	// supplied by the user. This will be set if there were merge conflicts
+	// during patch reversal that were manually resolved by the user.
 	ReversalAlreadyDone []string
 
 	// The value of --skip-input-validation.
@@ -498,11 +499,6 @@ type ReversalConflict struct {
 }
 
 func reversePatches(ctx context.Context, fs common.FS, preReversed []string, installedDir, reversedDir string, oldManifest *manifest.Manifest) ([]*ReversalConflict, error) {
-	// preReversedAsSet := make(map[string]struct{}, len(preReversed))
-	// for _, ar := range preReversed {
-	// 	preReversedAsSet[ar] = struct{}{}
-	// }
-
 	var out []*ReversalConflict
 	for _, f := range oldManifest.OutputFiles {
 		if f.Patch == nil || len(f.Patch.Val) == 0 {
