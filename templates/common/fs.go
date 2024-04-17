@@ -226,7 +226,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 					return err
 				}
 			}
-		} else if !IsStatNotExistErr(err) {
+		} else if !IsNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
 
@@ -325,7 +325,7 @@ func mkdirAllChecked(pos *model.ConfigPos, rfs FS, path string, dryRun bool) err
 	create := false
 	info, err := rfs.Stat(path)
 	if err != nil {
-		if !IsStatNotExistErr(err) {
+		if !IsNotExistErr(err) {
 			return pos.Errorf("Stat(): %w", err)
 		}
 		create = true
@@ -406,11 +406,12 @@ func (e *ErrorFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return e.FS.WriteFile(name, data, perm) //nolint:wrapcheck
 }
 
-// IsStatNotExistErr takes an error returned by os.Stat() and returns true if
+// IsNotExistErr takes an error returned by os.Stat() and returns true if
 // the error means "the path you stat'ed doesn't exist." It otherwise returns
 // false.
-func IsStatNotExistErr(err error) bool {
+func IsNotExistErr(err error) bool {
 	return errors.Is(err, fs.ErrNotExist) ||
+		errors.Is(err, os.ErrNotExist) ||
 		errors.Is(err, fs.ErrInvalid)
 }
 
@@ -427,9 +428,14 @@ func JoinIfRelative(cwd, path string) string {
 // wrote this wrapper because it's a little complex and irritating to deal with
 // the way that os.Stat() considers nonexistence to be an error.
 func Exists(path string) (bool, error) {
+	return ExistsFS(&RealFS{}, path)
+}
+
+// Exists is like Exists, but takes a FS as a parameter for error injection.
+func ExistsFS(fs FS, path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if IsNotExistErr(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed checking existence of %q: %w", path, err)
