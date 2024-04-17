@@ -142,7 +142,7 @@ func Workspace(ctx context.Context, path string) (string, bool, error) {
 	// for hypothetical directories that might not exist yet.
 	for {
 		fileInfo, err := os.Stat(filepath.Join(path, ".git"))
-		if err != nil && !common.IsStatNotExistErr(err) {
+		if err != nil && !common.IsNotExistErr(err) {
 			return "", false, err //nolint:wrapcheck
 		}
 		if fileInfo != nil && fileInfo.IsDir() {

@@ -93,6 +93,7 @@ func LoadDirMode(tb testing.TB, dir string, opts ...LoadDirOpt) map[string]ModeA
 
 	opt := combineLoadDirOpts(opts...)
 
+	// We can't use common.Exists() here; that would cause an import cycle.
 	if _, err := os.Stat(dir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
 			return nil
