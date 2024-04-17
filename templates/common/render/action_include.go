@@ -167,7 +167,7 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 		for _, p := range inc.Paths {
 			pathStrings = append(pathStrings, p.Val)
 		}
-		return inc.Pos.Errorf("paths did not match any files: %v", pathStrings)
+		return inc.Pos.Errorf("include paths did not match any files: %v", pathStrings)
 	}
 	return nil
 }
