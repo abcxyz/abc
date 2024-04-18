@@ -17,9 +17,30 @@ package tempdir
 const (
 	// These will be used as part of the names of the temporary directories to
 	// make them identifiable.
+
+	// The directory that contains a diff for each template rendering step to
+	// help with template debugging. Must be enabled by command line flag.
 	DebugStepDiffsDirNamePart = "debug-step-diffs-"
-	GoldenTestRenderNamePart  = "golden-test-"
-	ScratchDirNamePart        = "scratch-"
-	TemplateDirNamePart       = "template-copy-"
-	UpgradeMergeDirNamePart   = "upgrade-merge-"
+
+	// The temp directory where the "golden-test verify" command writes the "got"
+	// output before comparing to the "wanted" output.
+	GoldenTestRenderNamePart = "golden-test-"
+
+	// The temp directory where templates perform their actions and "include"
+	// into, before it is committed to the user-visible destination directory.
+	ScratchDirNamePart = "scratch-"
+
+	// The temp directory that contains the downloaded template.
+	TemplateDirNamePart = "template-copy-"
+
+	// The temp directory where the upgrade operation renders the upgraded
+	// version of the template, before it is merged with the user-visible
+	// destination directory.
+	UpgradeMergeDirNamePart = "upgrade-merge-"
+
+	// The temp directory where, during the upgrade process, the output of the
+	// patch command is written to. This contains the result of applying every
+	// patch in the manifest YAML file to the corresponding
+	// included-from-destination file.
+	ReversedPatchDirNamePart = "reversed-patch-"
 )
