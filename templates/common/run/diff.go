@@ -18,12 +18,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
-	"slices"
-	"strings"
-	"sync"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 )
 
 // RunDiff execs the diff binary. Returns len > 0 if there's a diff. Returns
@@ -35,51 +34,69 @@ import (
 // relative path of file1 relative to file1RelTo, and the same for file1. So if
 // file1 is "/x/y/z.tzt" and file1RelTo is "/x", then the filename label in the
 // returned diff will be "y/z.txt".
-func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2RelTo string) (string, error) {
+func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2RelTo string) (_ string, outErr error) {
 	file1Label, err := filepath.Rel(file1RelTo, file1)
 	if err != nil {
 		return "", fmt.Errorf("failed getting relative path for diff: %w", err)
 	}
+
 	file2Label, err := filepath.Rel(file2RelTo, file2)
 	if err != nil {
 		return "", fmt.Errorf("failed getting relative path for diff: %w", err)
 	}
-	args := []string{
-		"diff",
-		"-u", // Produce unified diff format (similar to git)
-		"-N", // Treat nonexistent file as empty
 
-		// Act like git, and name the files as a/foo and b/foo in the patch.
-		"--label", "a/" + file1Label, file1,
-		"--label", "b/" + file2Label, file2,
+	tempTracker := tempdir.NewDirTracker(&common.RealFS{}, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &outErr)
+	tempDir, err := tempTracker.MkdirTempTracked("", tempdir.GitDiffSymlinkDirNamePart)
+	if err != nil {
+		return "", err
 	}
 
+	src, err := symlinkIfExistsOrNull(file1, tempDir, "a/"+file1Label)
+	if err != nil {
+		return "", err
+	}
+	dst, err := symlinkIfExistsOrNull(file2, tempDir, "b/"+file2Label)
+	if err != nil {
+		return "", err
+	}
+
+	colorParam := "never"
 	if color {
-		colorSupported, err := diffColorSupported(ctx)
-		if err != nil {
-			return "", err
-		}
-		if colorSupported {
-			args = slices.Insert(args, 1, "--color=always")
-		}
+		colorParam = "always"
+	}
+
+	args := []string{
+		"git",
+		"diff",
+		"--no-index", // Ignore the git repo and use "git diff" as a plain diff tool
+		// "-C", tempDir,
+		fmt.Sprintf("--color=%s", colorParam), // TODO can separate into two args and avoid Sprintf?
+		"--src-prefix", "",                    // we created a/ and b/ dirs in the temp dir, so no need for prefixes.
+		"--dst-prefix", "",
+		src,
+		dst,
 	}
 
 	var stdout, stderr bytes.Buffer
 	opts := []*Option{
-		WithStdout(&stdout),
-		WithStderr(&stderr),
 		AllowNonzeroExit(),
+		WithCwd(tempDir),
+		WithStderr(&stderr),
+		WithStdout(&stdout),
 	}
 	exitCode, err := Run(ctx, opts, args...)
 	if err != nil {
 		return "", fmt.Errorf("error exec'ing diff: %w", err)
 	}
+	// TODO check exit codes
 	// The man page for diff says it returns code 2 on error.
-	if exitCode == 2 {
+	if exitCode > 1 {
 		// A quirk of the diff command: the -N flag means "treat nonexistent
 		// files as empty", but it still fails if both inputs are absent. Our
 		// workaround is to detect the case where both files are nonexistent and
 		// return empty string.
+		// TODO remove
 		file1Exists, err := common.Exists(file1)
 		if err != nil {
 			return "", err //nolint:wrapcheck
@@ -96,40 +113,63 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 	return stdout.String(), nil
 }
 
-var (
-	diffColorOnce    sync.Once
-	diffColorSupport bool
-	diffColorErr     error //nolint:errname
-)
+const devNull = "/dev/null"
 
-// diffColorSupported returns whether we're running on a machine that supports
-// --color=always. MacOS <= 12 seems not to have this.
-func diffColorSupported(ctx context.Context) (bool, error) {
-	diffColorOnce.Do(func() {
-		diffColorSupport, diffColorErr = diffColorCheck(ctx)
-	})
-	return diffColorSupport, diffColorErr
-}
-
-// diffColorCheck tests whether we're running on a machine that supports
-// --color=always. MacOS <= 12 seems not to have this.
-func diffColorCheck(ctx context.Context) (bool, error) {
-	var stderr bytes.Buffer
-	opts := []*Option{
-		WithStderr(&stderr),
-		AllowNonzeroExit(),
-	}
-	exitCode, err := Run(ctx, opts, "diff", "--color=always", "/dev/null", "/dev/null")
+// TODO doc
+// Returns linkRelPath if absPath exists. Otherwise returns "/dev/null".
+func symlinkIfExistsOrNull(absPath, tempDir, linkRelPath string) (string, error) {
+	exists, err := common.Exists(absPath)
 	if err != nil {
-		return false, fmt.Errorf("failed determining whether the diff command supports color: %w", err)
+		return "", err
 	}
 
-	if exitCode == 2 && strings.Contains(stderr.String(), "unrecognized option `--color=always'") {
-		return false, nil
-	}
-	if exitCode != 0 {
-		return false, fmt.Errorf("something strange happened when testing diff for color support. Exit code %d, stderr: %q", exitCode, stderr)
+	linkTarget := devNull
+	if exists {
+		linkTarget = absPath
 	}
 
-	return true, nil
+	symlinkPath1 := filepath.Join(tempDir, linkRelPath)
+	os.MkdirAll(filepath.Dir(symlinkPath1), common.OwnerRWXPerms)
+	if err := os.Symlink(linkTarget, symlinkPath1); err != nil {
+		return "", err
+	}
+	return linkRelPath, nil
 }
+
+// var (
+// 	diffColorOnce    sync.Once
+// 	diffColorSupport bool
+// 	diffColorErr     error //nolint:errname
+// )
+
+// // diffColorSupported returns whether we're running on a machine that supports
+// // --color=always. MacOS <= 12 seems not to have this.
+// func diffColorSupported(ctx context.Context) (bool, error) {
+// 	diffColorOnce.Do(func() {
+// 		diffColorSupport, diffColorErr = diffColorCheck(ctx)
+// 	})
+// 	return diffColorSupport, diffColorErr
+// }
+
+// // diffColorCheck tests whether we're running on a machine that supports
+// // --color=always. MacOS <= 12 seems not to have this.
+// func diffColorCheck(ctx context.Context) (bool, error) {
+// 	var stderr bytes.Buffer
+// 	opts := []*Option{
+// 		WithStderr(&stderr),
+// 		AllowNonzeroExit(),
+// 	}
+// 	exitCode, err := Run(ctx, opts, "diff", "--color=always", "/dev/null", "/dev/null")
+// 	if err != nil {
+// 		return false, fmt.Errorf("failed determining whether the diff command supports color: %w", err)
+// 	}
+
+// 	if exitCode == 2 && strings.Contains(stderr.String(), "unrecognized option `--color=always'") {
+// 		return false, nil
+// 	}
+// 	if exitCode != 0 {
+// 		return false, fmt.Errorf("something strange happened when testing diff for color support. Exit code %d, stderr: %q", exitCode, stderr)
+// 	}
+
+// 	return true, nil
+// }
