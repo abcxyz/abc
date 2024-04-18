@@ -127,16 +127,18 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("windows os is not supported in abc cli")
 	}
 
-	// Timeout updater after 1 second.
-	updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
-	defer updaterDone()
-	report := abcupdater.CheckAppVersion(updaterCtx, &abcupdater.CheckVersionParams{
-		AppID: version.Name,
-		// Version: version.Version,
-		Version: "0.4.0", // intentionally older than cur version to test
-	}, func(s string) { fmt.Fprintln(os.Stderr, s) })
+	// Only check for updates if not building from HEAD.
+	if version.Version != "source" {
+		// Timeout updater after 1 second.
+		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
+		defer updaterDone()
+		report := abcupdater.CheckAppVersion(updaterCtx, &abcupdater.CheckVersionParams{
+			AppID:   version.Name,
+			Version: version.Version,
+		}, func(s string) { fmt.Fprintln(os.Stderr, s) })
 
-	defer report()
+		defer report()
+	}
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }
