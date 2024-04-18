@@ -6,6 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
+	github.com/abcxyz/abc-updater v0.1.1
 	github.com/abcxyz/pkg v1.0.4
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/benbjohnson/clock v1.3.5
@@ -23,10 +24,13 @@ require (
 require (
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/renameio v1.0.1 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/posener/script v1.2.0 // indirect
+	github.com/sethvargo/go-envconfig v1.0.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
