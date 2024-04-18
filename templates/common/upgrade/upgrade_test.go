@@ -968,7 +968,7 @@ yellow is my favorite color
 			},
 		},
 
-		// TODO test:
+		// TODO(upgrade): add tests:
 		//  multiple conflicting files
 		//  multiple templates targeting same file causing reversal conflict
 		//  some hunks applied and some rejected
@@ -1258,7 +1258,6 @@ steps:
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.ReversalAlreadyDone = []string{"file.txt"}
 
-	// TODO try a successful upgrade
 	gotResult, err := Upgrade(ctx, upgradeParams)
 	if err != nil {
 		t.Fatal(err)

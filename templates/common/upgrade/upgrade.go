@@ -295,7 +295,13 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err //nolint:wrapcheck
 	}
 
-	reversalConflicts, err := reversePatches(ctx, p.FS, p.ReversalAlreadyDone, installedDir, reversedDir, oldManifest)
+	reversalConflicts, err := reversePatches(ctx, &reversePatchesParams{
+		fs:           p.FS,
+		preReversed:  p.ReversalAlreadyDone,
+		installedDir: installedDir,
+		reversedDir:  reversedDir,
+		oldManifest:  oldManifest,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -567,6 +573,12 @@ func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalCo
 
 		outPath := filepath.Join(p.reversedDir, f.File.Val)
 		if slices.Contains(p.preReversed, f.File.Val) {
+			// In the case where a previous run of abc raised a merge conflict,
+			// and the user resolved it, and provided the command-line flag
+			// indicating that they already resolved it, then we skip applying
+			// the patch from the manifest. Because it has already been applied
+			// by the user. So we just copy the already-patched file into the
+			// directory for patched files.
 			if err := common.Copy(ctx, p.fs, filepath.Join(p.installedDir, f.File.Val), outPath); err != nil {
 				return nil, err //nolint:wrapcheck
 			}

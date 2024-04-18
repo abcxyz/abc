@@ -106,13 +106,13 @@ type decideMergeParams struct {
 	// filesystem (before the upgrade began) match the hash value in the old
 	// manifest? If the hash doesn't match, that means the user made some
 	// customizations.
-	oldFileMatchesOldHash hashResult // TODO make this a bool?
+	oldFileMatchesOldHash hashResult
 
 	// Only used if IsInNewManifest==true. Does the new file being output by
 	// the new version of the template match the hash value in the old
 	// manifest? If the hash matches, that means that the current template
 	// outputs identical file contents to the old template.
-	newFileMatchesOldHash hashResult // TODO make this a hashresult?
+	newFileMatchesOldHash hashResult
 
 	// Only used if IsInNewManifest==true and isInOldManifest==false. Does the
 	// preexisting file on the filesystem (before the upgrade began) match the
@@ -384,7 +384,6 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 	case EditEditConflict:
 		renamedPath := installedPath + suffixLocallyEdited
 		incomingPath := installedPath + suffixFromNewTemplate
-		// TODO the source should probably be the reversed file, when showing a merge conflict
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
