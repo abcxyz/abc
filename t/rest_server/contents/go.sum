@@ -1,7 +1,5 @@
 github.com/abcxyz/pkg v1.0.4 h1:0C38LHfKDflehnFDnWuU2zRYOV9qHBotCT4cnEcetDc=
 github.com/abcxyz/pkg v1.0.4/go.mod h1:ibdYDJSLgKg/6sMRv9q18KseLhrD83HulBl4J1yHnt8=
-github.com/go-chi/chi/v5 v5.0.12 h1:9euLV5sTrTNTRUU9POmDUvfxyj6LAABLUcEWO+JJb4s=
-github.com/go-chi/chi/v5 v5.0.12/go.mod h1:DslCQbL2OYiznFReuXYUmQ2hGd1aDpCnlMNITLSKoi8=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
 github.com/golang/protobuf v1.5.4/go.mod h1:lnTiLA8Wa4RWRcIUkrtSVa5nRhsEGBg48fD6rSs7xps=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
