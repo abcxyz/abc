@@ -79,11 +79,19 @@ func parseTestCases(ctx context.Context, location string, testNames []string) ([
 
 	if len(testNames) > 0 {
 		for _, testName := range testNames {
+			testPath := filepath.Join(testDir, testName)
+			exists, err := common.Exists(testPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to stat %q, %w", testPath, err)
+			}
+			if !exists {
+				// skip test case build as this test doesn't exist for the template.
+				continue
+			}
 			testCase, err := buildTestCase(ctx, testDir, testName)
 			if err != nil {
 				return nil, err
 			}
-
 			testCases = append(testCases, testCase)
 		}
 		return testCases, nil
@@ -153,7 +161,9 @@ func renderTestCases(ctx context.Context, testCases []*TestCase, location string
 
 	var merr error
 	for _, tc := range testCases {
-		merr = errors.Join(merr, renderTestCase(ctx, location, tempDir, tc))
+		if err := renderTestCase(ctx, location, tempDir, tc); err != nil {
+			merr = errors.Join(merr, fmt.Errorf("failed to render test case [%s] for template location [%s]: %w", tc.TestName, location, err))
+		}
 	}
 	if merr != nil {
 		return "", fmt.Errorf("failed to render golden tests: %w", merr)
@@ -172,7 +182,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 
 	stdoutBuf := &strings.Builder{}
 
-	err = render.Render(ctx, &render.Params{
+	_, err = render.Render(ctx, &render.Params{
 		Clock:               clock.New(),
 		Cwd:                 cwd,
 		OutDir:              testDir,
@@ -251,4 +261,29 @@ func renameGitDirsAndFiles(dir string) error {
 		}
 	}
 	return nil
+}
+
+func crawlTemplateLocations(dir string) ([]string, error) {
+	var out []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, goldenTestDir) {
+			return fs.SkipDir
+		}
+		if _, err := os.Stat(filepath.Join(path, "spec.yaml")); err == nil {
+			out = append(out, path)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
+	}
+
+	return out, nil
 }

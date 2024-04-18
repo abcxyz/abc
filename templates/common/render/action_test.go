@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
@@ -162,7 +163,7 @@ func TestWalkAndModify(t *testing.T) {
 			relPaths:        []string{"nonexistent"},
 			initialContents: map[string]string{"my_file.txt": "abc foo def"},
 			want:            map[string]string{"my_file.txt": "abc foo def"},
-			wantErr:         `glob "nonexistent" did not match any files`,
+			wantErr:         `no paths were matched by: [nonexistent]`,
 		},
 		{
 			name:            "absolute_path_should_become_relative",
@@ -224,7 +225,7 @@ func TestWalkAndModify(t *testing.T) {
 			sp := &stepParams{
 				scope:            common.NewScope(nil, nil),
 				scratchDir:       scratchDir,
-				includedFromDest: make(map[string]struct{}),
+				includedFromDest: make(map[string]string),
 				rp: &Params{
 					FS: &common.ErrorFS{
 						FS:           &common.RealFS{},
@@ -508,14 +509,11 @@ func TestProcessGlobs(t *testing.T) {
 			name:      "no_glob_matches_with_globs",
 			paths:     mdl.Strings("file_not_found.txt"),
 			skipGlobs: false,
-			wantErr:   fmt.Sprintf(`glob %q did not match any files`, "file_not_found.txt"),
 		},
 		{
 			name:      "no_glob_matches_with_skipglobs",
 			paths:     mdl.Strings("file_not_found.txt"),
 			skipGlobs: true,
-			// When not globbing, paths are returned regardless of whether they exist
-			wantPaths: mdl.Strings("file_not_found.txt"),
 		},
 		{
 			name: "character_range_paths",
@@ -557,7 +555,7 @@ func TestProcessGlobs(t *testing.T) {
 					Pos: p.Pos,
 				})
 			}
-			if diff := cmp.Diff(relGotPaths, tc.wantPaths); diff != "" {
+			if diff := cmp.Diff(relGotPaths, tc.wantPaths, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("resulting paths should match expected glob paths from input (-got,+want): %s", diff)
 			}
 		})

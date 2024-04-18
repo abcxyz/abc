@@ -134,24 +134,44 @@ Usage:
 - `abc templates golden-test record [--test-name=<test_name>] [<location>]`
 - `abc templates golden-test verify [--test-name=<test_name>] [<location>]`
 
+Note: For `new-test`, the `<location>` parameter gives the location of the template.
+For `record` and `verify`, `<location>` parameter gives the location that include one or more templates and abc cli
+will recursively search for templates and tests under the given `<location>`. 
+
 Examples:
 
 - `abc templates golden-test new-test basic examples/templates/render/hello_jupiter`
   creates a new golden-test for the specific named test called `basic` for the
   given template
-- `abc templates golden-test verify examples/templates/render/hello_jupiter`:
+- `abc templates golden-test verify examples/templates/render/hello_jupiter`
   runs all golden-tests for the given template
-- `abc templates golden-test record examples/templates/render/hello_jupiter`:
+- `abc templates golden-test verify --test-name=example_test examples/templates/render/hello_jupiter`
+  same as above, but only for the specific named tests
+- `abc templates golden-test verify examples/templates`
+  runs all golden-tests for the templates included in `examples/templates`
+- `abc templates golden-test verify --test-name=example examples/templates`
+  same as above, but only for the specific named tests
+- `abc templates golden-test verify`
+  runs all golden-tests for the templates included in the current directory
+- `abc templates golden-test record examples/templates/render/hello_jupiter`
   record the current template output as the desired/expected output for all
   tests within the given template, saving to `testdata/golden/<test_name>/data`.
-- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`:
+- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
   same as above, but only for the specific named tests.
+- `abc templates golden-test record examples/templates`
+  record the all template outputs as the desired/expected outputs for all test cases for the templates under `example/templates` directory.
+- `abc templates golden-test record --test-name=example examples/templates`
+  same as above, but only for the specific named tests.
+- `abc templates golden-test record`
+  record the all template outputs as the desired/expected outputs for all test cases for the templates under current directory.
 
 For `record` and `verify` subcommand, the `<test_name>` parameter gives the test names to record or verify, if not
 specified, all tests will be run against. This flag may be repeated, like
 `--test-name=test1`, `--test-name=test2`, or `--test-name=test1,test2`.
 
-The `<location>` parameter gives the location of the template, defaults to the current directory.
+For `new-test` subcommand, the `<location>` parameter gives the location of the template, defaults to the current directory.
+
+For `record` and `verify` subcommand, the `<location>` parameter gives the location that include one or more templates, defaults to the current directory.
 
 For every test case, it is expected that a
 `testdata/golden/<test_name>/test.yaml` exists to define template input params.

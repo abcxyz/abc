@@ -17,6 +17,7 @@ package upgrade
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -56,8 +57,9 @@ steps:
 		localEdits              func(tb testing.TB, installedDir string)
 		upgradedTemplate        map[string]string
 
-		wantStdout string
-		wantErr    []string
+		wantExitCode int
+		wantStdout   string
+		wantErr      []string
 	}{
 		{
 			name: "noop_because_template_is_already_up_to_date",
@@ -105,6 +107,8 @@ steps:
 				abctestutil.Overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
 				abctestutil.Overwrite(tb, installedDir, "color.txt", "red\n")
 			},
+			wantExitCode: 2,
+			wantErr:      []string{"exit code 2"},
 			wantStdout: mergeInstructions + `
 
 --
@@ -120,6 +124,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 --
 `,
 		},
+		// TODO(upgrade): tests for patch reversal conflicts
 	}
 
 	for _, tc := range cases {
@@ -130,7 +135,6 @@ incoming file: greet.txt.abcmerge_from_new_template
 
 			tempBase := t.TempDir()
 			destDir := filepath.Join(tempBase, "dest_dir")
-			manifestDir := filepath.Join(destDir, common.ABCInternalDir)
 			templateDir := filepath.Join(tempBase, "template_dir")
 
 			// Make tempBase into a valid git repo.
@@ -150,7 +154,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 
 			clk := clock.NewMock()
 
-			if err := render.Render(ctx, &render.Params{
+			renderResult, err := render.Render(ctx, &render.Params{
 				Clock:       clk,
 				Cwd:         tempBase,
 				DestDir:     destDir,
@@ -159,7 +163,8 @@ incoming file: greet.txt.abcmerge_from_new_template
 				Manifest:    true,
 				OutDir:      destDir,
 				TempDirBase: tempBase,
-			}); err != nil {
+			})
+			if err != nil {
 				t.Fatal(err)
 			}
 
@@ -167,8 +172,7 @@ incoming file: greet.txt.abcmerge_from_new_template
 				tc.localEdits(t, destDir)
 			}
 
-			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
-			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
 			if err := os.RemoveAll(templateDir); err != nil {
 				t.Fatal(err)
@@ -190,11 +194,20 @@ incoming file: greet.txt.abcmerge_from_new_template
 					t.Error(diff)
 				}
 			}
+
+			gotExitCode := 0
+			var exitCodeErr *common.ExitCodeError
+			if errors.As(err, &exitCodeErr) {
+				gotExitCode = exitCodeErr.Code
+			}
+			if gotExitCode != tc.wantExitCode {
+				t.Errorf("got exit code %d, want %d", gotExitCode, tc.wantExitCode)
+			}
+
 			if err != nil && len(tc.wantErr) == 0 {
 				t.Fatal(err)
 			}
 
-			t.Logf("stdout was:\n%s", stdout.String())
 			if diff := cmp.Diff(stdout.String(), tc.wantStdout); diff != "" {
 				t.Errorf("stdout was not as expected (-got,+want): %s", diff)
 			}
@@ -360,7 +373,6 @@ steps:
 			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
 			destDir := filepath.Join(tempBase, "dest_dir")
-			manifestDir := filepath.Join(destDir, common.ABCInternalDir)
 			templateDir := filepath.Join(tempBase, "template_dir")
 			ctx := context.Background()
 
@@ -374,7 +386,7 @@ steps:
 				t.Fatal(err)
 			}
 
-			if err := render.Render(ctx, &render.Params{
+			renderResult, err := render.Render(ctx, &render.Params{
 				Clock:       clock.New(),
 				Cwd:         tempBase,
 				DestDir:     destDir,
@@ -383,14 +395,14 @@ steps:
 				Manifest:    true,
 				OutDir:      destDir,
 				TempDirBase: tempBase,
-			}); err != nil {
+			})
+			if err != nil {
 				t.Fatal(err)
 			}
 
 			cmd := &Command{skipPromptTTYCheck: true}
 
-			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
-			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
 			abctestutil.WriteAll(t, templateDir, tc.upgradedTemplate)
 

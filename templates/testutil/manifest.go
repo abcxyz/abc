@@ -16,50 +16,12 @@ package testutil
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/abcxyz/abc/templates/model/decode"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 )
-
-// MustFindManifest is a wrapper around FindManifest that calls Fatal if there's
-// an error or if there's no manifest.
-func MustFindManifest(tb testing.TB, dir string) string {
-	tb.Helper()
-
-	basename, err := FindManifest(dir)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	if basename == "" {
-		tb.Fatalf("no manifest found in %q", dir)
-	}
-	return basename
-}
-
-// FindManifest finds a manifest file in the given directory. If there's no
-// manifest file in that directory, then empty string is returned. If there are
-// multiple manifests, an error is returned.
-func FindManifest(dir string) (string, error) {
-	joined := filepath.Join(dir, "manifest*.yaml")
-	matches, err := filepath.Glob(joined)
-	if err != nil {
-		return "", err //nolint:wrapcheck
-	}
-
-	if len(matches) == 0 {
-		return "", nil
-	}
-	if len(matches) > 1 {
-		return "", fmt.Errorf("multiple manifests were found in %q: %s", dir, strings.Join(matches, ", "))
-	}
-
-	return filepath.Base(matches[0]), nil
-}
 
 // MustLoadManifest parses the given manifest file.
 func MustLoadManifest(ctx context.Context, tb testing.TB, path string) *manifest.Manifest {

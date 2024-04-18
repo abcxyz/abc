@@ -107,11 +107,38 @@ type Params struct {
 	TempDirBase string
 }
 
+type ResultType string
+
+const (
+	// This is the value of Result.Type when the upgrade was vacuously
+	// successful because the template is already on the latest version.
+	AlreadyUpToDate ResultType = "already_up_to_date"
+
+	// This is the value of Result.Type when there was an upgrade and it was
+	// successful, and no user intervention is needed.
+	Success ResultType = "success"
+
+	// This is the value of Result.Type when abc tried to apply the reversal
+	// patches from the manifest to included-from-destination files, and the
+	// patches could not be applied cleanly. User intervention is needed, and
+	// the ReversalConflicts field should be used.
+	PatchReversalConflict ResultType = "patch_reversal_conflict"
+
+	// The new version of the template conflicted with local modifications and
+	// manual resolution is required. The Conflicts field should be used.
+	MergeConflict ResultType = "merge_conflict"
+)
+
 type Result struct {
 	// If no upgrade was done because this installation of the template is
 	// already on the latest version, then this will be true and all other
 	// fields in this struct will have zero values.
-	AlreadyUpToDate bool
+	Type ResultType
+
+	// The paths to files where abc tried to apply the reversal
+	// patches from the manifest to included-from-destination files, and the
+	// patches could not be applied cleanly. Manual resolution is needed.
+	ReversalConflicts []*ReversalConflict
 
 	// Conflicts is the set of files that require manual intervention by the
 	// user to resolve a merge conflict. For example, there may be a file that
@@ -125,6 +152,14 @@ type Result struct {
 	// This is mutually exclusive with "Conflicts". Each file is in only one of
 	// the two lists.
 	NonConflicts []ActionTaken
+}
+
+// ReversalConflict happens when abc tried to apply the reversal
+// patches from the manifest to included-from-destination files, and the patches
+// could not be applied cleanly.
+type ReversalConflict struct {
+	// The relative path to the file that needs manual resolution.
+	Path string
 }
 
 // ActionTaken represents an output of the merge operation. Every file that's
@@ -226,7 +261,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
-		return &Result{AlreadyUpToDate: true}, nil
+		return &Result{Type: AlreadyUpToDate}, nil
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
@@ -237,7 +272,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err //nolint:wrapcheck
 	}
 
-	if err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
+	renderResult, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
 		Clock:               p.Clock,
 		Cwd:                 p.CWD,
 		DebugStepDiffs:      p.DebugStepDiffs,
@@ -257,16 +292,12 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		SourceForMessages:   oldManifest.TemplateLocation.Val,
 		Stdout:              p.Stdout,
 		TempDirBase:         p.TempDirBase,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
 	}
 
-	newManifestPath, err := findManifest(filepath.Join(mergeDir, common.ABCInternalDir))
-	if err != nil {
-		return nil, err
-	}
-
-	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, common.ABCInternalDir, newManifestPath))
+	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +317,12 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 
 	conflicts, nonConflicts := partitionConflicts(actionsTaken)
 
+	resultType := MergeConflict
+	if len(conflicts) == 0 {
+		resultType = Success
+	}
 	return &Result{
+		Type:         resultType,
 		Conflicts:    conflicts,
 		NonConflicts: nonConflicts,
 	}, nil
@@ -417,27 +453,6 @@ func inputsToMap(inputs []*manifest.Input) map[string]string {
 		out[input.Name.Val] = input.Value.Val
 	}
 	return out
-}
-
-// Finds a manifest file in the given directory by globbing. If there's not
-// exactly one match, that's an error. The returned string is just the basename,
-// with no directory.
-func findManifest(dir string) (string, error) {
-	joined := filepath.Join(dir, "manifest*.yaml")
-	matches, err := filepath.Glob(joined)
-	if err != nil {
-		return "", fmt.Errorf("filepath.Glob(%q): %w", joined, err)
-	}
-
-	if len(matches) == 0 {
-		return "", fmt.Errorf("no manifest was found in %q", dir)
-	}
-	if len(matches) > 1 {
-		return "", fmt.Errorf("multiple manifests were found in %q: %s",
-			dir, strings.Join(matches, ", "))
-	}
-
-	return filepath.Base(matches[0]), nil
 }
 
 // detectUnmergedConflicts looks for any *.abcmerge_* files in the given directory,

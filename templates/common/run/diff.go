@@ -17,13 +17,13 @@ package run
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/abcxyz/abc/templates/common"
 )
 
 // RunDiff execs the diff binary. Returns len > 0 if there's a diff. Returns
@@ -80,13 +80,13 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		// files as empty", but it still fails if both inputs are absent. Our
 		// workaround is to detect the case where both files are nonexistent and
 		// return empty string.
-		file1Exists, err := exists(file1)
+		file1Exists, err := common.Exists(file1)
 		if err != nil {
-			return "", err
+			return "", err //nolint:wrapcheck
 		}
-		file2Exists, err := exists(file2)
+		file2Exists, err := common.Exists(file2)
 		if err != nil {
-			return "", err
+			return "", err //nolint:wrapcheck
 		}
 		if !file1Exists && !file2Exists {
 			return "", nil
@@ -131,16 +131,5 @@ func diffColorCheck(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("something strange happened when testing diff for color support. Exit code %d, stderr: %q", exitCode, stderr)
 	}
 
-	return true, nil
-}
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return false, nil
-		}
-		return false, err //nolint:wrapcheck
-	}
 	return true, nil
 }

@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -34,6 +35,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
 )
 
 type VerifyCommand struct {
@@ -75,7 +77,21 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	testCases, err := parseTestCases(ctx, c.flags.Location, c.flags.TestNames)
+	templateLocations, err := crawlTemplateLocations(c.flags.Location)
+	if err != nil {
+		return fmt.Errorf("failed to crawl template locations: %w", err)
+	}
+	var merr error
+	for _, templateLocation := range templateLocations {
+		merr = errors.Join(merr, verify(ctx, templateLocation, c.flags.TestNames, c.Stdout()))
+	}
+	return merr
+}
+
+func verify(ctx context.Context, templateLocation string, testNames []string, stdout io.Writer) (rErr error) {
+	logger := logging.FromContext(ctx)
+	logger.InfoContext(ctx, "verifying test for template location", "template_location", templateLocation)
+	testCases, err := parseTestCases(ctx, templateLocation, testNames)
 	if err != nil {
 		return fmt.Errorf("failed to parse golden tests: %w", err)
 	}
@@ -86,7 +102,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
 	// Create a temporary directory to render golden tests
-	tempDir, err := renderTestCases(ctx, testCases, c.flags.Location)
+	tempDir, err := renderTestCases(ctx, testCases, templateLocation)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
@@ -97,7 +113,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	// Highlight error message color, given diff text might be hundreds lines long.
 	// Only color the text when the result is to displayed at a terminal
 	var red, green func(a ...interface{}) string
-	useColor := c.Stdout() == os.Stdout && isatty.IsTerminal(os.Stdout.Fd())
+	useColor := stdout == os.Stdout && isatty.IsTerminal(os.Stdout.Fd())
 	if useColor {
 		red = color.New(color.FgRed).SprintFunc()
 		green = color.New(color.FgGreen).SprintFunc()
@@ -109,7 +125,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	resultReport := "\nTest Report:\n"
 
 	for _, tc := range testCases {
-		goldenDataDir := filepath.Join(c.flags.Location, goldenTestDir, tc.TestName, testDataDir)
+		goldenDataDir := filepath.Join(templateLocation, goldenTestDir, tc.TestName, testDataDir)
 		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
 
 		if !tc.TestConfig.Features.SkipABCRenamed {
@@ -120,13 +136,13 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 
 		fileSet := make(map[string]struct{})
 
-		_, err = os.Stat(goldenDataDir)
+		exists, err := common.Exists(goldenDataDir)
 		if err != nil {
-			if common.IsStatNotExistErr(err) {
-				return fmt.Errorf("no recorded test data in %q, "+
-					"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
-			}
-			return fmt.Errorf("failed to stat %q, %w", goldenDataDir, err)
+			return err //nolint:wrapcheck
+		}
+		if !exists {
+			return fmt.Errorf("no recorded test data in %q, "+
+				"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
 		}
 
 		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
@@ -151,25 +167,27 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 			abcRenameTrimmedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
 			abcRenameTrimmedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
 
-			if _, err := os.Stat(goldenFile); err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
-					err := fmt.Errorf(failureText)
-					tcErr = errors.Join(tcErr, err)
-					outputMismatch = true
-					continue
-				}
+			exists, err := common.Exists(goldenFile)
+			if err != nil {
 				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedGoldenFile, err)
 			}
+			if !exists {
+				failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
+				err := fmt.Errorf(failureText)
+				tcErr = errors.Join(tcErr, err)
+				outputMismatch = true
+				continue
+			}
 
-			if _, err := os.Stat(tempFile); err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
-					err := fmt.Errorf(failureText)
-					tcErr = errors.Join(tcErr, err)
-					continue
-				}
+			exists, err = common.Exists(tempFile)
+			if err != nil {
 				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedTempFile, err)
+			}
+			if !exists {
+				failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
+				err := fmt.Errorf(failureText)
+				tcErr = errors.Join(tcErr, err)
+				continue
 			}
 
 			diff, err := run.RunDiff(ctx, useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)
@@ -203,19 +221,19 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		}
 
 		if outputMismatch {
-			failureText := red(fmt.Sprintf("golden test [%s] didn't match actual output, you might "+
-				"need to run 'record' command to capture it as the new expected output", tc.TestName))
+			failureText := red(fmt.Sprintf("template location [%s] golden test [%s] didn't match actual output, you might "+
+				"need to run 'record' command to capture it as the new expected output", templateLocation, tc.TestName))
 			err := fmt.Errorf(failureText)
 			tcErr = errors.Join(tcErr, err)
 		}
 
 		if tcErr != nil {
-			result := red(fmt.Sprintf("[x] golden test %s fails", tc.TestName))
+			result := red(fmt.Sprintf("[x] template location [%s] golden test [%s] fails", templateLocation, tc.TestName))
 			tcErr := fmt.Errorf("%s:\n %w", result, tcErr)
 			merr = errors.Join(merr, tcErr)
 			resultReport += result
 		} else {
-			resultReport += green(fmt.Sprintf("[✓] golden test %s succeeds", tc.TestName))
+			resultReport += green(fmt.Sprintf("[✓] template location [%s] golden test [%s] succeeds", templateLocation, tc.TestName))
 		}
 
 		resultReport += "\n"
@@ -227,7 +245,6 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if merr != nil {
 		return fmt.Errorf("golden test verification failure:\n %w", merr)
 	}
-
 	return nil
 }
 

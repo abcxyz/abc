@@ -45,15 +45,16 @@ func actionInclude(ctx context.Context, inc *spec.Include, sp *stepParams) error
 func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, pos *model.ConfigPos, absDst, absSrc, relSrc, fromVal, fromDir string) error {
 	logger := logging.FromContext(ctx).With("logger", "includePath")
 
-	if _, err := sp.rp.FS.Stat(absSrc); err != nil {
-		if common.IsStatNotExistErr(err) {
-			return pos.Errorf("include path doesn't exist: %q", absSrc)
-		}
-		return fmt.Errorf("Stat(): %w", err)
+	exists, err := common.ExistsFS(sp.rp.FS, absSrc)
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+	if !exists {
+		return pos.Errorf("include path doesn't exist: %q", absSrc)
 	}
 
 	params := &common.CopyParams{
-		DryRun:  false,
+		DryRun:  false, // This copy targets a temp directory, so always do it.
 		DstRoot: absDst,
 		FS:      sp.rp.FS,
 		SrcRoot: absSrc,
@@ -92,7 +93,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 			}
 			if !de.IsDir() {
 				if fromVal == "destination" {
-					sp.includedFromDest[relToFromDir] = struct{}{}
+					sp.includedFromDest[relToFromDir] = fromDir
 				} else {
 					// Edge case: suppose this sequence of events occurs:
 					//  1. A given path is `include`d with from==destination
@@ -138,17 +139,50 @@ func isGlob(matchedPaths []model.String, originalPath, matchedPath string) bool 
 }
 
 func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) error {
-	// By default, we copy from the template directory. We also support
-	// grabbing files from the destination directory, so we can modify files
-	// that already exist in the destination.
-	fromDir := sp.templateDir
+	// By default, we copy from the template directory.
+	fromDirs := []string{sp.templateDir}
 	if inc.From.Val == "destination" {
-		fromDir = sp.rp.DestDir
+		// We also support including files from the destination directory, so we
+		// can modify files that already exist in the destination.
+		fromDirs = []string{sp.rp.DestDir}
+		// TODO(upgrade): add this field in an upcoming PR
+		// if sp.rp.IncludeFromDestExtraDir != "" {
+		// For complicated reasons related to upgrading, we sometimes add
+		// another include source directory that contains files after having
+		// had their include-from-destination patch reversed as part of the
+		// upgrade process.
+		//	fromDirs = append(fromDirs, sp.rp.IncludeFromDestExtraDir)
+		// }
 	}
 
+	anyMatches := false
+	for _, fromDir := range fromDirs {
+		matched, err := includeFromOneDir(ctx, inc, sp, fromDir)
+		if err != nil {
+			return err
+		}
+		anyMatches = anyMatches || matched
+	}
+	if !anyMatches {
+		var pathStrings []string
+		for _, p := range inc.Paths {
+			pathStrings = append(pathStrings, p.Val)
+		}
+		return inc.Pos.Errorf("include paths did not match any files: %v", pathStrings)
+	}
+	return nil
+}
+
+// includeFromOneDir does the include action for a single source directory. This
+// is needed because in some cases there's more than one source directory, and
+// this function will be called multiple times for a single path in a single
+// include action. The multiple source directories are effectively "overlaid" so
+// that we're actually including from all of them, with later ones taking
+// precedence over earlier ones, if the same file exists in all of them.
+func includeFromOneDir(ctx context.Context, inc *spec.IncludePath, sp *stepParams, fromDir string) (matchedAny bool, _ error) {
 	skipPaths, err := processPaths(inc.Skip, sp.scope)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if fromDir == sp.templateDir {
 		// If we're copying the template root directory, automatically skip
@@ -169,24 +203,26 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 	// len(asPaths) is either == 0 or == len(incPaths).
 	asPaths, err := processPaths(inc.As, sp.scope)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	incPaths, err := processPaths(inc.Paths, sp.scope)
 	if err != nil {
-		return err
+		return false, err
 	}
 
+	anyMatches := false
 	for i, p := range incPaths {
 		matchedPaths, err := processGlobs(ctx, []model.String{p}, fromDir, sp.features.SkipGlobs)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		for _, absSrc := range matchedPaths {
+			anyMatches = true
 			relSrc, err := filepath.Rel(fromDir, absSrc.Val)
 			if err != nil {
-				return fmt.Errorf("internal error making relative path: %w", err)
+				return false, fmt.Errorf("internal error making relative path: %w", err)
 			}
 
 			// if no As val was provided, use the original file or directory name.
@@ -204,11 +240,11 @@ func includePath(ctx context.Context, inc *spec.IncludePath, sp *stepParams) err
 			absDst := filepath.Join(sp.scratchDir, relDst)
 
 			if err := copyToDst(ctx, sp, skipPaths, absSrc.Pos, absDst, absSrc.Val, relSrc, inc.From.Val, fromDir); err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
-	return nil
+	return anyMatches, nil
 }
 
 // checkIgnore checks the given path against the given patterns, if given

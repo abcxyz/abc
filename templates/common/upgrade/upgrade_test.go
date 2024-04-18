@@ -137,6 +137,7 @@ steps:
       with: 'world'`,
 			},
 			want: &Result{
+				Type:         Success,
 				NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -148,7 +149,7 @@ steps:
 		},
 		{
 			name: "short_circuit_if_already_latest_version",
-			want: &Result{AlreadyUpToDate: true},
+			want: &Result{Type: AlreadyUpToDate},
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -172,6 +173,7 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -218,6 +220,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: DeleteAction, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -260,6 +263,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				NonConflicts: []ActionTaken{
 					{
 						Action: Noop,
@@ -315,6 +319,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
@@ -353,6 +358,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				Conflicts: []ActionTaken{
 					{
 						Action:               EditEditConflict,
@@ -399,6 +405,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				Conflicts: []ActionTaken{
 					{
 						Action:               DeleteEditConflict,
@@ -450,6 +457,7 @@ steps:
 				"spec.yaml":                      includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: WriteNew, Path: "template_changes_this_file.txt"},
 					{Action: Noop, Path: "user_deletes_this_file.txt"},
@@ -499,6 +507,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: Noop, Path: "out.txt"},
 					{Action: WriteNew, Path: "some_other_file.txt"},
@@ -550,6 +559,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
+				Type: MergeConflict,
 				NonConflicts: []ActionTaken{
 					{
 						Action: "noop",
@@ -611,6 +621,7 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{Action: "noop", Path: "out.txt"},
 					{Action: "noop", Path: "some_other_file.txt"},
@@ -722,7 +733,7 @@ steps:
 `,
 			},
 			want: &Result{
-				AlreadyUpToDate: false,
+				Type: Success,
 				NonConflicts: []ActionTaken{
 					{
 						Action:      "noop",
@@ -762,7 +773,6 @@ steps:
 
 			tempBase := t.TempDir()
 			destDir := filepath.Join(tempBase, "dest_dir")
-			manifestDir := filepath.Join(destDir, common.ABCInternalDir)
 			templateDir := filepath.Join(tempBase, "template_dir")
 
 			// Make tempBase into a valid git repo.
@@ -775,10 +785,9 @@ steps:
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 			clk := clock.NewMock()
 			clk.Set(beforeUpgradeTime)
-			mustRender(t, ctx, clk, tempBase, templateDir, destDir)
+			renderResult := mustRender(t, ctx, clk, tempBase, templateDir, destDir)
 
-			manifestBaseName := abctestutil.MustFindManifest(t, manifestDir)
-			manifestFullPath := filepath.Join(manifestDir, manifestBaseName)
+			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
 			assertManifest(ctx, t, "before upgrade", tc.wantManifestBeforeUpgrade, manifestFullPath)
 
@@ -914,7 +923,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 	}
 }
 
-func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) {
+func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, templateDir, destDir string) *render.Result {
 	tb.Helper()
 
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
@@ -925,7 +934,7 @@ func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, t
 		tb.Fatal(err)
 	}
 
-	if err := render.Render(ctx, &render.Params{
+	result, err := render.Render(ctx, &render.Params{
 		Clock:       clk,
 		Cwd:         tempBase,
 		DestDir:     destDir,
@@ -934,9 +943,11 @@ func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, tempBase, t
 		Manifest:    true,
 		OutDir:      destDir,
 		TempDirBase: tempBase,
-	}); err != nil {
+	})
+	if err != nil {
 		tb.Fatal(err)
 	}
+	return result
 }
 
 // A convenience function for "I want a copy of this manifest but with one small

@@ -33,15 +33,15 @@ type hashResult string
 const (
 	// match means "the file contents were hashed, and the value of the hash
 	// matched the expected value".
-	match hashResult = "hash_matched"
+	match hashResult = "match"
 
 	// mismatch means "the file contents were hashed, and the value of the
 	// hash didn't match the expected value".
-	mismatch hashResult = "edited"
+	mismatch hashResult = "mismatch"
 
 	// absent means "the file contents couldn't be hashed because the file
 	// doesn't exist".
-	absent hashResult = "deleted"
+	absent hashResult = "absent"
 )
 
 // hashAndCompare extracts the hash algorithm (e.g. "h1:" from wantHash, then
@@ -69,7 +69,7 @@ func hashAndCompare(path, wantHash string) (hashResult, error) {
 
 	inFile, err := os.Open(path)
 	if err != nil {
-		if common.IsStatNotExistErr(err) {
+		if common.IsNotExistErr(err) {
 			return absent, nil
 		}
 		return "", fmt.Errorf("Open(%q): %w", path, err)
