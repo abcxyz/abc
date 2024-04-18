@@ -127,7 +127,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("windows os is not supported in abc cli")
 	}
 
-	// Only check for updates if not building from HEAD.
+	// Only check for updates if not built from HEAD.
 	if version.Version != "source" {
 		// Timeout updater after 1 second.
 		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
