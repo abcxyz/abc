@@ -149,7 +149,7 @@ func WithStderr(stderr io.Writer) *Option {
 	return &Option{stderr: stderr}
 }
 
-// TODO doc, empty string means existing wd
+// WithCwd runs the command in the given working directory.
 func WithCwd(cwd string) *Option {
 	return &Option{cwd: cwd}
 }

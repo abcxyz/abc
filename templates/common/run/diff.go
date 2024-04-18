@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/acarl005/stripansi"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/tempdir"
@@ -49,14 +52,14 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &outErr)
 	tempDir, err := tempTracker.MkdirTempTracked("", tempdir.GitDiffSymlinkDirNamePart)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
-	src, err := symlinkIfExistsOrNull(file1, tempDir, "a/"+file1Label)
+	src, err := symlinkIfExistsOrNull(ctx, file1, tempDir, "a/"+file1Label)
 	if err != nil {
 		return "", err
 	}
-	dst, err := symlinkIfExistsOrNull(file2, tempDir, "b/"+file2Label)
+	dst, err := symlinkIfExistsOrNull(ctx, file2, tempDir, "b/"+file2Label)
 	if err != nil {
 		return "", err
 	}
@@ -70,9 +73,8 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		"git",
 		"diff",
 		"--no-index", // Ignore the git repo and use "git diff" as a plain diff tool
-		// "-C", tempDir,
-		fmt.Sprintf("--color=%s", colorParam), // TODO can separate into two args and avoid Sprintf?
-		"--src-prefix", "",                    // we created a/ and b/ dirs in the temp dir, so no need for prefixes.
+		fmt.Sprintf("--color=%s", colorParam),
+		"--src-prefix", "", // we created a/ and b/ dirs in the temp dir, so no need for prefixes.
 		"--dst-prefix", "",
 		src,
 		dst,
@@ -89,38 +91,25 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 	if err != nil {
 		return "", fmt.Errorf("error exec'ing diff: %w", err)
 	}
-	// TODO check exit codes
-	// The man page for diff says it returns code 2 on error.
-	if exitCode > 1 {
-		// A quirk of the diff command: the -N flag means "treat nonexistent
-		// files as empty", but it still fails if both inputs are absent. Our
-		// workaround is to detect the case where both files are nonexistent and
-		// return empty string.
-		// TODO remove
-		file1Exists, err := common.Exists(file1)
-		if err != nil {
-			return "", err //nolint:wrapcheck
-		}
-		file2Exists, err := common.Exists(file2)
-		if err != nil {
-			return "", err //nolint:wrapcheck
-		}
-		if !file1Exists && !file2Exists {
-			return "", nil
-		}
+
+	switch exitCode {
+	case 0:
+		return "", nil
+	case 1:
+		return trimMetadata(stdout.String()), nil
+	default:
 		return "", fmt.Errorf("error exec'ing diff: %s", stderr.String())
 	}
-	return stdout.String(), nil
 }
 
 const devNull = "/dev/null"
 
 // TODO doc
 // Returns linkRelPath if absPath exists. Otherwise returns "/dev/null".
-func symlinkIfExistsOrNull(absPath, tempDir, linkRelPath string) (string, error) {
+func symlinkIfExistsOrNull(ctx context.Context, absPath, tempDir, linkRelPath string) (string, error) {
 	exists, err := common.Exists(absPath)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	linkTarget := devNull
@@ -128,12 +117,51 @@ func symlinkIfExistsOrNull(absPath, tempDir, linkRelPath string) (string, error)
 		linkTarget = absPath
 	}
 
-	symlinkPath1 := filepath.Join(tempDir, linkRelPath)
-	os.MkdirAll(filepath.Dir(symlinkPath1), common.OwnerRWXPerms)
-	if err := os.Symlink(linkTarget, symlinkPath1); err != nil {
-		return "", err
+	dest := filepath.Join(tempDir, linkRelPath)
+	if err := os.MkdirAll(filepath.Dir(dest), common.OwnerRWXPerms); err != nil {
+		return "", err //nolint:wrapcheck
+	}
+	if err := common.Copy(ctx, &common.RealFS{}, linkTarget, dest); err != nil {
+		return "", err //nolint:wrapcheck
 	}
 	return linkRelPath, nil
+}
+
+// The git diff command includes extra metadata header lines that we don't want,
+// like this:
+//
+//	diff --git a/file1.txt b/file2.txt
+//	index 84d55c5..e69de29 100644
+//
+// ... so we remove them, but only if they are present at the beginning of the
+// file.
+//
+// These metadata lines aren't presented in regular non-diff git output, and
+// they're just clutter. Also, the "index" line leaks metadata that we don't
+// want to leak.
+func trimMetadata(diffOutput string) string {
+	const linesToCheck = 2
+	splits := strings.SplitN(diffOutput, "\n", linesToCheck+1)
+	out := make([]string, 0, 1)
+	linesToIgnorePrefixes := []string{
+		"diff --git",
+		"index ",
+	}
+	for _, split := range splits {
+		anyMatched := false
+		for _, p := range linesToIgnorePrefixes {
+			if strings.HasPrefix(stripansi.Strip(split), p) {
+				anyMatched = true
+				break
+			}
+		}
+		if anyMatched {
+			continue
+		}
+		out = append(out, split)
+	}
+
+	return strings.Join(out, "\n")
 }
 
 // var (

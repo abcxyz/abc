@@ -129,6 +129,8 @@ const (
 	MergeConflict ResultType = "merge_conflict"
 )
 
+// Result is returned from Upgrade if there's no error. It may indicate that
+// there were merge conflicts requirigit ng manual resolution.
 type Result struct {
 	// If no upgrade was done because this installation of the template is
 	// already on the latest version, then this will be true and all other
