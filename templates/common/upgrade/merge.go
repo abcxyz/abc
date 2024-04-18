@@ -96,30 +96,30 @@ type decideMergeParams struct {
 	// Is this file in the "old" manifest? If so, that means it was output by
 	// the template version that was installed prior to the template version
 	// that we're upgrading to right now.
-	IsInOldManifest bool
+	isInOldManifest bool
 
 	// Is this file in the "new" manifest? If so, that means it is being output
 	// by the new, upgraded version of the template.
-	IsInNewManifest bool
+	isInNewManifest bool
 
 	// Only used if IsInOldManifest==true. Does the preexisting file on the
 	// filesystem (before the upgrade began) match the hash value in the old
 	// manifest? If the hash doesn't match, that means the user made some
 	// customizations.
-	OldFileMatchesOldHash hashResult // TODO make this a bool?
+	oldFileMatchesOldHash hashResult
 
 	// Only used if IsInNewManifest==true. Does the new file being output by
 	// the new version of the template match the hash value in the old
 	// manifest? If the hash matches, that means that the current template
 	// outputs identical file contents to the old template.
-	NewFileMatchesOldHash hashResult // TODO make this a hashresult?
+	newFileMatchesOldHash hashResult
 
 	// Only used if IsInNewManifest==true and isInOldManifest==false. Does the
 	// preexisting file on the filesystem (before the upgrade began) match the
 	// hash value in the new manifest? If so, that means that an add/add
 	// conflict can be avoided because the both parties added identical file
 	// contents.
-	OldFileMatchesNewHash hashResult
+	oldFileMatchesNewHash hashResult
 }
 
 // decideMerge is the core of the algorithm that merges the template output with
@@ -131,8 +131,8 @@ type decideMergeParams struct {
 func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	switch {
 	// Case: this file was not output by the old template version, but is output by this template version.
-	case !o.IsInOldManifest && o.IsInNewManifest:
-		switch o.OldFileMatchesNewHash {
+	case !o.isInOldManifest && o.isInNewManifest:
+		switch o.oldFileMatchesNewHash {
 		case match:
 			return &mergeDecision{
 				action:           Noop,
@@ -151,8 +151,8 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		}
 
 	// Case: this file was output by the old template version, but not by the new template version.
-	case o.IsInOldManifest && !o.IsInNewManifest:
-		switch o.OldFileMatchesOldHash {
+	case o.isInOldManifest && !o.isInNewManifest:
+		switch o.oldFileMatchesOldHash {
 		case match:
 			return &mergeDecision{
 				action:           DeleteAction,
@@ -171,14 +171,14 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 		}
 
 	// Case: this file was output by the old template version AND the new template version.
-	case o.IsInOldManifest && o.IsInNewManifest:
-		if o.NewFileMatchesOldHash == match {
+	case o.isInOldManifest && o.isInNewManifest:
+		if o.newFileMatchesOldHash == match {
 			return &mergeDecision{
 				action:           Noop,
 				humanExplanation: "the new template outputs the same contents as the old template, therefore local edits (if any) can remain without needing resolution",
 			}, nil
 		}
-		switch o.OldFileMatchesOldHash {
+		switch o.oldFileMatchesOldHash {
 		case match:
 			return &mergeDecision{
 				action:           WriteNew,
@@ -204,7 +204,7 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 	}
 
 	return nil, fmt.Errorf("this is a bug in abc, please report it at https://github.com/abcxyz/abc/issues/new?template=bug.yaml with this text: IsInOldManifest=%t IsInNewManifest=%t OldFileMatchesOldHash=%q NewFileMatchesOldHash=%q OldFileMatchesNewHash=%q",
-		o.IsInOldManifest, o.IsInNewManifest, o.OldFileMatchesOldHash, o.NewFileMatchesOldHash, o.OldFileMatchesNewHash)
+		o.isInOldManifest, o.isInNewManifest, o.oldFileMatchesOldHash, o.newFileMatchesOldHash, o.oldFileMatchesNewHash)
 }
 
 // mergeAll incorporates the output of the upgraded template version in mergeDir
@@ -247,11 +247,11 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 		}
 
 		hr := &decideMergeParams{
-			IsInOldManifest:       isInOldManifest,
-			IsInNewManifest:       isInNewManifest,
-			OldFileMatchesOldHash: oldFileMatchesOldHash,
-			NewFileMatchesOldHash: newFileMatchesOldHash,
-			OldFileMatchesNewHash: oldFileMatchesNewHash,
+			isInOldManifest:       isInOldManifest,
+			isInNewManifest:       isInNewManifest,
+			oldFileMatchesOldHash: oldFileMatchesOldHash,
+			newFileMatchesOldHash: newFileMatchesOldHash,
+			oldFileMatchesNewHash: oldFileMatchesNewHash,
 		}
 
 		decision, err := decideMerge(hr)
