@@ -1243,3 +1243,13 @@ These are the functions that we added that are not normally part of CEL.
   Example:
 
       "abc,def".split(",") == ["abc", "def"]
+
+## Update Checks
+[abcxyz/abc-updater](https://github.com/abcxyz/abc-updater) is run once a day to
+check for newer versions of `abc`, results are printed to stderr if an update is
+available. This check can be disabled by setting the environment variable
+`ABC_IGNORE_VERSIONS=ALL`. Notifications can be disabled for specific versions
+with a list of versions and constraints `ABC_IGNORE_VERSIONS=<2.0.0,3.5.0`.
+
+This check is not done on non-release builds, as they don't have canonical
+version to check against.
