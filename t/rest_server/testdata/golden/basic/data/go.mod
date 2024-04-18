@@ -6,7 +6,6 @@ toolchain go1.22.1
 
 require (
 	github.com/abcxyz/pkg v1.0.4
-	github.com/go-chi/chi/v5 v5.0.12
 	github.com/google/go-cmp v0.6.0
 )
 
