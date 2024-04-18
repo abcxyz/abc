@@ -244,11 +244,16 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 	})
 }
 
+// Copy copies the file src to dst. It's a wrapper around CopyFile that hides
+// unneeded arguments.
+func Copy(ctx context.Context, fs FS, src, dst string) error {
+	return CopyFile(ctx, nil, fs, src, dst, false, nil)
+}
+
 // CopyFile copies the contents of src to dst.
 //
-// hash is nil-able. If not nil, it will be written to with the file contents.
-// The caller should call hash.Sum() to get the hash output.
-func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, dryRun bool, hash hash.Hash) (outErr error) {
+// tee is nil-able. If not nil, it will be written to with the file contents.
+func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, dryRun bool, tee io.Writer) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "copyFile")
 
 	// The permission bits on the output file are copied from the input file.
@@ -278,8 +283,8 @@ func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 		writer = writeFile
 	}
 
-	if hash != nil {
-		reader = io.TeeReader(readFile, hash)
+	if tee != nil {
+		reader = io.TeeReader(readFile, tee)
 	}
 
 	if _, err := io.Copy(writer, reader); err != nil {
