@@ -59,6 +59,7 @@ import (
 //   - support --merge-strategy=ai to try to get an LLM to semantically resolve the diff
 //   - try an automatic 2-way merge: diff the two files, then apply the diff?
 //   - interactive conflict resolution
+//   - patch .rej files look the same on all platforms (mac and Linux differ)
 
 // Params contains all the arguments to Upgrade().
 type Params struct {

@@ -113,6 +113,11 @@ steps:
 		wantManifestAfterUpgrade     *manifest.Manifest
 		want                         *Result
 		wantErr                      string
+
+		// wantRejectFile is a hack since Mac and Linux `patch` commands
+		// generate different formats for their reject hunk files. We therefore
+		// just test for the presence of the file.
+		wantRejectFile string
 	}{
 		// TODO(upgrade): tests to add:
 		//  a chain of upgrades
@@ -853,14 +858,9 @@ steps:
 					},
 				},
 			},
+			wantRejectFile: "file.txt.rej",
 			wantDestContentsAfterUpgrade: map[string]string{
 				"file.txt": "green is my favorite color\n",
-				"file.txt.rej": `--- file.txt
-+++ file.txt
-@@ -1 +1 @@
--red is my favorite color
-+purple is my favorite color
-`,
 			},
 		},
 
@@ -1054,9 +1054,22 @@ yellow is my favorite color
 
 			assertManifest(ctx, t, "after upgrade", tc.wantManifestAfterUpgrade, manifestFullPath)
 
-			gotDestContentsAfter := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+			gotDestContentsAfter := abctestutil.LoadDir(t, destDir,
+				abctestutil.SkipGlob(".abc/manifest*"),
+				abctestutil.SkipGlob("*.rej"), // rejected hunk files are asserted separately
+			)
 			if diff := cmp.Diff(gotDestContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
+			}
+
+			if tc.wantRejectFile != "" {
+				ok, err := common.Exists(filepath.Join(destDir, tc.wantRejectFile))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !ok {
+					t.Errorf("reject file %q was missing", tc.wantRejectFile)
+				}
 			}
 		})
 	}
