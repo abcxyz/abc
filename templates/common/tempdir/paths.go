@@ -22,5 +22,5 @@ const (
 	ScratchDirNamePart        = "scratch-"
 	TemplateDirNamePart       = "template-copy-"
 	UpgradeMergeDirNamePart   = "upgrade-merge-"
-	GitDiffSymlinkDirNamePart = "git-diff-symlinks-"
+	GitDiffDirNamePart        = "git-diff-"
 )

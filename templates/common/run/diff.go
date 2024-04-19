@@ -50,17 +50,17 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 
 	tempTracker := tempdir.NewDirTracker(&common.RealFS{}, false)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &outErr)
-	tempDir, err := tempTracker.MkdirTempTracked("", tempdir.GitDiffSymlinkDirNamePart)
+	tempDir, err := tempTracker.MkdirTempTracked("", tempdir.GitDiffDirNamePart)
 	if err != nil {
 		return "", err //nolint:wrapcheck
 	}
 
-	src, err := symlinkIfExistsOrNull(ctx, file1, tempDir, "a/"+file1Label)
-	if err != nil {
+	srcRelPath := "a/" + file1Label
+	dstRelPath := "b/" + file2Label
+	if err := copyToTempIfExists(ctx, file1, tempDir, srcRelPath); err != nil {
 		return "", err
 	}
-	dst, err := symlinkIfExistsOrNull(ctx, file2, tempDir, "b/"+file2Label)
-	if err != nil {
+	if err := copyToTempIfExists(ctx, file2, tempDir, dstRelPath); err != nil {
 		return "", err
 	}
 
@@ -76,8 +76,8 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 		fmt.Sprintf("--color=%s", colorParam),
 		"--src-prefix", "", // we created a/ and b/ dirs in the temp dir, so no need for prefixes.
 		"--dst-prefix", "",
-		src,
-		dst,
+		srcRelPath,
+		dstRelPath,
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -102,29 +102,28 @@ func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2Rel
 	}
 }
 
-const devNull = "/dev/null"
-
-// TODO doc
-// Returns linkRelPath if absPath exists. Otherwise returns "/dev/null".
-func symlinkIfExistsOrNull(ctx context.Context, absPath, tempDir, linkRelPath string) (string, error) {
-	exists, err := common.Exists(absPath)
+// Copies absPath (if it exists) into tempDir at the given relative path. If
+// absPath doesn't exist, then an empty file is create at the given relative
+// path instead.
+func copyToTempIfExists(ctx context.Context, absPath, tempDir, linkRelPath string) error {
+	srcExists, err := common.Exists(absPath)
 	if err != nil {
-		return "", err //nolint:wrapcheck
-	}
-
-	linkTarget := devNull
-	if exists {
-		linkTarget = absPath
+		return err //nolint:wrapcheck
 	}
 
 	dest := filepath.Join(tempDir, linkRelPath)
 	if err := os.MkdirAll(filepath.Dir(dest), common.OwnerRWXPerms); err != nil {
-		return "", err //nolint:wrapcheck
+		return err //nolint:wrapcheck
 	}
-	if err := common.Copy(ctx, &common.RealFS{}, linkTarget, dest); err != nil {
-		return "", err //nolint:wrapcheck
+
+	if !srcExists {
+		return os.WriteFile(dest, nil, common.OwnerRWPerms) //nolint:wrapcheck
 	}
-	return linkRelPath, nil
+
+	if err := common.Copy(ctx, &common.RealFS{}, absPath, dest); err != nil {
+		return err //nolint:wrapcheck
+	}
+	return nil
 }
 
 // The git diff command includes extra metadata header lines that we don't want,

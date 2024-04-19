@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - 'macos-14'
+          - 'macos-latest'
           - 'ubuntu-latest'
     with:
       runs-on: '"${{ matrix.runner }}"'
@@ -62,8 +62,7 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - 'macos-14'
-          - 'macos-12'
+          - 'macos-latest'
           - 'ubuntu-latest'
     runs-on: '${{ matrix.runner }}'
     steps:
