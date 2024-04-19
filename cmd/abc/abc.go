@@ -22,7 +22,9 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
+	"time"
 
+	"github.com/abcxyz/abc-updater/pkg/abcupdater"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
@@ -124,5 +126,19 @@ func realMain(ctx context.Context) error {
 	if runtime.GOOS == "windows" {
 		return fmt.Errorf("windows os is not supported in abc cli")
 	}
+
+	// Only check for updates if not built from HEAD.
+	if version.Version != "source" {
+		// Timeout updater after 1 second.
+		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
+		defer updaterDone()
+		report := abcupdater.CheckAppVersion(updaterCtx, &abcupdater.CheckVersionParams{
+			AppID:   version.Name,
+			Version: version.Version,
+		}, func(s string) { fmt.Fprintln(os.Stderr, s) })
+
+		defer report()
+	}
+
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }

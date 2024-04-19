@@ -76,6 +76,7 @@ func Run(ctx context.Context, opts []*Option, args ...string) (exitCode int, _ e
 	cmd.Stdout = compiledOpts.stdout
 	cmd.Stderr = compiledOpts.stderr
 	cmd.Stdin = compiledOpts.stdin
+	cmd.Dir = compiledOpts.cwd
 
 	err := cmd.Run()
 	if err != nil {
@@ -113,6 +114,7 @@ func Many(ctx context.Context, args ...[]string) (stdouts, stderrs []string, _ e
 // Option implements the functional options pattern for [Run].
 type Option struct {
 	allowNonZeroExit bool
+	cwd              string
 	stdin            io.Reader
 	stdout           io.Writer
 	stderr           io.Writer
@@ -147,6 +149,11 @@ func WithStderr(stderr io.Writer) *Option {
 	return &Option{stderr: stderr}
 }
 
+// WithCwd runs the command in the given working directory.
+func WithCwd(cwd string) *Option {
+	return &Option{cwd: cwd}
+}
+
 func compileOpts(opts []*Option) *Option {
 	var out Option
 	for _, opt := range opts {
@@ -161,6 +168,9 @@ func compileOpts(opts []*Option) *Option {
 		}
 		if opt.stderr != nil {
 			out.stderr = opt.stderr
+		}
+		if opt.cwd != "" {
+			out.cwd = opt.cwd
 		}
 	}
 
