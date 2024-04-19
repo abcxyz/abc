@@ -43,4 +43,10 @@ const (
 	// patch in the manifest YAML file to the corresponding
 	// included-from-destination file.
 	ReversedPatchDirNamePart = "reversed-patch-"
+
+	// The temp directory where files are staged before feeding them to "git
+	// diff --no-index". This is needed because git diff doesn't have the
+	// ability to override the filename labels in the diff output, you have to
+	// actually create a directory with the files in the desired locations.
+	GitDiffDirNamePart = "git-diff-"
 )

@@ -25,8 +25,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/serving"
@@ -58,20 +56,12 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to create renderer for main server: %w", err)
 	}
 
-	r := chi.NewRouter()
-	r.Mount("/", handleHello(h))
-	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		logger.DebugContext(ctx, "Route registered", "http_method", method, "route", route)
-		return nil
-	}
-
-	if err := chi.Walk(r, walkFunc); err != nil {
-		logger.ErrorContext(ctx, "error walking routes", "error", err)
-	}
+	mux := http.NewServeMux()
+	mux.Handle("/", handleHello(h))
 
 	httpServer := &http.Server{
 		Addr:              *port,
-		Handler:           r,
+		Handler:           mux,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 
