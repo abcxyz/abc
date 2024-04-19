@@ -18,12 +18,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
-	"slices"
 	"strings"
-	"sync"
+
+	"github.com/acarl005/stripansi"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/tempdir"
 )
 
 // RunDiff execs the diff binary. Returns len > 0 if there's a diff. Returns
@@ -35,101 +37,128 @@ import (
 // relative path of file1 relative to file1RelTo, and the same for file1. So if
 // file1 is "/x/y/z.tzt" and file1RelTo is "/x", then the filename label in the
 // returned diff will be "y/z.txt".
-func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2RelTo string) (string, error) {
+func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2RelTo string) (_ string, outErr error) {
 	file1Label, err := filepath.Rel(file1RelTo, file1)
 	if err != nil {
 		return "", fmt.Errorf("failed getting relative path for diff: %w", err)
 	}
+
 	file2Label, err := filepath.Rel(file2RelTo, file2)
 	if err != nil {
 		return "", fmt.Errorf("failed getting relative path for diff: %w", err)
 	}
-	args := []string{
-		"diff",
-		"-u", // Produce unified diff format (similar to git)
-		"-N", // Treat nonexistent file as empty
 
-		// Act like git, and name the files as a/foo and b/foo in the patch.
-		"--label", "a/" + file1Label, file1,
-		"--label", "b/" + file2Label, file2,
+	tempTracker := tempdir.NewDirTracker(&common.RealFS{}, false)
+	defer tempTracker.DeferMaybeRemoveAll(ctx, &outErr)
+	tempDir, err := tempTracker.MkdirTempTracked("", tempdir.GitDiffDirNamePart)
+	if err != nil {
+		return "", err //nolint:wrapcheck
 	}
 
+	srcRelPath := "a/" + file1Label
+	dstRelPath := "b/" + file2Label
+	if err := copyToTempIfExists(ctx, file1, tempDir, srcRelPath); err != nil {
+		return "", err
+	}
+	if err := copyToTempIfExists(ctx, file2, tempDir, dstRelPath); err != nil {
+		return "", err
+	}
+
+	colorParam := "never"
 	if color {
-		colorSupported, err := diffColorSupported(ctx)
-		if err != nil {
-			return "", err
-		}
-		if colorSupported {
-			args = slices.Insert(args, 1, "--color=always")
-		}
+		colorParam = "always"
+	}
+
+	args := []string{
+		"git",
+		"diff",
+		"--no-index", // Ignore the git repo and use "git diff" as a plain diff tool
+		fmt.Sprintf("--color=%s", colorParam),
+		"--src-prefix", "", // we created a/ and b/ dirs in the temp dir, so no need for prefixes.
+		"--dst-prefix", "",
+		srcRelPath,
+		dstRelPath,
 	}
 
 	var stdout, stderr bytes.Buffer
 	opts := []*Option{
-		WithStdout(&stdout),
-		WithStderr(&stderr),
 		AllowNonzeroExit(),
+		WithCwd(tempDir),
+		WithStderr(&stderr),
+		WithStdout(&stdout),
 	}
 	exitCode, err := Run(ctx, opts, args...)
 	if err != nil {
 		return "", fmt.Errorf("error exec'ing diff: %w", err)
 	}
-	// The man page for diff says it returns code 2 on error.
-	if exitCode == 2 {
-		// A quirk of the diff command: the -N flag means "treat nonexistent
-		// files as empty", but it still fails if both inputs are absent. Our
-		// workaround is to detect the case where both files are nonexistent and
-		// return empty string.
-		file1Exists, err := common.Exists(file1)
-		if err != nil {
-			return "", err //nolint:wrapcheck
-		}
-		file2Exists, err := common.Exists(file2)
-		if err != nil {
-			return "", err //nolint:wrapcheck
-		}
-		if !file1Exists && !file2Exists {
-			return "", nil
-		}
+
+	switch exitCode {
+	case 0:
+		return "", nil
+	case 1:
+		return trimMetadata(stdout.String()), nil
+	default:
 		return "", fmt.Errorf("error exec'ing diff: %s", stderr.String())
 	}
-	return stdout.String(), nil
 }
 
-var (
-	diffColorOnce    sync.Once
-	diffColorSupport bool
-	diffColorErr     error //nolint:errname
-)
-
-// diffColorSupported returns whether we're running on a machine that supports
-// --color=always. MacOS <= 12 seems not to have this.
-func diffColorSupported(ctx context.Context) (bool, error) {
-	diffColorOnce.Do(func() {
-		diffColorSupport, diffColorErr = diffColorCheck(ctx)
-	})
-	return diffColorSupport, diffColorErr
-}
-
-// diffColorCheck tests whether we're running on a machine that supports
-// --color=always. MacOS <= 12 seems not to have this.
-func diffColorCheck(ctx context.Context) (bool, error) {
-	var stderr bytes.Buffer
-	opts := []*Option{
-		WithStderr(&stderr),
-		AllowNonzeroExit(),
-	}
-	exitCode, err := Run(ctx, opts, "diff", "--color=always", "/dev/null", "/dev/null")
+// Copies absPath (if it exists) into tempDir at the given relative path. If
+// absPath doesn't exist, then an empty file is create at the given relative
+// path instead.
+func copyToTempIfExists(ctx context.Context, absPath, tempDir, linkRelPath string) error {
+	srcExists, err := common.Exists(absPath)
 	if err != nil {
-		return false, fmt.Errorf("failed determining whether the diff command supports color: %w", err)
+		return err //nolint:wrapcheck
 	}
 
-	if exitCode == 2 && strings.Contains(stderr.String(), "unrecognized option `--color=always'") {
-		return false, nil
-	}
-	if exitCode != 0 {
-		return false, fmt.Errorf("something strange happened when testing diff for color support. Exit code %d, stderr: %q", exitCode, stderr)
+	dest := filepath.Join(tempDir, linkRelPath)
+	if err := os.MkdirAll(filepath.Dir(dest), common.OwnerRWXPerms); err != nil {
+		return err //nolint:wrapcheck
 	}
 
-	return true, nil
+	if !srcExists {
+		return os.WriteFile(dest, nil, common.OwnerRWPerms) //nolint:wrapcheck
+	}
+
+	if err := common.Copy(ctx, &common.RealFS{}, absPath, dest); err != nil {
+		return err //nolint:wrapcheck
+	}
+	return nil
+}
+
+// The git diff command includes extra metadata header lines that we don't want,
+// like this:
+//
+//	diff --git a/file1.txt b/file2.txt
+//	index 84d55c5..e69de29 100644
+//
+// ... so we remove them, but only if they are present at the beginning of the
+// file.
+//
+// These metadata lines aren't presented in regular non-diff git output, and
+// they're just clutter. Also, the "index" line leaks metadata that we don't
+// want to leak.
+func trimMetadata(diffOutput string) string {
+	const linesToCheck = 2
+	splits := strings.SplitN(diffOutput, "\n", linesToCheck+1)
+	out := make([]string, 0, 1)
+	linesToIgnorePrefixes := []string{
+		"diff --git",
+		"index ",
+	}
+	for _, split := range splits {
+		anyMatched := false
+		for _, p := range linesToIgnorePrefixes {
+			if strings.HasPrefix(stripansi.Strip(split), p) {
+				anyMatched = true
+				break
+			}
+		}
+		if anyMatched {
+			continue
+		}
+		out = append(out, split)
+	}
+
+	return strings.Join(out, "\n")
 }
