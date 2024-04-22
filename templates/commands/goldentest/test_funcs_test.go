@@ -105,7 +105,7 @@ kind: 'GoldenTest'`,
 				"myfile": invalidYaml,
 			},
 			want:    nil,
-			wantErr: "error reading golden test directory",
+			wantErr: "has no golden tests",
 		},
 		{
 			name: "unexpected_file_in_golden_test_dir",
@@ -661,6 +661,85 @@ func TestRenameGitDirsAndFiles(t *testing.T) {
 			gotDestContents := abctestutil.LoadDir(t, tempDir)
 			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestCrawlTemplatesWithGoldenTests(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		location     string
+		filesContent map[string]string
+		want         []string
+		wantErr      string
+	}{
+		{
+			name:     "simple_success",
+			location: ".",
+			filesContent: map[string]string{
+				"spec.yaml":                        "",
+				"testdata/golden/mytest/test.yaml": "",
+			},
+			want: []string{"."},
+		},
+		{
+			name:     "nested_templates_ignored",
+			location: ".",
+			filesContent: map[string]string{
+				"spec.yaml":                        "",
+				"testdata/golden/mytest/test.yaml": "",
+				"dir1/spec.yaml":                   "",
+			},
+			want: []string{"."},
+		},
+		{
+			name:     "location_empty",
+			location: "",
+			filesContent: map[string]string{
+				"spec.yaml":                        "",
+				"testdata/golden/mytest/test.yaml": "",
+			},
+			want: []string{"."},
+		},
+		{
+			name: "template_without_golden_test",
+			filesContent: map[string]string{
+				"spec.yaml": "",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			abctestutil.WriteAll(t, tempDir, tc.filesContent)
+
+			got, err := crawlTemplatesWithGoldenTests(tempDir)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+			// crawlTemplateLocations returns absolute paths, but we want them
+			// to be relative to the tempdir so the test output doesn't depend
+			// on the temp dir name.
+			gotRel := make([]string, 0, len(got))
+			for _, gotAbs := range got {
+				rel, err := filepath.Rel(tempDir, gotAbs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				gotRel = append(gotRel, rel)
+			}
+
+			if diff := cmp.Diff(gotRel, tc.want, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("output template dirs were not as expected (-got,+want): %s", diff)
 			}
 		})
 	}
