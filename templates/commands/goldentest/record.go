@@ -74,7 +74,7 @@ func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 
 	absLocation, err := filepath.Abs(c.flags.Location)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	templateLocations, err := crawlTemplatesWithGoldenTests(absLocation)
 	if err != nil {

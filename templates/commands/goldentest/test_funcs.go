@@ -291,7 +291,7 @@ func crawlTemplatesWithGoldenTests(dir string) ([]string, error) {
 			return nil
 		}
 
-		isTemplate, hasGoldenTests, err := crawlCheck(path)
+		isTemplate, hasGoldenTests, err := checkIfTemplateWithTests(path)
 		if err != nil {
 			return err
 		}
@@ -313,12 +313,12 @@ func crawlTemplatesWithGoldenTests(dir string) ([]string, error) {
 	return out, nil
 }
 
-// crawlCheck tests whether the given path is a template that has golden tests.
+// checkIfTemplateWithTests tests whether the given path is a template that has golden tests.
 // if hasGoldenTests is true, then isTemplate is always true.
-func crawlCheck(path string) (isTemplate, hasGoldenTests bool, _ error) {
+func checkIfTemplateWithTests(path string) (isTemplate, hasGoldenTests bool, _ error) {
 	ok, err := common.Exists(filepath.Join(path, "spec.yaml"))
 	if err != nil {
-		return false, false, err
+		return false, false, err //nolint:wrapcheck
 	}
 	if !ok {
 		return false, false, nil // this is not a template directory because it has no spec.yaml.
@@ -326,7 +326,7 @@ func crawlCheck(path string) (isTemplate, hasGoldenTests bool, _ error) {
 
 	ok, err = common.Exists(filepath.Join(path, goldenTestDir))
 	if err != nil {
-		return false, false, err
+		return false, false, err //nolint:wrapcheck
 	}
 	if !ok {
 		return true, false, nil // this template has no golden tests.
