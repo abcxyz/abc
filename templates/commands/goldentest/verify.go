@@ -77,7 +77,11 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	templateLocations, err := crawlTemplateLocations(c.flags.Location)
+	absLocation, err := filepath.Abs(c.flags.Location)
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+	templateLocations, err := crawlTemplatesWithGoldenTests(absLocation)
 	if err != nil {
 		return fmt.Errorf("failed to crawl template locations: %w", err)
 	}
