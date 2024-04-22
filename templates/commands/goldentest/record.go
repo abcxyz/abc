@@ -67,12 +67,16 @@ func (c *RecordCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *RecordCommand) Run(ctx context.Context, args []string) (rErr error) {
+func (c *RecordCommand) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	templateLocations, err := crawlTemplateLocations(c.flags.Location)
+	absLocation, err := filepath.Abs(c.flags.Location)
+	if err != nil {
+		return err
+	}
+	templateLocations, err := crawlTemplatesWithGoldenTests(absLocation)
 	if err != nil {
 		return fmt.Errorf("failed to crawl template locations [%s]: %w", c.flags.Location, err)
 	}
