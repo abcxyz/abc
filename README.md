@@ -282,7 +282,7 @@ Description:  The Google Cloud storage bucket for Guardian state
 
 ## User Guide
 
-Start here if you want want to install ("render") a template using this CLI
+Start here if you want to install ("render") a template using this CLI
 tool. "Rendering" a template is when you use the `abc` CLI to download some
 template code, do some substitution to replace parts of it with your own values,
 and write the result to a local directory.
