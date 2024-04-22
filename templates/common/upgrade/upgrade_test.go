@@ -1248,20 +1248,30 @@ steps:
 	// manifest should be unchanged if there's a reversal conflict
 	wantDestContentsAfterFailedUpgrade := map[string]string{
 		"file.txt": "green is my favorite color\n",
-		"file.txt.rej": `--- file.txt
-+++ file.txt
-@@ -1 +1 @@
--red is my favorite color
-+purple is my favorite color
-`,
+
+		// Don't assert the contents of the .rej file, because its contents vary
+		// between macos and linux due to the differences between freebsd patch
+		// and GNU patch.
+		//
+		// "file.txt.rej": ... ,
 	}
 
 	wantManifestAfterFailedUpgrade := wantManifestBeforeUpgrade
 	assertManifest(ctx, t, "after upgrade", wantManifestAfterFailedUpgrade, manifestFullPath)
 
-	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir,
+		abctestutil.SkipGlob(".abc/manifest*"), // the manifest is verified separately
+		abctestutil.SkipGlob("file.txt.rej"),   // the patch reject file is just checked for presence, separately
+	)
 	if diff := cmp.Diff(gotDestContentsAfterFailedUpgrade, wantDestContentsAfterFailedUpgrade); diff != "" {
 		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
+	}
+	ok, err := common.Exists(filepath.Join(destDir, "file.txt.rej"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("got no file.txt.rej rejected patch file, but wanted one")
 	}
 
 	// Resolve the merge conflict
