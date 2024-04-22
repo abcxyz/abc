@@ -67,7 +67,8 @@ func (c *Command) Flags() *cli.FlagSet {
 	return set
 }
 
-const mergeInstructions = `
+const (
+	mergeInstructions = `
 Some manual conflict resolution is required because of a conflict between your
 local edits and the new version of the template. Please look at all files ending
 in .abcmerge_* and either edit, delete, or rename them to reflect your decision.
@@ -101,6 +102,9 @@ Background on conflict types:
    named "yourfile.abcmerge_from_new_template". Please resolve the conflict by
    (1) renaming one of these files to "yourfile and deleting the other, or (2)
    merging the two files into "yourfile".`
+
+ 	patchReversalInstructions = ``
+)
 
 func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {

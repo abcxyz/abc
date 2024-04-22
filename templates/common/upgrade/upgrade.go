@@ -57,7 +57,6 @@ import (
 //     instead of a 2-way merge.
 //   - support --merge-strategy=ours|theirs to resolve conflicts
 //   - support --merge-strategy=ai to try to get an LLM to semantically resolve the diff
-//   - try an automatic 2-way merge: diff the two files, then apply the diff?
 //   - interactive conflict resolution
 //   - patch .rej files look the same on all platforms (mac and Linux differ)
 
