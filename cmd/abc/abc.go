@@ -33,6 +33,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -123,8 +124,8 @@ func setLogEnvVars() {
 }
 
 func realMain(ctx context.Context) error {
-	if runtime.GOOS == "windows" {
-		return fmt.Errorf("windows os is not supported in abc cli")
+	if err := checkSupportedOS(); err != nil {
+		return err
 	}
 
 	// Only check for updates if not built from HEAD.
@@ -141,4 +142,20 @@ func realMain(ctx context.Context) error {
 	}
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
+}
+
+func checkSupportedOS() error {
+	switch runtime.GOOS {
+	case "windows":
+		return fmt.Errorf("windows os is not supported in abc cli")
+	case "darwin":
+		var uts unix.Utsname
+		if err := unix.Uname(&uts); err != nil {
+			return fmt.Errorf("unix.Uname(): %w", err)
+		}
+		version := unix.ByteSliceToString(uts.Version[:])
+		panic(version)
+	default:
+		return nil
+	}
 }
