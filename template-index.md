@@ -13,7 +13,7 @@ Just send a GitHub Pull Request.
 The docs are at https://github.com/abcxyz/abc, but to recap: rendering a
 template looks like this:
 
-    abc templates render --prompt github.com/org/repo/path/to/dir@latest
+    abc render --prompt github.com/org/repo/path/to/dir@latest
 
 ... or use `--input=foo=bar` instead of `--prompt`.
 

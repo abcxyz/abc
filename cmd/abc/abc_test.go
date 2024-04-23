@@ -36,12 +36,17 @@ func TestRootCmd(t *testing.T) {
 	}{
 		{
 			name:       "render_prints_to_stdout",
+			args:       []string{"render", "--input=person_name=Bob", "../../examples/templates/render/print"},
+			wantStdout: "Hello, Bob!\n",
+		},
+		{
+			name:       "old_templates_subcommand_render_prints_to_stdout",
 			args:       []string{"templates", "render", "--input=person_name=Bob", "../../examples/templates/render/print"},
 			wantStdout: "Hello, Bob!\n",
 		},
 		{
 			name:    "error_return",
-			args:    []string{"templates", "render", "nonexistent/dir"},
+			args:    []string{"render", "nonexistent/dir"},
 			wantErr: "isn't a valid template name",
 		},
 		{
@@ -74,6 +79,49 @@ func TestRootCmd(t *testing.T) {
 			}
 			if !strings.Contains(stderr.String(), tc.wantStderr) {
 				t.Errorf("stderr was not as expected (-got,+want):\n%s", cmp.Diff(stderr.String(), tc.wantStderr))
+			}
+		})
+	}
+}
+
+func TestCheckDarwinVersion(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		in      string
+		wantErr string
+	}{
+		{
+			name:    "empty_input",
+			in:      "",
+			wantErr: `internal error splitting macos version, got version ""`,
+		},
+		{
+			name:    "malformed_input",
+			in:      "asdfasdf",
+			wantErr: `internal error splitting macos version, got version "asdfasdf"`,
+		},
+		{
+			name:    "too_old",
+			in:      "21.0.0",
+			wantErr: "your macOS version is not supported, use macOS version 13 or newer (darwin kernel version 22)",
+		},
+		{
+			name: "supported_version",
+			in:   "22.0.0",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.in, func(t *testing.T) {
+			t.Parallel()
+
+			err := checkDarwinVersion(tc.in)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
 			}
 		})
 	}

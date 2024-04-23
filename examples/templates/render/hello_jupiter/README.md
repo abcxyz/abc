@@ -28,7 +28,7 @@ To run this:
     containing the transformed program.
 
         ```shell
-        $ abc templates render github.com/abcxyz/abc/examples/templates/render/hello_jupiter@latest
+        $ abc render github.com/abcxyz/abc/examples/templates/render/hello_jupiter@latest
         ```
 
 1.  Run the transformed program:

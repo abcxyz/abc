@@ -18,12 +18,16 @@ This doc contains a [User Guide](#user-guide) and a
 
 ## Command line usage
 
-### For `abc templates render`
+The `abc` command has many subcommands, describes below. In abc versions before
+0.9, these commands were called `abc templates $SUBCOMMAND`, but as of 0.9 they
+are now also available under the shorter form `abc $SUBCOMMAND`.
 
-Usage: `abc templates render [flags] <template_location>`
+### For `abc render`
+
+Usage: `abc render [flags] <template_location>`
 
 Example:
-`abc templates render --prompt github.com/abcxyz/gcp-org-terraform-template@latest`
+`abc render --prompt github.com/abcxyz/gcp-org-terraform-template@latest`
 
 The `<template_location>` parameter is one of these two things:
 
@@ -110,7 +114,7 @@ The valid values for `ABC_LOG_MODE` are:
 The valid values for `ABC_LOG_LEVEL` are `debug`, `info`, `notice`, `warning`,
 `error`, and `emergency`. The default is `warn`.
 
-### For `abc templates golden-test`
+### For `abc golden-test`
 
 The golden-test feature is essentially unit testing for templates. You provide
 (1) a set of template input values and (2) the expected output directory
@@ -129,10 +133,10 @@ this file.
 
 Usage:
 
-- `abc templates golden-test new-test [options] <test_name> [<location>]`
-  see `abc-templates golden-test new-test --help` for supported options.
-- `abc templates golden-test record [--test-name=<test_name>] [<location>]`
-- `abc templates golden-test verify [--test-name=<test_name>] [<location>]`
+- `abc golden-test new-test [options] <test_name> [<location>]`
+  see `abc golden-test new-test --help` for supported options.
+- `abc golden-test record [--test-name=<test_name>] [<location>]`
+- `abc golden-test verify [--test-name=<test_name>] [<location>]`
 
 Note: For `new-test`, the `<location>` parameter gives the location of the template.
 For `record` and `verify`, `<location>` parameter gives the location that include one or more templates and abc cli
@@ -140,29 +144,29 @@ will recursively search for templates and tests under the given `<location>`.
 
 Examples:
 
-- `abc templates golden-test new-test basic examples/templates/render/hello_jupiter`
+- `abc golden-test new-test basic examples/templates/render/hello_jupiter`
   creates a new golden-test for the specific named test called `basic` for the
   given template
-- `abc templates golden-test verify examples/templates/render/hello_jupiter`
+- `abc golden-test verify examples/templates/render/hello_jupiter`
   runs all golden-tests for the given template
-- `abc templates golden-test verify --test-name=example_test examples/templates/render/hello_jupiter`
+- `abc golden-test verify --test-name=example_test examples/templates/render/hello_jupiter`
   same as above, but only for the specific named tests
-- `abc templates golden-test verify examples/templates`
+- `abc golden-test verify examples/templates`
   runs all golden-tests for the templates included in `examples/templates`
-- `abc templates golden-test verify --test-name=example examples/templates`
+- `abc golden-test verify --test-name=example examples/templates`
   same as above, but only for the specific named tests
-- `abc templates golden-test verify`
+- `abc golden-test verify`
   runs all golden-tests for the templates included in the current directory
-- `abc templates golden-test record examples/templates/render/hello_jupiter`
+- `abc golden-test record examples/templates/render/hello_jupiter`
   record the current template output as the desired/expected output for all
   tests within the given template, saving to `testdata/golden/<test_name>/data`.
-- `abc templates golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
+- `abc golden-test record --test-name=one_env,multiple_envs examples/templates/render/for_each_dynamic`
   same as above, but only for the specific named tests.
-- `abc templates golden-test record examples/templates`
+- `abc golden-test record examples/templates`
   record the all template outputs as the desired/expected outputs for all test cases for the templates under `example/templates` directory.
-- `abc templates golden-test record --test-name=example examples/templates`
+- `abc golden-test record --test-name=example examples/templates`
   same as above, but only for the specific named tests.
-- `abc templates golden-test record`
+- `abc golden-test record`
   record the all template outputs as the desired/expected outputs for all test cases for the templates under current directory.
 
 For `record` and `verify` subcommand, the `<test_name>` parameter gives the test names to record or verify, if not
@@ -236,24 +240,24 @@ Technicalities:
   variable names are allowed (e.g. `_git_sha`, `_git_tag`, `_flag_dest`).
 - Built-in variable names always start with underscore.
 
-### For `abc templates describe`
+### For `abc describe`
 
 The describe command downloads the template and prints out its description, and
 describes the inputs that it accepts.
 
 Usage:
 
-- `abc templates describe <template_location>`
+- `abc describe <template_location>`
 
 The `<template_location>` takes the same value as the
-[render](#for-abc-templates-render) command.
+[render](#for-abc-render) command.
 
 Example:
 
 Command:
 
 ```
-abc templates describe github.com/abcxyz/guardian/abc.templates/default-workflows@v0.1.0-alpha12
+abc describe github.com/abcxyz/guardian/abc.templates/default-workflows@v0.1.0-alpha12
 ```
 
 Output:
@@ -282,7 +286,7 @@ Description:  The Google Cloud storage bucket for Guardian state
 
 ## User Guide
 
-Start here if you want want to install ("render") a template using this CLI
+Start here if you want to install ("render") a template using this CLI
 tool. "Rendering" a template is when you use the `abc` CLI to download some
 template code, do some substitution to replace parts of it with your own values,
 and write the result to a local directory.
@@ -346,7 +350,7 @@ create a "hello world" Go web service.
 3. Run the `render` command:
 
    ```shell
-   $ abc templates render \
+   $ abc render \
      github.com/abcxyz/abc/examples/templates/render/hello_jupiter@latest
    ```
 
@@ -1132,7 +1136,7 @@ inputs:
     value: 'b'
 ```
 
-Then you can use `abc templates golden-test` to record (capture the anticipated
+Then you can use `abc golden-test` to record (capture the anticipated
 outcome akin to expected output in unit test)or verify the tests.
 
 # Using CEL

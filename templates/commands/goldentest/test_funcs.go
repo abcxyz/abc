@@ -48,9 +48,9 @@ type TestCase struct {
 }
 
 const (
-	// The golden test directory is alwayse located in the template root dir and
+	// The golden test directory is always located in the template root dir and
 	// named testdata/golden.
-	goldenTestDir = "testdata/golden"
+	goldenTestDir = "/testdata/golden"
 
 	// The subdirectory under a test case that records test data.
 	// Example: testdata/golden/test-case-1/data/...
@@ -69,11 +69,22 @@ const (
 
 // parseTestCases returns a list of test cases to record or verify.
 func parseTestCases(ctx context.Context, location string, testNames []string) ([]*TestCase, error) {
-	if _, err := os.Stat(location); err != nil {
-		return nil, fmt.Errorf("error reading template directory (%s): %w", location, err)
+	ok, err := common.Exists(location)
+	if err != nil {
+		return nil, fmt.Errorf("error reading template directory %q: %w", location, err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("template directory %q doesn't exist", location)
 	}
 
 	testDir := filepath.Join(location, goldenTestDir)
+	ok, err = common.Exists(testDir)
+	if err != nil {
+		return nil, fmt.Errorf("error reading golden test directory %q", testDir)
+	}
+	if !ok {
+		return nil, fmt.Errorf("the template %q has no golden tests", location)
+	}
 
 	testCases := []*TestCase{}
 
@@ -263,7 +274,14 @@ func renameGitDirsAndFiles(dir string) error {
 	return nil
 }
 
-func crawlTemplateLocations(dir string) ([]string, error) {
+// crawlTemplatesWithGoldenTests finds all templates underneath the directory
+// dir that have at least one golden test. dir must be an absolute path.
+// Templates contained inside other templates will not be returned, because they
+// may not be usable (they're probably intended to be rendered by their
+// containing template first).
+//
+// The returned paths are absolute paths.
+func crawlTemplatesWithGoldenTests(dir string) ([]string, error) {
 	var out []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -272,11 +290,18 @@ func crawlTemplateLocations(dir string) ([]string, error) {
 		if !d.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(path, goldenTestDir) {
-			return fs.SkipDir
+
+		isTemplate, hasGoldenTests, err := checkIfTemplateWithTests(path)
+		if err != nil {
+			return err
 		}
-		if _, err := os.Stat(filepath.Join(path, "spec.yaml")); err == nil {
+
+		if hasGoldenTests {
 			out = append(out, path)
+		}
+
+		if isTemplate {
+			return fs.SkipDir // Skip other templates that may be contained within this template.
 		}
 
 		return nil
@@ -286,4 +311,26 @@ func crawlTemplateLocations(dir string) ([]string, error) {
 	}
 
 	return out, nil
+}
+
+// checkIfTemplateWithTests tests whether the given path is a template that has golden tests.
+// if hasGoldenTests is true, then isTemplate is always true.
+func checkIfTemplateWithTests(path string) (isTemplate, hasGoldenTests bool, _ error) {
+	ok, err := common.Exists(filepath.Join(path, "spec.yaml"))
+	if err != nil {
+		return false, false, err //nolint:wrapcheck
+	}
+	if !ok {
+		return false, false, nil // this is not a template directory because it has no spec.yaml.
+	}
+
+	ok, err = common.Exists(filepath.Join(path, goldenTestDir))
+	if err != nil {
+		return false, false, err //nolint:wrapcheck
+	}
+	if !ok {
+		return true, false, nil // this template has no golden tests.
+	}
+
+	return true, true, nil
 }
