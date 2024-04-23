@@ -18,6 +18,7 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -103,7 +104,24 @@ Background on conflict types:
    (1) renaming one of these files to "yourfile and deleting the other, or (2)
    merging the two files into "yourfile".`
 
- 	patchReversalInstructions = ``
+	patchReversalInstructions = `
+There was a merge conflict when trying to undo changes to file(s) that were
+modified in-place by a previous version of the template.
+
+Background: the upgrade algorithm has a special case for files that were
+modified in place by a previous version of the template (aka "include from
+destination"). When the file was previously modified in place, a patch was saved
+to undo that modification, so a future template version could start fresh and
+redo the modification in place based on new template logic. Just now, this patch
+was applied to the file, but the patch didn't apply cleanly. This happens when
+the file was modified since the previous version of this template was installed;
+that could happen because somebody edited the file, or that same file was
+modified in place by a different template.
+
+To resolve this conflict, please manually apply the rejected hunks in the given
+.rej file, for each entry in the following list:
+
+`
 )
 
 func (c *Command) Run(ctx context.Context, args []string) error {
@@ -144,33 +162,44 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err //nolint:wrapcheck
 	}
 
+	exitCode := processResult(c.Stdout(), r)
+	if exitCode == 0 {
+		return nil
+	}
+	return &common.ExitCodeError{Code: exitCode}
+}
+
+func processResult(stdout io.Writer, r *upgrade.Result) (exitCode int) {
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
-		fmt.Fprintf(c.Stdout(), "Already up to date with latest template version\n")
-		return nil
+		fmt.Fprintf(stdout, "Already up to date with latest template version\n")
+		return 0
 	case upgrade.Success:
-		fmt.Fprintf(c.Stdout(), "Upgrade complete with no conflicts\n")
-		return nil
+		fmt.Fprintf(stdout, "Upgrade complete with no conflicts\n")
+		return 0
 	case upgrade.MergeConflict:
 		// TODO(upgrade):
 		//  - suggest diff / meld / vim commands?
-		fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n--\n")
+		fmt.Fprint(stdout, mergeInstructions+"\n\n--\n")
 		for _, cf := range r.Conflicts {
-			fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
-			fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
+			fmt.Fprintf(stdout, "file: %s\n", cf.Path)
+			fmt.Fprintf(stdout, "conflict type: %s\n", cf.Action)
 			if cf.OursPath != "" {
-				fmt.Fprintf(c.Stdout(), "our file was renamed to: %s\n", cf.OursPath)
+				fmt.Fprintf(stdout, "our file was renamed to: %s\n", cf.OursPath)
 			}
 			if cf.IncomingTemplatePath != "" {
-				fmt.Fprintf(c.Stdout(), "incoming file: %s\n", cf.IncomingTemplatePath)
+				fmt.Fprintf(stdout, "incoming file: %s\n", cf.IncomingTemplatePath)
 			}
-			fmt.Fprintf(c.Stdout(), "--\n")
+			fmt.Fprintf(stdout, "--\n")
 		}
-		return &common.ExitCodeError{Code: 2}
+		return 2
 	case upgrade.PatchReversalConflict:
-		// TODO(upgrade): include instructions for resolving these conflicts
-		return &common.ExitCodeError{Code: 3}
+		fmt.Fprint(stdout, patchReversalInstructions)
+		for _, rc := range r.ReversalConflicts {
+			fmt.Fprintf(stdout, "File: %s", rc.AbsPath)
+			fmt.Fprintf(stdout, "Rejected hunks for you to apply: %s", rc.RejectedHunks)
+		}
+		return 3
 	}
-
-	return nil
+	panic("unreachable") // TODO verify exhaustiveness
 }

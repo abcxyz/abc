@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -836,7 +837,13 @@ steps:
 `,
 			},
 			want: &Result{
-				ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+				ReversalConflicts: []*ReversalConflict{
+					{
+						RelPath:       "file.txt",
+						AbsPath:       "file.txt",
+						RejectedHunks: "file.txt.rej",
+					},
+				},
 			},
 			// manifest should be unchanged if there's a reversal conflict
 			wantManifestAfterUpgrade: &manifest.Manifest{
@@ -1044,6 +1051,16 @@ yellow is my favorite color
 				t.Fatal(diff)
 			}
 
+			// For testing purposes, remove the temp directory prefix from the
+			// absolute path. We need a deterministic path to check, not
+			// containing a temp dir name.
+			if result != nil {
+				for _, rc := range result.ReversalConflicts {
+					rc.AbsPath = strings.TrimPrefix(rc.AbsPath, destDir+"/")
+					rc.RejectedHunks = strings.TrimPrefix(rc.RejectedHunks, destDir+"/")
+				}
+			}
+
 			opts := []cmp.Option{
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
@@ -1235,7 +1252,13 @@ steps:
 		t.Fatal(err)
 	}
 	wantReversalConflictResult := &Result{
-		ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+		ReversalConflicts: []*ReversalConflict{
+			{
+				RelPath:       "file.txt",
+				AbsPath:       filepath.Join(destDir, "file.txt"),
+				RejectedHunks: filepath.Join(destDir, "file.txt.rej"),
+			},
+		},
 	}
 	opts := []cmp.Option{
 		cmpopts.EquateEmpty(),
