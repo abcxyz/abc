@@ -70,7 +70,7 @@ var templateCommands = map[string]cli.CommandFactory{
 	},
 }
 
-// In the past, all template-related commands were under the "abc templates"
+// In the past, all template-related commands were under the "abc"
 // subcommand because we anticipated adding more subcommands in the future. This
 // never happened, and there were only template commands, so they've now been
 // moved to the root. We keep the old `templates` subcommand for backward

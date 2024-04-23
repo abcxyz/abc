@@ -81,7 +81,7 @@ steps:
 	cases := []struct {
 		name string
 
-		// We're doing an `abc templates render` followed by an `abc
+		// We're doing an `abc render` followed by an `abc
 		// templates upgrade`. Then, the files in
 		// templateChangesForUpgrade are added to the template before executing
 		// the upgrade operation.
