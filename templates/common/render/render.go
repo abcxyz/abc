@@ -69,9 +69,9 @@ type Params struct {
 
 	// The directory that this operation is targeting, from the user's point of
 	// view. It's sometimes the same as OutDir:
-	//   - When Render() is being called as part of `abc templates render`,
+	//   - When Render() is being called as part of `abc render`,
 	//     this is the same as OutDir.
-	//   - When Render() is being called as part of `abc templates upgrade`,
+	//   - When Render() is being called as part of `abc upgrade`,
 	//     this is the directory that the template is installed to, and NOT the
 	//     temp dir that receives the output of Render().
 	//

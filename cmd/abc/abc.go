@@ -33,6 +33,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/sets"
 )
 
 const (
@@ -40,46 +41,55 @@ const (
 	defaultLogFormat = logging.FormatText
 )
 
+var templateCommands = map[string]cli.CommandFactory{
+	"describe": func() cli.Command {
+		return &describe.Command{}
+	},
+	"golden-test": func() cli.Command {
+		return &cli.RootCommand{
+			Name:        "golden-test",
+			Description: "subcommands for validating template rendering with golden tests",
+			Commands: map[string]cli.CommandFactory{
+				"new-test": func() cli.Command {
+					return &goldentest.NewTestCommand{}
+				},
+				"record": func() cli.Command {
+					return &goldentest.RecordCommand{}
+				},
+				"verify": func() cli.Command {
+					return &goldentest.VerifyCommand{}
+				},
+			},
+		}
+	},
+	"render": func() cli.Command {
+		return &render.Command{}
+	},
+	"upgrade": func() cli.Command {
+		return &upgrade.Command{}
+	},
+}
+
+// In the past, all template-related commands were under the "abc"
+// subcommand because we anticipated adding more subcommands in the future. This
+// never happened, and there were only template commands, so they've now been
+// moved to the root. We keep the old `templates` subcommand for backward
+// compatibility.
+var rootCommands = sets.UnionMapKeys(templateCommands, map[string]cli.CommandFactory{
+	"templates": func() cli.Command {
+		return &cli.RootCommand{
+			Name:        "templates",
+			Description: "subcommands for rendering templates and related things",
+			Commands:    templateCommands,
+		}
+	},
+})
+
 var rootCmd = func() *cli.RootCommand {
 	return &cli.RootCommand{
-		Name:    version.Name,
-		Version: version.HumanVersion,
-		Commands: map[string]cli.CommandFactory{
-			"templates": func() cli.Command {
-				return &cli.RootCommand{
-					Name:        "templates",
-					Description: "subcommands for rendering templates and related things",
-					Commands: map[string]cli.CommandFactory{
-						"describe": func() cli.Command {
-							return &describe.Command{}
-						},
-						"golden-test": func() cli.Command {
-							return &cli.RootCommand{
-								Name:        "golden-test",
-								Description: "subcommands for validating template rendering with golden tests",
-								Commands: map[string]cli.CommandFactory{
-									"new-test": func() cli.Command {
-										return &goldentest.NewTestCommand{}
-									},
-									"record": func() cli.Command {
-										return &goldentest.RecordCommand{}
-									},
-									"verify": func() cli.Command {
-										return &goldentest.VerifyCommand{}
-									},
-								},
-							}
-						},
-						"render": func() cli.Command {
-							return &render.Command{}
-						},
-						"upgrade": func() cli.Command {
-							return &upgrade.Command{}
-						},
-					},
-				}
-			},
-		},
+		Name:     version.Name,
+		Version:  version.HumanVersion,
+		Commands: rootCommands,
 	}
 }
 
