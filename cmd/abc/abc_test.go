@@ -36,12 +36,17 @@ func TestRootCmd(t *testing.T) {
 	}{
 		{
 			name:       "render_prints_to_stdout",
+			args:       []string{"render", "--input=person_name=Bob", "../../examples/templates/render/print"},
+			wantStdout: "Hello, Bob!\n",
+		},
+		{
+			name:       "old_templates_subcommand_render_prints_to_stdout",
 			args:       []string{"templates", "render", "--input=person_name=Bob", "../../examples/templates/render/print"},
 			wantStdout: "Hello, Bob!\n",
 		},
 		{
 			name:    "error_return",
-			args:    []string{"templates", "render", "nonexistent/dir"},
+			args:    []string{"render", "nonexistent/dir"},
 			wantErr: "isn't a valid template name",
 		},
 		{
