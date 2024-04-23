@@ -21,8 +21,12 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/abcxyz/abc-updater/pkg/abcupdater"
 	"github.com/abcxyz/abc/internal/version"
@@ -133,8 +137,8 @@ func setLogEnvVars() {
 }
 
 func realMain(ctx context.Context) error {
-	if runtime.GOOS == "windows" {
-		return fmt.Errorf("windows os is not supported in abc cli")
+	if err := checkSupportedOS(); err != nil {
+		return err
 	}
 
 	// Only check for updates if not built from HEAD.
@@ -151,4 +155,48 @@ func realMain(ctx context.Context) error {
 	}
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
+}
+
+func checkSupportedOS() error {
+	switch runtime.GOOS {
+	case "windows":
+		return fmt.Errorf("windows is not supported")
+	case "darwin":
+		var uts unix.Utsname
+		if err := unix.Uname(&uts); err != nil {
+			return fmt.Errorf("unix.Uname(): %w", err)
+		}
+		release := unix.ByteSliceToString(uts.Release[:])
+		return checkDarwinVersion(release)
+	default:
+		return nil
+	}
+}
+
+func checkDarwinVersion(utsRelease string) error {
+	// We support Mac OS 13 and newer, which corresponds to Darwin kernel
+	// version 22 and newer. The mappings from macOS version to Darwin
+	// version are taken from
+	// https://en.wikipedia.org/wiki/Darwin_(operating_system)#Release_history.
+	// Regrettably, the unix.Uname() function only gives darwin version, not
+	// macos version.
+	const (
+		// These two must match. Whenever one is changed, the other must
+		// also be changed to match.
+		minDarwinVersion = 22
+		minMacOSVersion  = 13 // Used only in error messages.
+	)
+
+	splits := strings.Split(utsRelease, ".")
+	if len(splits) != 3 {
+		return fmt.Errorf("internal error splitting macos version, got version %q", utsRelease)
+	}
+	majorVersion, err := strconv.Atoi(splits[0])
+	if err != nil {
+		return fmt.Errorf("internal error parsing macos version, got version %q", utsRelease)
+	}
+	if majorVersion < minDarwinVersion {
+		return fmt.Errorf("your macOS version is not supported, use macOS version %d or newer (darwin kernel version %d)", minMacOSVersion, minDarwinVersion)
+	}
+	return nil
 }
