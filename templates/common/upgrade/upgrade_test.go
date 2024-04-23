@@ -858,7 +858,7 @@ steps:
 					},
 				},
 			},
-			wantRejectFile: "file.txt.rej",
+			wantRejectFile: "file.txt.patch.rej",
 			wantDestContentsAfterUpgrade: map[string]string{
 				"file.txt": "green is my favorite color\n",
 			},
@@ -1056,7 +1056,7 @@ yellow is my favorite color
 
 			gotDestContentsAfter := abctestutil.LoadDir(t, destDir,
 				abctestutil.SkipGlob(".abc/manifest*"),
-				abctestutil.SkipGlob("*.rej"), // rejected hunk files are asserted separately
+				abctestutil.SkipGlob("*.patch.rej"), // rejected hunk files are asserted separately
 			)
 			if diff := cmp.Diff(gotDestContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
@@ -1253,30 +1253,30 @@ steps:
 		// between macos and linux due to the differences between freebsd patch
 		// and GNU patch.
 		//
-		// "file.txt.rej": ... ,
+		// "file.txt.patch.rej": ... ,
 	}
 
 	wantManifestAfterFailedUpgrade := wantManifestBeforeUpgrade
 	assertManifest(ctx, t, "after upgrade", wantManifestAfterFailedUpgrade, manifestFullPath)
 
 	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir,
-		abctestutil.SkipGlob(".abc/manifest*"), // the manifest is verified separately
-		abctestutil.SkipGlob("file.txt.rej"),   // the patch reject file is just checked for presence, separately
+		abctestutil.SkipGlob(".abc/manifest*"),     // the manifest is verified separately
+		abctestutil.SkipGlob("file.txt.patch.rej"), // the patch reject file is just checked for presence, separately
 	)
 	if diff := cmp.Diff(gotDestContentsAfterFailedUpgrade, wantDestContentsAfterFailedUpgrade); diff != "" {
 		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 	}
-	ok, err := common.Exists(filepath.Join(destDir, "file.txt.rej"))
+	ok, err := common.Exists(filepath.Join(destDir, "file.txt.patch.rej"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !ok {
-		t.Fatal("got no file.txt.rej rejected patch file, but wanted one")
+		t.Fatal("got no file.txt.patch.rej rejected patch file, but wanted one")
 	}
 
 	// Resolve the merge conflict
 	abctestutil.Overwrite(t, destDir, "file.txt", "purple is my favorite color\n")
-	abctestutil.Remove(t, destDir, "file.txt.rej")
+	abctestutil.Remove(t, destDir, "file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.ReversalAlreadyDone = []string{"file.txt"}
@@ -1304,6 +1304,51 @@ steps:
 	gotDestContentsAfterSuccessfulUpgrade := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
 	if diff := cmp.Diff(gotDestContentsAfterSuccessfulUpgrade, wantDestContentsAfterSuccessfulUpgrade); diff != "" {
 		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
+	}
+}
+
+func TestDetectUnmergedConflicts(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		files   map[string]string
+		wantErr string
+	}{
+		{
+			name:  "no_conflicts",
+			files: map[string]string{"file.txt": ""},
+		},
+		{
+			name:    "abcmerge_detected",
+			files:   map[string]string{"file.txt.abcmerge_locally_added": ""},
+			wantErr: "file.txt.abcmerge_locally_added",
+		},
+		{
+			name:    "subdir",
+			files:   map[string]string{"dir1/file.txt.abcmerge_locally_added": ""},
+			wantErr: "dir1/file.txt.abcmerge_locally_added",
+		},
+		{
+			name:    "rejected_patch",
+			files:   map[string]string{"file.txt.patch.rej": ""},
+			wantErr: "file.txt.patch.rej",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			abctestutil.WriteAll(t, tempDir, tc.files)
+			err := detectUnmergedConflicts(tempDir)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+		})
 	}
 }
 
