@@ -78,3 +78,44 @@ func TestRootCmd(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckDarwinVersion(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		wantErr string
+	}{
+		{
+			name:    "empty_input",
+			in:      "",
+			wantErr: `internal error splitting macos version, got version ""`,
+		},
+		{
+			name:    "malformed_input",
+			in:      "asdfasdf",
+			wantErr: `internal error splitting macos version, got version "asdfasdf"`,
+		},
+		{
+			name:    "too_old",
+			in:      "21.0.0",
+			wantErr: "your macOS version is not supported, use macOS version 13 or newer (darwin kernel version 22)",
+		},
+		{
+			name: "supported_version",
+			in:   "22.0.0",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.in, func(t *testing.T) {
+			t.Parallel()
+
+			err := checkDarwinVersion(tc.in)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
