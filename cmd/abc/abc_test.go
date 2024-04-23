@@ -80,6 +80,8 @@ func TestRootCmd(t *testing.T) {
 }
 
 func TestCheckDarwinVersion(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name    string
 		in      string
