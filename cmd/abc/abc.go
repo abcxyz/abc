@@ -26,6 +26,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/abcxyz/abc-updater/pkg/abcupdater"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
@@ -35,7 +37,6 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"golang.org/x/sys/unix"
 )
 
 const (
