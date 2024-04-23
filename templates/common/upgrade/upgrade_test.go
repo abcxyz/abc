@@ -841,7 +841,7 @@ steps:
 					{
 						RelPath:       "file.txt",
 						AbsPath:       "file.txt",
-						RejectedHunks: "file.txt.rej",
+						RejectedHunks: "file.txt.patch.rej",
 					},
 				},
 			},
@@ -1256,7 +1256,7 @@ steps:
 			{
 				RelPath:       "file.txt",
 				AbsPath:       filepath.Join(destDir, "file.txt"),
-				RejectedHunks: filepath.Join(destDir, "file.txt.rej"),
+				RejectedHunks: filepath.Join(destDir, "file.txt.patch.rej"),
 			},
 		},
 	}
