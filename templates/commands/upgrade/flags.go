@@ -15,7 +15,6 @@
 package upgrade
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/abcxyz/abc/templates/common/flags"
@@ -23,7 +22,7 @@ import (
 )
 
 type Flags struct {
-	Manifest string
+	Location string
 
 	// See common/flags.DebugScratchContents().
 	DebugScratchContents bool
@@ -66,13 +65,14 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	g := set.NewSection("GIT OPTIONS")
 	g.StringVar(flags.GitProtocol(&f.GitProtocol))
 
-	// Manifest is the first CLI argument.
 	set.AfterParse(func(existingErr error) error {
-		f.Manifest = strings.TrimSpace(set.Arg(0))
-		if f.Manifest == "" {
-			return fmt.Errorf("missing <manifest> file argument")
+		// Default location to the first CLI argument, if given.
+		// If not given, default to current directory.
+		f.Location = strings.TrimSpace(set.Arg(0))
+		if f.Location == "" {
+			// make current directory the default location
+			f.Location = "."
 		}
-
 		return nil
 	})
 }

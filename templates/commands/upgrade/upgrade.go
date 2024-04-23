@@ -19,8 +19,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/benbjohnson/clock"
 
@@ -129,11 +131,56 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	fs := &common.RealFS{}
-
-	absManifestPath, err := filepath.Abs(c.flags.Manifest)
+	fi, err := os.Stat(c.flags.Location)
 	if err != nil {
-		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Manifest, err)
+		return err //nolint:wrapcheck
+	}
+	if fi.IsDir() {
+		return c.upgradeAll(ctx, c.flags.Location)
+	}
+	return c.upgradeOne(ctx, c.flags.Location)
+}
+
+func (c *Command) upgradeAll(ctx context.Context, startDir string) error {
+	numUpgraded := 0
+	for {
+		var manifestToUpgrade string
+		err := filepath.WalkDir(startDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			baseName := filepath.Base(path)
+			ext := filepath.Ext(path)
+			parentDir := filepath.Base(filepath.Dir(path))
+			if strings.HasPrefix(baseName, "manifest") && ext == ".yaml" && parentDir == common.ABCInternalDir {
+				manifestToUpgrade = path
+				return fs.SkipAll
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		if manifestToUpgrade == "" {
+			break
+		}
+		if err := c.upgradeOne(ctx, manifestToUpgrade); err != nil {
+			return err
+		}
+		numUpgraded++
+	}
+
+	if numUpgraded == 0 {
+		return fmt.Errorf("found no template manifests to upgrade")
+	}
+	return nil
+}
+
+func (c *Command) upgradeOne(ctx context.Context, manifestPath string) error {
+	absManifestPath, err := filepath.Abs(manifestPath)
+	if err != nil {
+		return fmt.Errorf("filepath.Abs(%q): %w", manifestPath, err)
 	}
 
 	cwd, err := os.Getwd()
