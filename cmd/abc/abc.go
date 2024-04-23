@@ -145,7 +145,7 @@ func realMain(ctx context.Context) error {
 		report := abcupdater.CheckAppVersion(updaterCtx, &abcupdater.CheckVersionParams{
 			AppID:   version.Name,
 			Version: version.Version,
-		}, func(s string) { fmt.Fprintln(os.Stderr, s) })
+		}, func(s string) { fmt.Fprintf(os.Stderr, "\n%s\n", s) })
 
 		defer report()
 	}
