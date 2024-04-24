@@ -32,29 +32,15 @@ import (
 
 var sha = regexp.MustCompile("^[0-9a-f]{40}$")
 
-// Clone checks out the given branch, tag or long commit SHA from the given repo.
+// Clone checks out the given repo.
 // It uses the git CLI already installed on the system.
-//
-// To optimize storage and bandwidth, the full git history is not fetched.
 //
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
-func Clone(ctx context.Context, remote, version, outDir string) error {
-	if sha.MatchString(version) {
-		_, _, err := run.Simple(ctx, "git", "clone", remote, outDir)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
-
-		_, _, err = run.Simple(ctx, "git", "-C", outDir, "reset", "--hard", version)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
-	} else {
-		_, _, err := run.Simple(ctx, "git", "clone", "--depth", "1", "--branch", version, remote, outDir)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
+func Clone(ctx context.Context, remote, outDir string) error {
+	_, _, err := run.Simple(ctx, "git", "clone", remote, outDir)
+	if err != nil {
+		return err //nolint:wrapcheck
 	}
 
 	links, err := findSymlinks(outDir)
@@ -98,13 +84,10 @@ func findSymlinks(dir string) ([]string, error) {
 	return out, nil
 }
 
-// RemoteTags looks up the tags in the given remote repo. If there are no tags,
+// LocalTags looks up the tags in the given locally cloned repo. If there are no tags,
 // that's not an error, and the returned slice is len 0.
-//
-// "remote" may be any format accepted by git, such as
-// https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
-func RemoteTags(ctx context.Context, remote string) ([]string, error) {
-	stdout, _, err := run.Simple(ctx, "git", "ls-remote", "--tags", remote)
+func LocalTags(ctx context.Context, tmpDir string) ([]string, error) {
+	stdout, _, err := run.Simple(ctx, "git", "-C", tmpDir, "tag")
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -112,15 +95,7 @@ func RemoteTags(ctx context.Context, remote string) ([]string, error) {
 	var tags []string
 	for lineScanner.Scan() {
 		line := lineScanner.Text()
-		fields := strings.Fields(line)
-		prefixedTag := fields[len(fields)-1]
-		if strings.HasSuffix(prefixedTag, "^{}") {
-			// Skip the weird extra duplicate tags ending with "^{}" that git
-			// prints for some reason.
-			continue
-		}
-		tag := strings.TrimPrefix(prefixedTag, "refs/tags/")
-		tags = append(tags, tag)
+		tags = append(tags, line)
 	}
 
 	return tags, nil
