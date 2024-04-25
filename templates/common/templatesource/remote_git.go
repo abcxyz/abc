@@ -158,31 +158,29 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		return nil, fmt.Errorf("Clone(): %w", err)
 	}
 
-	//
-	versionToDownload, err := resolveVersion(ctx, tmpDir, g.version)
+	versionToCheckout, err := resolveVersion(ctx, tmpDir, g.version)
 	if err != nil {
 		return nil, err
 	}
 	logger.DebugContext(ctx, "resolved version from",
 		"input", g.version,
-		"to", versionToDownload)
+		"to", versionToCheckout)
 
-	// checkout to version or latest
+	// checkout version here @@
 
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
 		if common.IsNotExistErr(err) {
-			return nil, fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, versionToDownload, subdir, versionToDownload)
+			return nil, fmt.Errorf(`the repo %q at version %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, versionToCheckout, subdir, versionToCheckout)
 		}
 		return nil, err //nolint:wrapcheck // Stat() returns a decently informative error
 	}
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("the path %q is not a directory", subdir)
 	}
-
 	logger.DebugContext(ctx, "cloned repo",
 		"remote", g.remote,
-		"version", versionToDownload)
+		"version", versionToCheckout)
 
 	// Copy only the requested subdir to templateDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
@@ -276,7 +274,7 @@ func resolveVersion(ctx context.Context, tmpDir, version string) (string, error)
 	case "latest":
 		return resolveLatest(ctx, tmpDir)
 	default:
-		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)
+		logger.DebugContext(ctx, "using user provided version and skipping local tags lookup", "version", version)
 		return version, nil
 	}
 }
