@@ -21,7 +21,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -29,8 +28,6 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/run"
 )
-
-var sha = regexp.MustCompile("^[0-9a-f]{40}$")
 
 // Clone checks out the given repo.
 // It uses the git CLI already installed on the system.
