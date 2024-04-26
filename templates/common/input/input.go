@@ -41,8 +41,8 @@ type ResolveParams struct {
 	// The template spec.yaml model.
 	Spec *spec.Spec
 
-	// TODO doc, default is to error on unknown inputs
-	// TODO verify that ignored inputs aren't put in manifest
+	// Ignore any values in the Inputs map that aren't valid template inputs,
+	// rather than returning error.
 	IgnoreUnknownInputs bool
 
 	// The value of --input. Template input values.

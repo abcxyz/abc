@@ -46,7 +46,8 @@ type RenderFlags struct {
 	// with the output of the template.
 	ForceOverwrite bool
 
-	// TODO doc
+	// Ignore any values in the Inputs map that aren't valid template inputs,
+	// rather than returning error.
 	IgnoreUnknownInputs bool
 
 	// See common/flags.Inputs().
