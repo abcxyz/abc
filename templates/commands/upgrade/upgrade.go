@@ -135,6 +135,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		SkipInputValidation:  c.flags.SkipInputValidation,
 		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
 		Stdout:               c.Stdout(),
+		Version:              c.flags.Version,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck

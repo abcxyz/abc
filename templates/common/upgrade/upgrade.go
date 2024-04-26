@@ -118,6 +118,12 @@ type Params struct {
 
 	// Empty string, except in tests. Will be used as the parent of temp dirs.
 	TempDirBase string
+
+	// An optional version to update to. In the case of a remote git template,
+	// it defaults to "latest", which means "the vX.Y.Z that is largest by
+	// semver ordering." In the case of a template on the local filesystem, it's
+	// ignored because we only have the one version that's on the filesystem.
+	Version string
 }
 
 type ResultType string
@@ -260,6 +266,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		CanonicalLocation: oldManifest.TemplateLocation.Val,
 		LocType:           oldManifest.LocationType.Val,
 		GitProtocol:       p.GitProtocol,
+		Version:           p.Version,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",

@@ -75,6 +75,10 @@ type ForUpgradeParams struct {
 
 	// The value of --git-protocol.
 	GitProtocol string
+
+	// The version to update to; may be the magic string "latest", a tag, a
+	// branch, or a SHA.
+	Version string
 }
 
 func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
@@ -82,7 +86,7 @@ func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams)
 		re:             remoteGitUpgradeLocationRE,
 		input:          f.CanonicalLocation,
 		gitProtocol:    f.GitProtocol,
-		defaultVersion: "latest",
+		defaultVersion: f.Version,
 	})
 	if err != nil {
 		return nil, err
