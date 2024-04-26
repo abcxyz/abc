@@ -430,7 +430,7 @@ func JoinIfRelative(cwd, path string) string {
 }
 
 // IsFile returns whether the given path exists and is a file (not a directory).
-// TODO test
+// TODO test.
 func IsFile(path string) (bool, error) {
 	fi, err := os.Stat(path)
 	if err != nil {

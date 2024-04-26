@@ -19,10 +19,14 @@ import (
 
 	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/posener/complete/v2/predict"
 )
 
 type Flags struct {
 	Location string
+
+	// TODO
+	AlreadyResolved []string
 
 	// See common/flags.DebugScratchContents().
 	DebugScratchContents bool
@@ -47,9 +51,19 @@ type Flags struct {
 
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
+
+	Version string
 }
 
 func (f *Flags) Register(set *cli.FlagSet) {
+	u := set.NewSection("UPGRADE OPTIONS")
+	u.StringSliceVar(&cli.StringSliceVar{
+		Name:    "already-resolved",
+		Example: "my_file.txt,my_dir/my_other_file.txt",
+		Predict: predict.Files(""),
+		Target:  &f.AlreadyResolved,
+	})
+
 	r := set.NewSection("RENDER OPTIONS")
 
 	r.StringMapVar(flags.Inputs(&f.Inputs))
@@ -58,6 +72,13 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.BoolVar(flags.DebugStepDiffs(&f.DebugStepDiffs))
 	r.BoolVar(flags.KeepTempDirs(&f.KeepTempDirs))
 	r.BoolVar(flags.Prompt(&f.Prompt))
+	r.StringVar(&cli.StringVar{
+		Name:    "version",
+		Usage:   "for remote templates, the version to upgrade to; may be git tag, branch, or SHA",
+		Example: "main",
+		Default: "latest",
+		Target:  &f.Version,
+	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(flags.DebugScratchContents(&f.DebugScratchContents))

@@ -46,6 +46,9 @@ type RenderFlags struct {
 	// with the output of the template.
 	ForceOverwrite bool
 
+	// TODO doc
+	IgnoreUnknownInputs bool
+
 	// See common/flags.Inputs().
 	Inputs map[string]string
 
@@ -95,6 +98,13 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Target:  &r.ForceOverwrite,
 		Default: false,
 		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "ignore-unknown-inputs",
+		Target:  &r.IgnoreUnknownInputs,
+		Default: false,
+		Usage:   "If a user-provided input name isn't recoognized by the template, ignore that input value instead of failing.",
 	})
 
 	f.BoolVar(flags.Prompt(&r.Prompt))

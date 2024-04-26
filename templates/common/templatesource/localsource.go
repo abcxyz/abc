@@ -118,7 +118,7 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 // directories qualify as a canonical source, and if so, returns the
 // canonicalized version of the source. See the docs on DownloadMetadata for an
 // explanation of canonical sources.
-func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSource, version, locType string, _ error) {
+func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSource, version string, locType LocationType, _ error) {
 	logger := logging.FromContext(ctx).With("logger", "canonicalize")
 
 	absSource := common.JoinIfRelative(cwd, source)
@@ -156,5 +156,5 @@ func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSo
 	if err != nil {
 		return "", "", "", err
 	}
-	return filepath.ToSlash(out), version, LocTypeLocalGit, nil
+	return filepath.ToSlash(out), version, LocalGit, nil
 }

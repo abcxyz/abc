@@ -79,6 +79,18 @@ steps:
 		},
 	}
 
+	wantDLMeta := &templatesource.DownloadMetadata{
+		IsCanonical:     true,
+		CanonicalSource: "../template_dir",
+		LocationType:    templatesource.LocalGit,
+		HasVersion:      true,
+		Version:         abctestutil.MinimalGitHeadSHA,
+		Vars: templatesource.DownloaderVars{
+			GitSHA:      abctestutil.MinimalGitHeadSHA,
+			GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+		},
+	}
+
 	cases := []struct {
 		name string
 
@@ -145,6 +157,7 @@ steps:
 			want: &Result{
 				Type:         Success,
 				NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
+				DLMeta:       wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\nworld\n",
@@ -184,6 +197,7 @@ steps:
 					{Action: WriteNew, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":          "hello\n",
@@ -231,6 +245,7 @@ steps:
 					{Action: DeleteAction, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
@@ -283,6 +298,7 @@ steps:
 						OursPath: "another_file.txt.abcmerge_template_wants_to_delete",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"another_file.txt.abcmerge_template_wants_to_delete": "my edited contents",
@@ -330,6 +346,7 @@ steps:
 					{Action: Noop, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
@@ -373,6 +390,7 @@ steps:
 						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_edited":    "my edited contents",
@@ -419,6 +437,7 @@ steps:
 						IncomingTemplatePath: "out.txt.abcmerge_locally_deleted_vs_new_template_version",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_deleted_vs_new_template_version": "goodbye",
@@ -468,6 +487,7 @@ steps:
 					{Action: WriteNew, Path: "template_changes_this_file.txt"},
 					{Action: Noop, Path: "user_deletes_this_file.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"template_changes_this_file.txt": "modified contents",
@@ -518,6 +538,7 @@ steps:
 					{Action: Noop, Path: "out.txt"},
 					{Action: WriteNew, Path: "some_other_file.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":             "modified contents",
@@ -580,6 +601,7 @@ steps:
 						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_added":     "my cool new file",
@@ -632,6 +654,7 @@ steps:
 					{Action: "noop", Path: "out.txt"},
 					{Action: "noop", Path: "some_other_file.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":             "identical contents",
@@ -744,6 +767,7 @@ steps:
 						Path:   "file.txt",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantManifestAfterUpgrade: &manifest.Manifest{
 				CreationTime:     beforeUpgradeTime,
@@ -947,6 +971,7 @@ steps:
 						Path:   "file.txt",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"file.txt": `an arbitrary line of text to trigger fuzzy patching
@@ -1302,7 +1327,7 @@ steps:
 	abctestutil.Remove(t, destDir, "file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
-	upgradeParams.ReversalAlreadyDone = []string{"file.txt"}
+	upgradeParams.AlreadyResolved = []string{"file.txt"}
 
 	gotResult, err := Upgrade(ctx, upgradeParams)
 	if err != nil {
@@ -1314,6 +1339,17 @@ steps:
 			{
 				Action: "writeNew",
 				Path:   "file.txt",
+			},
+		},
+		DLMeta: &templatesource.DownloadMetadata{
+			IsCanonical:     true,
+			CanonicalSource: "../template_dir",
+			LocationType:    templatesource.LocalGit,
+			HasVersion:      true,
+			Version:         abctestutil.MinimalGitHeadSHA,
+			Vars: templatesource.DownloaderVars{
+				GitSHA:      abctestutil.MinimalGitHeadSHA,
+				GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 			},
 		},
 	}

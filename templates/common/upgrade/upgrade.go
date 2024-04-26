@@ -64,6 +64,12 @@ const rejectedPatchSuffix = ".patch.rej"
 
 // Params contains all the arguments to Upgrade().
 type Params struct {
+	// Relative paths where patch reversal has already happened. This is a flag
+	// supplied by the user. This will be set if there were merge conflicts
+	// during patch reversal that were manually resolved by the user.
+	// TODO(upgrade): add this as a CLI flag and plumb it through to here.
+	AlreadyResolved []string
+
 	Clock clock.Clock
 
 	// CWD is the value of os.Getwd(), or in testing, a temp directory.
@@ -99,12 +105,6 @@ type Params struct {
 	Prompt   bool
 	Prompter input.Prompter
 
-	// Relative paths where patch reversal has already happened. This is a flag
-	// supplied by the user. This will be set if there were merge conflicts
-	// during patch reversal that were manually resolved by the user.
-	// TODO(upgrade): add this as a CLI flag and plumb it through to here.
-	ReversalAlreadyDone []string
-
 	// The value of --skip-input-validation.
 	SkipInputValidation bool
 
@@ -117,8 +117,15 @@ type Params struct {
 
 	// Empty string, except in tests. Will be used as the parent of temp dirs.
 	TempDirBase string
+
+	// An optional version to update to. In the case of a remote git template,
+	// it defaults to "latest", which means "the vX.Y.Z that is largest by
+	// semver ordering." In the case of a template on the local filesystem, it's
+	// ignored because we only have the one version that's on the filesystem.
+	Version string
 }
 
+// TODO doc
 type ResultType string
 
 const (
@@ -172,6 +179,8 @@ type Result struct {
 	//
 	// This field should only be used when Type is Success or MergeConflict.
 	NonConflicts []ActionTaken
+
+	DLMeta *templatesource.DownloadMetadata
 }
 
 // ReversalConflict happens when abc tried to apply the reversal
@@ -232,6 +241,8 @@ type ActionTaken struct {
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
 func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
+	p = fillDefaults(p)
+
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
 	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
@@ -262,8 +273,9 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	downloader, err := templatesource.ForUpgrade(ctx, &templatesource.ForUpgradeParams{
 		InstalledDir:      installedDir,
 		CanonicalLocation: oldManifest.TemplateLocation.Val,
-		LocType:           oldManifest.LocationType.Val,
+		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
 		GitProtocol:       p.GitProtocol,
+		Version:           p.Version,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
@@ -304,7 +316,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 
 	reversalConflicts, err := reversePatches(ctx, &reversePatchesParams{
 		fs:           p.FS,
-		preReversed:  p.ReversalAlreadyDone,
+		preReversed:  p.AlreadyResolved,
 		installedDir: installedDir,
 		reversedDir:  reversedDir,
 		oldManifest:  oldManifest,
@@ -324,6 +336,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		Downloader:              downloader,
 		FS:                      p.FS,
 		GitProtocol:             p.GitProtocol,
+		IgnoreUnknownInputs:     true, // TODO explain
 		InputFiles:              p.InputFiles,
 		IncludeFromDestExtraDir: reversedDir,
 		Inputs:                  inputsToMap(oldManifest.Inputs),
@@ -339,7 +352,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		TempDirBase:             p.TempDirBase,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
+		return nil, fmt.Errorf("failed rendering template: %w", err)
 	}
 
 	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
@@ -371,7 +384,16 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		Type:         resultType,
 		Conflicts:    conflicts,
 		NonConflicts: nonConflicts,
+		DLMeta:       dlMeta,
 	}, nil
+}
+
+func fillDefaults(p *Params) *Params {
+	out := *p // shallow copy
+	if out.Version == "" {
+		out.Version = templatesource.Latest
+	}
+	return &out
 }
 
 // mergeTentatively does a dry-run commit followed by a real commit.
