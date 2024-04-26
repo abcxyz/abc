@@ -17,12 +17,14 @@
 package upgrade
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -34,19 +36,21 @@ import (
 	"github.com/abcxyz/abc/templates/common/dirhash"
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
 	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
+	"github.com/abcxyz/pkg/logging"
 )
 
 // TODO(upgrade):
 //   - add "abort if conflict" feature
+//   - validate that manifest paths don't contain traversals
 //   - add "check for update and exit" feature
 //   - add "upgrade all template installations within directory"
-//   - handle "include from destination"
 //   - maybe switch file hashes to SHA1, so then we can opportunistically get
 //     the common base from the installedDir repo or template repo (which might
 //     be the same repo), so then we can do a 3-way merge (`git merge-file`)
@@ -93,6 +97,12 @@ type Params struct {
 	Prompt   bool
 	Prompter input.Prompter
 
+	// Relative paths where patch reversal has already happened. This is a flag
+	// supplied by the user. This will be set if there were merge conflicts
+	// during patch reversal that were manually resolved by the user.
+	// TODO(upgrade): add this as a CLI flag and plumb it through to here.
+	ReversalAlreadyDone []string
+
 	// The value of --skip-input-validation.
 	SkipInputValidation bool
 
@@ -130,7 +140,7 @@ const (
 )
 
 // Result is returned from Upgrade if there's no error. It may indicate that
-// there were merge conflicts requirigit ng manual resolution.
+// there were merge conflicts requiring manual resolution.
 type Result struct {
 	// If no upgrade was done because this installation of the template is
 	// already on the latest version, then this will be true and all other
@@ -140,19 +150,25 @@ type Result struct {
 	// The paths to files where abc tried to apply the reversal
 	// patches from the manifest to included-from-destination files, and the
 	// patches could not be applied cleanly. Manual resolution is needed.
+	//
+	// This field should only be used when Type==PatchReversalConflict.
 	ReversalConflicts []*ReversalConflict
 
 	// Conflicts is the set of files that require manual intervention by the
 	// user to resolve a merge conflict. For example, there may be a file that
 	// was edited by the user and that edit conflicts with changes to that same
 	// file by the upgraded version of the template.
+	//
+	// This field should only be used when Type==MergeConflict.
 	Conflicts []ActionTaken
 
 	// NonConflicts is the set of template output files that do NOT require any
 	// action by the user. Callers are free to ignore this.
 	//
-	// This is mutually exclusive with "Conflicts". Each file is in only one of
-	// the two lists.
+	// This is mutually exclusive with "Conflicts". Each file is in at most one
+	// of the two lists.
+	//
+	// This field should only be used when Type is Success or MergeConflict.
 	NonConflicts []ActionTaken
 }
 
@@ -274,26 +290,46 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err //nolint:wrapcheck
 	}
 
+	reversedDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.ReversedPatchDirNamePart)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	reversalConflicts, err := reversePatches(ctx, &reversePatchesParams{
+		fs:           p.FS,
+		preReversed:  p.ReversalAlreadyDone,
+		installedDir: installedDir,
+		reversedDir:  reversedDir,
+		oldManifest:  oldManifest,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(reversalConflicts) > 0 {
+		return &Result{ReversalConflicts: reversalConflicts}, nil
+	}
+
 	renderResult, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
-		Clock:               p.Clock,
-		Cwd:                 p.CWD,
-		DebugStepDiffs:      p.DebugStepDiffs,
-		DestDir:             installedDir,
-		Downloader:          downloader,
-		FS:                  p.FS,
-		GitProtocol:         p.GitProtocol,
-		InputFiles:          p.InputFiles,
-		Inputs:              inputsToMap(oldManifest.Inputs),
-		KeepTempDirs:        p.KeepTempDirs,
-		Manifest:            true,
-		OutDir:              mergeDir,
-		Prompt:              p.Prompt,
-		Prompter:            p.Prompter,
-		SkipInputValidation: p.SkipInputValidation,
-		SkipPromptTTYCheck:  p.SkipPromptTTYCheck,
-		SourceForMessages:   oldManifest.TemplateLocation.Val,
-		Stdout:              p.Stdout,
-		TempDirBase:         p.TempDirBase,
+		Clock:                   p.Clock,
+		Cwd:                     p.CWD,
+		DebugStepDiffs:          p.DebugStepDiffs,
+		DestDir:                 installedDir,
+		Downloader:              downloader,
+		FS:                      p.FS,
+		GitProtocol:             p.GitProtocol,
+		InputFiles:              p.InputFiles,
+		IncludeFromDestExtraDir: reversedDir,
+		Inputs:                  inputsToMap(oldManifest.Inputs),
+		KeepTempDirs:            p.KeepTempDirs,
+		Manifest:                true,
+		OutDir:                  mergeDir,
+		Prompt:                  p.Prompt,
+		Prompter:                p.Prompter,
+		SkipInputValidation:     p.SkipInputValidation,
+		SkipPromptTTYCheck:      p.SkipPromptTTYCheck,
+		SourceForMessages:       oldManifest.TemplateLocation.Val,
+		Stdout:                  p.Stdout,
+		TempDirBase:             p.TempDirBase,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
@@ -305,12 +341,13 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 
 	commitParams := &commitParams{
-		fs:              p.FS,
-		installedDir:    installedDir,
-		mergeDir:        mergeDir,
-		oldManifestPath: p.ManifestPath,
-		oldManifest:     oldManifest,
-		newManifest:     newManifest,
+		fs:               p.FS,
+		installedDir:     installedDir,
+		mergeDir:         mergeDir,
+		oldManifestPath:  p.ManifestPath,
+		oldManifest:      oldManifest,
+		newManifest:      newManifest,
+		reversedPatchDir: reversedDir,
 	}
 	actionsTaken, err := mergeTentatively(ctx, commitParams)
 	if err != nil {
@@ -363,6 +400,10 @@ type commitParams struct {
 	// The temp directory into which the new/upgraded template version was
 	// rendered.
 	mergeDir string
+
+	// The directory that contains files that have already had their
+	// reverse-include-from-destination patches automatically applied.
+	reversedPatchDir string
 
 	// The path to the manifest describing the original template installation
 	// that we're upgrading from. This is also overwritten with the new
@@ -498,4 +539,116 @@ func partitionConflicts(actionsTaken []ActionTaken) (conflicts, nonConflicts []A
 		nonConflicts = append(nonConflicts, a)
 	}
 	return conflicts, nonConflicts
+}
+
+// reversePatchParams contains the parameters to the reversePatches function.
+type reversePatchesParams struct {
+	fs common.FS
+
+	// The set of files whose patches have already been applied by the user, so
+	// they should be skipped by the user. This comes from a command line flag.
+	preReversed []string
+
+	// installedDir is the directory where the template output is going.
+	installedDir string
+
+	// reversedDir is where reversePatches will store the patches files after
+	// the patches from the manifest have been successfully applied.
+	reversedDir string
+
+	oldManifest *manifest.Manifest
+}
+
+// reversePatches applies each patch stored in the given manifest to its
+// associated file from the manifest. These patches were created by the previous
+// render operation (before the current upgrade operation). There's one patch
+// per file that was included-from-destination, and the patch has the effect of
+// undoing the changes that were made by that template version.
+func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalConflict, error) {
+	var out []*ReversalConflict
+	for _, f := range p.oldManifest.OutputFiles {
+		if f.Patch == nil || len(f.Patch.Val) == 0 {
+			continue
+		}
+
+		outPath := filepath.Join(p.reversedDir, f.File.Val)
+		if slices.Contains(p.preReversed, f.File.Val) {
+			// In the case where a previous run of abc raised a merge conflict,
+			// and the user resolved it, and provided the command-line flag
+			// indicating that they already resolved it, then we skip applying
+			// the patch from the manifest. Because it has already been applied
+			// by the user. So we just copy the already-patched file into the
+			// directory for patched files.
+			if err := common.Copy(ctx, p.fs, filepath.Join(p.installedDir, f.File.Val), outPath); err != nil {
+				return nil, err //nolint:wrapcheck
+			}
+			continue
+		}
+		conflict, err := reverseOnePatch(ctx, p.installedDir, outPath, f)
+		if err != nil {
+			return nil, err
+		}
+		if conflict != nil {
+			out = append(out, conflict)
+		}
+	}
+	return out, nil
+}
+
+// reverseOnePatch is a helper for reversePatches that applies a single patch
+// to a single file.
+func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manifest.OutputFile) (*ReversalConflict, error) {
+	logger := logging.FromContext(ctx).With("logger", "reverseOnePatch")
+
+	if err := os.MkdirAll(filepath.Dir(outPath), common.OwnerRWXPerms); err != nil {
+		return nil, fmt.Errorf("failed creating output directory for patch reversal: %w", err)
+	}
+	installedPath := filepath.Join(installedDir, f.File.Val)
+	rejectPath := installedPath + ".rej"
+
+	var stdout, stderr bytes.Buffer
+	opts := []*run.Option{
+		run.AllowNonzeroExit(),
+		run.WithStdinStr(f.Patch.Val),
+		run.WithStdout(&stdout),
+		run.WithStderr(&stderr),
+	}
+	// Alternative considered: use the --merge flag to the patch command to put
+	// merge conflicts inline in the target file. Why don't we? Two reasons:
+	//  - the --merge flag doesn't exist on mac
+	//  - the --merge flag is mutually exclusive with the --fuzz flag
+	exitCode, err := run.Run(ctx, opts,
+		"patch",
+		"--unified",    // the diff was originally generated with "diff -u"
+		"--strip", "1", // the diff has prefixes like "a/" in "a/file.txt" that need to be removed
+		"--output", outPath, // write the patched file to the reversedDir
+		"--fuzz", "999", // try super hard to patch even if surrounding context has changed and the patch doesn't apply cleanly. Number was chosen arbitrarily.
+		"--reject-file", rejectPath, // Patch hunks that fail to apply will be saved here
+		installedPath,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error running patch command on included-from-destination file %q: %w", f.File.Val, err)
+	}
+	// TODO(upgrade): support backups, maybe with patch -b
+	switch exitCode {
+	case 0:
+		if stdout.Len() > 0 {
+			logger.DebugContext(ctx, "exec of patch to reverse include-from-destination succeeded",
+				"stdout", stdout.String())
+		}
+		return nil, nil
+	case 1:
+		logger.WarnContext(ctx, "reversal patch didn't apply cleanly",
+			"stdout", stdout.String(),
+			"stderr", stderr.String(),
+			"installed_path", installedPath,
+			"reject_path", rejectPath,
+		)
+		return &ReversalConflict{
+			Path: f.File.Val, // TODO(upgrade): should this be absolute instead?
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("when reversing a patch from the manifest for included-from-destination files, the patch command failed unexpectedly: %s", stderr.String())
+	}
 }
