@@ -168,7 +168,7 @@ type Result struct {
 	// was edited by the user and that edit conflicts with changes to that same
 	// file by the upgraded version of the template.
 	//
-	// This field should only be used wben Type==MergeConflict.
+	// This field should only be used when Type==MergeConflict.
 	Conflicts []ActionTaken
 
 	// NonConflicts is the set of template output files that do NOT require any
@@ -674,7 +674,7 @@ func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manif
 			"reject_path", rejectPath,
 		)
 		return &ReversalConflict{
-			RelPath:       f.File.Val, // TODO(upgrade): should this be absolute instead?
+			RelPath:       f.File.Val,
 			AbsPath:       installedPath,
 			RejectedHunks: rejectPath,
 		}, nil
