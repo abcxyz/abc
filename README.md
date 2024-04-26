@@ -376,6 +376,14 @@ create a "hello world" Go web service.
    # Assuming you're using GitHub, now go create a PR.
    ```
 
+### Authentication errors
+
+If `abc` asks you for a username and password, that probably means that the
+template you're rendering is in a private git repository, and HTTPS
+authentication didn't work. You may want to try cloning over SSH instead. To use
+SSH, you can add `--git-protocol=ssh` to your command line or set the
+environment variable `ABC_GIT_PROTOCOL=ssh`.
+
 ## Template developer guide
 
 This section explains how you can create a template for others to install (aka
