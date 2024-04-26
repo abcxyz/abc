@@ -159,7 +159,7 @@ type Result struct {
 	// was edited by the user and that edit conflicts with changes to that same
 	// file by the upgraded version of the template.
 	//
-	// This field should only be used wben Type==MergeConflict.
+	// This field should only be used when Type==MergeConflict.
 	Conflicts []ActionTaken
 
 	// NonConflicts is the set of template output files that do NOT require any
