@@ -41,6 +41,10 @@ type ResolveParams struct {
 	// The template spec.yaml model.
 	Spec *spec.Spec
 
+	// Ignore any values in the Inputs map that aren't valid template inputs,
+	// rather than returning error.
+	IgnoreUnknownInputs bool
+
 	// The value of --input. Template input values.
 	Inputs map[string]string
 
@@ -75,8 +79,10 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 		return nil, fmt.Errorf(`input names beginning with underscore cannot be overridden by a normal user input; the bad input names were: %v`, badInputs)
 	}
 
-	if unknownInputs := checkUnknownInputs(rp.Spec, rp.Inputs); len(unknownInputs) > 0 {
-		return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+	if !rp.IgnoreUnknownInputs {
+		if unknownInputs := checkUnknownInputs(rp.Spec, rp.Inputs); len(unknownInputs) > 0 {
+			return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
+		}
 	}
 
 	fileInputs, err := loadInputFiles(rp.FS, rp.InputFiles)

@@ -45,6 +45,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 			args: []string{
 				"--dest", "my_dir",
 				"--git-protocol", "https",
+				"--ignore-unknown-inputs",
 				"--input", "x=y",
 				"--input-file", "abc-inputs.yaml",
 				"--force-overwrite",
@@ -58,6 +59,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				Source:               "helloworld@v1",
 				Dest:                 "my_dir",
 				GitProtocol:          "https",
+				IgnoreUnknownInputs:  true,
 				Inputs:               map[string]string{"x": "y"},
 				InputFiles:           []string{"abc-inputs.yaml"},
 				ForceOverwrite:       true,

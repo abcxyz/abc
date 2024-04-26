@@ -95,6 +95,7 @@ steps:
 		inputFileContents       map[string]string
 		flagKeepTempDirs        bool
 		flagForceOverwrite      bool
+		flagIgnoreUnknownInputs bool
 		flagSkipInputValidation bool
 		flagManifest            bool
 		flagDebugStepDiffs      bool
@@ -1267,6 +1268,31 @@ steps:
 			},
 			wantStdout: "The timestamp is 1702079942000\n",
 		},
+		{
+			name: "flag_ignore_unknown_inputs",
+			flagInputs: map[string]string{
+				// This input doesn't exist. Shouldn't cause a crash though.
+				"nonexistent_input": "hrm",
+
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			flagIgnoreUnknownInputs: true,
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Bob🐈!\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -1301,6 +1327,7 @@ steps:
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
 				},
+				IgnoreUnknownInputs: tc.flagIgnoreUnknownInputs,
 				InputFiles:          inputFilePaths,
 				Inputs:              tc.flagInputs,
 				KeepTempDirs:        tc.flagKeepTempDirs,
