@@ -61,6 +61,8 @@ import (
 //   - interactive conflict resolution
 //   - patch .rej files look the same on all platforms (mac and Linux differ)
 
+const rejectedPatchSuffix = ".patch.rej"
+
 // Params contains all the arguments to Upgrade().
 type Params struct {
 	Clock clock.Clock
@@ -499,9 +501,9 @@ func inputsToMap(inputs []*manifest.Input) map[string]string {
 	return out
 }
 
-// detectUnmergedConflicts looks for any *.abcmerge_* files in the given directory,
-// which would indicate that a previous upgrade operation had some unresolved
-// merge conflicts.
+// detectUnmergedConflicts looks for any filename patterns (like *.abcmerge_* or
+// *.patch.rej) files in the given directory which would indicate that a
+// previous upgrade operation had some unresolved merge conflicts.
 func detectUnmergedConflicts(installedDir string) error {
 	var unmergedFiles []string
 	if err := filepath.WalkDir(installedDir, func(path string, d fs.DirEntry, err error) error {
@@ -515,7 +517,7 @@ func detectUnmergedConflicts(installedDir string) error {
 		if relPath == common.ABCInternalDir && d.IsDir() {
 			return fs.SkipDir
 		}
-		if strings.Contains(path, conflictSuffixBegins) {
+		if strings.Contains(path, conflictSuffixBegins) || strings.HasSuffix(path, rejectedPatchSuffix) {
 			unmergedFiles = append(unmergedFiles, path)
 		}
 		return nil
@@ -605,7 +607,7 @@ func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manif
 		return nil, fmt.Errorf("failed creating output directory for patch reversal: %w", err)
 	}
 	installedPath := filepath.Join(installedDir, f.File.Val)
-	rejectPath := installedPath + ".rej"
+	rejectPath := installedPath + rejectedPatchSuffix
 
 	var stdout, stderr bytes.Buffer
 	opts := []*run.Option{
