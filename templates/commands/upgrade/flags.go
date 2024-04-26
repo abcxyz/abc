@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/abcxyz/abc/templates/common/flags"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -66,7 +67,7 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Name:    "version",
 		Usage:   "for remote templates, the version to upgrade to; may be git tag, branch, or SHA",
 		Example: "main",
-		Default: "latest",
+		Default: templatesource.Latest,
 		EnvVar:  "ABC_UPGRADE_TO_VERSION",
 		Target:  &f.Version,
 	})
