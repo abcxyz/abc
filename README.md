@@ -59,7 +59,9 @@ The `<template_location>` parameter is one of these two things:
 - `--input=key=val`: provide an input parameter to the template. `key` must be
   one of the inputs declared by the template in its `spec.yaml`. May be repeated
   to provide multiple inputs, like
-  `--input=name=alice --input=email=alice@example.com`.
+  `--input=name=alice --input=email=alice@example.com`. Every input must
+  correspond to a template input value (unless you also provide
+  `--ignore-unknown-inputs`.
 - `--input-file=file`: provide a YAML file with input(s) to the template. The
   file must contain a YAML object whose keys and values are strings. If a key
   exists in the file but is also provided as an `--input`, the `--input` value
@@ -68,6 +70,8 @@ The `<template_location>` parameter is one of these two things:
   This flag may be repeated, like
   `--input-file=some-inputs.yaml --input-file=more-inputs.yaml`. When there are
   multiple input files, they must not have any overlapping keys.
+
+  Any inputs in this file that are not accepted by the template are ignored.
 
 - `--git-protocol=[https|ssh]`: controls the protocol to use when connecting to
   a remote git repository. The default is to use https, but you may want to use
@@ -92,8 +96,10 @@ The `<template_location>` parameter is one of these two things:
 - `--skip-input-validation`: don't run any of the validation rules for template
   inputs. This could be useful if a template has overly strict validation logic
   and you know for sure that the value you want to use is OK.
+- `--ignore-unknown-inputs`: silently ignore any `--input` values that aren't
+  accepted by the template.
 
-Flags for developers:
+Flags for template developers:
 
 - `--debug-step-diffs`: for template authors, not regular users. This will log
   the diffs made by each step as git commits in a tmp git repository. If you

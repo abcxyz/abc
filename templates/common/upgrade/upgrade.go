@@ -324,6 +324,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		Downloader:              downloader,
 		FS:                      p.FS,
 		GitProtocol:             p.GitProtocol,
+		IgnoreUnknownInputs:     true, // A manifest may have old inputs that aren't used by the latest template version
 		InputFiles:              p.InputFiles,
 		IncludeFromDestExtraDir: reversedDir,
 		Inputs:                  inputsToMap(oldManifest.Inputs),
