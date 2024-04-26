@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,6 +76,18 @@ steps:
 			{
 				File: mdl.S("out.txt"),
 			},
+		},
+	}
+
+	wantDLMeta := &templatesource.DownloadMetadata{
+		IsCanonical:     true,
+		CanonicalSource: "../template_dir",
+		LocationType:    templatesource.LocalGit,
+		HasVersion:      true,
+		Version:         abctestutil.MinimalGitHeadSHA,
+		Vars: templatesource.DownloaderVars{
+			GitSHA:      abctestutil.MinimalGitHeadSHA,
+			GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 		},
 	}
 
@@ -144,6 +157,7 @@ steps:
 			want: &Result{
 				Type:         Success,
 				NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
+				DLMeta:       wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\nworld\n",
@@ -183,6 +197,7 @@ steps:
 					{Action: WriteNew, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":          "hello\n",
@@ -230,6 +245,7 @@ steps:
 					{Action: DeleteAction, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
@@ -282,6 +298,7 @@ steps:
 						OursPath: "another_file.txt.abcmerge_template_wants_to_delete",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"another_file.txt.abcmerge_template_wants_to_delete": "my edited contents",
@@ -329,6 +346,7 @@ steps:
 					{Action: Noop, Path: "another_file.txt"},
 					{Action: Noop, Path: "out.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
@@ -372,6 +390,7 @@ steps:
 						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_edited":    "my edited contents",
@@ -418,6 +437,7 @@ steps:
 						IncomingTemplatePath: "out.txt.abcmerge_locally_deleted_vs_new_template_version",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_deleted_vs_new_template_version": "goodbye",
@@ -467,6 +487,7 @@ steps:
 					{Action: WriteNew, Path: "template_changes_this_file.txt"},
 					{Action: Noop, Path: "user_deletes_this_file.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"template_changes_this_file.txt": "modified contents",
@@ -517,6 +538,7 @@ steps:
 					{Action: Noop, Path: "out.txt"},
 					{Action: WriteNew, Path: "some_other_file.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":             "modified contents",
@@ -579,6 +601,7 @@ steps:
 						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt.abcmerge_locally_added":     "my cool new file",
@@ -631,6 +654,7 @@ steps:
 					{Action: "noop", Path: "out.txt"},
 					{Action: "noop", Path: "some_other_file.txt"},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt":             "identical contents",
@@ -743,6 +767,7 @@ steps:
 						Path:   "file.txt",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantManifestAfterUpgrade: &manifest.Manifest{
 				CreationTime:     beforeUpgradeTime,
@@ -836,7 +861,13 @@ steps:
 `,
 			},
 			want: &Result{
-				ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+				ReversalConflicts: []*ReversalConflict{
+					{
+						RelPath:       "file.txt",
+						AbsPath:       "file.txt",
+						RejectedHunks: "file.txt.patch.rej",
+					},
+				},
 			},
 			// manifest should be unchanged if there's a reversal conflict
 			wantManifestAfterUpgrade: &manifest.Manifest{
@@ -940,6 +971,7 @@ steps:
 						Path:   "file.txt",
 					},
 				},
+				DLMeta: wantDLMeta,
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"file.txt": `an arbitrary line of text to trigger fuzzy patching
@@ -1042,6 +1074,16 @@ yellow is my favorite color
 			result, err := Upgrade(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
+			}
+
+			// For testing purposes, remove the temp directory prefix from the
+			// absolute path. We need a deterministic path to check, not
+			// containing a temp dir name.
+			if result != nil {
+				for _, rc := range result.ReversalConflicts {
+					rc.AbsPath = strings.TrimPrefix(rc.AbsPath, destDir+"/")
+					rc.RejectedHunks = strings.TrimPrefix(rc.RejectedHunks, destDir+"/")
+				}
 			}
 
 			opts := []cmp.Option{
@@ -1235,7 +1277,13 @@ steps:
 		t.Fatal(err)
 	}
 	wantReversalConflictResult := &Result{
-		ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+		ReversalConflicts: []*ReversalConflict{
+			{
+				RelPath:       "file.txt",
+				AbsPath:       filepath.Join(destDir, "file.txt"),
+				RejectedHunks: filepath.Join(destDir, "file.txt.patch.rej"),
+			},
+		},
 	}
 	opts := []cmp.Option{
 		cmpopts.EquateEmpty(),
@@ -1279,7 +1327,7 @@ steps:
 	abctestutil.Remove(t, destDir, "file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
-	upgradeParams.ReversalAlreadyDone = []string{"file.txt"}
+	upgradeParams.AlreadyResolved = []string{"file.txt"}
 
 	gotResult, err := Upgrade(ctx, upgradeParams)
 	if err != nil {
@@ -1291,6 +1339,17 @@ steps:
 			{
 				Action: "writeNew",
 				Path:   "file.txt",
+			},
+		},
+		DLMeta: &templatesource.DownloadMetadata{
+			IsCanonical:     true,
+			CanonicalSource: "../template_dir",
+			LocationType:    templatesource.LocalGit,
+			HasVersion:      true,
+			Version:         abctestutil.MinimalGitHeadSHA,
+			Vars: templatesource.DownloaderVars{
+				GitSHA:      abctestutil.MinimalGitHeadSHA,
+				GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 			},
 		},
 	}

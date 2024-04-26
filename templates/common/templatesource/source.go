@@ -23,6 +23,8 @@ import (
 	"github.com/abcxyz/abc/templates/common/specutil"
 )
 
+const Latest = "latest"
+
 // sourceParser is implemented for each particular kind of template source (git,
 // local file, etc.).
 type sourceParser interface {
@@ -74,7 +76,7 @@ var realSourceParsers = []sourceParser{
 				`$`), // Anchor the end, must match the entire input
 		subdirExpansion:  `${subdir}`,
 		versionExpansion: `${version}`,
-		defaultVersion:   "latest",
+		defaultVersion:   Latest,
 		warning:          `go-getter style URL support will be removed in mid-2024, please use the newer format instead, eg github.com/myorg/myrepo[/subdir]@v1.2.3 (or @latest)`,
 	},
 }

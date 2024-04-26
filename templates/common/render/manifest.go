@@ -200,7 +200,7 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 		},
 		Wrapped: &manifest.ForMarshaling{
 			TemplateLocation: model.String{Val: p.dlMeta.CanonicalSource}, // may be empty string if location isn't canonical
-			LocationType:     model.String{Val: p.dlMeta.LocationType},
+			LocationType:     model.String{Val: string(p.dlMeta.LocationType)},
 			TemplateDirhash:  model.String{Val: templateDirhash},
 			TemplateVersion:  model.String{Val: p.dlMeta.Version},
 			CreationTime:     now,

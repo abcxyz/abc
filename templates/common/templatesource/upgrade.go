@@ -28,9 +28,9 @@ var (
 	// will be parsed. E.g. with location type "remote_git" we expect the
 	// location to look like "github.com/foo/bar/baz". With location type
 	// "local_git" we expect the location to look like a local path like "a/b".
-	upgradeDownloaderFactories = map[string]upgradeDownloaderFactory{
-		LocTypeRemoteGit: remoteGitUpgradeDownloaderFactory,
-		LocTypeLocalGit:  localGitUpgradeDownloaderFactory,
+	upgradeDownloaderFactories = map[LocationType]upgradeDownloaderFactory{
+		RemoteGit: remoteGitUpgradeDownloaderFactory,
+		LocalGit:  localGitUpgradeDownloaderFactory,
 	}
 
 	// Used only when location type is remote_git. Parses a string like
@@ -71,10 +71,13 @@ type ForUpgradeParams struct {
 	CanonicalLocation string
 
 	// One of local_git, remote_git, etc.
-	LocType string
+	LocType LocationType
 
 	// The value of --git-protocol.
 	GitProtocol string
+
+	// TODO doc
+	Version string
 }
 
 func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
@@ -82,7 +85,7 @@ func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams)
 		re:             remoteGitUpgradeLocationRE,
 		input:          f.CanonicalLocation,
 		gitProtocol:    f.GitProtocol,
-		defaultVersion: "latest",
+		defaultVersion: f.Version,
 	})
 	if err != nil {
 		return nil, err

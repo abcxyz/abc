@@ -111,15 +111,16 @@ steps:
 			wantErr:      []string{"exit code 2"},
 			wantStdout: mergeInstructions + `
 
+List of conflicting files:
 --
 file: color.txt
 conflict type: addAddConflict
-our file was renamed to: color.txt.abcmerge_locally_added
+your file was renamed to: color.txt.abcmerge_locally_added
 incoming file: color.txt.abcmerge_from_new_template
 --
 file: greet.txt
 conflict type: editEditConflict
-our file was renamed to: greet.txt.abcmerge_locally_edited
+your file was renamed to: greet.txt.abcmerge_locally_edited
 incoming file: greet.txt.abcmerge_from_new_template
 --
 `,
@@ -184,9 +185,8 @@ incoming file: greet.txt.abcmerge_from_new_template
 
 			cmd := &Command{}
 
-			var stdout, stderr bytes.Buffer
+			var stdout bytes.Buffer
 			cmd.SetStdout(&stdout)
-			cmd.SetStderr(&stderr)
 
 			err = cmd.Run(ctx, []string{manifestFullPath})
 			for _, wantErr := range tc.wantErr {
@@ -208,7 +208,8 @@ incoming file: greet.txt.abcmerge_from_new_template
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(stdout.String(), tc.wantStdout); diff != "" {
+			gotStdout := stdout.String()
+			if diff := cmp.Diff(gotStdout, tc.wantStdout); diff != "" {
 				t.Errorf("stdout was not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -221,7 +222,7 @@ func TestMissingManifest(t *testing.T) {
 	cmd := &Command{}
 	ctx := context.Background()
 	err := cmd.Run(ctx, []string{"nonexistent_file.txt"})
-	if diff := testutil.DiffErrString(err, "failed to open manifest file"); diff != "" {
+	if diff := testutil.DiffErrString(err, "no such file or directory"); diff != "" {
 		t.Fatal(diff)
 	}
 }

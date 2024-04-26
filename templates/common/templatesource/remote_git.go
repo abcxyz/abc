@@ -165,7 +165,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	subdirToCopy := filepath.Join(tmpDir, subdir)
 
 	if err := g.cloner.Clone(ctx, g.remote, versionToDownload, tmpDir); err != nil {
-		return nil, fmt.Errorf("Clone(): %w", err)
+		return nil, fmt.Errorf("Clone() of %s: %w", g.remote, err)
 	}
 
 	fi, err := os.Stat(subdirToCopy)
@@ -221,7 +221,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	dlMeta := &DownloadMetadata{
 		IsCanonical:     true, // Remote git sources are always canonical.
 		CanonicalSource: g.canonicalSource,
-		LocationType:    LocTypeRemoteGit,
+		LocationType:    RemoteGit,
 		HasVersion:      true, // Remote git sources always have a tag or SHA.
 		Version:         canonicalVersion,
 		Vars:            *vars,
@@ -272,7 +272,7 @@ func resolveVersion(ctx context.Context, t tagser, remote, version string) (stri
 	switch version {
 	case "":
 		return "", fmt.Errorf("the template source version cannot be empty")
-	case "latest":
+	case Latest:
 		return resolveLatest(ctx, t, remote)
 	default:
 		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)

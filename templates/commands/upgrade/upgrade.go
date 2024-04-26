@@ -18,14 +18,17 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/benbjohnson/clock"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/upgrade"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
 )
 
 // Command implements cli.Command for template upgrades.
@@ -67,10 +70,13 @@ func (c *Command) Flags() *cli.FlagSet {
 	return set
 }
 
-const mergeInstructions = `
+const (
+	mergeInstructions = `
 Some manual conflict resolution is required because of a conflict between your
 local edits and the new version of the template. Please look at all files ending
 in .abcmerge_* and either edit, delete, or rename them to reflect your decision.
+There is no need to re-run abc after resolving (so it's not like "git merge
+ --continue").
 
 Background on conflict types:
 
@@ -102,29 +108,201 @@ Background on conflict types:
    (1) renaming one of these files to "yourfile and deleting the other, or (2)
    merging the two files into "yourfile".`
 
+	patchReversalInstructionsPart1 = `
+There was a merge conflict when trying to undo changes to file(s) that were
+modified in-place by a previous version of the template.
+
+Background: the upgrade algorithm has a special case for files that were
+modified in place by a previous version of the template (aka "include from
+destination"). When the file was previously modified in place, a patch was saved
+to undo that modification, so a future template version could start fresh and
+redo the modification in place based on new template logic. Just now, this patch
+was applied to the file, but the patch didn't apply cleanly. This happens when
+the file was modified since the previous version of this template was installed;
+that could happen because somebody edited the file, or that same file was
+modified in place by a different template.
+
+To resolve this conflict, please manually apply the rejected hunks in the given
+.rej file, for each entry in the following list:
+
+`
+)
+
 func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	fs := &common.RealFS{}
-
-	absManifestPath, err := filepath.Abs(c.flags.Manifest)
+	fi, err := os.Stat(c.flags.Location)
 	if err != nil {
-		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Manifest, err)
+		return err //nolint:wrapcheck
+	}
+	if fi.IsDir() {
+		return c.upgradeAll(ctx, c.flags.Location)
+	}
+	return c.upgradeOne(ctx, c.flags.Location)
+}
+
+// TODO doc, return order
+func crawlManifests(startDir string) ([]string, error) {
+	var manifests []string
+
+	err := filepath.WalkDir(startDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		baseName := filepath.Base(path)
+		ext := filepath.Ext(path)
+		parentDir := filepath.Base(filepath.Dir(path))
+		if strings.HasPrefix(baseName, "manifest") && ext == ".yaml" && parentDir == common.ABCInternalDir {
+			manifests = append(manifests, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	return manifests, nil
+}
+
+// TODO move to common/upgrade.go?
+func (c *Command) upgradeAll(ctx context.Context, startDir string) error {
+	logger := logging.FromContext(ctx).With("logger", "upgradeAll")
+
+	// TODO reject if already-resolved flag is set, somewhere in here
+
+	// TODO this works because remote templates can't be modified by a local
+	// upgrade. And it's necessary because remote templates are slow and require
+	// a security key touch.
+	remoteTemplatesUpgraded := map[string]struct{}{}
+
+	anyManifestsFound := false
+	numWaves := 0
+	for {
+		numWaves++
+
+		manifests, err := crawlManifests(startDir)
+		if err != nil {
+			return err
+		}
+
+		// TODO explain multiple waves of upgrades
+		anyUpgradedThisRound := false
+		for _, manifest := range manifests {
+			if _, ok := remoteTemplatesUpgraded[manifest]; ok {
+				logger.DebugContext(ctx, "skipping already-upgraded manifest",
+					"manifest", manifest)
+				continue
+			}
+			logger.DebugContext(ctx, "attempting upgrade",
+				"manifest", manifest)
+			result, err := c.callUpgrade(ctx, manifest)
+			if err != nil {
+				return err
+			}
+			anyManifestsFound = true
+
+			if result.DLMeta != nil && result.DLMeta.LocationType.IsRemote() {
+				// For templates that are upgraded from a remote source, don't
+				// keep checking for new upgrades every wave. The only reason we
+				// have waves in the first place is to handle the case where
+				// one template upgrade, when writing its output, actually
+				// creates a new version of another template. This concern
+				// doesn't apply to templates that are sourced remotely, so we
+				// only have to process them once.
+				remoteTemplatesUpgraded[manifest] = struct{}{}
+			}
+
+			msg, code := summarizeResult(result)
+			if code != 0 {
+				fmt.Fprintln(c.Stdout(), msg)
+				return &common.ExitCodeError{Code: code}
+			}
+			fmt.Fprintln(c.Stdout(), msg)
+			if result.Type == upgrade.Success {
+				logger.InfoContext(ctx, "upgraded template installation",
+					"manifest", manifest)
+				anyUpgradedThisRound = true
+			}
+			if result.Type == upgrade.AlreadyUpToDate {
+				logger.InfoContext(ctx, "template installation is already up to date",
+					"manifest", manifest)
+			}
+		}
+
+		if !anyUpgradedThisRound {
+			logger.DebugContext(ctx, "wave complete with no further manifests to upgrade")
+			break
+		}
+	}
+
+	if !anyManifestsFound {
+		// Perhaps this isn't strictly an error, but in the case where the user
+		// invokes the tool incorrectly and doesn't actually do the work they
+		// intended, we want to tell them and not just pretend things are fine.
+		return fmt.Errorf("found no template manifests to upgrade")
+	}
+	logger.InfoContext(ctx, "upgrade-all operation finished",
+		"num_waves", numWaves)
+	return nil
+}
+
+// TODO can this be deleted? Is it automatically handled correctly by upgrade
+// all? What about the --already-resolved flag though?
+func (c *Command) upgradeOne(ctx context.Context, manifestPath string) error {
+	// r, err := upgrade.Upgrade(ctx, &upgrade.Params{
+	// 	Clock:                clock.New(),
+	// 	CWD:                  cwd,
+	// 	DebugStepDiffs:       c.flags.DebugStepDiffs,
+	// 	DebugScratchContents: c.flags.DebugScratchContents,
+	// 	FS:                   &common.RealFS{},
+	// 	GitProtocol:          c.flags.GitProtocol,
+	// 	InputFiles:           c.flags.InputFiles,
+	// 	Inputs:               c.flags.Inputs,
+	// 	KeepTempDirs:         c.flags.KeepTempDirs,
+	// 	ManifestPath:         absManifestPath,
+	// 	Prompt:               c.flags.Prompt,
+	// 	Prompter:             c,
+	// 	SkipInputValidation:  c.flags.SkipInputValidation,
+	// 	SkipPromptTTYCheck:   c.skipPromptTTYCheck,
+	// 	Stdout:               c.Stdout(),
+	// })
+	// if err != nil {
+	// 	return err //nolint:wrapcheck
+	// }
+	result, err := c.callUpgrade(ctx, manifestPath)
+	if err != nil {
+		return err
+	}
+
+	msg, exitCode := summarizeResult(result)
+	if exitCode == 0 {
+		fmt.Fprintln(c.Stdout(), msg)
+		return nil
+	}
+	fmt.Fprintln(c.Stdout(), msg)
+	return &common.ExitCodeError{Code: exitCode}
+}
+
+func (c *Command) callUpgrade(ctx context.Context, manifestPath string) (*upgrade.Result, error) {
+	absManifestPath, err := filepath.Abs(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("filepath.Abs(%q): %w", manifestPath, err)
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("os.Getwd(): %w", err)
+		return nil, fmt.Errorf("os.Getwd(): %w", err)
 	}
 
-	r, err := upgrade.Upgrade(ctx, &upgrade.Params{
+	result, err := upgrade.Upgrade(ctx, &upgrade.Params{
+		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
 		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
 		DebugScratchContents: c.flags.DebugScratchContents,
-		FS:                   fs,
+		FS:                   &common.RealFS{},
 		GitProtocol:          c.flags.GitProtocol,
 		InputFiles:           c.flags.InputFiles,
 		Inputs:               c.flags.Inputs,
@@ -135,38 +313,50 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		SkipInputValidation:  c.flags.SkipInputValidation,
 		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
 		Stdout:               c.Stdout(),
+		Version:              c.flags.Version,
 	})
 	if err != nil {
-		return err //nolint:wrapcheck
+		return nil, fmt.Errorf("when upgrading the manifest at %s: %w", manifestPath, err)
 	}
+	return result, nil
+}
 
+func summarizeResult(r *upgrade.Result) (message string, exitCode int) {
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
-		fmt.Fprintf(c.Stdout(), "Already up to date with latest template version\n")
-		return nil
+		return "Already up to date with latest template version", 0
 	case upgrade.Success:
-		fmt.Fprintf(c.Stdout(), "Upgrade complete with no conflicts\n")
-		return nil
+		return "Upgrade complete with no conflicts", 0
 	case upgrade.MergeConflict:
 		// TODO(upgrade):
 		//  - suggest diff / meld / vim commands?
-		fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n--\n")
+		var out strings.Builder
+		fmt.Fprintf(&out, mergeInstructions+"\n\nList of conflicting files:\n--")
 		for _, cf := range r.Conflicts {
-			fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
-			fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
+			fmt.Fprintf(&out, "\nfile: %s\n", cf.Path)
+			fmt.Fprintf(&out, "conflict type: %s\n", cf.Action)
 			if cf.OursPath != "" {
-				fmt.Fprintf(c.Stdout(), "our file was renamed to: %s\n", cf.OursPath)
+				fmt.Fprintf(&out, "your file was renamed to: %s\n", cf.OursPath)
 			}
 			if cf.IncomingTemplatePath != "" {
-				fmt.Fprintf(c.Stdout(), "incoming file: %s\n", cf.IncomingTemplatePath)
+				fmt.Fprintf(&out, "incoming file: %s\n", cf.IncomingTemplatePath)
 			}
-			fmt.Fprintf(c.Stdout(), "--\n")
+			fmt.Fprintf(&out, "--")
 		}
-		return &common.ExitCodeError{Code: 2}
+		return out.String(), 2
 	case upgrade.PatchReversalConflict:
-		// TODO(upgrade): include instructions for resolving these conflicts
-		return &common.ExitCodeError{Code: 3}
+		var out strings.Builder
+		fmt.Fprint(&out, patchReversalInstructionsPart1)
+		relPaths := make([]string, 0, len(r.ReversalConflicts))
+		for _, rc := range r.ReversalConflicts {
+			fmt.Fprintf(&out, "File: %s", rc.AbsPath)
+			fmt.Fprintf(&out, "Rejected hunks for you to apply: %s", rc.RejectedHunks)
+			relPaths = append(relPaths, rc.RelPath)
+		}
+		fmt.Fprintf(&out, `
+After resolving these conflicts, run this upgrade command TODO with
+--already_resolved='%s'`, strings.Join(relPaths, ","))
+		return out.String(), 3
 	}
-
-	return nil
+	panic("unreachable") // TODO verify exhaustiveness
 }
