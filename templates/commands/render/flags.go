@@ -103,6 +103,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Name:    "manifest",
 		Target:  &r.Manifest,
 		Default: false,
+		EnvVar:  "ABC_MANIFEST",
 		Usage:   "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
 	})
 

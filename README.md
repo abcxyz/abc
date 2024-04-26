@@ -53,20 +53,6 @@ The `<template_location>` parameter is one of these two things:
 
 #### Flags
 
-- `--debug-step-diffs`: for template authors, not regular users. This will log
-  the diffs made by each step as git commits in a tmp git repository. If you
-  want to see the git logs and diffs with your usual git commands, please
-  navigate to the tmp folder, otherwise you will need to use a git flag
-  `--git-dir=path/to/tmp/debug/folder` for your commands, e.g.:
-  `git --git-dir=path/to/tmp/debug/folder log`. A warn log will show you where
-  the tmp repository is.
-
-  Note: you must have git installed to use this flag.
-
-- `--debug-scratch-contents`: for template authors, not regular users. This will
-  print the filename of every file in the scratch directory after executing each
-  step of the spec.yaml. Useful for debugging errors like
-  `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`.
 - `--dest <output_dir>`: the directory on the local filesystem to write output
   to. Defaults to the current directory. If it doesn't exist, it will be
   created.
@@ -83,6 +69,11 @@ The `<template_location>` parameter is one of these two things:
   `--input-file=some-inputs.yaml --input-file=more-inputs.yaml`. When there are
   multiple input files, they must not have any overlapping keys.
 
+- `--git-protocol=[https|ssh]`: controls the protocol to use when connecting to
+  a remote git repository. The default is to use https, but you may want to use
+  ssh if you want to authenticate using SSH keys. You can also set the
+  environment variable `ABC_GIT_PROTOCOL=ssh` if you don't want to type this
+  flag for every abc command.
 - `--force-overwrite`: normally, the template rendering operation will abort if
   the template would output a file at a location that already exists on the
   filesystem. This flag allows it to continue.
@@ -96,10 +87,29 @@ The `<template_location>` parameter is one of these two things:
   directory. Use environment variable `ABC_LOG_LEVEL=debug` to see the locations
   of the directories.
 - `--prompt`: the user will be prompted for inputs that are needed by the
-  template but are not supplied by `--inputs` or `--input-file`.
+  template but are not supplied by `--inputs` or `--input-file`. You can specify
+  the environment variable `ABC_PROMPT=true` to avoid typing this every time.
 - `--skip-input-validation`: don't run any of the validation rules for template
   inputs. This could be useful if a template has overly strict validation logic
   and you know for sure that the value you want to use is OK.
+
+Flags for developers:
+
+- `--debug-step-diffs`: for template authors, not regular users. This will log
+  the diffs made by each step as git commits in a tmp git repository. If you
+  want to see the git logs and diffs with your usual git commands, please
+  navigate to the tmp folder, otherwise you will need to use a git flag
+  `--git-dir=path/to/tmp/debug/folder` for your commands, e.g.:
+  `git --git-dir=path/to/tmp/debug/folder log`. A warn log will show you where
+  the tmp repository is.
+
+  Note: you must have git installed to use this flag.
+
+- `--debug-scratch-contents`: for template authors, not regular users. This will
+  print the filename of every file in the scratch directory after executing each
+  step of the spec.yaml. Useful for debugging errors like
+  `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`.
+
 
 #### Logging
 
@@ -375,6 +385,14 @@ create a "hello world" Go web service.
 
    # Assuming you're using GitHub, now go create a PR.
    ```
+
+### Authentication errors
+
+If `abc` asks you for a username and password, that probably means that the
+template you're rendering is in a private git repository, and HTTPS
+authentication didn't work. You may want to try cloning over SSH instead. To use
+SSH, you can add `--git-protocol=ssh` to your command line or set the
+environment variable `ABC_GIT_PROTOCOL=ssh`.
 
 ## Template developer guide
 
