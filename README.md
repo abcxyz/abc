@@ -61,7 +61,7 @@ The `<template_location>` parameter is one of these two things:
   to provide multiple inputs, like
   `--input=name=alice --input=email=alice@example.com`. Every input must
   correspond to a template input value (unless you also provide
-  `--ignore-unknown-inputs`.
+  `--ignore-unknown-inputs`).
 - `--input-file=file`: provide a YAML file with input(s) to the template. The
   file must contain a YAML object whose keys and values are strings. If a key
   exists in the file but is also provided as an `--input`, the `--input` value

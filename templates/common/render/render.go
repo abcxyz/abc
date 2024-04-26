@@ -90,7 +90,8 @@ type Params struct {
 	// The value of --git-protocol.
 	GitProtocol string
 
-	// TODO doc
+	// Ignore any values in the Inputs map that aren't valid template inputs,
+	// rather than returning error.
 	IgnoreUnknownInputs bool
 
 	// An optional extra directory that will be copied from in the case where an
