@@ -390,8 +390,8 @@ func TestProcessGlobs(t *testing.T) {
 		name        string
 		dirContents map[string]abctestutil.ModeAndContents
 		paths       []model.String
-		wantPaths   []model.String
 		skipGlobs   bool
+		wantPaths   []model.String
 		wantErr     string
 	}{
 		{

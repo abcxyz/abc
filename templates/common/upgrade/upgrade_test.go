@@ -113,6 +113,11 @@ steps:
 		wantManifestAfterUpgrade     *manifest.Manifest
 		want                         *Result
 		wantErr                      string
+
+		// wantRejectFile is a hack since Mac and Linux `patch` commands
+		// generate different formats for their reject hunk files. We therefore
+		// just test for the presence of the file.
+		wantRejectFile string
 	}{
 		// TODO(upgrade): tests to add:
 		//  a chain of upgrades
@@ -689,7 +694,7 @@ steps:
 `,
 			},
 			origDestContents: map[string]string{
-				"file.txt": "purple is my favorite color",
+				"file.txt": "purple is my favorite color\n",
 			},
 			wantManifestBeforeUpgrade: &manifest.Manifest{
 				CreationTime:     beforeUpgradeTime,
@@ -705,9 +710,7 @@ steps:
 +++ b/file.txt
 @@ -1 +1 @@
 -red is my favorite color
-\ No newline at end of file
 +purple is my favorite color
-\ No newline at end of file
 `),
 					},
 				},
@@ -736,9 +739,8 @@ steps:
 				Type: Success,
 				NonConflicts: []ActionTaken{
 					{
-						Action:      "noop",
-						Explanation: "the new template outputs the same contents as the old template, ",
-						Path:        "file.txt",
+						Action: WriteNew,
+						Path:   "file.txt",
 					},
 				},
 			},
@@ -752,17 +754,228 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("file.txt"),
-						// TODO(upgrade): once patch-reversing is implemented,
-						// then there will be a patch here.
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-yellow is my favorite color
++purple is my favorite color
+`),
 					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
-				// TODO(upgrade): once patch-reversing is implemented, this will
-				// be "yellow is my favorite color".
-				"file.txt": "red is my favorite color",
+				"file.txt": "yellow is my favorite color\n",
 			},
 		},
+		{
+			name: "rejected_reversal_include_from_destination_with_local_edits",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+			},
+			origDestContents: map[string]string{
+				"file.txt": "purple is my favorite color\n",
+			},
+			wantManifestBeforeUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
+				abctestutil.Overwrite(tb, installedDir, "file.txt", "green is my favorite color\n")
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'yellow'  
+`,
+			},
+			want: &Result{
+				ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+			},
+			// manifest should be unchanged if there's a reversal conflict
+			wantManifestAfterUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+			wantRejectFile: "file.txt.rej",
+			wantDestContentsAfterUpgrade: map[string]string{
+				"file.txt": "green is my favorite color\n",
+			},
+		},
+
+		{
+			name: "fuzzy_patch_reversal",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+			},
+			origDestContents: map[string]string{
+				"file.txt": "purple is my favorite color\n",
+			},
+			wantManifestBeforeUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: beforeUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
+				abctestutil.Prepend(tb, installedDir, "file.txt", "an arbitrary line of text to trigger fuzzy patching\n")
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'yellow'  
+`,
+			},
+			want: &Result{
+				Type: Success,
+				NonConflicts: []ActionTaken{
+					{
+						Action: "writeNew",
+						Path:   "file.txt",
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"file.txt": `an arbitrary line of text to trigger fuzzy patching
+yellow is my favorite color
+`,
+			},
+			wantManifestAfterUpgrade: &manifest.Manifest{
+				CreationTime:     beforeUpgradeTime,
+				ModificationTime: afterUpgradeTime,
+				TemplateLocation: mdl.S("../template_dir"),
+				LocationType:     mdl.S("local_git"),
+				TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file.txt"),
+						Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1,2 +1,2 @@
+ an arbitrary line of text to trigger fuzzy patching
+-yellow is my favorite color
++purple is my favorite color
+`),
+					},
+				},
+			},
+		},
+
+		// TODO(upgrade): add tests:
+		//  multiple conflicting files
+		//  multiple templates targeting same file causing reversal conflict
+		//  some hunks applied and some rejected
+		//  a previous regular-included file becomes ifd
+		//  an ifd file becomes regular-included
+		//  IFD with all conflicts: add-add, add-edit, EditDelete, DeleteEdit
+		//  a mix of included-from-dest and regular-include
 	}
 
 	for _, tc := range cases {
@@ -772,6 +985,9 @@ steps:
 			t.Parallel()
 
 			tempBase := t.TempDir()
+			// Make tempBase into a valid git repo.
+			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
 			destDir := filepath.Join(tempBase, "dest_dir")
 			templateDir := filepath.Join(tempBase, "template_dir")
 
@@ -838,9 +1054,22 @@ steps:
 
 			assertManifest(ctx, t, "after upgrade", tc.wantManifestAfterUpgrade, manifestFullPath)
 
-			gotDestContentsAfter := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+			gotDestContentsAfter := abctestutil.LoadDir(t, destDir,
+				abctestutil.SkipGlob(".abc/manifest*"),
+				abctestutil.SkipGlob("*.rej"), // rejected hunk files are asserted separately
+			)
 			if diff := cmp.Diff(gotDestContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
+			}
+
+			if tc.wantRejectFile != "" {
+				ok, err := common.Exists(filepath.Join(destDir, tc.wantRejectFile))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !ok {
+					t.Errorf("reject file %q was missing", tc.wantRejectFile)
+				}
 			}
 		})
 	}
@@ -888,6 +1117,193 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 	wantErr := "this template can't be upgraded because its manifest doesn't contain a template_location"
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 		t.Fatal(diff)
+	}
+}
+
+func TestPatchReversalManualResolution(t *testing.T) {
+	t.Parallel()
+
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		t.Fatalf("time.LoadLocation(): %v", err)
+	}
+	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
+
+	tempBase := t.TempDir()
+	// Make tempBase into a valid git repo.
+	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
+	destDir := filepath.Join(tempBase, "dest_dir")
+	templateDir := filepath.Join(tempBase, "template_dir")
+
+	origTemplateDirContents := map[string]string{
+		"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements: 
+        - to_replace: 'purple'
+          with: 'red'  
+`,
+	}
+	abctestutil.WriteAll(t, templateDir, origTemplateDirContents)
+
+	origDestContents := map[string]string{
+		"file.txt": "purple is my favorite color\n",
+	}
+	abctestutil.WriteAll(t, destDir, origDestContents)
+
+	ctx := context.Background()
+	clk := clock.NewMock()
+	clk.Set(beforeUpgradeTime)
+	renderResult := mustRender(t, ctx, clk, tempBase, templateDir, destDir)
+
+	wantManifestBeforeUpgrade := &manifest.Manifest{
+		CreationTime:     beforeUpgradeTime,
+		ModificationTime: beforeUpgradeTime,
+		TemplateLocation: mdl.S("../template_dir"),
+		LocationType:     mdl.S("local_git"),
+		TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
+		Inputs:           []*manifest.Input{},
+		OutputFiles: []*manifest.OutputFile{
+			{
+				File: mdl.S("file.txt"),
+				Patch: mdl.SP(`--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-red is my favorite color
++purple is my favorite color
+`),
+			},
+		},
+	}
+	manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
+	assertManifest(ctx, t, "before upgrade", wantManifestBeforeUpgrade, manifestFullPath)
+
+	templateReplacementForUpgrade := map[string]string{
+		"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include a file to be modified in place'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['file.txt']
+  - desc: 'Change favorite color'
+    action: 'string_replace'
+    params:
+      paths: ['file.txt']
+      replacements:
+        - to_replace: 'purple'
+          with: 'yellow'
+`,
+	}
+	if err := os.RemoveAll(templateDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(templateDir, common.OwnerRWXPerms); err != nil {
+		t.Fatal(err)
+	}
+	abctestutil.WriteAll(t, templateDir, templateReplacementForUpgrade)
+
+	// Simulate the user making some edits to the included-from-destination file
+	// after the render operation but before the upgrade
+	abctestutil.Overwrite(t, destDir, "file.txt", "green is my favorite color\n")
+
+	upgradeParams := &Params{
+		Clock:        clk,
+		CWD:          destDir,
+		FS:           &common.RealFS{},
+		ManifestPath: manifestFullPath,
+		Stdout:       os.Stdout,
+	}
+
+	gotReversalConflictResult, err := Upgrade(ctx, upgradeParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantReversalConflictResult := &Result{
+		ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+	}
+	opts := []cmp.Option{
+		cmpopts.EquateEmpty(),
+		cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
+	}
+	if diff := cmp.Diff(gotReversalConflictResult, wantReversalConflictResult, opts...); diff != "" {
+		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
+	}
+
+	// manifest should be unchanged if there's a reversal conflict
+	wantDestContentsAfterFailedUpgrade := map[string]string{
+		"file.txt": "green is my favorite color\n",
+
+		// Don't assert the contents of the .rej file, because its contents vary
+		// between macos and linux due to the differences between freebsd patch
+		// and GNU patch.
+		//
+		// "file.txt.rej": ... ,
+	}
+
+	wantManifestAfterFailedUpgrade := wantManifestBeforeUpgrade
+	assertManifest(ctx, t, "after upgrade", wantManifestAfterFailedUpgrade, manifestFullPath)
+
+	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir,
+		abctestutil.SkipGlob(".abc/manifest*"), // the manifest is verified separately
+		abctestutil.SkipGlob("file.txt.rej"),   // the patch reject file is just checked for presence, separately
+	)
+	if diff := cmp.Diff(gotDestContentsAfterFailedUpgrade, wantDestContentsAfterFailedUpgrade); diff != "" {
+		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
+	}
+	ok, err := common.Exists(filepath.Join(destDir, "file.txt.rej"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("got no file.txt.rej rejected patch file, but wanted one")
+	}
+
+	// Resolve the merge conflict
+	abctestutil.Overwrite(t, destDir, "file.txt", "purple is my favorite color\n")
+	abctestutil.Remove(t, destDir, "file.txt.rej")
+
+	// Inform the upgrade command that patch reversal has already happened
+	upgradeParams.ReversalAlreadyDone = []string{"file.txt"}
+
+	gotResult, err := Upgrade(ctx, upgradeParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantResult := &Result{
+		Type: Success,
+		NonConflicts: []ActionTaken{
+			{
+				Action: "writeNew",
+				Path:   "file.txt",
+			},
+		},
+	}
+	if diff := cmp.Diff(gotResult, wantResult, opts...); diff != "" {
+		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
+	}
+
+	wantDestContentsAfterSuccessfulUpgrade := map[string]string{
+		"file.txt": "yellow is my favorite color\n",
+	}
+	gotDestContentsAfterSuccessfulUpgrade := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+	if diff := cmp.Diff(gotDestContentsAfterSuccessfulUpgrade, wantDestContentsAfterSuccessfulUpgrade); diff != "" {
+		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 	}
 }
 
