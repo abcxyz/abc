@@ -99,6 +99,20 @@ func TestForUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name:              "non_default_version",
+			canonicalLocation: "github.com/abcxyz/abc",
+			locType:           "remote_git",
+			gitProtocol:       "https",
+			version:           "someversion",
+			wantDownloader: &remoteGitDownloader{
+				canonicalSource: "github.com/abcxyz/abc",
+				cloner:          &realCloner{},
+				remote:          "https://github.com/abcxyz/abc.git",
+				tagser:          &realTagser{},
+				version:         "someversion",
+			},
+		},
+		{
 			name:              "malformed_remote_git",
 			canonicalLocation: "asdfasdfasdf",
 			locType:           "remote_git",

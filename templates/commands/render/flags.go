@@ -105,7 +105,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Name:    "ignore-unknown-inputs",
 		Target:  &r.IgnoreUnknownInputs,
 		Default: false,
-		Usage:   "If a user-provided input name isn't recoognized by the template, ignore that input value instead of failing.",
+		Usage:   "If a user-provided input name isn't recognized by the template, ignore that input value instead of failing.",
 	})
 
 	f.BoolVar(flags.Prompt(&r.Prompt))

@@ -76,7 +76,8 @@ type ForUpgradeParams struct {
 	// The value of --git-protocol.
 	GitProtocol string
 
-	// TODO doc
+	// The version to update to; may be the magic string "latest", a tag, a
+	// branch, or a SHA.
 	Version string
 }
 

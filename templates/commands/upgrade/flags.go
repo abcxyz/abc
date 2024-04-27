@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/abcxyz/abc/templates/common/flags"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/posener/complete/v2/predict"
 )
@@ -52,6 +53,7 @@ type Flags struct {
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
 
+	// The template version to upgrade to; defaults to "latest".
 	Version string
 }
 
@@ -76,10 +78,10 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Name:    "version",
 		Usage:   "for remote templates, the version to upgrade to; may be git tag, branch, or SHA",
 		Example: "main",
-		Default: "latest",
+		Default: templatesource.Latest,
+		EnvVar:  "ABC_UPGRADE_TO_VERSION",
 		Target:  &f.Version,
 	})
-
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(flags.DebugScratchContents(&f.DebugScratchContents))
 
