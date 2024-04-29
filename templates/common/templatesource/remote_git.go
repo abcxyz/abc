@@ -272,7 +272,7 @@ func resolveVersion(ctx context.Context, t tagser, remote, version string) (stri
 	switch version {
 	case "":
 		return "", fmt.Errorf("the template source version cannot be empty")
-	case "latest":
+	case Latest:
 		return resolveLatest(ctx, t, remote)
 	default:
 		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)
