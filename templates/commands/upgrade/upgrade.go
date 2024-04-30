@@ -120,6 +120,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	r, err := upgrade.Upgrade(ctx, &upgrade.Params{
+		AlreadyResolved: c.flags.AlreadyResolved,
 		Clock:                clock.New(),
 		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
