@@ -1279,7 +1279,7 @@ steps:
 	abctestutil.Remove(t, destDir, "file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
-	upgradeParams.ReversalAlreadyDone = []string{"file.txt"}
+	upgradeParams.AlreadyResolved = []string{"file.txt"}
 
 	gotResult, err := Upgrade(ctx, upgradeParams)
 	if err != nil {
