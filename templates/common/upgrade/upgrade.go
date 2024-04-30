@@ -305,11 +305,11 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 
 	reversalConflicts, err := reversePatches(ctx, &reversePatchesParams{
-		fs:           p.FS,
-		alreadyResolved:  p.AlreadyResolved,
-		installedDir: installedDir,
-		reversedDir:  reversedDir,
-		oldManifest:  oldManifest,
+		fs:              p.FS,
+		alreadyResolved: p.AlreadyResolved,
+		installedDir:    installedDir,
+		reversedDir:     reversedDir,
+		oldManifest:     oldManifest,
 	})
 	if err != nil {
 		return nil, err

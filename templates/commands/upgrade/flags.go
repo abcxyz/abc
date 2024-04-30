@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/posener/complete/v2/predict"
+
 	"github.com/abcxyz/abc/templates/common/flags"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/posener/complete/v2/predict"
 )
 
 type Flags struct {
