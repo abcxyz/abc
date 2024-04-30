@@ -67,7 +67,6 @@ type Params struct {
 	// Relative paths where patch reversal has already happened. This is a flag
 	// supplied by the user. This will be set if there were merge conflicts
 	// during patch reversal that were manually resolved by the user.
-	// TODO(upgrade): add this as a CLI flag and plumb it through to here.
 	AlreadyResolved []string
 
 	Clock clock.Clock
@@ -315,11 +314,11 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 
 	reversalConflicts, err := reversePatches(ctx, &reversePatchesParams{
-		fs:           p.FS,
-		preReversed:  p.AlreadyResolved,
-		installedDir: installedDir,
-		reversedDir:  reversedDir,
-		oldManifest:  oldManifest,
+		fs:              p.FS,
+		alreadyResolved: p.AlreadyResolved,
+		installedDir:    installedDir,
+		reversedDir:     reversedDir,
+		oldManifest:     oldManifest,
 	})
 	if err != nil {
 		return nil, err
@@ -576,7 +575,7 @@ type reversePatchesParams struct {
 
 	// The set of files whose patches have already been applied by the user, so
 	// they should be skipped by the user. This comes from a command line flag.
-	preReversed []string
+	alreadyResolved []string
 
 	// installedDir is the directory where the template output is going.
 	installedDir string
@@ -601,7 +600,7 @@ func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalCo
 		}
 
 		outPath := filepath.Join(p.reversedDir, f.File.Val)
-		if slices.Contains(p.preReversed, f.File.Val) {
+		if slices.Contains(p.alreadyResolved, f.File.Val) {
 			// In the case where a previous run of abc raised a merge conflict,
 			// and the user resolved it, and provided the command-line flag
 			// indicating that they already resolved it, then we skip applying
