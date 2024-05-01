@@ -35,7 +35,7 @@ import (
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
 func Clone(ctx context.Context, remote, outDir string) error {
-	_, _, err := run.Simple(ctx, "git", "clone", remote, outDir)
+	_, _, err := run.Simple(ctx, "git", "clone", "--", remote, outDir)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -79,6 +79,17 @@ func findSymlinks(dir string) ([]string, error) {
 	}
 
 	return out, nil
+}
+
+// Checkout checks out the provided version (branch, tag, or SHA) from the
+// already-cloned given git workspace. It uses the git CLI already installed on
+// the system.
+func Checkout(ctx context.Context, version, workspaceDir string) error {
+	_, _, err := run.Simple(ctx, "git", "-C", workspaceDir, "checkout", "--", version)
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+	return nil
 }
 
 // LocalTags looks up the tags in the given locally cloned repo. If there are no tags,
