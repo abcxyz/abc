@@ -184,8 +184,13 @@ type Result struct {
 // patches from the manifest to included-from-destination files, and the patches
 // could not be applied cleanly.
 type ReversalConflict struct {
-	// The relative path to the file that needs manual resolution.
-	Path string
+	// The paths to the file that needs manual resolution.
+	RelPath string
+	AbsPath string
+
+	// Absolute path to the .rej file where the "patch" command saved the hunks
+	// that failed to apply.
+	RejectedHunks string
 }
 
 // ActionTaken represents an output of the merge operation. Every file that's
@@ -315,7 +320,10 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err
 	}
 	if len(reversalConflicts) > 0 {
-		return &Result{ReversalConflicts: reversalConflicts}, nil
+		return &Result{
+			Type:              PatchReversalConflict,
+			ReversalConflicts: reversalConflicts,
+		}, nil
 	}
 
 	renderResult, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
@@ -654,7 +662,9 @@ func reverseOnePatch(ctx context.Context, installedDir, outPath string, f *manif
 			"reject_path", rejectPath,
 		)
 		return &ReversalConflict{
-			Path: f.File.Val, // TODO(upgrade): should this be absolute instead?
+			RelPath:       f.File.Val,
+			AbsPath:       installedPath,
+			RejectedHunks: rejectPath,
 		}, nil
 
 	default:

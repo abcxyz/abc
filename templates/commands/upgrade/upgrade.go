@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/alessio/shellescape"
 	"github.com/benbjohnson/clock"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -67,7 +69,8 @@ func (c *Command) Flags() *cli.FlagSet {
 	return set
 }
 
-const mergeInstructions = `
+const (
+	mergeInstructions = `
 Some manual conflict resolution is required because of a conflict between your
 local edits and the new version of the template. Please look at all files ending
 in .abcmerge_* and either edit, delete, or rename them to reflect your decision.
@@ -101,6 +104,22 @@ Background on conflict types:
    named "yourfile.abcmerge_from_new_template". Please resolve the conflict by
    (1) renaming one of these files to "yourfile and deleting the other, or (2)
    merging the two files into "yourfile".`
+
+	patchReversalInstructionsPart1 = `
+There was a merge conflict when trying to undo changes to file(s) that were
+modified in-place by a previous version of the template.
+Background: the upgrade algorithm has a special case for files that were
+modified in place by a previous version of the template (aka "include from
+destination"). When the file was previously modified in place, a patch was saved
+to undo that modification, so a future template version could start fresh and
+redo the modification in place based on new template logic. Just now, this patch
+was applied to the file, but the patch didn't apply cleanly. This happens when
+the file was modified since the previous version of this template was installed;
+that could happen because somebody edited the file, or that same file was
+modified in place by a different template.
+To resolve this conflict, please manually apply the rejected hunks in the given
+.rej file, for each entry in the following list:`
+)
 
 func (c *Command) Run(ctx context.Context, args []string) error {
 	if err := c.Flags().Parse(args); err != nil {
@@ -142,33 +161,54 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err //nolint:wrapcheck
 	}
 
+	msg, exitCode := summarizeResult(r, absManifestPath)
+	if exitCode == 0 {
+		fmt.Fprintln(c.Stdout(), msg)
+		return nil
+	}
+	fmt.Fprintln(c.Stdout(), msg)
+	return &common.ExitCodeError{Code: exitCode}
+}
+
+func summarizeResult(r *upgrade.Result, absManifestPath string) (message string, exitCode int) {
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
-		fmt.Fprintf(c.Stdout(), "Already up to date with latest template version\n")
-		return nil
+		return "Already up to date with latest template version", 0
 	case upgrade.Success:
-		fmt.Fprintf(c.Stdout(), "Upgrade complete with no conflicts\n")
-		return nil
+		return "Upgrade complete with no conflicts", 0
 	case upgrade.MergeConflict:
 		// TODO(upgrade):
 		//  - suggest diff / meld / vim commands?
-		fmt.Fprint(c.Stdout(), mergeInstructions+"\n\n--\n")
+		var out strings.Builder
+		fmt.Fprintf(&out, mergeInstructions+"\n\nList of conflicting files:\n--")
 		for _, cf := range r.Conflicts {
-			fmt.Fprintf(c.Stdout(), "file: %s\n", cf.Path)
-			fmt.Fprintf(c.Stdout(), "conflict type: %s\n", cf.Action)
+			fmt.Fprintf(&out, "\nfile: %s\n", cf.Path)
+			fmt.Fprintf(&out, "conflict type: %s\n", cf.Action)
 			if cf.OursPath != "" {
-				fmt.Fprintf(c.Stdout(), "our file was renamed to: %s\n", cf.OursPath)
+				fmt.Fprintf(&out, "your file was renamed to: %s\n", cf.OursPath)
 			}
 			if cf.IncomingTemplatePath != "" {
-				fmt.Fprintf(c.Stdout(), "incoming file: %s\n", cf.IncomingTemplatePath)
+				fmt.Fprintf(&out, "incoming file: %s\n", cf.IncomingTemplatePath)
 			}
-			fmt.Fprintf(c.Stdout(), "--\n")
+			fmt.Fprintf(&out, "--")
 		}
-		return &common.ExitCodeError{Code: 2}
+		return out.String(), 1
 	case upgrade.PatchReversalConflict:
-		// TODO(upgrade): include instructions for resolving these conflicts
-		return &common.ExitCodeError{Code: 3}
-	}
+		var out strings.Builder
+		fmt.Fprint(&out, patchReversalInstructionsPart1+"\n\n--")
+		relPaths := make([]string, 0, len(r.ReversalConflicts))
+		for _, rc := range r.ReversalConflicts {
+			fmt.Fprintf(&out, "\nfile: %s\n", rc.AbsPath)
+			fmt.Fprintf(&out, "Rejected hunks for you to apply: %s\n", rc.RejectedHunks)
+			fmt.Fprintf(&out, "--")
+			relPaths = append(relPaths, shellescape.Quote(rc.RelPath))
+		}
+		fmt.Fprintf(&out, `
+After manually applying the rejected hunks, run this upgrade command:
 
-	return nil
+  abc upgrade --already_resolved=%s %s`, strings.Join(relPaths, ","), absManifestPath)
+		return out.String(), 2
+	default:
+		return fmt.Sprintf("internal error: unknown upgrade result type %q", r.Type), 127
+	}
 }

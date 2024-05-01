@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/renameio v1.0.1 // indirect

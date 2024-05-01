@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/benbjohnson/clock"
@@ -30,6 +31,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -56,6 +58,7 @@ steps:
 		origTemplateDirContents map[string]string
 		localEdits              func(tb testing.TB, installedDir string)
 		upgradedTemplate        map[string]string
+		initialDestContents     map[string]string
 
 		wantExitCode int
 		wantStdout   string
@@ -107,24 +110,85 @@ steps:
 				abctestutil.Overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
 				abctestutil.Overwrite(tb, installedDir, "color.txt", "red\n")
 			},
-			wantExitCode: 2,
-			wantErr:      []string{"exit code 2"},
+			wantExitCode: 1,
+			wantErr:      []string{"exit code 1"},
 			wantStdout: mergeInstructions + `
 
+List of conflicting files:
 --
 file: color.txt
 conflict type: addAddConflict
-our file was renamed to: color.txt.abcmerge_locally_added
+your file was renamed to: color.txt.abcmerge_locally_added
 incoming file: color.txt.abcmerge_from_new_template
 --
 file: greet.txt
 conflict type: editEditConflict
-our file was renamed to: greet.txt.abcmerge_locally_edited
+your file was renamed to: greet.txt.abcmerge_locally_edited
 incoming file: greet.txt.abcmerge_from_new_template
 --
 `,
 		},
-		// TODO(upgrade): tests for patch reversal conflicts
+		{
+			name:                "patch_reversal_conflict",
+			initialDestContents: map[string]string{"hello.txt": "a\nb\nc\n"},
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+
+desc: 'my template'
+
+steps:
+  - desc: 'include'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['hello.txt']
+  - desc: 'replace b with B'
+    action: 'string_replace'
+    params:
+      paths: ['hello.txt']
+      replacements:
+        - to_replace: "b"
+          with: "X"`,
+			},
+			localEdits: func(tb testing.TB, installedDir string) {
+				abctestutil.Overwrite(tb, installedDir, "hello.txt", "a\nY\nc\n")
+			},
+			upgradedTemplate: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+
+desc: 'my template'
+
+steps:
+  - desc: 'include'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['hello.txt']
+  - desc: 'replace b with B'
+    action: 'string_replace'
+    params:
+      paths: ['hello.txt']
+      replacements:
+        - to_replace: "b"
+          with: "Z"`,
+			},
+			wantExitCode: 2,
+			wantStdout: patchReversalInstructionsPart1 + `
+
+--
+file: TEMPDIR/dest_dir/hello.txt
+Rejected hunks for you to apply: TEMPDIR/dest_dir/hello.txt.patch.rej
+--
+After manually applying the rejected hunks, run this upgrade command:
+
+  abc upgrade --already_resolved=hello.txt TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml
+`,
+			wantErr: []string{"exit code 2"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -140,7 +204,9 @@ incoming file: greet.txt.abcmerge_from_new_template
 			// Make tempBase into a valid git repo.
 			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
-			ctx := context.Background()
+			abctestutil.WriteAll(t, destDir, tc.initialDestContents)
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 
@@ -208,7 +274,8 @@ incoming file: greet.txt.abcmerge_from_new_template
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(stdout.String(), tc.wantStdout); diff != "" {
+			gotStdoutCleaned := strings.ReplaceAll(stdout.String(), tempBase, "TEMPDIR")
+			if diff := cmp.Diff(gotStdoutCleaned, tc.wantStdout); diff != "" {
 				t.Errorf("stdout was not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -423,4 +490,8 @@ steps:
 			}
 		})
 	}
+}
+
+func TestSummarizeResult(t *testing.T) {
+	
 }
