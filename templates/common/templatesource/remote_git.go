@@ -166,7 +166,9 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		"input", g.version,
 		"to", versionToCheckout)
 
-	// checkout version here @@
+	if err := git.Checkout(ctx, versionToCheckout, tmpDir); err != nil {
+		return nil, fmt.Errorf("Checkout(): %w", err)
+	}
 
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
