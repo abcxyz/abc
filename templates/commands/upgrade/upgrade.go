@@ -198,7 +198,7 @@ func summarizeResult(r *upgrade.Result, absManifestPath string) (message string,
 		fmt.Fprint(&out, patchReversalInstructionsPart1+"\n\n--")
 		relPaths := make([]string, 0, len(r.ReversalConflicts))
 		for _, rc := range r.ReversalConflicts {
-			fmt.Fprintf(&out, "\nfile: %s\n", rc.AbsPath)
+			fmt.Fprintf(&out, "\nyour file: %s\n", rc.AbsPath)
 			fmt.Fprintf(&out, "Rejected hunks for you to apply: %s\n", rc.RejectedHunks)
 			fmt.Fprintf(&out, "--")
 			relPaths = append(relPaths, shellescape.Quote(rc.RelPath))

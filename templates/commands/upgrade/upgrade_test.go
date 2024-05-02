@@ -30,6 +30,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
+	"github.com/abcxyz/abc/templates/common/upgrade"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -180,7 +181,7 @@ steps:
 			wantStdout: patchReversalInstructionsPart1 + `
 
 --
-file: TEMPDIR/dest_dir/hello.txt
+your file: TEMPDIR/dest_dir/hello.txt
 Rejected hunks for you to apply: TEMPDIR/dest_dir/hello.txt.patch.rej
 --
 After manually applying the rejected hunks, run this upgrade command:
@@ -493,5 +494,149 @@ steps:
 }
 
 func TestSummarizeResult(t *testing.T) {
-	
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		result       *upgrade.Result
+		wantMessage  string
+		manifestPath string
+		wantExitCode int
+	}{
+		{
+			name: "success",
+			result: &upgrade.Result{
+				Type: upgrade.Success,
+			},
+			wantMessage:  "Upgrade complete with no conflicts",
+			wantExitCode: 0,
+		},
+		{
+			name: "already_up_to_date",
+			result: &upgrade.Result{
+				Type: upgrade.AlreadyUpToDate,
+			},
+			wantMessage:  "Already up to date with latest template version",
+			wantExitCode: 0,
+		},
+		{
+			name: "conflicts",
+			result: &upgrade.Result{
+				Type: upgrade.MergeConflict,
+				Conflicts: []upgrade.ActionTaken{
+					{
+						Action:               upgrade.EditEditConflict,
+						Explanation:          "ignored",
+						Path:                 "some/file.txt",
+						OursPath:             "some/file.txt" + upgrade.SuffixLocallyEdited,
+						IncomingTemplatePath: "some/file.txt" + upgrade.SuffixFromNewTemplate,
+					},
+					{
+						Action:               upgrade.DeleteEditConflict,
+						Explanation:          "ignored",
+						Path:                 "some/other/file.txt",
+						OursPath:             "some/other/file.txt" + upgrade.SuffixLocallyEdited,
+						IncomingTemplatePath: "some/other/file.txt" + upgrade.SuffixFromNewTemplate,
+					},
+				},
+				NonConflicts: []upgrade.ActionTaken{{Path: "should_not_appear.txt", Action: upgrade.WriteNew}},
+			},
+			wantMessage: mergeInstructions + `
+
+List of conflicting files:
+--
+file: some/file.txt
+conflict type: editEditConflict
+your file was renamed to: some/file.txt.abcmerge_locally_edited
+incoming file: some/file.txt.abcmerge_from_new_template
+--
+file: some/other/file.txt
+conflict type: deleteEditConflict
+your file was renamed to: some/other/file.txt.abcmerge_locally_edited
+incoming file: some/other/file.txt.abcmerge_from_new_template
+--`,
+			wantExitCode: 1,
+		},
+		{
+			name: "reversal_conflict",
+			result: &upgrade.Result{
+				Type: upgrade.PatchReversalConflict,
+				ReversalConflicts: []*upgrade.ReversalConflict{
+					{
+						RelPath:       "some/path.txt",
+						AbsPath:       "/my/template/output/dir/some/path.txt",
+						RejectedHunks: "/my/template/output/dir/some/path.txt.patch.rej",
+					},
+					{
+						RelPath:       "some/other/path.txt",
+						AbsPath:       "/my/template/output/dir/some/other/path.txt",
+						RejectedHunks: "/my/template/output/dir/some/other/path.txt.patch.rej",
+					},
+				},
+			},
+			wantMessage: patchReversalInstructionsPart1 + `
+
+--
+your file: /my/template/output/dir/some/path.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/path.txt.patch.rej
+--
+your file: /my/template/output/dir/some/other/path.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/other/path.txt.patch.rej
+--
+After manually applying the rejected hunks, run this upgrade command:
+
+  abc upgrade --already_resolved=some/path.txt,some/other/path.txt /foo/bar/my_manifest.yaml`,
+			manifestPath: "/foo/bar/my_manifest.yaml",
+			wantExitCode: 2,
+		},
+
+		{
+			name: "reversal_conflict_with_weird_filename_characters_escaped",
+			result: &upgrade.Result{
+				Type: upgrade.PatchReversalConflict,
+				ReversalConflicts: []*upgrade.ReversalConflict{
+					{
+						RelPath:       "a?b!c@d#e$f`g-h^i&j'k*l(m)n[o]p{q}r.txt",
+						AbsPath:       "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt",
+						RejectedHunks: "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej",
+					},
+					{
+						RelPath:       "a;b'c,d.e?f~g\"h'i.txt",
+						AbsPath:       "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt",
+						RejectedHunks: "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej",
+					},
+				},
+			},
+			wantMessage: patchReversalInstructionsPart1 + `
+
+--
+your file: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej
+--
+your file: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej
+--
+After manually applying the rejected hunks, run this upgrade command:
+
+  abc upgrade --already_resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' /foo/bar/my_manifest.yaml`,
+			manifestPath: "/foo/bar/my_manifest.yaml",
+			wantExitCode: 2,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			message, exitCode := summarizeResult(tc.result, tc.manifestPath)
+			if exitCode != tc.wantExitCode {
+				t.Errorf("got exit code %d, want %d", exitCode, tc.wantExitCode)
+			}
+
+			if diff := cmp.Diff(message, tc.wantMessage); diff != "" {
+				t.Errorf("message was not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
 }

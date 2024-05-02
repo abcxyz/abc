@@ -279,14 +279,14 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 
 const (
 	// These are appended to files that need manual merge conflict resolution.
-	suffixLocallyAdded                  = ".abcmerge_locally_added"
-	suffixLocallyEdited                 = ".abcmerge_locally_edited"
-	suffixFromNewTemplate               = ".abcmerge_from_new_template"
-	suffixFromNewTemplateLocallyDeleted = ".abcmerge_locally_deleted_vs_new_template_version"
-	suffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
+	SuffixLocallyAdded                  = ".abcmerge_locally_added"
+	SuffixLocallyEdited                 = ".abcmerge_locally_edited"
+	SuffixFromNewTemplate               = ".abcmerge_from_new_template"
+	SuffixFromNewTemplateLocallyDeleted = ".abcmerge_locally_deleted_vs_new_template_version"
+	SuffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
 
 	// This is the beginning of all the above suffixes.
-	conflictSuffixBegins = ".abcmerge_"
+	ConflictSuffixBegins = ".abcmerge_"
 )
 
 // oneFileMergePaths contains the paths for all the different versions of a
@@ -365,25 +365,25 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 		}
 		return actionTaken, nil
 	case DeleteEditConflict:
-		dstPath := installedPath + suffixFromNewTemplateLocallyDeleted
+		dstPath := installedPath + SuffixFromNewTemplateLocallyDeleted
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, dstPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.IncomingTemplatePath = paths.relative + suffixFromNewTemplateLocallyDeleted
+		actionTaken.IncomingTemplatePath = paths.relative + SuffixFromNewTemplateLocallyDeleted
 		return actionTaken, nil
 	case EditDeleteConflict:
-		renamedPath := installedPath + suffixWantToDelete
+		renamedPath := installedPath + SuffixWantToDelete
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
 		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
 			return ActionTaken{}, err
 		}
-		actionTaken.OursPath = paths.relative + suffixWantToDelete
+		actionTaken.OursPath = paths.relative + SuffixWantToDelete
 		return actionTaken, nil
 	case EditEditConflict:
-		renamedPath := installedPath + suffixLocallyEdited
-		incomingPath := installedPath + suffixFromNewTemplate
+		renamedPath := installedPath + SuffixLocallyEdited
+		incomingPath := installedPath + SuffixFromNewTemplate
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
@@ -393,23 +393,23 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, incomingPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.OursPath = paths.relative + suffixLocallyEdited
-		actionTaken.IncomingTemplatePath = paths.relative + suffixFromNewTemplate
+		actionTaken.OursPath = paths.relative + SuffixLocallyEdited
+		actionTaken.IncomingTemplatePath = paths.relative + SuffixFromNewTemplate
 		return actionTaken, nil
 	case AddAddConflict:
-		renamedPath := installedPath + suffixLocallyAdded
+		renamedPath := installedPath + SuffixLocallyAdded
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
 		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
 			return ActionTaken{}, err
 		}
-		incomingPath := installedPath + suffixFromNewTemplate
+		incomingPath := installedPath + SuffixFromNewTemplate
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, incomingPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.OursPath = paths.relative + suffixLocallyAdded
-		actionTaken.IncomingTemplatePath = paths.relative + suffixFromNewTemplate
+		actionTaken.OursPath = paths.relative + SuffixLocallyAdded
+		actionTaken.IncomingTemplatePath = paths.relative + SuffixFromNewTemplate
 		return actionTaken, nil
 	default:
 		return ActionTaken{}, fmt.Errorf("internal error: unrecognized merged action %v", decision.action)

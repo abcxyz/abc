@@ -531,7 +531,7 @@ func detectUnmergedConflicts(installedDir string) error {
 		if relPath == common.ABCInternalDir && d.IsDir() {
 			return fs.SkipDir
 		}
-		if strings.Contains(path, conflictSuffixBegins) || strings.HasSuffix(path, rejectedPatchSuffix) {
+		if strings.Contains(path, ConflictSuffixBegins) || strings.HasSuffix(path, rejectedPatchSuffix) {
 			unmergedFiles = append(unmergedFiles, path)
 		}
 		return nil
