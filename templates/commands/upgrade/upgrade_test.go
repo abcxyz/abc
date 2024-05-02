@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/benbjohnson/clock"
@@ -29,7 +30,9 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
+	"github.com/abcxyz/abc/templates/common/upgrade"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -56,6 +59,7 @@ steps:
 		origTemplateDirContents map[string]string
 		localEdits              func(tb testing.TB, installedDir string)
 		upgradedTemplate        map[string]string
+		initialDestContents     map[string]string
 
 		wantExitCode int
 		wantStdout   string
@@ -107,24 +111,86 @@ steps:
 				abctestutil.Overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
 				abctestutil.Overwrite(tb, installedDir, "color.txt", "red\n")
 			},
-			wantExitCode: 2,
-			wantErr:      []string{"exit code 2"},
+			wantExitCode: 1,
+			wantErr:      []string{"exit code 1"},
 			wantStdout: mergeInstructions + `
 
+List of conflicting files:
 --
 file: color.txt
 conflict type: addAddConflict
-our file was renamed to: color.txt.abcmerge_locally_added
+your file was renamed to: color.txt.abcmerge_locally_added
 incoming file: color.txt.abcmerge_from_new_template
 --
 file: greet.txt
 conflict type: editEditConflict
-our file was renamed to: greet.txt.abcmerge_locally_edited
+your file was renamed to: greet.txt.abcmerge_locally_edited
 incoming file: greet.txt.abcmerge_from_new_template
 --
 `,
 		},
-		// TODO(upgrade): tests for patch reversal conflicts
+		{
+			name:                "patch_reversal_conflict",
+			initialDestContents: map[string]string{"hello.txt": "a\nb\nc\n"},
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+
+desc: 'my template'
+
+steps:
+  - desc: 'include'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['hello.txt']
+  - desc: 'replace b with B'
+    action: 'string_replace'
+    params:
+      paths: ['hello.txt']
+      replacements:
+        - to_replace: "b"
+          with: "X"`,
+			},
+			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
+				abctestutil.Overwrite(tb, installedDir, "hello.txt", "a\nY\nc\n")
+			},
+			upgradedTemplate: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+
+desc: 'my template'
+
+steps:
+  - desc: 'include'
+    action: 'include'
+    params:
+      from: 'destination'
+      paths: ['hello.txt']
+  - desc: 'replace b with B'
+    action: 'string_replace'
+    params:
+      paths: ['hello.txt']
+      replacements:
+        - to_replace: "b"
+          with: "Z"`,
+			},
+			wantExitCode: 2,
+			wantStdout: patchReversalInstructionsPart1 + `
+
+--
+your file: TEMPDIR/dest_dir/hello.txt
+Rejected hunks for you to apply: TEMPDIR/dest_dir/hello.txt.patch.rej
+--
+After manually applying the rejected hunks, run this upgrade command:
+
+  abc upgrade --already_resolved=hello.txt TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml
+`,
+			wantErr: []string{"exit code 2"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -140,7 +206,9 @@ incoming file: greet.txt.abcmerge_from_new_template
 			// Make tempBase into a valid git repo.
 			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
-			ctx := context.Background()
+			abctestutil.WriteAll(t, destDir, tc.initialDestContents)
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 
@@ -208,7 +276,8 @@ incoming file: greet.txt.abcmerge_from_new_template
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(stdout.String(), tc.wantStdout); diff != "" {
+			gotStdoutCleaned := strings.ReplaceAll(stdout.String(), tempBase, "TEMPDIR")
+			if diff := cmp.Diff(gotStdoutCleaned, tc.wantStdout); diff != "" {
 				t.Errorf("stdout was not as expected (-got,+want): %s", diff)
 			}
 		})
@@ -420,6 +489,154 @@ steps:
 			gotDestContents := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestSummarizeResult(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		result       *upgrade.Result
+		wantMessage  string
+		manifestPath string
+		wantExitCode int
+	}{
+		{
+			name: "success",
+			result: &upgrade.Result{
+				Type: upgrade.Success,
+			},
+			wantMessage:  "Upgrade complete with no conflicts",
+			wantExitCode: 0,
+		},
+		{
+			name: "already_up_to_date",
+			result: &upgrade.Result{
+				Type: upgrade.AlreadyUpToDate,
+			},
+			wantMessage:  "Already up to date with latest template version",
+			wantExitCode: 0,
+		},
+		{
+			name: "conflicts",
+			result: &upgrade.Result{
+				Type: upgrade.MergeConflict,
+				Conflicts: []upgrade.ActionTaken{
+					{
+						Action:               upgrade.EditEditConflict,
+						Explanation:          "ignored",
+						Path:                 "some/file.txt",
+						OursPath:             "some/file.txt" + upgrade.SuffixLocallyEdited,
+						IncomingTemplatePath: "some/file.txt" + upgrade.SuffixFromNewTemplate,
+					},
+					{
+						Action:               upgrade.DeleteEditConflict,
+						Explanation:          "ignored",
+						Path:                 "some/other/file.txt",
+						OursPath:             "some/other/file.txt" + upgrade.SuffixLocallyEdited,
+						IncomingTemplatePath: "some/other/file.txt" + upgrade.SuffixFromNewTemplate,
+					},
+				},
+				NonConflicts: []upgrade.ActionTaken{{Path: "should_not_appear.txt", Action: upgrade.WriteNew}},
+			},
+			wantMessage: mergeInstructions + `
+
+List of conflicting files:
+--
+file: some/file.txt
+conflict type: editEditConflict
+your file was renamed to: some/file.txt.abcmerge_locally_edited
+incoming file: some/file.txt.abcmerge_from_new_template
+--
+file: some/other/file.txt
+conflict type: deleteEditConflict
+your file was renamed to: some/other/file.txt.abcmerge_locally_edited
+incoming file: some/other/file.txt.abcmerge_from_new_template
+--`,
+			wantExitCode: 1,
+		},
+		{
+			name: "reversal_conflict",
+			result: &upgrade.Result{
+				Type: upgrade.PatchReversalConflict,
+				ReversalConflicts: []*upgrade.ReversalConflict{
+					{
+						RelPath:       "some/path.txt",
+						AbsPath:       "/my/template/output/dir/some/path.txt",
+						RejectedHunks: "/my/template/output/dir/some/path.txt.patch.rej",
+					},
+					{
+						RelPath:       "some/other/path.txt",
+						AbsPath:       "/my/template/output/dir/some/other/path.txt",
+						RejectedHunks: "/my/template/output/dir/some/other/path.txt.patch.rej",
+					},
+				},
+			},
+			wantMessage: patchReversalInstructionsPart1 + `
+
+--
+your file: /my/template/output/dir/some/path.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/path.txt.patch.rej
+--
+your file: /my/template/output/dir/some/other/path.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/other/path.txt.patch.rej
+--
+After manually applying the rejected hunks, run this upgrade command:
+
+  abc upgrade --already_resolved=some/path.txt,some/other/path.txt /foo/bar/my_manifest.yaml`,
+			manifestPath: "/foo/bar/my_manifest.yaml",
+			wantExitCode: 2,
+		},
+
+		{
+			name: "reversal_conflict_with_weird_filename_characters_escaped",
+			result: &upgrade.Result{
+				Type: upgrade.PatchReversalConflict,
+				ReversalConflicts: []*upgrade.ReversalConflict{
+					{
+						RelPath:       "a?b!c@d#e$f`g-h^i&j'k*l(m)n[o]p{q}r.txt",
+						AbsPath:       "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt",
+						RejectedHunks: "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej",
+					},
+					{
+						RelPath:       "a;b'c,d.e?f~g\"h'i.txt",
+						AbsPath:       "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt",
+						RejectedHunks: "/my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej",
+					},
+				},
+			},
+			wantMessage: patchReversalInstructionsPart1 + `
+
+--
+your file: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej
+--
+your file: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt
+Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej
+--
+After manually applying the rejected hunks, run this upgrade command:
+
+  abc upgrade --already_resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' /foo/bar/my_manifest.yaml`,
+			manifestPath: "/foo/bar/my_manifest.yaml",
+			wantExitCode: 2,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			message, exitCode := summarizeResult(tc.result, tc.manifestPath)
+			if exitCode != tc.wantExitCode {
+				t.Errorf("got exit code %d, want %d", exitCode, tc.wantExitCode)
+			}
+
+			if diff := cmp.Diff(message, tc.wantMessage); diff != "" {
+				t.Errorf("message was not as expected (-got,+want): %s", diff)
 			}
 		})
 	}

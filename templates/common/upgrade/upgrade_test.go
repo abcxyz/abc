@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -836,7 +837,14 @@ steps:
 `,
 			},
 			want: &Result{
-				ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+				Type: PatchReversalConflict,
+				ReversalConflicts: []*ReversalConflict{
+					{
+						RelPath:       "file.txt",
+						AbsPath:       "file.txt",
+						RejectedHunks: "file.txt.patch.rej",
+					},
+				},
 			},
 			// manifest should be unchanged if there's a reversal conflict
 			wantManifestAfterUpgrade: &manifest.Manifest{
@@ -1044,6 +1052,17 @@ yellow is my favorite color
 				t.Fatal(diff)
 			}
 
+			// For testing purposes, remove the temp directory prefix from the
+			// absolute path. We need a deterministic path to check, not
+			// containing a temp dir name.
+			if result != nil {
+				prefix := destDir + "/"
+				for _, rc := range result.ReversalConflicts {
+					rc.AbsPath = mustTrimPrefix(t, rc.AbsPath, prefix)
+					rc.RejectedHunks = mustTrimPrefix(t, rc.RejectedHunks, prefix)
+				}
+			}
+
 			opts := []cmp.Option{
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
@@ -1235,7 +1254,14 @@ steps:
 		t.Fatal(err)
 	}
 	wantReversalConflictResult := &Result{
-		ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+		Type: PatchReversalConflict,
+		ReversalConflicts: []*ReversalConflict{
+			{
+				RelPath:       "file.txt",
+				AbsPath:       filepath.Join(destDir, "file.txt"),
+				RejectedHunks: filepath.Join(destDir, "file.txt.patch.rej"),
+			},
+		},
 	}
 	opts := []cmp.Option{
 		cmpopts.EquateEmpty(),
@@ -1419,4 +1445,12 @@ func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manife
 	out := *m
 	change(&out)
 	return &out
+}
+
+func mustTrimPrefix(tb testing.TB, s, prefix string) string {
+	tb.Helper()
+	if !strings.HasPrefix(s, prefix) {
+		tb.Fatalf("got string %q, but required a string having prefix %q", s, prefix)
+	}
+	return strings.TrimPrefix(s, prefix)
 }
