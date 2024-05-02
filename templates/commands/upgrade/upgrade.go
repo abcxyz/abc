@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alessio/shellescape"
 	"github.com/benbjohnson/clock"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -123,9 +124,7 @@ that could happen because somebody edited the file, or that same file was
 modified in place by a different template.
 
 To resolve this conflict, please manually apply the rejected hunks in the given
-.rej file, for each entry in the following list:
-
-`
+.rej file, for each entry in the following list:`
 )
 
 func (c *Command) Run(ctx context.Context, args []string) error {
@@ -214,7 +213,7 @@ func (c *Command) upgradeAll(ctx context.Context, startDir string) error {
 				remoteTemplatesUpgraded[manifest] = struct{}{}
 			}
 
-			msg, code := summarizeResult(result)
+			msg, code := summarizeResult(result, manifest)
 			if code != 0 {
 				fmt.Fprintln(c.Stdout(), msg)
 				return &common.ExitCodeError{Code: code}
@@ -276,7 +275,7 @@ func (c *Command) upgradeOne(ctx context.Context, manifestPath string) error {
 		return err
 	}
 
-	msg, exitCode := summarizeResult(result)
+	msg, exitCode := summarizeResult(result, manifestPath)
 	if exitCode == 0 {
 		fmt.Fprintln(c.Stdout(), msg)
 		return nil
@@ -296,7 +295,7 @@ func (c *Command) callUpgrade(ctx context.Context, manifestPath string) (*upgrad
 		return nil, fmt.Errorf("os.Getwd(): %w", err)
 	}
 
-	result, err := upgrade.Upgrade(ctx, &upgrade.Params{
+	r, err := upgrade.Upgrade(ctx, &upgrade.Params{
 		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
 		CWD:                  cwd,
@@ -318,10 +317,10 @@ func (c *Command) callUpgrade(ctx context.Context, manifestPath string) (*upgrad
 	if err != nil {
 		return nil, fmt.Errorf("when upgrading the manifest at %s: %w", manifestPath, err)
 	}
-	return result, nil
+	return r, nil
 }
 
-func summarizeResult(r *upgrade.Result) (message string, exitCode int) {
+func summarizeResult(r *upgrade.Result, absManifestPath string) (message string, exitCode int) {
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
 		return "Already up to date with latest template version", 0
@@ -343,20 +342,23 @@ func summarizeResult(r *upgrade.Result) (message string, exitCode int) {
 			}
 			fmt.Fprintf(&out, "--")
 		}
-		return out.String(), 2
+		return out.String(), 1
 	case upgrade.PatchReversalConflict:
 		var out strings.Builder
-		fmt.Fprint(&out, patchReversalInstructionsPart1)
+		fmt.Fprint(&out, patchReversalInstructionsPart1+"\n\n--")
 		relPaths := make([]string, 0, len(r.ReversalConflicts))
 		for _, rc := range r.ReversalConflicts {
-			fmt.Fprintf(&out, "File: %s", rc.AbsPath)
-			fmt.Fprintf(&out, "Rejected hunks for you to apply: %s", rc.RejectedHunks)
-			relPaths = append(relPaths, rc.RelPath)
+			fmt.Fprintf(&out, "\nyour file: %s\n", rc.AbsPath)
+			fmt.Fprintf(&out, "Rejected hunks for you to apply: %s\n", rc.RejectedHunks)
+			fmt.Fprintf(&out, "--")
+			relPaths = append(relPaths, shellescape.Quote(rc.RelPath))
 		}
 		fmt.Fprintf(&out, `
-After resolving these conflicts, run this upgrade command TODO with
---already_resolved='%s'`, strings.Join(relPaths, ","))
-		return out.String(), 3
+After manually applying the rejected hunks, run this upgrade command:
+
+  abc upgrade --already_resolved=%s %s`, strings.Join(relPaths, ","), absManifestPath)
+		return out.String(), 2
+	default:
+		return fmt.Sprintf("internal error: unknown upgrade result type %q", r.Type), 127
 	}
-	panic("unreachable") // TODO verify exhaustiveness
 }

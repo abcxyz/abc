@@ -861,6 +861,7 @@ steps:
 `,
 			},
 			want: &Result{
+				Type: PatchReversalConflict,
 				ReversalConflicts: []*ReversalConflict{
 					{
 						RelPath:       "file.txt",
@@ -1080,9 +1081,10 @@ yellow is my favorite color
 			// absolute path. We need a deterministic path to check, not
 			// containing a temp dir name.
 			if result != nil {
+				prefix := destDir + "/"
 				for _, rc := range result.ReversalConflicts {
-					rc.AbsPath = strings.TrimPrefix(rc.AbsPath, destDir+"/")
-					rc.RejectedHunks = strings.TrimPrefix(rc.RejectedHunks, destDir+"/")
+					rc.AbsPath = mustTrimPrefix(t, rc.AbsPath, prefix)
+					rc.RejectedHunks = mustTrimPrefix(t, rc.RejectedHunks, prefix)
 				}
 			}
 
@@ -1277,6 +1279,7 @@ steps:
 		t.Fatal(err)
 	}
 	wantReversalConflictResult := &Result{
+		Type: PatchReversalConflict,
 		ReversalConflicts: []*ReversalConflict{
 			{
 				RelPath:       "file.txt",
@@ -1478,4 +1481,12 @@ func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manife
 	out := *m
 	change(&out)
 	return &out
+}
+
+func mustTrimPrefix(tb testing.TB, s, prefix string) string {
+	tb.Helper()
+	if !strings.HasPrefix(s, prefix) {
+		tb.Fatalf("got string %q, but required a string having prefix %q", s, prefix)
+	}
+	return strings.TrimPrefix(s, prefix)
 }

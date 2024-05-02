@@ -324,7 +324,10 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err
 	}
 	if len(reversalConflicts) > 0 {
-		return &Result{ReversalConflicts: reversalConflicts}, nil
+		return &Result{
+			Type:              PatchReversalConflict,
+			ReversalConflicts: reversalConflicts,
+		}, nil
 	}
 
 	renderResult, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
@@ -542,7 +545,7 @@ func detectUnmergedConflicts(installedDir string) error {
 		if relPath == common.ABCInternalDir && d.IsDir() {
 			return fs.SkipDir
 		}
-		if strings.Contains(path, conflictSuffixBegins) || strings.HasSuffix(path, rejectedPatchSuffix) {
+		if strings.Contains(path, ConflictSuffixBegins) || strings.HasSuffix(path, rejectedPatchSuffix) {
 			unmergedFiles = append(unmergedFiles, path)
 		}
 		return nil
