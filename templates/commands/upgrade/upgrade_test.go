@@ -154,6 +154,7 @@ steps:
           with: "X"`,
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
+				tb.Helper()
 				abctestutil.Overwrite(tb, installedDir, "hello.txt", "a\nY\nc\n")
 			},
 			upgradedTemplate: map[string]string{

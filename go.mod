@@ -9,6 +9,7 @@ require (
 	github.com/abcxyz/abc-updater v0.1.2
 	github.com/abcxyz/pkg v1.0.4
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+	github.com/alessio/shellescape v1.4.2
 	github.com/benbjohnson/clock v1.3.5
 	github.com/fatih/color v1.16.0
 	github.com/google/cel-go v0.20.1
@@ -23,7 +24,6 @@ require (
 )
 
 require (
-	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/renameio v1.0.1 // indirect

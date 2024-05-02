@@ -1448,6 +1448,7 @@ func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manife
 }
 
 func mustTrimPrefix(tb testing.TB, s, prefix string) string {
+	tb.Helper()
 	if !strings.HasPrefix(s, prefix) {
 		tb.Fatalf("got string %q, but required a string having prefix %q", s, prefix)
 	}

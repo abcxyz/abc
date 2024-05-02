@@ -108,6 +108,7 @@ Background on conflict types:
 	patchReversalInstructionsPart1 = `
 There was a merge conflict when trying to undo changes to file(s) that were
 modified in-place by a previous version of the template.
+
 Background: the upgrade algorithm has a special case for files that were
 modified in place by a previous version of the template (aka "include from
 destination"). When the file was previously modified in place, a patch was saved
@@ -117,6 +118,7 @@ was applied to the file, but the patch didn't apply cleanly. This happens when
 the file was modified since the previous version of this template was installed;
 that could happen because somebody edited the file, or that same file was
 modified in place by a different template.
+
 To resolve this conflict, please manually apply the rejected hunks in the given
 .rej file, for each entry in the following list:`
 )
