@@ -134,13 +134,16 @@ func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSo
 	if err != nil {
 		return "", "", "", err //nolint:wrapcheck
 	}
-	if !sourceIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
+	if !sourceIsGit {
+		return "", "", LocalNonGit, nil
+	}
+	if !destIsGit || sourceGitWorkspace != destGitWorkspace {
 		logger.DebugContext(ctx, "local template source is not canonical, template dir and dest dir do not share a git workspace",
 			"source_dir", absSource,
 			"dest_dir", absDestDir,
 			"source_git_workspace", sourceGitWorkspace,
 			"dest_git_workspace", destGitWorkspace)
-		return "", "", "", nil
+		return "", "", LocalGit, nil
 	}
 
 	logger.DebugContext(ctx, "local template source is canonical because template dir and dest dir are both in the same git workspace",

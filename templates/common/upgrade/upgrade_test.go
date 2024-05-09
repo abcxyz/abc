@@ -168,7 +168,10 @@ steps:
 		},
 		{
 			name: "short_circuit_if_already_latest_version",
-			want: &Result{Type: AlreadyUpToDate},
+			want: &Result{
+				Type:   AlreadyUpToDate,
+				DLMeta: wantDLMeta,
+			},
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -861,7 +864,8 @@ steps:
 `,
 			},
 			want: &Result{
-				Type: PatchReversalConflict,
+				DLMeta: wantDLMeta,
+				Type:   PatchReversalConflict,
 				ReversalConflicts: []*ReversalConflict{
 					{
 						RelPath:       "file.txt",
@@ -1285,6 +1289,17 @@ steps:
 				RelPath:       "file.txt",
 				AbsPath:       filepath.Join(destDir, "file.txt"),
 				RejectedHunks: filepath.Join(destDir, "file.txt.patch.rej"),
+			},
+		},
+		DLMeta: &templatesource.DownloadMetadata{
+			IsCanonical:     true,
+			CanonicalSource: "../template_dir",
+			LocationType:    "local_git",
+			HasVersion:      true,
+			Version:         abctestutil.MinimalGitHeadSHA,
+			Vars: templatesource.DownloaderVars{
+				GitSHA:      abctestutil.MinimalGitHeadSHA,
+				GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 			},
 		},
 	}

@@ -23,20 +23,6 @@ import (
 	"github.com/abcxyz/abc/templates/common/git"
 )
 
-// LocationType TODO
-type LocationType string
-
-const (
-	LocalGit  LocationType = "local_git"
-	RemoteGit LocationType = "remote_git"
-)
-
-func (l LocationType) IsRemote() bool {
-	// If we ever add a new remote location type (like "remote_svn") then we
-	// should update this function to return true for that one too.
-	return l == RemoteGit
-}
-
 // gitCanonicalVersion examines a template directory and tries to determine the
 // "best" template version by looking at .git. The "best" template version is
 // defined as (in decreasing order of precedence):
