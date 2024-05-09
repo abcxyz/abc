@@ -429,19 +429,6 @@ func JoinIfRelative(cwd, path string) string {
 	return filepath.Join(cwd, path)
 }
 
-// IsFile returns whether the given path exists and is a file (not a directory).
-// TODO test.
-func IsFile(path string) (bool, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		if IsNotExistErr(err) {
-			return false, nil
-		}
-		return false, fmt.Errorf("failed checking existence of %q: %w", path, err)
-	}
-	return !fi.IsDir(), nil
-}
-
 // Exists returns whether the given path is a file or directory that exists. We
 // wrote this wrapper because it's a little complex and irritating to deal with
 // the way that os.Stat() considers nonexistence to be an error.
