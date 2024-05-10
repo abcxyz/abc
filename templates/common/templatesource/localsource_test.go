@@ -52,7 +52,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 				"a/file2.txt": "file2 contents",
 			},
 			wantDLMeta: &DownloadMetadata{
-				IsCanonical: false,
+				IsCanonical:  false,
+				LocationType: LocalNonGit,
 			},
 		},
 		{
@@ -170,7 +171,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 				"file1.txt": "file1 contents",
 			}),
 			wantDLMeta: &DownloadMetadata{
-				IsCanonical: false,
+				IsCanonical:  false,
+				LocationType: LocalGit,
 				Vars: DownloaderVars{
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
 					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
@@ -192,7 +194,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 				"file1.txt": "file1 contents",
 			}),
 			wantDLMeta: &DownloadMetadata{
-				IsCanonical: false,
+				IsCanonical:  false,
+				LocationType: LocalGit,
 				Vars: DownloaderVars{
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
 					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
@@ -213,7 +216,8 @@ func TestLocalDownloader_Download(t *testing.T) {
 				"file1.txt": "file1 contents",
 			},
 			wantDLMeta: &DownloadMetadata{
-				IsCanonical: false,
+				IsCanonical:  false,
+				LocationType: LocalNonGit,
 			},
 		},
 	}

@@ -23,11 +23,6 @@ import (
 	"github.com/abcxyz/abc/templates/common/git"
 )
 
-const (
-	LocTypeLocalGit  = "local_git"
-	LocTypeRemoteGit = "remote_git"
-)
-
 // gitCanonicalVersion examines a template directory and tries to determine the
 // "best" template version by looking at .git. The "best" template version is
 // defined as (in decreasing order of precedence):

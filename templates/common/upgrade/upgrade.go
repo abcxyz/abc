@@ -150,18 +150,6 @@ const (
 // Result is returned from Upgrade if there's no error. It may indicate that
 // there were merge conflicts requiring manual resolution.
 type Result struct {
-	// If no upgrade was done because this installation of the template is
-	// already on the latest version, then this will be true and all other
-	// fields in this struct will have zero values.
-	Type ResultType
-
-	// The paths to files where abc tried to apply the reversal
-	// patches from the manifest to included-from-destination files, and the
-	// patches could not be applied cleanly. Manual resolution is needed.
-	//
-	// This field should only be used when Type==PatchReversalConflict.
-	ReversalConflicts []*ReversalConflict
-
 	// Conflicts is the set of files that require manual intervention by the
 	// user to resolve a merge conflict. For example, there may be a file that
 	// was edited by the user and that edit conflicts with changes to that same
@@ -169,6 +157,16 @@ type Result struct {
 	//
 	// This field should only be used when Type==MergeConflict.
 	Conflicts []ActionTaken
+
+	// The metadata returned by the template downloader.
+	DLMeta *templatesource.DownloadMetadata
+
+	// The paths to files where abc tried to apply the reversal
+	// patches from the manifest to included-from-destination files, and the
+	// patches could not be applied cleanly. Manual resolution is needed.
+	//
+	// This field should only be used when Type==PatchReversalConflict.
+	ReversalConflicts []*ReversalConflict
 
 	// NonConflicts is the set of template output files that do NOT require any
 	// action by the user. Callers are free to ignore this.
@@ -178,6 +176,11 @@ type Result struct {
 	//
 	// This field should only be used when Type is Success or MergeConflict.
 	NonConflicts []ActionTaken
+
+	// If no upgrade was done because this installation of the template is
+	// already on the latest version, then this will be true and all other
+	// fields in this struct will have zero values.
+	Type ResultType
 }
 
 // ReversalConflict happens when abc tried to apply the reversal
@@ -268,7 +271,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	downloader, err := templatesource.ForUpgrade(ctx, &templatesource.ForUpgradeParams{
 		InstalledDir:      installedDir,
 		CanonicalLocation: oldManifest.TemplateLocation.Val,
-		LocType:           oldManifest.LocationType.Val,
+		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
 		GitProtocol:       p.GitProtocol,
 		Version:           p.Version,
 	})
@@ -293,7 +296,10 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
-		return &Result{Type: AlreadyUpToDate}, nil
+		return &Result{
+			Type:   AlreadyUpToDate,
+			DLMeta: dlMeta,
+		}, nil
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
@@ -321,8 +327,9 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 	if len(reversalConflicts) > 0 {
 		return &Result{
-			Type:              PatchReversalConflict,
+			DLMeta:            dlMeta,
 			ReversalConflicts: reversalConflicts,
+			Type:              PatchReversalConflict,
 		}, nil
 	}
 
@@ -378,9 +385,10 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		resultType = Success
 	}
 	return &Result{
-		Type:         resultType,
 		Conflicts:    conflicts,
+		DLMeta:       dlMeta,
 		NonConflicts: nonConflicts,
+		Type:         resultType,
 	}, nil
 }
 

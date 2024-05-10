@@ -64,7 +64,7 @@ type DownloadMetadata struct {
 	// non-empty.
 	IsCanonical     bool
 	CanonicalSource string
-	LocationType    string
+	LocationType    LocationType
 
 	// Depending on where the template was taken from, there might be a version
 	// string associated with it (e.g. a git tag or a git SHA).

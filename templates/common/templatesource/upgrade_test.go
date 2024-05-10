@@ -32,7 +32,7 @@ func TestForUpgrade(t *testing.T) {
 	cases := []struct {
 		name              string
 		canonicalLocation string
-		locType           string
+		locType           LocationType
 		gitProtocol       string
 		installedInSubdir string
 		dirContents       map[string]string
@@ -43,7 +43,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_https_no_subdir",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -57,7 +57,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_ssh_no_subdir",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "ssh",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -71,7 +71,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_https_subdir",
 			canonicalLocation: "github.com/abcxyz/abc/sub",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -86,7 +86,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_ssh_subdir",
 			canonicalLocation: "github.com/abcxyz/abc/sub",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "ssh",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -101,7 +101,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "non_default_version",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			version:           "someversion",
 			wantDownloader: &remoteGitDownloader{
@@ -115,7 +115,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "malformed_remote_git",
 			canonicalLocation: "asdfasdfasdf",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			wantErr:           `failed parsing canonical location "asdfasdfasdf"`,
 		},
@@ -153,7 +153,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "unknown_git_protocol",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "nonexistent",
 			wantErr:           `protocol "nonexistent" isn't usable with a template sourced from a remote git repo`,
 		},

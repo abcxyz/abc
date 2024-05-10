@@ -59,7 +59,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
-				LocationType:    "remote_git",
+				LocationType:    RemoteGit,
 				HasVersion:      true,
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
@@ -96,7 +96,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
-				LocationType:    "remote_git",
+				LocationType:    RemoteGit,
 				HasVersion:      true,
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
@@ -130,7 +130,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
-				LocationType:    "remote_git",
+				LocationType:    RemoteGit,
 				HasVersion:      true,
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
@@ -164,7 +164,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
-				LocationType:    "remote_git",
+				LocationType:    RemoteGit,
 				HasVersion:      true,
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{
@@ -234,7 +234,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
-				LocationType:    "remote_git",
+				LocationType:    RemoteGit,
 				HasVersion:      true,
 				Version:         abctestutil.MinimalGitHeadSHA,
 				Vars: DownloaderVars{
@@ -263,7 +263,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
-				LocationType:    "remote_git",
+				LocationType:    RemoteGit,
 				HasVersion:      true,
 				Version:         "v1.2.3",
 				Vars: DownloaderVars{

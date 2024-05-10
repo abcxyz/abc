@@ -23,7 +23,22 @@ import (
 	"github.com/abcxyz/abc/templates/common/specutil"
 )
 
-const Latest = "latest"
+const (
+	Latest = "latest"
+
+	LocalNonGit LocationType = "local" // local never appears in a manifest, because only canonical template sources appear in a manifest
+	LocalGit    LocationType = "local_git"
+	RemoteGit   LocationType = "remote_git"
+)
+
+// LocationType is an enum describing where we got a template from.
+type LocationType string
+
+func (l LocationType) IsRemote() bool {
+	// If we ever add a new remote location type (like "remote_svn") then we
+	// should update this function to return true for that one too.
+	return l == RemoteGit
+}
 
 // sourceParser is implemented for each particular kind of template source (git,
 // local file, etc.).
