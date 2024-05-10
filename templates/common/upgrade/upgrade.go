@@ -95,10 +95,13 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// The path to the manifest file where the template was previously installed
-	// to that will now be upgraded. This is also overwritten with the new
-	// manifest after a successful upgrade.
-	ManifestPath string // Must be an absolute path.
+	// When calling Upgrade(), this is treated as the path to the single
+	// manifest file where the template was previously installed to that will
+	// now be upgraded. This file is also overwritten with the new manifest
+	// after a successful upgrade.
+	//
+	// When calling UpgradeAll(), this is treated as a path to a directory
+	Location string // Must be an absolute path.
 
 	// The value of --prompt.
 	Prompt   bool
@@ -245,17 +248,17 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
-	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
+	installedDir := filepath.Join(filepath.Dir(p.Location), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
 		return nil, err
 	}
 
-	if !filepath.IsAbs(p.ManifestPath) {
-		return nil, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
+	if !filepath.IsAbs(p.Location) {
+		return nil, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.Location)
 	}
 
-	oldManifest, err := loadManifest(ctx, p.FS, p.ManifestPath)
+	oldManifest, err := loadManifest(ctx, p.FS, p.Location)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +374,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		fs:               p.FS,
 		installedDir:     installedDir,
 		mergeDir:         mergeDir,
-		oldManifestPath:  p.ManifestPath,
+		oldManifestPath:  p.Location,
 		oldManifest:      oldManifest,
 		newManifest:      newManifest,
 		reversedPatchDir: reversedDir,

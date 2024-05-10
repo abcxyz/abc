@@ -306,7 +306,7 @@ func (c *Command) callUpgrade(ctx context.Context, manifestPath string) (*upgrad
 		InputFiles:           c.flags.InputFiles,
 		Inputs:               c.flags.Inputs,
 		KeepTempDirs:         c.flags.KeepTempDirs,
-		ManifestPath:         absManifestPath,
+		Location:             absManifestPath,
 		Prompt:               c.flags.Prompt,
 		Prompter:             c,
 		SkipInputValidation:  c.flags.SkipInputValidation,

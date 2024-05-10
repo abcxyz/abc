@@ -1047,11 +1047,11 @@ yellow is my favorite color
 			clk.Set(afterUpgradeTime) // simulate time passing between initial installation and upgrade
 
 			params := &Params{
-				Clock:        clk,
-				CWD:          destDir,
-				FS:           &common.RealFS{},
-				ManifestPath: manifestFullPath,
-				Stdout:       os.Stdout,
+				Clock:    clk,
+				CWD:      destDir,
+				FS:       &common.RealFS{},
+				Location: manifestFullPath,
+				Stdout:   os.Stdout,
 			}
 
 			if tc.localEdits != nil {
@@ -1156,9 +1156,9 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 	}
 
 	params := &Params{
-		CWD:          tempBase,
-		FS:           &common.RealFS{},
-		ManifestPath: manifestFullPath,
+		CWD:      tempBase,
+		FS:       &common.RealFS{},
+		Location: manifestFullPath,
 	}
 
 	_, err = Upgrade(ctx, params)
@@ -1271,11 +1271,11 @@ steps:
 	abctestutil.Overwrite(t, destDir, "file.txt", "green is my favorite color\n")
 
 	upgradeParams := &Params{
-		Clock:        clk,
-		CWD:          destDir,
-		FS:           &common.RealFS{},
-		ManifestPath: manifestFullPath,
-		Stdout:       os.Stdout,
+		Clock:    clk,
+		CWD:      destDir,
+		FS:       &common.RealFS{},
+		Location: manifestFullPath,
+		Stdout:   os.Stdout,
 	}
 
 	gotReversalConflictResult, err := Upgrade(ctx, upgradeParams)
