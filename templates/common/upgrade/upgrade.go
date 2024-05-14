@@ -48,6 +48,7 @@ import (
 
 // TODO(upgrade):
 //   - add "abort if conflict" feature
+//   - rethink overly complex manifest file name?
 //   - validate that manifest paths don't contain traversals
 //   - add "check for update and exit" feature
 //   - add "upgrade all template installations within directory"
@@ -67,6 +68,7 @@ type Params struct {
 	// Relative paths where patch reversal has already happened. This is a flag
 	// supplied by the user. This will be set if there were merge conflicts
 	// during patch reversal that were manually resolved by the user.
+	// TODO only valid for singular upgrade
 	AlreadyResolved []string
 
 	Clock clock.Clock
@@ -95,12 +97,7 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// When calling Upgrade(), this is treated as the path to the single
-	// manifest file where the template was previously installed to that will
-	// now be upgraded. This file is also overwritten with the new manifest
-	// after a successful upgrade.
-	//
-	// When calling UpgradeAll(), this is treated as a path to a directory
+	// The path to TODO
 	Location string // Must be an absolute path.
 
 	// The value of --prompt.
@@ -243,22 +240,18 @@ type ActionTaken struct {
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
+func upgrade(ctx context.Context, p *Params, manifestPath string) (_ *Result, rErr error) {
 	p = fillDefaults(p)
 
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
-	installedDir := filepath.Join(filepath.Dir(p.Location), "..")
+	installedDir := filepath.Join(filepath.Dir(manifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
 		return nil, err
 	}
 
-	if !filepath.IsAbs(p.Location) {
-		return nil, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.Location)
-	}
-
-	oldManifest, err := loadManifest(ctx, p.FS, p.Location)
+	oldManifest, err := loadManifest(ctx, p.FS, manifestPath)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +367,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		fs:               p.FS,
 		installedDir:     installedDir,
 		mergeDir:         mergeDir,
-		oldManifestPath:  p.Location,
+		oldManifestPath:  manifestPath,
 		oldManifest:      oldManifest,
 		newManifest:      newManifest,
 		reversedPatchDir: reversedDir,

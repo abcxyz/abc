@@ -1076,7 +1076,7 @@ yellow is my favorite color
 				abctestutil.WriteAll(t, templateDir, tc.templateReplacementForUpgrade)
 			}
 
-			result, err := Upgrade(ctx, params)
+			result, err := upgrade(ctx, params, params.Location)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -1161,7 +1161,7 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 		Location: manifestFullPath,
 	}
 
-	_, err = Upgrade(ctx, params)
+	_, err = upgrade(ctx, params, params.Location)
 	wantErr := "this template can't be upgraded because its manifest doesn't contain a template_location"
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 		t.Fatal(diff)
@@ -1278,7 +1278,7 @@ steps:
 		Stdout:   os.Stdout,
 	}
 
-	gotReversalConflictResult, err := Upgrade(ctx, upgradeParams)
+	gotReversalConflictResult, err := upgrade(ctx, upgradeParams, manifestFullPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1347,7 +1347,7 @@ steps:
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.AlreadyResolved = []string{"file.txt"}
 
-	gotResult, err := Upgrade(ctx, upgradeParams)
+	gotResult, err := upgrade(ctx, upgradeParams, manifestFullPath)
 	if err != nil {
 		t.Fatal(err)
 	}

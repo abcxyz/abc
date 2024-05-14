@@ -113,7 +113,9 @@ steps:
 			},
 			wantExitCode: 1,
 			wantErr:      []string{"exit code 1"},
-			wantStdout: mergeInstructions + `
+			wantStdout: `
+When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+` + mergeInstructions + `
 
 List of conflicting files:
 --
@@ -179,7 +181,9 @@ steps:
           with: "Z"`,
 			},
 			wantExitCode: 2,
-			wantStdout: patchReversalInstructionsPart1 + `
+			wantStdout: `
+When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+` + patchReversalInstructions + `
 
 --
 your file: TEMPDIR/dest_dir/hello.txt
@@ -255,7 +259,7 @@ After manually applying the rejected hunks, run this upgrade command:
 			var stdout bytes.Buffer
 			cmd.SetStdout(&stdout)
 
-			err = cmd.Run(ctx, []string{manifestFullPath})
+			err = cmd.Run(ctx, []string{"-v", manifestFullPath})
 			for _, wantErr := range tc.wantErr {
 				if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 					t.Error(diff)
@@ -289,7 +293,7 @@ func TestMissingManifest(t *testing.T) {
 	cmd := &Command{}
 	ctx := context.Background()
 	err := cmd.Run(ctx, []string{"nonexistent_file.txt"})
-	if diff := testutil.DiffErrString(err, "no such file or directory"); diff != "" {
+	if diff := testutil.DiffErrString(err, "found no template manifests to upgrade"); diff != "" {
 		t.Fatal(diff)
 	}
 }
@@ -372,7 +376,7 @@ steps:
 				"out.txt":   "",
 				"spec.yaml": specOneInput,
 			},
-			wantErr: "missing input(s): animal",
+			wantErr: "when upgrading the manifest at TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:\nfound no template manifests to upgrade",
 			wantDestContents: map[string]string{
 				"out.txt": "",
 			},
@@ -455,7 +459,7 @@ steps:
 			}
 
 			renderResult, err := render.Render(ctx, &render.Params{
-				Clock:       clock.New(),
+				Clock:       clock.NewMock(),
 				Cwd:         tempBase,
 				DestDir:     destDir,
 				Downloader:  downloader,
@@ -474,14 +478,18 @@ steps:
 
 			abctestutil.WriteAll(t, templateDir, tc.upgradedTemplate)
 
-			args := []string{fmt.Sprintf("--prompt=%t", tc.prompt)}
+			args := []string{
+				"--verbose", // make it print the "upgrade complete" messages
+				fmt.Sprintf("--prompt=%t", tc.prompt),
+			}
 			if len(tc.inputFileContents) > 0 {
 				args = append(args, "--input-file="+inputFileName)
 			}
 			args = append(args, manifestFullPath)
 
 			err = abctestutil.DialogTest(ctx, t, tc.dialog, cmd, args)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+			wantErr := strings.ReplaceAll(tc.wantErr, "TEMPDIR", tempBase)
+			if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
@@ -520,7 +528,8 @@ func TestSummarizeResult(t *testing.T) {
 			wantExitCode: 0,
 		},
 		{
-			name: "conflicts",
+			name:         "conflicts",
+			manifestPath: "/foo/bar/my_manifest.yaml",
 			result: &upgrade.Result{
 				Type: upgrade.MergeConflict,
 				Conflicts: []upgrade.ActionTaken{
@@ -541,7 +550,8 @@ func TestSummarizeResult(t *testing.T) {
 				},
 				NonConflicts: []upgrade.ActionTaken{{Path: "should_not_appear.txt", Action: upgrade.WriteNew}},
 			},
-			wantMessage: mergeInstructions + `
+			wantMessage: `When upgrading manifest /foo/bar/my_manifest.yaml:
+` + mergeInstructions + `
 
 List of conflicting files:
 --
@@ -574,7 +584,8 @@ incoming file: some/other/file.txt.abcmerge_from_new_template
 					},
 				},
 			},
-			wantMessage: patchReversalInstructionsPart1 + `
+			wantMessage: `When upgrading manifest /foo/bar/my_manifest.yaml:
+` + patchReversalInstructions + `
 
 --
 your file: /my/template/output/dir/some/path.txt
@@ -607,7 +618,8 @@ After manually applying the rejected hunks, run this upgrade command:
 					},
 				},
 			},
-			wantMessage: patchReversalInstructionsPart1 + `
+			wantMessage: `When upgrading manifest /foo/bar/my_manifest.yaml:
+` + patchReversalInstructions + `
 
 --
 your file: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt

@@ -67,6 +67,8 @@ type Flags struct {
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
 
+	Verbose bool
+
 	// The template version to upgrade to; defaults to "latest".
 	Version string
 }
@@ -80,6 +82,7 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Target:  &f.AlreadyResolved,
 		Usage:   "a list of files where a patch failed to apply during the upgrade process, generating a .patch.rej file that was manually resolved by the user",
 	})
+	u.BoolVar(flags.Verbose(&f.Verbose))
 
 	r := set.NewSection("RENDER OPTIONS")
 
