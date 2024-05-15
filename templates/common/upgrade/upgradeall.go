@@ -101,7 +101,7 @@ func UpgradeAll(ctx context.Context, p *Params) *UpgradeAllResult {
 		}
 	}
 
-	if len(u.out.Results) == 0 {
+	if len(u.out.Results) == 0 && u.out.Err == nil {
 		// Perhaps this isn't strictly an error, but in the case where the user
 		// invokes the tool incorrectly and doesn't actually do the work they
 		// intended, we want to tell them and not just pretend things are fine.
@@ -233,8 +233,15 @@ func crawlManifests(startFrom string) ([]string, error) {
 
 	err := filepath.WalkDir(startFrom, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			if common.IsNotExistErr(err) {
+				// If the user provides a nonexistent path to upgade, then we'll
+				// just return an empty list of manifests from this function and
+				// let a higher level function say "no manifests were found."
+				return nil
+			}
 			return err
 		}
+
 		baseName := filepath.Base(path)
 		ext := filepath.Ext(path)
 		parentDir := filepath.Base(filepath.Dir(path))

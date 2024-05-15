@@ -39,17 +39,14 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-const includeDotSpec = `
-api_version: 'cli.abcxyz.dev/v1beta6'
+const includeDotSpec = `api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
-
 desc: 'my template'
-
 steps:
-- desc: 'include .'
-action: 'include'
-params:
-  paths: ['.']
+  - desc: 'include .'
+    action: 'include'
+    params:
+      paths: ['.']
 `
 
 func TestUpgrade(t *testing.T) {
@@ -1077,17 +1074,25 @@ yellow is my favorite color
 				abctestutil.WriteAll(t, templateDir, tc.templateReplacementForUpgrade)
 			}
 
-			result, err := upgrade(ctx, params, params.Location)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+			upgradeResult := UpgradeAll(ctx, params)
+			if diff := testutil.DiffErrString(upgradeResult.Err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
+			}
+
+			var singleUpgradeResult *Result
+			prefix := destDir + "/"
+			for _, results := range upgradeResult.Results {
+				if singleUpgradeResult != nil || len(results) != 1 {
+					t.Fatal("internal test error, expected exactly one upgrade result")
+				}
+				singleUpgradeResult = results[0]
 			}
 
 			// For testing purposes, remove the temp directory prefix from the
 			// absolute path. We need a deterministic path to check, not
 			// containing a temp dir name.
-			if result != nil {
-				prefix := destDir + "/"
-				for _, rc := range result.ReversalConflicts {
+			if singleUpgradeResult != nil {
+				for _, rc := range singleUpgradeResult.ReversalConflicts {
 					rc.AbsPath = mustTrimPrefix(t, rc.AbsPath, prefix)
 					rc.RejectedHunks = mustTrimPrefix(t, rc.RejectedHunks, prefix)
 				}
@@ -1097,7 +1102,7 @@ yellow is my favorite color
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
 			}
-			if diff := cmp.Diff(result, tc.want, opts...); diff != "" {
+			if diff := cmp.Diff(singleUpgradeResult, tc.want, opts...); diff != "" {
 				t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 			}
 
@@ -1435,9 +1440,14 @@ func TestDetectUnmergedConflicts(t *testing.T) {
 func TestUpgradeMany(t *testing.T) {
 	t.Parallel()
 
-	tempBase := t.TempDir()
 	ctx := context.Background()
 	clk := clock.NewMock()
+
+	tempBase := t.TempDir()
+
+	// Make the temp dir into a git repo so template locations will be treated
+	// as canonical.
+	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
 	template1Files := map[string]string{
 		"spec.yaml":  includeDotSpec,
@@ -1450,8 +1460,9 @@ func TestUpgradeMany(t *testing.T) {
 
 	templateDir1 := filepath.Join(tempBase, "templateDir1")
 	templateDir2 := filepath.Join(tempBase, "templateDir2")
-	destDir1 := filepath.Join(tempBase, "destDir1")
-	destDir2 := filepath.Join(tempBase, "destDir2")
+	destBase := filepath.Join(tempBase, "dest")
+	destDir1 := filepath.Join(destBase, "destDir1")
+	destDir2 := filepath.Join(destBase, "destDir2")
 	abctestutil.WriteAll(t, templateDir1, template1Files)
 	abctestutil.WriteAll(t, templateDir2, template2Files)
 	mustRender(t, ctx, clk, tempBase, templateDir1, destDir1)
@@ -1469,8 +1480,39 @@ func TestUpgradeMany(t *testing.T) {
 	abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
 	abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
 
-	// UpgradeAll(ctx, )
+	result := UpgradeAll(ctx, &Params{
+		Clock:    clk,
+		CWD:      tempBase,
+		FS:       &common.RealFS{},
+		Location: tempBase,
+		Stdout:   os.Stdout,
+	})
 
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+
+	// TODO the map is an awkward API, make it a list of structs containing lists
+	if len(result.Results) != 2 {
+		t.Errorf("got %d results, expected exactly 2", len(result.Results))
+	}
+	for _, oneManifestResults := range result.Results {
+		for _, oneUpgradeResult := range oneManifestResults {
+			if oneUpgradeResult.Type != Success {
+				t.Fatalf("got upgrade result %q, expected %q", oneUpgradeResult.Type, Success)
+			}
+		}
+	}
+
+	wantDestContents := map[string]string{
+		"destDir1/myfile.txt": "my new template1 file contents",
+		"destDir2/myfile.txt": "my new template2 file contents",
+	}
+	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifest are too unpredictable, don't assert their contents
+	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
+	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
+		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+	}
 }
 
 func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, path string) {

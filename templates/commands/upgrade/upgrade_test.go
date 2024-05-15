@@ -383,7 +383,8 @@ steps:
 				"out.txt":   "",
 				"spec.yaml": specOneInput,
 			},
-			wantErr: "when upgrading the manifest at TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:\nfound no template manifests to upgrade",
+			wantErr: `when upgrading the manifest at TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+failed rendering template: missing input(s): animal, you may want to use one of the flags --prompt, --input, or --input-file`,
 			wantDestContents: map[string]string{
 				"out.txt": "",
 			},
