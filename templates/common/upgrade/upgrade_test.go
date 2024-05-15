@@ -1435,46 +1435,42 @@ func TestDetectUnmergedConflicts(t *testing.T) {
 func TestUpgradeMany(t *testing.T) {
 	t.Parallel()
 
-	initialTemplate := map[string]string{
+	tempBase := t.TempDir()
+	ctx := context.Background()
+	clk := clock.NewMock()
+
+	template1Files := map[string]string{
 		"spec.yaml":  includeDotSpec,
-		"myfile.txt": "my old file contents",
+		"myfile.txt": "my old template1 file contents",
 	}
-
-	upgradedTemplate := map[string]string{
+	template2Files := map[string]string{
 		"spec.yaml":  includeDotSpec,
-		"myfile.txt": "my new file contents",
+		"myfile.txt": "my old template2 file contents",
 	}
 
-	cases := []struct {
-		name             string
-		initialTemplate  map[string]string
-		upgradedTemplate map[string]string
-		renderTo         []string
-	}{
-		{
-			name:             "TODO",
-			initialTemplate:  initialTemplate,
-			upgradedTemplate: upgradedTemplate,
-			renderTo:         []string{"subdir1", "subdir2"},
-			want
-		},
+	templateDir1 := filepath.Join(tempBase, "templateDir1")
+	templateDir2 := filepath.Join(tempBase, "templateDir2")
+	destDir1 := filepath.Join(tempBase, "destDir1")
+	destDir2 := filepath.Join(tempBase, "destDir2")
+	abctestutil.WriteAll(t, templateDir1, template1Files)
+	abctestutil.WriteAll(t, templateDir2, template2Files)
+	mustRender(t, ctx, clk, tempBase, templateDir1, destDir1)
+	mustRender(t, ctx, clk, tempBase, templateDir2, destDir2)
+
+	upgradedTemplate1Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template1 file contents",
+	}
+	upgradedTemplate2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template2 file contents",
 	}
 
-	for _, tc := range cases {
-		tc := tc
+	abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
+	abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
 
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+	// UpgradeAll(ctx, )
 
-			tempDir := t.TempDir()
-
-			abctestutil.WriteAll(t, tempDir, tc.files)
-
-			ctx := context.Background()
-
-			result := UpgradeAll(ctx, &Params{})
-		})
-	}
 }
 
 func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, path string) {
