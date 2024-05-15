@@ -36,6 +36,8 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
+// TODO test upgrading multiple templates at once
+
 func TestUpgradeCommand(t *testing.T) {
 	// Some of this is copied from the tests in common/upgrade.
 
@@ -129,6 +131,11 @@ conflict type: editEditConflict
 your file was renamed to: greet.txt.abcmerge_locally_edited
 incoming file: greet.txt.abcmerge_from_new_template
 --
+
+After manually resolving the merge conflict, run this command to continue
+upgrading other template installations that may exist:
+
+  abc upgrade TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml
 `,
 		},
 		{
@@ -189,9 +196,9 @@ When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01
 your file: TEMPDIR/dest_dir/hello.txt
 Rejected hunks for you to apply: TEMPDIR/dest_dir/hello.txt.patch.rej
 --
-After manually applying the rejected hunks, run this upgrade command:
+After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade --already_resolved=hello.txt TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml
+  abc upgrade TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml --already-resolved=hello.txt --resume-from=TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml
 `,
 			wantErr: []string{"exit code 2"},
 		},
@@ -259,7 +266,7 @@ After manually applying the rejected hunks, run this upgrade command:
 			var stdout bytes.Buffer
 			cmd.SetStdout(&stdout)
 
-			err = cmd.Run(ctx, []string{"-v", manifestFullPath})
+			err = cmd.Run(ctx, []string{"--verbose", manifestFullPath})
 			for _, wantErr := range tc.wantErr {
 				if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 					t.Error(diff)
@@ -507,6 +514,7 @@ func TestSummarizeResult(t *testing.T) {
 	cases := []struct {
 		name         string
 		result       *upgrade.Result
+		location     string
 		wantMessage  string
 		manifestPath string
 		wantExitCode int
@@ -516,6 +524,7 @@ func TestSummarizeResult(t *testing.T) {
 			result: &upgrade.Result{
 				Type: upgrade.Success,
 			},
+			location:     ".",
 			wantMessage:  "Upgrade complete with no conflicts",
 			wantExitCode: 0,
 		},
@@ -524,12 +533,14 @@ func TestSummarizeResult(t *testing.T) {
 			result: &upgrade.Result{
 				Type: upgrade.AlreadyUpToDate,
 			},
+			location:     ".",
 			wantMessage:  "Already up to date with latest template version",
 			wantExitCode: 0,
 		},
 		{
 			name:         "conflicts",
 			manifestPath: "/foo/bar/my_manifest.yaml",
+			location:     "my-location",
 			result: &upgrade.Result{
 				Type: upgrade.MergeConflict,
 				Conflicts: []upgrade.ActionTaken{
@@ -564,7 +575,12 @@ file: some/other/file.txt
 conflict type: deleteEditConflict
 your file was renamed to: some/other/file.txt.abcmerge_locally_edited
 incoming file: some/other/file.txt.abcmerge_from_new_template
---`,
+--
+
+After manually resolving the merge conflict, run this command to continue
+upgrading other template installations that may exist:
+
+  abc upgrade /foo/bar/my_manifest.yaml`,
 			wantExitCode: 1,
 		},
 		{
@@ -594,9 +610,9 @@ Rejected hunks for you to apply: /my/template/output/dir/some/path.txt.patch.rej
 your file: /my/template/output/dir/some/other/path.txt
 Rejected hunks for you to apply: /my/template/output/dir/some/other/path.txt.patch.rej
 --
-After manually applying the rejected hunks, run this upgrade command:
+After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade --already_resolved=some/path.txt,some/other/path.txt /foo/bar/my_manifest.yaml`,
+  abc upgrade /foo/bar/my_manifest.yaml --already-resolved=some/path.txt,some/other/path.txt --resume-from=/foo/bar/my_manifest.yaml`,
 			manifestPath: "/foo/bar/my_manifest.yaml",
 			wantExitCode: 2,
 		},
@@ -628,9 +644,9 @@ Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.tx
 your file: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt
 Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej
 --
-After manually applying the rejected hunks, run this upgrade command:
+After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade --already_resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' /foo/bar/my_manifest.yaml`,
+  abc upgrade /foo/bar/my_manifest.yaml --already-resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' --resume-from=/foo/bar/my_manifest.yaml`,
 			manifestPath: "/foo/bar/my_manifest.yaml",
 			wantExitCode: 2,
 		},
@@ -641,7 +657,7 @@ After manually applying the rejected hunks, run this upgrade command:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			message, exitCode := summarizeResult(tc.result, tc.manifestPath)
+			message, exitCode := summarizeResult(tc.result, tc.manifestPath, tc.manifestPath)
 			if exitCode != tc.wantExitCode {
 				t.Errorf("got exit code %d, want %d", exitCode, tc.wantExitCode)
 			}

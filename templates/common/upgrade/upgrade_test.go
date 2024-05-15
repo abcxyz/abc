@@ -39,6 +39,19 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
+const includeDotSpec = `
+api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+
+desc: 'my template'
+
+steps:
+- desc: 'include .'
+action: 'include'
+params:
+  paths: ['.']
+`
+
 func TestUpgrade(t *testing.T) {
 	t.Parallel()
 
@@ -50,20 +63,6 @@ func TestUpgrade(t *testing.T) {
 	}
 	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
 	afterUpgradeTime := beforeUpgradeTime.Add(time.Hour)
-
-	// This spec file is used for some (but not all) of the tests.
-	includeDotSpec := `
-api_version: 'cli.abcxyz.dev/v1beta6'
-kind: 'Template'
-
-desc: 'my template'
-
-steps:
-  - desc: 'include .'
-    action: 'include'
-    params:
-      paths: ['.']
-`
 
 	outTxtOnlyManifest := &manifest.Manifest{
 		CreationTime:     beforeUpgradeTime.UTC(),
@@ -127,9 +126,11 @@ steps:
 		want                         *Result
 		wantErr                      string
 
-		// wantRejectFile is a hack since Mac and Linux `patch` commands
-		// generate different formats for their reject hunk files. We therefore
-		// just test for the presence of the file.
+		// wantRejectFile, if set, is a path to a file that should contain the
+		// rejected hunks from the patch command. This is a hack since Mac and
+		// Linux `patch` commands generate different formats for their reject
+		// hunk files. We therefore just test for the presence of the file, not
+		// the contents.
 		wantRejectFile string
 	}{
 		// TODO(upgrade): tests to add:
@@ -1425,6 +1426,53 @@ func TestDetectUnmergedConflicts(t *testing.T) {
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
+		})
+	}
+}
+
+// TODO test upgrade template-that-outputs-template
+// TODO test upgrade multiple with already-resolved
+func TestUpgradeMany(t *testing.T) {
+	t.Parallel()
+
+	initialTemplate := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old file contents",
+	}
+
+	upgradedTemplate := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new file contents",
+	}
+
+	cases := []struct {
+		name             string
+		initialTemplate  map[string]string
+		upgradedTemplate map[string]string
+		renderTo         []string
+	}{
+		{
+			name:             "TODO",
+			initialTemplate:  initialTemplate,
+			upgradedTemplate: upgradedTemplate,
+			renderTo:         []string{"subdir1", "subdir2"},
+			want
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			abctestutil.WriteAll(t, tempDir, tc.files)
+
+			ctx := context.Background()
+
+			result := UpgradeAll(ctx, &Params{})
 		})
 	}
 }

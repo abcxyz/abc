@@ -44,6 +44,7 @@ import (
 	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/sets"
 )
 
 // TODO(upgrade):
@@ -73,7 +74,9 @@ type Params struct {
 
 	Clock clock.Clock
 
-	// CWD is the value of os.Getwd(), or in testing, a temp directory.
+	// The directory that relative paths are interpreted as being relative to.
+	// In testing, this is a temp directory. If empty, the value of os.Getwd()
+	// will be used.
 	CWD string
 
 	// The value of --debug-scratch-contents.
@@ -97,8 +100,10 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// The path to TODO
-	Location string // Must be an absolute path.
+	// The path to either a directory or file. If a directory, it will be
+	// crawled looking for manifests to upgrade. If a single manifest file,
+	// that single template will be upgraded.
+	Location string
 
 	// The value of --prompt.
 	Prompt   bool
@@ -234,15 +239,13 @@ type ActionTaken struct {
 	IncomingTemplatePath string
 }
 
-// Upgrade takes a directory containing previously rendered template output and
+// upgrade takes a directory containing previously rendered template output and
 // updates it using the newest version of the template, which is pointed to by
 // the manifest file.
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
 func upgrade(ctx context.Context, p *Params, manifestPath string) (_ *Result, rErr error) {
-	p = fillDefaults(p)
-
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
 	installedDir := filepath.Join(filepath.Dir(manifestPath), "..")
@@ -339,7 +342,7 @@ func upgrade(ctx context.Context, p *Params, manifestPath string) (_ *Result, rE
 		Downloader:              downloader,
 		FS:                      p.FS,
 		GitProtocol:             p.GitProtocol,
-		IgnoreUnknownInputs:     true, // TODO explain
+		IgnoreUnknownInputs:     true, // The old manifest may have inputs that were removed in the latest template version
 		InputFiles:              p.InputFiles,
 		IncludeFromDestExtraDir: reversedDir,
 		Inputs:                  inputsToMap(oldManifest.Inputs),
@@ -391,12 +394,19 @@ func upgrade(ctx context.Context, p *Params, manifestPath string) (_ *Result, rE
 	}, nil
 }
 
-func fillDefaults(p *Params) *Params {
+func fillDefaults(p *Params) (*Params, error) {
 	out := *p // shallow copy
 	if out.Version == "" {
 		out.Version = templatesource.Latest
 	}
-	return &out
+	if out.CWD == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		out.CWD = cwd
+	}
+	return &out, nil
 }
 
 // mergeTentatively does a dry-run commit followed by a real commit.
@@ -598,6 +608,16 @@ type reversePatchesParams struct {
 // undoing the changes that were made by that template version.
 func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalConflict, error) {
 	var out []*ReversalConflict
+
+	filesInManifest := make([]string, 0, len(p.oldManifest.OutputFiles))
+	for _, f := range p.oldManifest.OutputFiles {
+		filesInManifest = append(filesInManifest, f.File.Val)
+	}
+	if unknownFiles := sets.Subtract(p.alreadyResolved, filesInManifest); len(unknownFiles) > 0 {
+		// TODO test
+		return nil, fmt.Errorf("you specified --already-resolved file(s) that were not part of this template's manifest: %s", strings.Join(unknownFiles, ", "))
+	}
+
 	for _, f := range p.oldManifest.OutputFiles {
 		if f.Patch == nil || len(f.Patch.Val) == 0 {
 			continue

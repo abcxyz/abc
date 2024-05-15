@@ -18,7 +18,6 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -76,8 +75,6 @@ const (
 Some manual conflict resolution is required because of a conflict between your
 local edits and the new version of the template. Please look at all files ending
 in .abcmerge_* and either edit, delete, or rename them to reflect your decision.
-There is no need to re-run abc after resolving (so it's not like "git merge
- --continue").
 
 Background on conflict types:
 
@@ -137,14 +134,9 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Location, err)
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("os.Getwd(): %w", err)
-	}
 	result := upgrade.UpgradeAll(ctx, &upgrade.Params{
 		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
-		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
 		DebugScratchContents: c.flags.DebugScratchContents,
 		FS:                   &common.RealFS{},
@@ -180,7 +172,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 			delete(nonConflicting, result.ConflictManifestPath)
 		}
 
-		messages, _ := summarizeResults(nonConflicting) // exitCode return value is ignored because we already know these aren't conflicts.
+		messages, _ := summarizeResults(nonConflicting, c.flags.Location) // exitCode return value is ignored because we already know these aren't conflicts.
 		fmt.Fprintln(c.Stdout(), messages)
 	}
 
@@ -189,7 +181,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		lastResult := resultsThisManifest[len(resultsThisManifest)-1]
 		messages, exitCode := summarizeResults(map[string][]*upgrade.Result{
 			result.ConflictManifestPath: {lastResult},
-		})
+		}, c.flags.Location)
 		fmt.Fprintln(c.Stdout(), messages)
 		if exitCode != 0 {
 			return &common.ExitCodeError{Code: exitCode}
@@ -199,13 +191,13 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func summarizeResults(m map[string][]*upgrade.Result) (_ string, exitCode int) {
+func summarizeResults(m map[string][]*upgrade.Result, location string) (_ string, exitCode int) {
 	sortedManifests := maps.Keys(m)
 	sort.Strings(sortedManifests)
 	summaries := make([]string, 0, len(m))
 	for _, manifestPath := range sortedManifests {
 		for _, result := range m[manifestPath] {
-			summary, thisExitCode := summarizeResult(result, manifestPath)
+			summary, thisExitCode := summarizeResult(result, location, manifestPath)
 			summaries = append(summaries, summary)
 			if thisExitCode > exitCode {
 				exitCode = thisExitCode
@@ -215,12 +207,12 @@ func summarizeResults(m map[string][]*upgrade.Result) (_ string, exitCode int) {
 	return strings.Join(summaries, "\n"), exitCode
 }
 
-func summarizeResult(r *upgrade.Result, absManifestPath string) (message string, exitCode int) {
+func summarizeResult(r *upgrade.Result, location, absManifestPath string) (message string, exitCode int) {
 	// You might wonder: why are the merge instructions printed here, *inside*
 	// the loop that loops over manifests? Won't that result in a large block of
 	// instructions being printed multiple times? No, because there's at most
 	// one failing upgrade, because we stop after a single failure (merge
-	// conflict or patch reversal conflict).s
+	// conflict or patch reversal conflict).
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
 		// TODO(upgrade): show version
@@ -246,6 +238,13 @@ func summarizeResult(r *upgrade.Result, absManifestPath string) (message string,
 			}
 			fmt.Fprintf(&out, "--")
 		}
+		fmt.Fprintf(&out, `
+
+After manually resolving the merge conflict, run this command to continue
+upgrading other template installations that may exist:
+
+  abc upgrade %s`, location)
+
 		return out.String(), 1
 	case upgrade.PatchReversalConflict:
 		var out strings.Builder
@@ -259,11 +258,22 @@ func summarizeResult(r *upgrade.Result, absManifestPath string) (message string,
 			relPaths = append(relPaths, shellescape.Quote(rc.RelPath))
 		}
 		fmt.Fprintf(&out, `
-After manually applying the rejected hunks, run this upgrade command:
+After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade --already_resolved=%s %s`, strings.Join(relPaths, ","), absManifestPath)
+  abc upgrade %s --already-resolved=%s --resume-from=%s`, shellescape.Quote(location), strings.Join(relPaths, ","), absManifestPath)
 		return out.String(), 2
 	default:
 		return fmt.Sprintf("internal error: unknown upgrade result type %q", r.Type), 127
 	}
 }
+
+// // isOnlyManifest crawls the path "location" and looks for all manifest files.
+// // Returns true if "manifestPath" is the only manifest that's found. This is
+// // used to detect whether an upgrade is complete or not
+// func isOnlyManifest(location, manifestPath string) (bool, error) {
+// 	foundManifests, err := upgrade.CrawlManifests(location)
+// 	if err != nil {
+// 		return false, err //nolint:wrapcheck
+// 	}
+// 	filepath.SameFile
+// }

@@ -25,10 +25,6 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
-// type UpgradeAllParams struct {
-// 	StartDir string
-// }
-
 type UpgradeAllResult struct {
 	// A map from manifestPath to the result of non-erroring upgrade attempts.
 	// Merge conflicts are included in this map. There are potentially multiple
@@ -65,16 +61,33 @@ type UpgradeAllResult struct {
 func UpgradeAll(ctx context.Context, p *Params) *UpgradeAllResult {
 	logger := logging.FromContext(ctx).With("logger", "UpgradeAll")
 
-	if !filepath.IsAbs(p.Location) {
-		return &UpgradeAllResult{
-			Err: fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.Location),
-		}
+	var err error
+	p, err = fillDefaults(p) // includes shallow copying of input
+	if err != nil {
+		return &UpgradeAllResult{Err: err}
 	}
 
-	// TODO explain
+	// if !filepath.IsAbs(p.Location) {
+	// 	p.Location = filepath.Join(p.CWD, p.Location)
+	// }
+
+	// fi, err := p.FS.Stat(p.Location)
+	// if err != nil {
+	// 	 return &UpgradeAllResult{
+	// 		Err: fmt.Errorf("failed to stat() input location %q: %w", p.Location, err)
+	// 	 }
+	// }
+
+	// // TODO test
+	// if fi.IsDir() && len(p.AlreadyResolved) > 0 {
+	// 	return &UpgradeAllResult{
+	// 		Err: fmt.Errorf("when using the --already-resolved flag, the upgrade command must point to
+	// 	}
+	// }
+
 	u := newUpgrader(p)
 
-	numWaves := 0 // TODO explain why multiple waves are needed
+	numWaves := 0
 	for {
 		numWaves++
 		anyUpgraded := u.upgradeWave(ctx)
@@ -98,32 +111,42 @@ func UpgradeAll(ctx context.Context, p *Params) *UpgradeAllResult {
 	return u.out
 }
 
-// TODO test calling with Location as file and as directory
-// TODO doc
+// upgrader tracks the state and results of an "upgrade all" operation while
+// it's in progress.
 type upgrader struct {
-	// These fields are immutable.
-	p *Params
+	// All fields are mutable.
 
-	out *UpgradeAllResult
-	// These fields are mutated as upgrades progress.
-
+	p                       *Params // The AlreadyResolved field is set to nil after the first upgrade
+	out                     *UpgradeAllResult
 	remoteTemplatesUpgraded map[string]struct{}
 }
 
 func newUpgrader(p *Params) *upgrader {
 	return &upgrader{
-		p: p,
 		out: &UpgradeAllResult{
 			Results: make(map[string][]*Result),
 		},
+		p:                       p,
 		remoteTemplatesUpgraded: make(map[string]struct{}),
 	}
 }
 
+// upgradeWave does one iteration of "find all manifests and try to upgrade each
+// one." We have to do multiple waves because templates may reference each
+// other; upgrading one template may change a different template from being
+// "up to date" to "upgradeable."
 func (u *upgrader) upgradeWave(ctx context.Context) (upgraded bool) {
-	// logger := logging.FromContext(ctx).With("logger", "upgradeWave")
+	absLocation := u.p.Location
+	if !filepath.IsAbs(u.p.Location) {
+		var err error
+		absLocation, err = filepath.Abs(filepath.Join(u.p.CWD, u.p.Location))
+		if err != nil {
+			u.out.Err = err
+			return false
+		}
+	}
 
-	manifests, err := crawlManifests(u.p.Location)
+	manifests, err := crawlManifests(absLocation)
 	if err != nil {
 		u.out.Err = err
 		return false
@@ -140,6 +163,9 @@ func (u *upgrader) upgradeWave(ctx context.Context) (upgraded bool) {
 	return anyUpgraded
 }
 
+// upgradeOne is a wrapper around upgrade() (upgrade one template output dir to
+// the latest version). This basically integrates the standalone upgrade()
+// function with the stateful upgrader object.
 func (u *upgrader) upgradeOne(ctx context.Context, manifestPath string) (upgraded bool) {
 	logger := logging.FromContext(ctx).With("logger", "upgradeOne")
 
@@ -168,9 +194,9 @@ func (u *upgrader) upgradeOne(ctx context.Context, manifestPath string) (upgrade
 		u.remoteTemplatesUpgraded[manifestPath] = struct{}{}
 	}
 
-	// Skip reporting an AlreadyUpToDate result if we just upgraded this one.
-	// This avoids spamming the caller with superfluous AlreadyUpToDate results
-	// while we iterate repeatedly.
+	// Skip reporting an AlreadyUpToDate result if we just upgraded this
+	// manifest in a previous wave. This avoids spamming the caller with
+	// superfluous AlreadyUpToDate results while we iterate repeatedly.
 	if len(u.out.Results[manifestPath]) == 0 || result.Type != AlreadyUpToDate {
 		u.out.Results[manifestPath] = append(u.out.Results[manifestPath], result)
 	}
@@ -180,6 +206,10 @@ func (u *upgrader) upgradeOne(ctx context.Context, manifestPath string) (upgrade
 		u.out.ConflictManifestPath = manifestPath
 		return false
 	case Success:
+		// When the user passes the "--already-resolved" flag, that should only
+		// apply to the first template that we upgrade. That flag means that the
+		// user resolved a patch reversal conflict specific to that template.
+		u.p.AlreadyResolved = nil
 		return true
 	case AlreadyUpToDate:
 		return false
@@ -189,14 +219,19 @@ func (u *upgrader) upgradeOne(ctx context.Context, manifestPath string) (upgrade
 	}
 }
 
+// shouldAbort return true if there was an issue upgrading a template and we
+// should stop without attempting to do any more upgrades to other templates.
 func (u *upgrader) shouldAbort() bool {
 	return u.out.Err != nil || u.out.ConflictManifestPath != ""
 }
 
-func crawlManifests(startDir string) ([]string, error) {
+// crawlManifests finds all the template manifest files underneath the given
+// file or directory. startFrom can be either a single manifest file or a
+// directory to search recursively.
+func crawlManifests(startFrom string) ([]string, error) {
 	var manifests []string
 
-	err := filepath.WalkDir(startDir, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(startFrom, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

@@ -61,6 +61,9 @@ type Flags struct {
 	// See common/flags.KeepTempDirs().
 	KeepTempDirs bool
 
+	// TODO doc
+	ResumeFrom string
+
 	// See common/flags.Prompt().
 	Prompt bool
 
@@ -80,7 +83,14 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Example: "my_file.txt,my_dir/my_other_file.txt",
 		Predict: predict.Files(""),
 		Target:  &f.AlreadyResolved,
-		Usage:   "a list of files where a patch failed to apply during the upgrade process, generating a .patch.rej file that was manually resolved by the user",
+		Usage:   "a list of files where a patch failed to apply during the upgrade process, generating a .patch.rej file that was manually resolved by the user; usually combined with --resume-from",
+	})
+	u.StringVar(&cli.StringVar{
+		Name:    "resume-from",
+		Example: "./some/dir/.abc/manifest.foo.yaml",
+		Predict: predict.Files("*.yaml"),
+		Target:  &f.ResumeFrom,
+		Usage:   "begin or resume the upgrade starting at this manifest file",
 	})
 	u.BoolVar(flags.Verbose(&f.Verbose))
 
@@ -110,10 +120,6 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		// Default location to the first CLI argument, if given.
 		// If not given, default to current directory.
 		f.Location = strings.TrimSpace(set.Arg(0))
-		if f.Location == "" {
-			// make current directory the default location
-			f.Location = "."
-		}
 		return nil
 	})
 }
