@@ -115,8 +115,7 @@ steps:
 			},
 			wantExitCode: 1,
 			wantErr:      []string{"exit code 1"},
-			wantStdout: `
-When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+			wantStdout: `When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
 ` + mergeInstructions + `
 
 List of conflicting files:
@@ -188,8 +187,7 @@ steps:
           with: "Z"`,
 			},
 			wantExitCode: 2,
-			wantStdout: `
-When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+			wantStdout: `When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
 ` + patchReversalInstructions + `
 
 --
@@ -198,7 +196,7 @@ Rejected hunks for you to apply: TEMPDIR/dest_dir/hello.txt.patch.rej
 --
 After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml --already-resolved=hello.txt --resume-from=TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml
+  abc upgrade TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml --already-resolved=hello.txt
 `,
 			wantErr: []string{"exit code 2"},
 		},

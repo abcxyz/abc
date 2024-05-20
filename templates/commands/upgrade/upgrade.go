@@ -249,10 +249,21 @@ upgrading other template installations that may exist:
 			fmt.Fprintf(&out, "--")
 			relPaths = append(relPaths, shellescape.Quote(rc.RelPath))
 		}
+
+		// In the case where the user specifed just a single manifest to
+		// upgrade, like "abc upgrade foo/.abc/manifest.yaml, then we'll leave
+		// out the "--resume-from=" flag. This would be confusing and
+		// unnecessary, since you don't need to specify a template to resume
+		// from when you're just upgrading one template.
+		resumeFrom := ""
+		if r.ManifestPath != "." {
+			resumeFrom = fmt.Sprintf(" --resume-from=%s", r.ManifestPath)
+		}
 		fmt.Fprintf(&out, `
 After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade %s --already-resolved=%s --resume-from=%s`, shellescape.Quote(location), strings.Join(relPaths, ","), r.ManifestPath)
+  abc upgrade %s --already-resolved=%s%s`,
+			shellescape.Quote(location), strings.Join(relPaths, ","), resumeFrom)
 		return out.String(), 2
 	default:
 		return fmt.Sprintf("internal error: unknown upgrade result type %q", r.Type), 127

@@ -127,7 +127,7 @@ func UpgradeAll(ctx context.Context, p *Params) *UpgradeAllResult {
 			out.Err = fmt.Errorf("when upgrading the manifest at %s:\n%w", path, err)
 			break
 		}
-		
+
 		result.ManifestPath = m
 
 		out.Results = append(out.Results, result)
@@ -300,7 +300,8 @@ func crawlManifests(startFrom string) ([]string, error) {
 		baseName := filepath.Base(path)
 		ext := filepath.Ext(path)
 		parentDir := filepath.Base(filepath.Dir(path))
-		if !strings.HasPrefix(baseName, "manifest") && ext == ".yaml" && parentDir == common.ABCInternalDir {
+		isManifest := strings.HasPrefix(baseName, "manifest") && ext == ".yaml" && parentDir == common.ABCInternalDir
+		if !isManifest {
 			return nil
 		}
 
