@@ -30,6 +30,7 @@ import (
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/common/render"
+	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
@@ -316,7 +317,7 @@ func crawlTemplatesWithGoldenTests(dir string) ([]string, error) {
 // checkIfTemplateWithTests tests whether the given path is a template that has golden tests.
 // if hasGoldenTests is true, then isTemplate is always true.
 func checkIfTemplateWithTests(path string) (isTemplate, hasGoldenTests bool, _ error) {
-	ok, err := common.Exists(filepath.Join(path, "spec.yaml"))
+	ok, err := common.Exists(filepath.Join(path, specutil.SpecFileName))
 	if err != nil {
 		return false, false, err //nolint:wrapcheck
 	}

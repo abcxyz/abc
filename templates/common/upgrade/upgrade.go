@@ -133,6 +133,9 @@ type Params struct {
 type ResultType string
 
 const (
+	// No upgrades were attempted, perhaps because no manifests could be found.
+	None ResultType = ""
+
 	// This is the value of Result.Type when the upgrade was vacuously
 	// successful because the template is already on the latest version.
 	AlreadyUpToDate ResultType = "already_up_to_date"
@@ -152,6 +155,21 @@ const (
 	MergeConflict ResultType = "merge_conflict"
 )
 
+var interestingnessOrder = []ResultType{AlreadyUpToDate, Success, PatchReversalConflict, MergeConflict}
+
+func resultTypeLess(l, r ResultType) bool {
+	// Subtle note: this will sort the zero value "" as the least/smallest,
+	// since slices.Index returns -1 when not found.
+	return slices.Index(interestingnessOrder, l) < slices.Index(interestingnessOrder, r)
+}
+
+// func resultTypeCmp(l, r ResultType) int {
+// 	lIdx := slices.Index(interestingnessOrder, l)
+// 	rIdx := slices.Index(interestingnessOrder, r)
+// 	return cmp.Compare(lIdx, rIdx)
+// }
+
+// TODO update doc since UpgradeAll exists, maybe rename
 // Result is returned from Upgrade if there's no error. It may indicate that
 // there were merge conflicts requiring manual resolution.
 type Result struct {
@@ -166,6 +184,9 @@ type Result struct {
 	// The metadata returned by the template downloader.
 	DLMeta *templatesource.DownloadMetadata
 
+	// TODO doc
+	ManifestPath string
+	
 	// The paths to files where abc tried to apply the reversal
 	// patches from the manifest to included-from-destination files, and the
 	// patches could not be applied cleanly. Manual resolution is needed.
@@ -245,16 +266,16 @@ type ActionTaken struct {
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func upgrade(ctx context.Context, p *Params, manifestPath string) (_ *Result, rErr error) {
+func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Result, rErr error) {
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
-	installedDir := filepath.Join(filepath.Dir(manifestPath), "..")
+	installedDir := filepath.Join(filepath.Dir(absManifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
 		return nil, err
 	}
 
-	oldManifest, err := loadManifest(ctx, p.FS, manifestPath)
+	oldManifest, err := loadManifest(ctx, p.FS, absManifestPath)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +391,7 @@ func upgrade(ctx context.Context, p *Params, manifestPath string) (_ *Result, rE
 		fs:               p.FS,
 		installedDir:     installedDir,
 		mergeDir:         mergeDir,
-		oldManifestPath:  manifestPath,
+		oldManifestPath:  absManifestPath,
 		oldManifest:      oldManifest,
 		newManifest:      newManifest,
 		reversedPatchDir: reversedDir,

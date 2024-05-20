@@ -512,12 +512,12 @@ steps:
 func TestSummarizeResult(t *testing.T) {
 	t.Parallel()
 
+	const location = "my-location"
+
 	cases := []struct {
 		name         string
 		result       *upgrade.Result
-		location     string
 		wantMessage  string
-		manifestPath string
 		wantExitCode int
 	}{
 		{
@@ -525,7 +525,6 @@ func TestSummarizeResult(t *testing.T) {
 			result: &upgrade.Result{
 				Type: upgrade.Success,
 			},
-			location:     ".",
 			wantMessage:  "Upgrade complete with no conflicts",
 			wantExitCode: 0,
 		},
@@ -534,16 +533,14 @@ func TestSummarizeResult(t *testing.T) {
 			result: &upgrade.Result{
 				Type: upgrade.AlreadyUpToDate,
 			},
-			location:     ".",
 			wantMessage:  "Already up to date with latest template version",
 			wantExitCode: 0,
 		},
 		{
-			name:         "conflicts",
-			manifestPath: "/foo/bar/my_manifest.yaml",
-			location:     "my-location",
+			name: "conflicts",
 			result: &upgrade.Result{
-				Type: upgrade.MergeConflict,
+				Type:         upgrade.MergeConflict,
+				ManifestPath: "foo/bar/my_manifest.yaml",
 				Conflicts: []upgrade.ActionTaken{
 					{
 						Action:               upgrade.EditEditConflict,
@@ -562,7 +559,7 @@ func TestSummarizeResult(t *testing.T) {
 				},
 				NonConflicts: []upgrade.ActionTaken{{Path: "should_not_appear.txt", Action: upgrade.WriteNew}},
 			},
-			wantMessage: `When upgrading manifest /foo/bar/my_manifest.yaml:
+			wantMessage: `When upgrading manifest my-location/foo/bar/my_manifest.yaml:
 ` + mergeInstructions + `
 
 List of conflicting files:
@@ -581,13 +578,14 @@ incoming file: some/other/file.txt.abcmerge_from_new_template
 After manually resolving the merge conflict, run this command to continue
 upgrading other template installations that may exist:
 
-  abc upgrade /foo/bar/my_manifest.yaml`,
+  abc upgrade my-location`,
 			wantExitCode: 1,
 		},
 		{
 			name: "reversal_conflict",
 			result: &upgrade.Result{
-				Type: upgrade.PatchReversalConflict,
+				Type:         upgrade.PatchReversalConflict,
+				ManifestPath: "/foo/bar/my_manifest.yaml",
 				ReversalConflicts: []*upgrade.ReversalConflict{
 					{
 						RelPath:       "some/path.txt",
@@ -601,7 +599,7 @@ upgrading other template installations that may exist:
 					},
 				},
 			},
-			wantMessage: `When upgrading manifest /foo/bar/my_manifest.yaml:
+			wantMessage: `When upgrading manifest my-location/foo/bar/my_manifest.yaml:
 ` + patchReversalInstructions + `
 
 --
@@ -613,15 +611,15 @@ Rejected hunks for you to apply: /my/template/output/dir/some/other/path.txt.pat
 --
 After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade /foo/bar/my_manifest.yaml --already-resolved=some/path.txt,some/other/path.txt --resume-from=/foo/bar/my_manifest.yaml`,
-			manifestPath: "/foo/bar/my_manifest.yaml",
+  abc upgrade my-location --already-resolved=some/path.txt,some/other/path.txt --resume-from=/foo/bar/my_manifest.yaml`,
 			wantExitCode: 2,
 		},
 
 		{
 			name: "reversal_conflict_with_weird_filename_characters_escaped",
 			result: &upgrade.Result{
-				Type: upgrade.PatchReversalConflict,
+				Type:         upgrade.PatchReversalConflict,
+				ManifestPath: "/foo/bar/my_manifest.yaml",
 				ReversalConflicts: []*upgrade.ReversalConflict{
 					{
 						RelPath:       "a?b!c@d#e$f`g-h^i&j'k*l(m)n[o]p{q}r.txt",
@@ -635,7 +633,7 @@ After manually applying the rejected hunks, run this command to continue:
 					},
 				},
 			},
-			wantMessage: `When upgrading manifest /foo/bar/my_manifest.yaml:
+			wantMessage: `When upgrading manifest my-location/foo/bar/my_manifest.yaml:
 ` + patchReversalInstructions + `
 
 --
@@ -647,8 +645,7 @@ Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.tx
 --
 After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade /foo/bar/my_manifest.yaml --already-resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' --resume-from=/foo/bar/my_manifest.yaml`,
-			manifestPath: "/foo/bar/my_manifest.yaml",
+  abc upgrade my-location --already-resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' --resume-from=/foo/bar/my_manifest.yaml`,
 			wantExitCode: 2,
 		},
 	}
@@ -658,7 +655,7 @@ After manually applying the rejected hunks, run this command to continue:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			message, exitCode := summarizeResult(tc.result, tc.manifestPath, tc.manifestPath)
+			message, exitCode := summarizeResult(tc.result, location)
 			if exitCode != tc.wantExitCode {
 				t.Errorf("got exit code %d, want %d", exitCode, tc.wantExitCode)
 			}

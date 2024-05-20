@@ -19,12 +19,10 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/alessio/shellescape"
 	"github.com/benbjohnson/clock"
-	"golang.org/x/exp/maps"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/upgrade"
@@ -134,7 +132,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Location, err)
 	}
 
-	result := upgrade.UpgradeAll(ctx, &upgrade.Params{
+	allResult := upgrade.UpgradeAll(ctx, &upgrade.Params{
 		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
@@ -152,67 +150,61 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Stdout:               c.Stdout(),
 		Version:              c.flags.Version,
 	})
-	if result.Err != nil {
-		if result.ErrManifestPath != "" {
-			return fmt.Errorf("when upgrading the manifest at %s:\n%w", result.ErrManifestPath, result.Err)
+	if allResult.Err != nil {
+		if allResult.ErrManifestPath != "" {
+			return fmt.Errorf("when upgrading the manifest at %s:\n%w",
+				allResult.ErrManifestPath, allResult.Err)
 		}
-		return result.Err
+		return allResult.Err
 	}
 
 	// We print successes first and failures last because we want the user to
 	// see the failures in their terminal (and not scroll them up where they
 	// won't be seen).
-
-	if c.flags.Verbose { // Don't print success messages unless --verbose
-		// The set of non-conflicting results is the set of all results minus
-		// the conflicting result. There is at most one "conflict" result in the
-		// map.
-		nonConflicting := maps.Clone(result.Results)
-		if result.ConflictManifestPath != "" {
-			delete(nonConflicting, result.ConflictManifestPath)
+	var exitCode int
+	for _, result := range allResult.Results {
+		var summary string
+		summary, exitCode = summarizeResult(result, absLocation)
+		var doPrint bool
+		switch result.Type {
+		case upgrade.Success, upgrade.AlreadyUpToDate:
+			if c.flags.Verbose { // Don't print success messages unless --verbose
+				doPrint = true
+			}
+		default:
+			doPrint = true
 		}
-
-		messages, _ := summarizeResults(nonConflicting, c.flags.Location) // exitCode return value is ignored because we already know these aren't conflicts.
-		fmt.Fprintln(c.Stdout(), messages)
+		if doPrint {
+			fmt.Fprintln(c.Stdout(), summary)
+		}
 	}
 
-	if result.ConflictManifestPath != "" {
-		resultsThisManifest := result.Results[result.ConflictManifestPath]
-		lastResult := resultsThisManifest[len(resultsThisManifest)-1]
-		messages, exitCode := summarizeResults(map[string][]*upgrade.Result{
-			result.ConflictManifestPath: {lastResult},
-		}, c.flags.Location)
-		fmt.Fprintln(c.Stdout(), messages)
-		if exitCode != 0 {
-			return &common.ExitCodeError{Code: exitCode}
-		}
+	if exitCode != 0 {
+		return &common.ExitCodeError{Code: exitCode}
 	}
 
 	return nil
 }
 
-func summarizeResults(m map[string][]*upgrade.Result, location string) (_ string, exitCode int) {
-	sortedManifests := maps.Keys(m)
-	sort.Strings(sortedManifests)
-	summaries := make([]string, 0, len(m))
-	for _, manifestPath := range sortedManifests {
-		for _, result := range m[manifestPath] {
-			summary, thisExitCode := summarizeResult(result, location, manifestPath)
-			summaries = append(summaries, summary)
-			if thisExitCode > exitCode {
-				exitCode = thisExitCode
-			}
-		}
-	}
-	return strings.Join(summaries, "\n"), exitCode
-}
+// func summarizeResults(rs []*upgrade.Result, location string) (_ string, exitCode int) {
+// 	summaries := make([]string, 0, len(rs))
+// 	for _, result := range rs {
+// 		summary, thisExitCode := summarizeResult(result, location)
+// 		summaries = append(summaries, summary)
+// 		if thisExitCode > exitCode {
+// 			exitCode = thisExitCode
+// 		}
+// 	}
+// 	return strings.Join(summaries, "\n"), exitCode
+// }
 
-func summarizeResult(r *upgrade.Result, location, absManifestPath string) (message string, exitCode int) {
+func summarizeResult(r *upgrade.Result, location string) (message string, exitCode int) {
 	// You might wonder: why are the merge instructions printed here, *inside*
 	// the loop that loops over manifests? Won't that result in a large block of
 	// instructions being printed multiple times? No, because there's at most
 	// one failing upgrade, because we stop after a single failure (merge
 	// conflict or patch reversal conflict).
+	manifestPath := filepath.Join(location, r.ManifestPath)
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
 		// TODO(upgrade): show version
@@ -224,7 +216,7 @@ func summarizeResult(r *upgrade.Result, location, absManifestPath string) (messa
 		// TODO(upgrade):
 		//  - suggest diff / meld / vim commands?
 		var out strings.Builder
-		fmt.Fprintf(&out, "When upgrading manifest %s:\n", absManifestPath)
+		fmt.Fprintf(&out, "When upgrading manifest %s:\n", manifestPath)
 
 		fmt.Fprintf(&out, mergeInstructions+"\n\nList of conflicting files:\n--")
 		for _, cf := range r.Conflicts {
@@ -248,7 +240,7 @@ upgrading other template installations that may exist:
 		return out.String(), 1
 	case upgrade.PatchReversalConflict:
 		var out strings.Builder
-		fmt.Fprintf(&out, "When upgrading manifest %s:\n", absManifestPath)
+		fmt.Fprintf(&out, "When upgrading manifest %s:\n", manifestPath)
 		fmt.Fprint(&out, patchReversalInstructions+"\n\n--")
 		relPaths := make([]string, 0, len(r.ReversalConflicts))
 		for _, rc := range r.ReversalConflicts {
@@ -260,7 +252,7 @@ upgrading other template installations that may exist:
 		fmt.Fprintf(&out, `
 After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade %s --already-resolved=%s --resume-from=%s`, shellescape.Quote(location), strings.Join(relPaths, ","), absManifestPath)
+  abc upgrade %s --already-resolved=%s --resume-from=%s`, shellescape.Quote(location), strings.Join(relPaths, ","), r.ManifestPath)
 		return out.String(), 2
 	default:
 		return fmt.Sprintf("internal error: unknown upgrade result type %q", r.Type), 127
