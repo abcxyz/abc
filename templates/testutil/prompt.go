@@ -28,6 +28,19 @@ import (
 	"github.com/abcxyz/pkg/cli"
 )
 
+const (
+	// Set this to a large value like 9999 if you're debugging a test and you
+	// want it to try forever instead of timing out. Set it back to 1 when
+	// you're done debugging.
+	waitMultiplier = 1
+
+	// Timeouts are arbitrary, basically just "long enough to finish the test
+	// even if we're running on an overloaded CICD VM."
+	readTimeout    = time.Second * waitMultiplier
+	writeTimeout   = time.Second * waitMultiplier
+	overallTimeout = 5 * time.Second * waitMultiplier
+)
+
 // DialogTest is a helper for running tests against a CLI command that involve
 // communicating over stdin and stdout. The expected conversation is defined as
 // a sequence of DialogSteps.
@@ -104,7 +117,7 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	}()
 
 	select {
-	case <-time.After(5 * time.Second): // time is arbitrary
+	case <-time.After(overallTimeout):
 		buf := make([]byte, 1_000_000) // size is arbitrary
 		length := runtime.Stack(buf, true)
 		tb.Fatalf("timed out waiting for background goroutine to finish. Here's a stack trace to show where things are blocked: %s", buf[:length])
@@ -129,7 +142,7 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 	go func() {
 		defer close(errCh)
 		buf := make([]byte, 64*1_000) // size is arbitrary
-		tb.Log("dialoger goroutine trying to read")
+		tb.Logf("dialoger goroutine trying to read, expecting %q", wantSubstr)
 		n, err := r.Read(buf)
 		if err != nil {
 			errCh <- err
@@ -144,8 +157,8 @@ func ReadWithTimeout(tb testing.TB, r io.Reader, wantSubstr string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(time.Second): // time is arbitrary
-		tb.Fatalf("dialoger goroutine timed out waiting to read %q", wantSubstr)
+	case <-time.After(readTimeout): // time is arbitrary
+		tb.Fatalf("dialoger goroutine timed out waiting to read, expected to read %q", wantSubstr)
 	}
 
 	if !strings.Contains(got, wantSubstr) {
@@ -172,7 +185,7 @@ func WriteWithTimeout(tb testing.TB, w io.Writer, msg string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-	case <-time.After(time.Second): // time is arbitrary
+	case <-time.After(writeTimeout): // time is arbitrary
 		tb.Fatalf("dialoger goroutine timed out waiting to write %q", msg)
 	}
 }
