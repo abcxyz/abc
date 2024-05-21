@@ -34,8 +34,8 @@ const (
 	// you're done debugging.
 	waitMultiplier = 1
 
-	// Timeouts are arbitrary, basically just "long enough to finish the test
-	// even if we're running on an overloaded CICD VM."
+	// Timeouts are arbitrary, basically just long enough to finish the test
+	// even if we're running on an overloaded CICD VM.
 	readTimeout    = time.Second * waitMultiplier
 	writeTimeout   = time.Second * waitMultiplier
 	overallTimeout = 5 * time.Second * waitMultiplier
