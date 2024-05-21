@@ -29,11 +29,16 @@ import (
 )
 
 const (
-	// Timeouts are arbitrary, basically just "long enough to finish the test
-	// even if we're running on an overloaded CICD VM."
-	readTimeout    = time.Second
-	writeTimeout   = time.Second
-	overallTimeout = 5 * time.Second
+	// Set this to a large value like 9999 if you're debugging a test and you
+	// want it to try forever instead of timing out. Set it back to 1 when
+	// you're done debugging.
+	waitMultiplier = 1
+
+	// Timeouts are arbitrary, basically just long enough to finish the test
+	// even if we're running on an overloaded CICD VM.
+	readTimeout    = time.Second * waitMultiplier
+	writeTimeout   = time.Second * waitMultiplier
+	overallTimeout = 5 * time.Second * waitMultiplier
 )
 
 // DialogTest is a helper for running tests against a CLI command that involve
