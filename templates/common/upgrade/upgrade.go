@@ -129,31 +129,53 @@ type Params struct {
 	Version string
 }
 
-// TODO doc
-type ResultType string
+// ResultType is the outcome of attempting an upgrade. It may succeed, may be
+// unnecessary, or may have some sort of merge conflict.
+type ResultType int
 
 const (
-	// No upgrades were attempted, perhaps because no manifests could be found.
-	None ResultType = ""
-
 	// This is the value of Result.Type when the upgrade was vacuously
 	// successful because the template is already on the latest version.
-	AlreadyUpToDate ResultType = "already_up_to_date"
+	AlreadyUpToDate ResultType = iota
 
 	// This is the value of Result.Type when there was an upgrade and it was
 	// successful, and no user intervention is needed.
-	Success ResultType = "success"
+	Success ResultType = iota
 
 	// This is the value of Result.Type when abc tried to apply the reversal
 	// patches from the manifest to included-from-destination files, and the
 	// patches could not be applied cleanly. User intervention is needed, and
 	// the ReversalConflicts field should be used.
-	PatchReversalConflict ResultType = "patch_reversal_conflict"
+	PatchReversalConflict ResultType = iota
 
 	// The new version of the template conflicted with local modifications and
 	// manual resolution is required. The Conflicts field should be used.
-	MergeConflict ResultType = "merge_conflict"
+	MergeConflict ResultType = iota
 )
+
+func (r ResultType) String() string {
+	switch r {
+	case AlreadyUpToDate:
+		return "already_up_to_date"
+	case Success:
+		return "success"
+	case PatchReversalConflict:
+		return "patch_reversal_conflict"
+	case MergeConflict:
+		return "merge_conflict"
+	}
+	panic("unreachable") // the go lint exhaustive check prevents this
+}
+
+func (r ResultType) RequiresUserAttention() bool {
+	switch r {
+	case AlreadyUpToDate, Success:
+		return false
+	case PatchReversalConflict, MergeConflict:
+		return true
+	}
+	panic("unreachable") // the go lint exhaustive check prevents this
+}
 
 var interestingnessOrder = []ResultType{AlreadyUpToDate, Success, PatchReversalConflict, MergeConflict}
 
@@ -170,9 +192,9 @@ func resultTypeLess(l, r ResultType) bool {
 // }
 
 // TODO update doc since UpgradeAll exists, maybe rename
-// Result is returned from Upgrade if there's no error. It may indicate that
+// ManifestResult is returned from Upgrade if there's no error. It may indicate that
 // there were merge conflicts requiring manual resolution.
-type Result struct {
+type ManifestResult struct {
 	// Conflicts is the set of files that require manual intervention by the
 	// user to resolve a merge conflict. For example, there may be a file that
 	// was edited by the user and that edit conflicts with changes to that same
@@ -266,7 +288,7 @@ type ActionTaken struct {
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Result, rErr error) {
+func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *ManifestResult, rErr error) {
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
 	installedDir := filepath.Join(filepath.Dir(absManifestPath), "..")
@@ -318,7 +340,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Result,
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
-		return &Result{
+		return &ManifestResult{
 			Type:   AlreadyUpToDate,
 			DLMeta: dlMeta,
 		}, nil
@@ -348,7 +370,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Result,
 		return nil, err
 	}
 	if len(reversalConflicts) > 0 {
-		return &Result{
+		return &ManifestResult{
 			DLMeta:            dlMeta,
 			ReversalConflicts: reversalConflicts,
 			Type:              PatchReversalConflict,
@@ -407,7 +429,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Result,
 	if len(conflicts) == 0 {
 		resultType = Success
 	}
-	return &Result{
+	return &ManifestResult{
 		Conflicts:    conflicts,
 		DLMeta:       dlMeta,
 		NonConflicts: nonConflicts,
@@ -423,7 +445,7 @@ func fillDefaults(p *Params) (*Params, error) {
 	if out.CWD == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("os.Getwd(): %w", err)
 		}
 		out.CWD = cwd
 	}

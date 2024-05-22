@@ -119,7 +119,7 @@ func TestUpgradeAll(t *testing.T) {
 		localEdits                   func(tb testing.TB, installedDir string)
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
 		wantManifestAfterUpgrade     *manifest.Manifest
-		want                         *UpgradeAllResult
+		want                         *Result
 		wantErr                      string
 
 		// wantRejectFile, if set, is a path to a file that should contain the
@@ -151,9 +151,9 @@ func TestUpgradeAll(t *testing.T) {
       paths: ['out.txt']
       with: 'world'`,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						Type:         Success,
 						NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
@@ -171,9 +171,9 @@ func TestUpgradeAll(t *testing.T) {
 		},
 		{
 			name: "short_circuit_if_already_latest_version",
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: AlreadyUpToDate,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         AlreadyUpToDate,
@@ -203,9 +203,9 @@ func TestUpgradeAll(t *testing.T) {
 				"another_file.txt": "I'm another file\n",
 				"spec.yaml":        includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -257,9 +257,9 @@ func TestUpgradeAll(t *testing.T) {
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -307,9 +307,9 @@ func TestUpgradeAll(t *testing.T) {
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: MergeConflict,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         MergeConflict,
@@ -370,9 +370,9 @@ func TestUpgradeAll(t *testing.T) {
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -416,9 +416,9 @@ func TestUpgradeAll(t *testing.T) {
 				"out.txt":   "goodbye",
 				"spec.yaml": includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: MergeConflict,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         MergeConflict,
@@ -470,9 +470,9 @@ func TestUpgradeAll(t *testing.T) {
 				"out.txt":   "goodbye",
 				"spec.yaml": includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: MergeConflict,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         MergeConflict,
@@ -529,9 +529,9 @@ func TestUpgradeAll(t *testing.T) {
 				"template_changes_this_file.txt": "modified contents",
 				"spec.yaml":                      includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -586,9 +586,9 @@ func TestUpgradeAll(t *testing.T) {
 				"some_other_file.txt": "bar",
 				"spec.yaml":           includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -645,9 +645,9 @@ func TestUpgradeAll(t *testing.T) {
 				"some_other_file.txt": "some other file contents",
 				"spec.yaml":           includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: MergeConflict,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         MergeConflict,
@@ -714,9 +714,9 @@ func TestUpgradeAll(t *testing.T) {
 				"some_other_file.txt": "some other file contents",
 				"spec.yaml":           includeDotSpec,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -765,7 +765,7 @@ func TestUpgradeAll(t *testing.T) {
 				"foo.abcmerge_locally_added": "whatever",
 			},
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
-			want:                     &UpgradeAllResult{}, // errors are checked separately
+			want:                     &Result{}, // errors are checked separately
 			wantErr:                  "already an upgrade in progress",
 		},
 		{
@@ -831,9 +831,9 @@ steps:
           with: 'yellow'
 `,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -938,9 +938,9 @@ steps:
           with: 'yellow'
 `,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: PatchReversalConflict,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						DLMeta:       wantDLMeta,
@@ -1049,9 +1049,9 @@ steps:
           with: 'yellow'
 `,
 			},
-			want: &UpgradeAllResult{
+			want: &Result{
 				Overall: Success,
-				Results: []*Result{
+				Results: []*ManifestResult{
 					{
 						ManifestPath: ".",
 						Type:         Success,
@@ -1171,7 +1171,7 @@ yellow is my favorite color
 			opts := []cmp.Option{
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
-				cmpopts.IgnoreFields(UpgradeAllResult{}, "Err"),    // errors are verified separately
+				cmpopts.IgnoreFields(Result{}, "Err"),              // errors are verified separately
 				abctestutil.TransformStructFields(
 					abctestutil.TrimStringPrefixTransformer(destDir+"/"),
 					ReversalConflict{},
@@ -1364,7 +1364,7 @@ steps:
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantReversalConflictResult := &Result{
+	wantReversalConflictResult := &ManifestResult{
 		Type: PatchReversalConflict,
 		ReversalConflicts: []*ReversalConflict{
 			{
@@ -1433,7 +1433,7 @@ steps:
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantResult := &Result{
+	wantResult := &ManifestResult{
 		Type: Success,
 		NonConflicts: []ActionTaken{
 			{

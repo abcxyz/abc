@@ -132,7 +132,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Location, err)
 	}
 
-	allResult := upgrade.UpgradeAll(ctx, &upgrade.Params{
+	result := upgrade.UpgradeAll(ctx, &upgrade.Params{
 		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
@@ -150,35 +150,22 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Stdout:               c.Stdout(),
 		Version:              c.flags.Version,
 	})
-	if allResult.Err != nil {
-		if allResult.ErrManifestPath != "" {
+	if result.Err != nil {
+		if result.ErrManifestPath != "" {
 			return fmt.Errorf("when upgrading the manifest at %s:\n%w",
-				allResult.ErrManifestPath, allResult.Err)
+				result.ErrManifestPath, result.Err)
 		}
-		return allResult.Err
+		return result.Err
 	}
 
-	// We print successes first and failures last because we want the user to
-	// see the failures in their terminal (and not scroll them up where they
-	// won't be seen).
-	var exitCode int
-	for _, result := range allResult.Results {
-		var summary string
-		summary, exitCode = summarizeResult(result, absLocation)
-		var doPrint bool
-		switch result.Type {
-		case upgrade.Success, upgrade.AlreadyUpToDate:
-			if c.flags.Verbose { // Don't print success messages unless --verbose
-				doPrint = true
-			}
-		default:
-			doPrint = true
-		}
-		if doPrint {
-			fmt.Fprintln(c.Stdout(), summary)
+	for i, oneManifestResult := range result.Results {
+		isLast := i == len(result.Results)-1
+		if isPrintable(c.flags.Verbose, isLast, oneManifestResult.Type) {
+			fmt.Fprintln(c.Stdout(), summarizeResult(oneManifestResult, absLocation))
 		}
 	}
 
+	exitCode := exitCode(result.Overall)
 	if exitCode != 0 {
 		return &common.ExitCodeError{Code: exitCode}
 	}
@@ -186,19 +173,31 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-// func summarizeResults(rs []*upgrade.Result, location string) (_ string, exitCode int) {
-// 	summaries := make([]string, 0, len(rs))
-// 	for _, result := range rs {
-// 		summary, thisExitCode := summarizeResult(result, location)
-// 		summaries = append(summaries, summary)
-// 		if thisExitCode > exitCode {
-// 			exitCode = thisExitCode
-// 		}
-// 	}
-// 	return strings.Join(summaries, "\n"), exitCode
-// }
+func isPrintable(verboseFlag, isLast bool, rt upgrade.ResultType) bool {
+	if verboseFlag {
+		return true
+	}
+	if !isLast {
+		// all results before the last are successful, because we abort on
+		// failure. Therefore we only print them if we're in verbose mode.
+		return false
+	}
+	return rt.RequiresUserAttention()
+}
 
-func summarizeResult(r *upgrade.Result, location string) (message string, exitCode int) {
+func exitCode(overallResult upgrade.ResultType) int {
+	switch overallResult {
+	case upgrade.AlreadyUpToDate, upgrade.Success:
+		return 0
+	case upgrade.MergeConflict:
+		return 1
+	case upgrade.PatchReversalConflict:
+		return 2
+	}
+	panic("unreachable") // the go lint exhaustive check prevents this
+}
+
+func summarizeResult(r *upgrade.ManifestResult, location string) string {
 	// You might wonder: why are the merge instructions printed here, *inside*
 	// the loop that loops over manifests? Won't that result in a large block of
 	// instructions being printed multiple times? No, because there's at most
@@ -208,10 +207,10 @@ func summarizeResult(r *upgrade.Result, location string) (message string, exitCo
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
 		// TODO(upgrade): show version
-		return "Already up to date with latest template version", 0
+		return "Already up to date with latest template version"
 	case upgrade.Success:
 		// TODO(upgrade): show version upgraded to
-		return "Upgrade complete with no conflicts", 0
+		return "Upgrade complete with no conflicts"
 	case upgrade.MergeConflict:
 		// TODO(upgrade):
 		//  - suggest diff / meld / vim commands?
@@ -237,7 +236,7 @@ upgrading other template installations that may exist:
 
   abc upgrade %s`, location)
 
-		return out.String(), 1
+		return out.String()
 	case upgrade.PatchReversalConflict:
 		var out strings.Builder
 		fmt.Fprintf(&out, "When upgrading manifest %s:\n", manifestPath)
@@ -250,7 +249,7 @@ upgrading other template installations that may exist:
 			relPaths = append(relPaths, shellescape.Quote(rc.RelPath))
 		}
 
-		// In the case where the user specifed just a single manifest to
+		// In the case where the user specified just a single manifest to
 		// upgrade, like "abc upgrade foo/.abc/manifest.yaml, then we'll leave
 		// out the "--resume-from=" flag. This would be confusing and
 		// unnecessary, since you don't need to specify a template to resume
@@ -264,19 +263,7 @@ After manually applying the rejected hunks, run this command to continue:
 
   abc upgrade %s --already-resolved=%s%s`,
 			shellescape.Quote(location), strings.Join(relPaths, ","), resumeFrom)
-		return out.String(), 2
-	default:
-		return fmt.Sprintf("internal error: unknown upgrade result type %q", r.Type), 127
+		return out.String()
 	}
+	panic("unreachable") // the go lint exhaustive check prevents this
 }
-
-// // isOnlyManifest crawls the path "location" and looks for all manifest files.
-// // Returns true if "manifestPath" is the only manifest that's found. This is
-// // used to detect whether an upgrade is complete or not
-// func isOnlyManifest(location, manifestPath string) (bool, error) {
-// 	foundManifests, err := upgrade.CrawlManifests(location)
-// 	if err != nil {
-// 		return false, err //nolint:wrapcheck
-// 	}
-// 	filepath.SameFile
-// }

@@ -513,30 +513,27 @@ func TestSummarizeResult(t *testing.T) {
 	const location = "my-location"
 
 	cases := []struct {
-		name         string
-		result       *upgrade.Result
-		wantMessage  string
-		wantExitCode int
+		name        string
+		result      *upgrade.ManifestResult
+		wantMessage string
 	}{
 		{
 			name: "success",
-			result: &upgrade.Result{
+			result: &upgrade.ManifestResult{
 				Type: upgrade.Success,
 			},
-			wantMessage:  "Upgrade complete with no conflicts",
-			wantExitCode: 0,
+			wantMessage: "Upgrade complete with no conflicts",
 		},
 		{
 			name: "already_up_to_date",
-			result: &upgrade.Result{
+			result: &upgrade.ManifestResult{
 				Type: upgrade.AlreadyUpToDate,
 			},
-			wantMessage:  "Already up to date with latest template version",
-			wantExitCode: 0,
+			wantMessage: "Already up to date with latest template version",
 		},
 		{
 			name: "conflicts",
-			result: &upgrade.Result{
+			result: &upgrade.ManifestResult{
 				Type:         upgrade.MergeConflict,
 				ManifestPath: "foo/bar/my_manifest.yaml",
 				Conflicts: []upgrade.ActionTaken{
@@ -577,11 +574,10 @@ After manually resolving the merge conflict, run this command to continue
 upgrading other template installations that may exist:
 
   abc upgrade my-location`,
-			wantExitCode: 1,
 		},
 		{
 			name: "reversal_conflict",
-			result: &upgrade.Result{
+			result: &upgrade.ManifestResult{
 				Type:         upgrade.PatchReversalConflict,
 				ManifestPath: "/foo/bar/my_manifest.yaml",
 				ReversalConflicts: []*upgrade.ReversalConflict{
@@ -610,12 +606,11 @@ Rejected hunks for you to apply: /my/template/output/dir/some/other/path.txt.pat
 After manually applying the rejected hunks, run this command to continue:
 
   abc upgrade my-location --already-resolved=some/path.txt,some/other/path.txt --resume-from=/foo/bar/my_manifest.yaml`,
-			wantExitCode: 2,
 		},
 
 		{
 			name: "reversal_conflict_with_weird_filename_characters_escaped",
-			result: &upgrade.Result{
+			result: &upgrade.ManifestResult{
 				Type:         upgrade.PatchReversalConflict,
 				ManifestPath: "/foo/bar/my_manifest.yaml",
 				ReversalConflicts: []*upgrade.ReversalConflict{
@@ -644,7 +639,6 @@ Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.tx
 After manually applying the rejected hunks, run this command to continue:
 
   abc upgrade my-location --already-resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' --resume-from=/foo/bar/my_manifest.yaml`,
-			wantExitCode: 2,
 		},
 	}
 
@@ -653,11 +647,7 @@ After manually applying the rejected hunks, run this command to continue:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			message, exitCode := summarizeResult(tc.result, location)
-			if exitCode != tc.wantExitCode {
-				t.Errorf("got exit code %d, want %d", exitCode, tc.wantExitCode)
-			}
-
+			message := summarizeResult(tc.result, location)
 			if diff := cmp.Diff(message, tc.wantMessage); diff != "" {
 				t.Errorf("message was not as expected (-got,+want): %s", diff)
 			}

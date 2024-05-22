@@ -16,6 +16,7 @@ package upgrade
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -27,8 +28,10 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 )
 
-// TODO doc
-type UpgradeAllResult struct {
+// Result is the return value from an upgrade operation. It will be returned
+// even if there's an error, to report any partial progress. It contains an
+// error field to report an error that may have happened.
+type Result struct {
 	// The "most severe" or "most interesting" upgrade result out of all the
 	// upgrades attempted. The ascending order of severity is None ->
 	// AlreadyUpToDate -> Success -> PatchReversalConflict -> MergeConflict
@@ -48,7 +51,7 @@ type UpgradeAllResult struct {
 	// a conflict (Type equals MergeConflict or PatchReversalConflict).
 	//
 	// All slices in this map will have length at least one.
-	Results []*Result
+	Results []*ManifestResult
 
 	// Err is any error encountered during the upgrade operation. A merge
 	// conflict during upgrade is not considered an error.
@@ -59,6 +62,9 @@ type UpgradeAllResult struct {
 	ErrManifestPath string // The optional path to the manifest whose upgrade resulted in error
 }
 
+// ErrNoManifests is returned when upgrade is called with a directory that
+// contains no manifest, or a filename that is not a manifest. Nothing could be
+// found to be upgraded.
 var ErrNoManifests error = fmt.Errorf("found no template manifests to upgrade")
 
 // UpgradeAll crawls the given directory looking for manifest files to upgrade,
@@ -66,13 +72,13 @@ var ErrNoManifests error = fmt.Errorf("found no template manifests to upgrade")
 // if any errors are encountered.
 //
 // If no manifests could be found, then ErrNoManifests is returned.
-func UpgradeAll(ctx context.Context, p *Params) *UpgradeAllResult {
+func UpgradeAll(ctx context.Context, p *Params) *Result {
 	// logger := logging.FromContext(ctx).With("logger", "UpgradeAll")
 
 	var err error
 	p, err = fillDefaults(p) // includes shallow copying of input
 	if err != nil {
-		return &UpgradeAllResult{Err: err}
+		return &Result{Err: err}
 	}
 
 	// if !filepath.IsAbs(p.Location) {
@@ -95,22 +101,22 @@ func UpgradeAll(ctx context.Context, p *Params) *UpgradeAllResult {
 
 	manifests, err := crawlManifests(p.Location)
 	if err != nil {
-		return &UpgradeAllResult{Err: fmt.Errorf("while crawling manifests: %w", err)}
+		return &Result{Err: fmt.Errorf("while crawling manifests: %w", err)}
 	}
 	if len(manifests) == 0 {
 		// Perhaps this isn't strictly an error, but in the case where the user
 		// invokes the tool incorrectly and doesn't actually do the work they
 		// intended, we want to tell them and not just pretend things are fine.
-		return &UpgradeAllResult{Err: ErrNoManifests}
+		return &Result{Err: ErrNoManifests}
 	}
 
 	manifests, err = dependencyOrder(ctx, p.Location, manifests)
 	if err != nil {
-		return &UpgradeAllResult{Err: fmt.Errorf("while loading manifests to determine dependency order: %w", err)}
+		return &Result{Err: fmt.Errorf("while loading manifests to determine dependency order: %w", err)}
 	}
 
-	out := &UpgradeAllResult{
-		Results: make([]*Result, 0, len(manifests)),
+	out := &Result{
+		Results: make([]*ManifestResult, 0, len(manifests)),
 	}
 
 	for _, m := range manifests {
@@ -156,7 +162,7 @@ func UpgradeAll(ctx context.Context, p *Params) *UpgradeAllResult {
 	return out
 }
 
-func overallResult(results []*Result) ResultType {
+func overallResult(results []*ManifestResult) ResultType {
 	var out ResultType
 	for _, result := range results {
 		if resultTypeLess(out, result.Type) {
@@ -324,14 +330,29 @@ func dependencyOrder(ctx context.Context, upgradeLocation string, manifestsRel [
 	if err != nil {
 		return nil, err
 	}
-	return graph.TopoSortGeneric(depGraph)
+	sorted, err := graph.TopoSortGeneric(depGraph)
+	if err != nil {
+		if errors.Is(err, graph.ErrCyclic) {
+			return nil, fmt.Errorf("there is a cycle in the dependency graph between manifest files")
+		}
+		// At the time of writing, there is no other error that's possible, but
+		// we'll be future-proof.
+		return nil, fmt.Errorf("unexpected error during topological sort: %w", err)
+	}
+	return sorted, nil
 }
 
+// depGraph returns a depdendency graph saying which manifests were output by
+// a template that itself was the output of another template. It basically
+// specifies the upgrade order for templates.
+//
 // upgradeLocation is the file or directory provided by the user.
 // The returned map keys and values are relative paths to manifest files
 // relative to upgradeLocation.
-// This is basically a "self join" on manifests: TODO
-// TODO short-circuit if upgradeLocation is a file (or if manifestsRel is len 1)?
+//
+// This is basically a "self join" on manifests where the *source* spec.yaml
+// file from one manifest is joined with the manifest that *created* that
+// spec.yaml (if it exists).
 func depGraph(ctx context.Context, upgradeLocation string, manifestsRel []string) (map[string][]string, error) {
 	// keys are relative manifest paths, values are spec paths from
 	// the template that was installed to create that manifest. Only contains
@@ -383,6 +404,3 @@ func depGraph(ctx context.Context, upgradeLocation string, manifestsRel []string
 
 	return manifestToManifestDeps, nil
 }
-
-// func isUnderDir(dir, path string) {
-// }
