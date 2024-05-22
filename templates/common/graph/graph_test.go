@@ -1,6 +1,21 @@
+// Copyright 2024 The Authors (see AUTHORS file)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package graph
 
 import (
+	"math"
 	"math/rand"
 	"slices"
 	"testing"
@@ -58,7 +73,7 @@ func TestTopoSort(t *testing.T) {
 		{
 			name: "diamond_reverse",
 			d:    DAG{{}, {0}, {0}, {1, 2}},
-			want: []int{0, 1, 2, 3}, // {0, 2, 1, 3} woudl also be valid
+			want: []int{0, 1, 2, 3}, // {0, 2, 1, 3} would also be valid
 		},
 		{
 			name: "diamond_with_tail",
@@ -83,9 +98,12 @@ func TestTopoSort(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := TopoSort(tc.d)
-			if err != tc.wantErr {
+			if err != tc.wantErr { //nolint:errorlint // the error should always be returned unwrapped, so we don't use errors.Is().
 				t.Fatalf("got error %v but wanted %v", err, tc.wantErr)
 			}
 			if !slices.Equal(got, tc.want) {
@@ -95,23 +113,197 @@ func TestTopoSort(t *testing.T) {
 	}
 }
 
-func TestRandomGraph(t *testing.T) {
+func TestTopoSortGeneric(t *testing.T) {
+	// Maintainers be advised: Gemini wrote this test.
 	t.Parallel()
-	const numTests = 10000
+
+	cases := []struct {
+		name    string
+		m       map[string][]string
+		want    []string
+		wantErr error
+	}{
+		{
+			name: "empty",
+			m:    map[string][]string{},
+			want: []string{},
+		},
+		{
+			name: "single_node",
+			m:    map[string][]string{"alice": {}},
+			want: []string{"alice"},
+		},
+		{
+			name:    "single_node_self_edge",
+			m:       map[string][]string{"alice": {"alice"}},
+			wantErr: ErrCyclic,
+		},
+		{
+			name:    "multi_node_self_edge",
+			m:       map[string][]string{"alice": {"bob"}, "bob": {"bob"}},
+			wantErr: ErrCyclic,
+		},
+		{
+			name: "2_linear",
+			m:    map[string][]string{"alice": {"bob"}, "bob": {}},
+			want: []string{"bob", "alice"},
+		},
+		{
+			name: "3_linear",
+			m:    map[string][]string{"alice": {"bob"}, "bob": {"charlie"}, "charlie": {}},
+			want: []string{"charlie", "bob", "alice"},
+		},
+		{
+			name: "3_linear_reverse",
+			m:    map[string][]string{"alice": {}, "bob": {"alice"}, "charlie": {"bob"}},
+			want: []string{"alice", "bob", "charlie"},
+		},
+		{
+			name: "diamond",
+			m:    map[string][]string{"alice": {"bob", "charlie"}, "bob": {"david"}, "charlie": {"david"}, "david": {}},
+			want: []string{"david", "bob", "charlie", "alice"}, // {"david", "charlie", "bob", "alice"} would also be valid
+		},
+		{
+			name: "diamond_reverse",
+			m:    map[string][]string{"alice": {}, "bob": {"alice"}, "charlie": {"alice"}, "david": {"bob", "charlie"}},
+			want: []string{"alice", "bob", "charlie", "david"}, // {"alice", "charlie", "bob", "david"} would also be valid
+		},
+		{
+			name: "diamond_with_tail",
+			m:    map[string][]string{"alice": {"bob", "charlie"}, "bob": {"david"}, "charlie": {"david"}, "david": {"eve"}, "eve": {}},
+			want: []string{"eve", "david", "bob", "charlie", "alice"}, // {"eve", "david", "charlie", "bob", "alice"} would also be valid
+		},
+		{
+			name:    "2_cycle",
+			m:       map[string][]string{"alice": {"bob"}, "bob": {"alice"}},
+			wantErr: ErrCyclic,
+		},
+		{
+			name:    "3_cycle",
+			m:       map[string][]string{"alice": {"bob"}, "bob": {"charlie"}, "charlie": {"alice"}},
+			wantErr: ErrCyclic,
+		},
+		{
+			name:    "cycle_with_other_edges",
+			m:       map[string][]string{"alice": {"bob"}, "bob": {}, "charlie": {"david"}, "david": {"charlie"}},
+			wantErr: ErrCyclic,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := TopoSortGeneric(tc.m)
+			if err != tc.wantErr { //nolint:errorlint // the error should always be returned unwrapped, so we don't use errors.Is().
+				t.Fatalf("got error %v but wanted %v", err, tc.wantErr)
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("TopoSortGeneric(%v) = %v; want %v", tc.m, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestTopoSort_InvalidEdge(t *testing.T) {
+	// Maintainers be advised: Gemini wrote this test.
+	t.Parallel()
+
+	d := DAG{{1}, {2}, {3}}
+	d[0] = append(d[0], 4) // out of bounds edge
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic, got none")
+		}
+	}()
+	_, _ = TopoSort(d)
+}
+
+func TestRandomDAGs(t *testing.T) {
+	t.Parallel()
+	const numTests = 1000
 	for seed := int64(0); seed < numTests; seed++ {
-		// Why don't we use subtests here? Because we don't want to spam the
+		// Why don't we use t.Run() here? Because we don't want to spam the
 		// console with tens of thousands of test results.
 
-		r := rand.New(rand.NewSource(seed)) // math rand, not crypto rand, because we want speed not security
+		// We use math rand, not crypto rand, because we want speed, not
+		// security. We're just making a random-ish graph for testing.
+		r := rand.New(rand.NewSource(seed)) //nolint:gosec
 
-		d := makeRandomGraph(r)
+		d := makeRandomDAG(r)
 		got, err := TopoSort(d)
 		if err != nil {
-			continue // there was a cycle. Perhaps in the future we could verify that this is true somehow
+			t.Fatal(err)
 		}
 
 		assertSortIsTopological(t, d, got)
 	}
+}
+
+// makeRandomDAG randomly generates and returns a directed acyclic graph.
+func makeRandomDAG(rand *rand.Rand) DAG {
+	const (
+		maxNodes           = 20
+		maxOutEdgesPerNode = 5
+	)
+	// We generate a DAG by just iterating over a slice of nodes and randomly
+	// adding edges that only go "forward" in the slice. By only adding forward
+	// edges we guarantee that there are no cycles.
+	numNodes := intMin(geometricRand(rand, 0.2), maxNodes)
+	dag := make(DAG, numNodes)
+	for fromNode := range dag {
+		nodesRemaining := numNodes - fromNode - 1 // how many nodes are after this one
+		numNeighbors := intMin(geometricRand(rand, 0.2), nodesRemaining)
+		for i := 0; i < numNeighbors; i++ {
+			// This could generate multiple edges with the same (source,dest)
+			// pair, but our algorithm should tolerate that.
+			skipAhead := intMin(geometricRand(rand, 0.3), nodesRemaining)
+			dag[fromNode] = append(dag[fromNode], fromNode+skipAhead)
+		}
+	}
+
+	return renumberNodes(dag)
+}
+
+// Reassigns random node indices, while keeping the graph structire, so we're
+// not always handing an already-sorted input to the sort algorithm.
+func renumberNodes(in DAG) DAG {
+	numNodes := len(in)
+	oldToNew := rand.Perm(numNodes) // index is old node index, oldToNew[i] is the new index for that node
+	out := make(DAG, numNodes)
+	for origSourceNode, destNodes := range in {
+		for i, destNode := range destNodes {
+			destNodes[i] = oldToNew[destNode]
+		}
+		out[oldToNew[origSourceNode]] = destNodes
+	}
+	return out
+}
+
+// Generates a geometrically-distributed random number. This is good for when
+// you want a random integer that's usually small but not always.
+func geometricRand(rand *rand.Rand, p float64) int {
+	// Thanks to Gemini for writing this function!
+
+	// Check if probability is valid
+	if p < 0 || p > 1 {
+		panic("Probability must be between 0 and 1")
+	}
+
+	// Generate uniform random number
+	u := rand.Float64()
+
+	// Calculate geometrically distributed random number
+	return int(math.Ceil(math.Log(1-u) / math.Log(1-p)))
+}
+
+func intMin(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
 }
 
 func assertSortIsTopological(t *testing.T, d DAG, candidateSort []int) {
@@ -127,36 +319,4 @@ func assertSortIsTopological(t *testing.T, d DAG, candidateSort []int) {
 		}
 		seen[node] = true
 	}
-}
-
-func makeRandomGraph(rand *rand.Rand) DAG {
-	numNodes := weightedRandom(rand, []int{1, 1, 50, 100, 100, 10}) // arbitrary, can be changed. Prefer not to have too small or too large of a graph.
-	d := make(DAG, numNodes)
-	for i := range d {
-		// Prefer to generate a smallish number of neighbors for each node.
-		// Otherwise, our randomly generated graphs would be very likely to be
-		// cyclic and we wouldn't often get a valid topological sort.
-		numNeighborWeights := []int{10, 10, 2, 1, 1, 1, 1, 1}[:numNodes]
-		numNeighbors := weightedRandom(rand, numNeighborWeights)
-		d[i] = rand.Perm(numNodes)[:numNeighbors]
-	}
-	return d
-}
-
-// weightedRandom generates a non-uniform random integer in the range
-// 0<=len(weights). The inputs are probability mass for each index. They do not
-// need to be normalized (so passing [1,1] and [999,999] means the same thing).
-func weightedRandom(rand *rand.Rand, weights []int) int {
-	sum := 0
-	for _, w := range weights {
-		sum += w
-	}
-	r := rand.Int() % sum
-	for i, w := range weights {
-		r -= w
-		if r < 0 {
-			return i
-		}
-	}
-	panic("unreachable")
 }

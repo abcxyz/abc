@@ -1,3 +1,17 @@
+// Copyright 2024 The Authors (see AUTHORS file)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package graph
 
 import (
@@ -18,6 +32,8 @@ import (
 // before N.
 type DAG [][]int
 
+// ErrCyclic is returned when the provided graph has a cycle (so it can't be
+// topologically sorted).
 var ErrCyclic = fmt.Errorf("this directed graph has a cycle")
 
 type visitState int
@@ -42,8 +58,8 @@ const (
 // Sorting an empty graph returns an empty list.
 //
 // Note for maintainers: why didn't we import a third-party lib for this?
-// They're all either sketchy, unmaintainted, or bloated. And the entire
-// algorithm is 30-ish lines of code.
+// They're all either sketchy, unmaintainted, or require implementing lots of
+// cumbersome interfaces. And this entire algorithm is tiny.
 func TopoSort(d DAG) ([]int, error) {
 	// This algorithm comes from
 	// https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search.
@@ -67,6 +83,7 @@ func visit(node int, visitStates []visitState, d DAG, out *[]int) error {
 		return nil
 	case visiting:
 		return ErrCyclic
+	case unvisited: // useless, but satisfies the linter.
 	}
 	visitStates[node] = visiting
 
@@ -82,7 +99,6 @@ func visit(node int, visitStates []visitState, d DAG, out *[]int) error {
 	return nil
 }
 
-// TODO test
 // A wrapper around [TopoSort] for the case where you have graph node adjacency
 // expressed as node labels rather than node indices. Like {"alice": ["bob"]}.
 func TopoSortGeneric[T cmp.Ordered](m map[T][]T) ([]T, error) {
@@ -96,6 +112,8 @@ func TopoSortGeneric[T cmp.Ordered](m map[T][]T) ([]T, error) {
 	return decodeFromInts(topoSorted, inputOrder), nil
 }
 
+// Converts a map with node labels of type T to an [][]int. The returned []T
+// maps node indices to their original labels.
 func encodeAsInts[T cmp.Ordered](m map[T][]T) (DAG, []T) {
 	nodesSeen := map[T]struct{}{}
 	for k, vs := range m {

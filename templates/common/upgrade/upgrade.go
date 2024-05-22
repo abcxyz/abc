@@ -186,7 +186,7 @@ type Result struct {
 
 	// TODO doc
 	ManifestPath string
-	
+
 	// The paths to files where abc tried to apply the reversal
 	// patches from the manifest to included-from-destination files, and the
 	// patches could not be applied cleanly. Manual resolution is needed.
