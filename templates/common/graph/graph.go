@@ -15,135 +15,73 @@
 package graph
 
 import (
-	"cmp"
 	"fmt"
-	"slices"
-
-	"golang.org/x/exp/maps"
 )
 
-// A DAG is a directed graph. It is list of nodes, identified by their slice
-// index, each having 0 or more outgoing edges to other node indices. So
-// [][]int{{1}, {}} is a graph with two nodes, where node 0 has an outgoing edge
-// to node 1, and node 1 has no outgoing edges.
+// Graph represents a directed graph.
+type Graph[T comparable] struct {
+	edges map[T][]T
+}
+
+// NewGraph creates a new graph.
+func NewGraph[T comparable]() *Graph[T] {
+	return &Graph[T]{
+		edges: make(map[T][]T),
+	}
+}
+
+// AddEdge adds a directed edge from source to destination. This should be
+// interpreted as "$source depends on $destination," not "$source comes before
+// "$destination." In the topologically sorted output, $destination will come
+// before $source.
+func (g *Graph[T]) AddEdge(source, destination T) {
+	g.edges[source] = append(g.edges[source], destination)
+}
+
+// TopologicalSort performs a topological sort. For all edges a->b, the output
+// will have b before a.
 //
-// The edge directions are interpreted as "node index N depends on node indices
-// [X,Y,Z]". So the returned topological sort will place X, Y, and Z somewhere
-// before N.
-type DAG [][]int
+// If there is a cycle in the graph, an error message will be returned that
+// names the nodes involved in the cycle.
+func (g *Graph[T]) TopologicalSort() ([]T, error) {
+	visited := make(map[T]struct{})
+	out := make([]T, 0, len(g.edges))
+	recursionStack := make(map[T]struct{}) // only used to print cycles when found
 
-// ErrCyclic is returned when the provided graph has a cycle (so it can't be
-// topologically sorted).
-var ErrCyclic = fmt.Errorf("this directed graph has a cycle")
-
-type visitState int
-
-const (
-	unvisited visitState = iota
-	visiting
-	visited
-)
-
-// TopoSort is a topological (dependency-order) sort of the given node indices.
-// If there are multiple valid topological orderings, the choice of which one
-// you'll get back is deterministic but not controllable.
-//
-// The returned integers are indices into the input slice d. So a return value
-// of []int{3, 7, ...} means that d[3] has no dependencies and comes first in
-// the topological sort, and is followed by d[7], and so on.
-//
-// If any outbound edge index in any of the slices is out of range
-// 0<=edgeIndex<len(d) then it will panic.
-//
-// Sorting an empty graph returns an empty list.
-//
-// Note for maintainers: why didn't we import a third-party lib for this?
-// They're all either sketchy, unmaintainted, or require implementing lots of
-// cumbersome interfaces. And this entire algorithm is tiny.
-func TopoSort(d DAG) ([]int, error) {
-	// This algorithm comes from
-	// https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search.
-
-	visitStates := make([]visitState, len(d))
-
-	out := make([]int, 0, len(d))
-
-	for node := 0; node < len(d); node++ {
-		if err := visit(node, visitStates, d, &out); err != nil {
-			return nil, err
+	for node := range g.edges {
+		if _, ok := visited[node]; !ok {
+			if err := g.dfs(node, visited, &out, recursionStack); err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return out, nil
 }
 
-func visit(node int, visitStates []visitState, d DAG, out *[]int) error {
-	switch visitStates[node] {
-	case visited:
-		return nil
-	case visiting:
-		return ErrCyclic
-	case unvisited: // useless, but satisfies the linter.
-	}
-	visitStates[node] = visiting
+// dfs is the heart of the topological sort. See
+// https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search.
+func (g *Graph[T]) dfs(node T, visited map[T]struct{}, stack *[]T, recursionStack map[T]struct{}) error {
+	visited[node] = struct{}{}
+	recursionStack[node] = struct{}{}
 
-	for _, neighbor := range d[node] {
-		if err := visit(neighbor, visitStates, d, out); err != nil {
-			return err
+	for _, neighbor := range g.edges[node] {
+		if _, ok := visited[neighbor]; !ok {
+			if err := g.dfs(neighbor, visited, stack, recursionStack); err != nil {
+				return err
+			}
+		} else if _, ok := recursionStack[neighbor]; ok {
+			// Cycle detected!
+			cycle := []T{node, neighbor}
+			for current := neighbor; current != node; current = g.edges[current][0] {
+				cycle = append(cycle, g.edges[current][0])
+			}
+			return fmt.Errorf("cycle detected: %v", cycle)
 		}
 	}
 
-	visitStates[node] = visited
+	delete(recursionStack, node)  // Remove node from recursion stack
+	*stack = append(*stack, node) // Add node to the stack
 
-	*out = append(*out, node)
 	return nil
-}
-
-// A wrapper around [TopoSort] for the case where you have graph node adjacency
-// expressed as node labels rather than node indices. Like {"alice": ["bob"]}.
-func TopoSortGeneric[T cmp.Ordered](m map[T][]T) ([]T, error) {
-	d, inputOrder := encodeAsInts(m)
-
-	topoSorted, err := TopoSort(d)
-	if err != nil {
-		return nil, err
-	}
-
-	return decodeFromInts(topoSorted, inputOrder), nil
-}
-
-// Converts a map with node labels of type T to an [][]int. The returned []T
-// maps node indices to their original labels.
-func encodeAsInts[T cmp.Ordered](m map[T][]T) (DAG, []T) {
-	nodesSeen := map[T]struct{}{}
-	for k, vs := range m {
-		nodesSeen[k] = struct{}{}
-		for _, v := range vs {
-			nodesSeen[v] = struct{}{}
-		}
-	}
-	sortedNodes := maps.Keys(nodesSeen)
-	slices.SortFunc(sortedNodes, cmp.Compare)
-
-	nodeToIndex := map[T]int{}
-	for i, node := range sortedNodes {
-		nodeToIndex[node] = i
-	}
-
-	d := make(DAG, len(sortedNodes))
-	for index, node := range sortedNodes {
-		for _, dependsNode := range m[node] {
-			d[index] = append(d[index], nodeToIndex[dependsNode])
-		}
-	}
-
-	return d, sortedNodes
-}
-
-func decodeFromInts[T cmp.Ordered](topoSorted []int, inputOrder []T) []T {
-	out := make([]T, len(topoSorted))
-	for i, node := range topoSorted {
-		out[i] = inputOrder[node]
-	}
-	return out
 }
