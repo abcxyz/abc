@@ -80,7 +80,7 @@ func (g *Graph[T]) dfs(node T, visited map[T]struct{}, stack *[]T, cycleDetect m
 		}
 	}
 
-	delete(cycleDetect, node)  // Remove node from recursion stack
+	delete(cycleDetect, node)     // Remove node from recursion stack
 	*stack = append(*stack, node) // Add node to the output list
 
 	return nil
