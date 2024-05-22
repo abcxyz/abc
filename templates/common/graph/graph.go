@@ -46,11 +46,11 @@ func (g *Graph[T]) AddEdge(source, destination T) {
 func (g *Graph[T]) TopologicalSort() ([]T, error) {
 	visited := make(map[T]struct{})
 	out := make([]T, 0, len(g.edges))
-	recursionStack := make(map[T]struct{}) // only used to print cycles when found
+	cycleDetect := make(map[T]struct{})
 
 	for node := range g.edges {
 		if _, ok := visited[node]; !ok {
-			if err := g.dfs(node, visited, &out, recursionStack); err != nil {
+			if err := g.dfs(node, visited, &out, cycleDetect); err != nil {
 				return nil, err
 			}
 		}
@@ -61,16 +61,16 @@ func (g *Graph[T]) TopologicalSort() ([]T, error) {
 
 // dfs is the heart of the topological sort. See
 // https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search.
-func (g *Graph[T]) dfs(node T, visited map[T]struct{}, stack *[]T, recursionStack map[T]struct{}) error {
+func (g *Graph[T]) dfs(node T, visited map[T]struct{}, stack *[]T, cycleDetect map[T]struct{}) error {
 	visited[node] = struct{}{}
-	recursionStack[node] = struct{}{}
+	cycleDetect[node] = struct{}{}
 
 	for _, neighbor := range g.edges[node] {
 		if _, ok := visited[neighbor]; !ok {
-			if err := g.dfs(neighbor, visited, stack, recursionStack); err != nil {
+			if err := g.dfs(neighbor, visited, stack, cycleDetect); err != nil {
 				return err
 			}
-		} else if _, ok := recursionStack[neighbor]; ok {
+		} else if _, ok := cycleDetect[neighbor]; ok {
 			// Cycle detected!
 			cycle := []T{node, neighbor}
 			for current := neighbor; current != node; current = g.edges[current][0] {
@@ -80,8 +80,8 @@ func (g *Graph[T]) dfs(node T, visited map[T]struct{}, stack *[]T, recursionStac
 		}
 	}
 
-	delete(recursionStack, node)  // Remove node from recursion stack
-	*stack = append(*stack, node) // Add node to the stack
+	delete(cycleDetect, node)  // Remove node from recursion stack
+	*stack = append(*stack, node) // Add node to the output list
 
 	return nil
 }
