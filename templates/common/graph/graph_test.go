@@ -15,7 +15,6 @@
 package graph
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
 	"slices"
@@ -240,17 +239,13 @@ func TestRandomDAGs(t *testing.T) {
 		}
 
 		assertSortIsTopological(t, d, got)
-		if seed == 0 {
-			fmt.Printf("*** %v\n", d)
-		}
 	}
 }
 
 // makeRandomDAG randomly generates and returns a directed acyclic graph.
 func makeRandomDAG(rand *rand.Rand) DAG {
 	const (
-		maxNodes           = 20
-		maxOutEdgesPerNode = 5
+		maxNodes = 20
 	)
 	// We generate a DAG by just iterating over a slice of nodes and randomly
 	// adding edges that only go "forward" in the slice. By only adding forward
