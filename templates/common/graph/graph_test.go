@@ -208,6 +208,7 @@ func TestTopoSortGeneric(t *testing.T) {
 }
 
 func TestTopoSort_InvalidEdge(t *testing.T) {
+	// Maintainers be advised: Gemini wrote this test.
 	t.Parallel()
 
 	d := DAG{{1}, {2}, {3}}
@@ -218,7 +219,7 @@ func TestTopoSort_InvalidEdge(t *testing.T) {
 			t.Errorf("expected panic, got none")
 		}
 	}()
-	TopoSort(d)
+	_, _ = TopoSort(d)
 }
 
 func TestRandomDAGs(t *testing.T) {
@@ -296,7 +297,7 @@ func geometricRand(rand *rand.Rand, p float64) int {
 	}
 
 	// Generate uniform random number
-	u := rand.Float64() //nolint:gosec
+	u := rand.Float64()
 
 	// Calculate geometrically distributed random number
 	return int(math.Ceil(math.Log(1-u) / math.Log(1-p)))
