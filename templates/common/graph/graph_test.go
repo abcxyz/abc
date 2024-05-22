@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"slices"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -30,13 +32,13 @@ func TestTopoSort(t *testing.T) {
 	cases := []struct {
 		name    string
 		g       *Graph[string]
-		want    []string
+		want    [][]string
 		wantErr string
 	}{
 		{
 			name: "empty",
 			g:    NewGraph[string](),
-			want: []string{},
+			want: [][]string{},
 		},
 		{
 			name: "one_edge",
@@ -45,7 +47,7 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("a", "b")
 				return g
 			}(),
-			want: []string{"b", "a"},
+			want: [][]string{{"b", "a"}},
 		},
 		{
 			name: "two_edges",
@@ -55,7 +57,7 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("b", "c")
 				return g
 			}(),
-			want: []string{"c", "b", "a"},
+			want: [][]string{{"c", "b", "a"}},
 		},
 		{
 			name: "diamond",
@@ -67,7 +69,10 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("c", "d")
 				return g
 			}(),
-			want: []string{"d", "b", "c", "a"},
+			want: [][]string{
+				{"d", "b", "c", "a"},
+				{"d", "c", "b", "a"},
+			},
 		},
 		{
 			name: "3_cycle",
@@ -110,7 +115,7 @@ func TestTopoSort(t *testing.T) {
 				}
 				return g
 			}(),
-			want: []string{"node10", "node9", "node8", "node7", "node6", "node5", "node4", "node3", "node2", "node1", "node0"},
+			want: [][]string{{"node10", "node9", "node8", "node7", "node6", "node5", "node4", "node3", "node2", "node1", "node0"}},
 		},
 		{
 			name: "duplicate_edges",
@@ -122,7 +127,7 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("b", "c")
 				return g
 			}(),
-			want: []string{"c", "b", "a"},
+			want: [][]string{{"c", "b", "a"}},
 		},
 	}
 
@@ -135,8 +140,18 @@ func TestTopoSort(t *testing.T) {
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
-			if !slices.Equal(got, tc.want) {
-				t.Errorf("for graph %v, got output %v, but wanted %v", tc.g.edges, got, tc.want)
+			anyMatched := false
+			if len(tc.want) == 0 && len(got) == 0 {
+				anyMatched = true
+			}
+			for _, want := range tc.want {
+				if cmp.Equal(got, want, cmpopts.EquateEmpty()) {
+					anyMatched = true
+					break
+				}
+			}
+			if !anyMatched {
+				t.Errorf("for graph %v, got output %v, but wanted one of %v", tc.g.edges, got, tc.want)
 			}
 		})
 	}
