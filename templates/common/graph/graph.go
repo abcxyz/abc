@@ -18,6 +18,15 @@ import (
 	"fmt"
 )
 
+// CyclicError is returned when the input graph has a cycle.
+type CyclicError[T comparable] struct {
+	Cycle []T
+}
+
+func (e *CyclicError[T]) Error() string {
+	return fmt.Sprintf("cycle detected: %v", e.Cycle)
+}
+
 // Graph represents a directed graph.
 type Graph[T comparable] struct {
 	edges map[T][]T
@@ -76,7 +85,7 @@ func (g *Graph[T]) dfs(node T, visited map[T]struct{}, stack *[]T, cycleDetect m
 			for current := neighbor; current != node; current = g.edges[current][0] {
 				cycle = append(cycle, g.edges[current][0])
 			}
-			return fmt.Errorf("cycle detected: %v", cycle)
+			return &CyclicError[T]{cycle}
 		}
 	}
 

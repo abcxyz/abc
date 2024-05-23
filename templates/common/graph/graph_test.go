@@ -22,8 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-
-	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestTopoSort(t *testing.T) {
@@ -33,7 +31,7 @@ func TestTopoSort(t *testing.T) {
 		name    string
 		g       *Graph[string]
 		want    [][]string
-		wantErr string
+		wantErr error
 	}{
 		{
 			name: "empty",
@@ -83,7 +81,7 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("c", "a")
 				return g
 			}(),
-			wantErr: "cycle detected", // nodes involved in the cycle are omitted because they could be printed in various ways: abca, cabc, etc.
+			wantErr: &CyclicError[string]{Cycle: []string{"a", "b", "c"}},
 		},
 		{
 			name: "self_edge",
@@ -92,7 +90,7 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("a", "a")
 				return g
 			}(),
-			wantErr: "cycle detected",
+			wantErr: &CyclicError[string]{Cycle: []string{"a", "a"}},
 		},
 		{
 			name: "cycle_with_other_edges",
@@ -104,7 +102,7 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("d", "e")
 				return g
 			}(),
-			wantErr: "cycle detected",
+			wantErr: &CyclicError[string]{Cycle: []string{"a", "b", "c"}},
 		},
 		{
 			name: "many_edges_in_linear_order",
@@ -137,9 +135,20 @@ func TestTopoSort(t *testing.T) {
 			t.Parallel()
 
 			got, err := tc.g.TopologicalSort()
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Error(diff)
-			}
+
+			cmp.Equal(err, tc.wantErr,
+				// Cycles can appear in a variety of forms ({a b c a} or
+				// {c a b c}), so we canonicalize by just checking the *set* of
+				// nodes involved in the cycle.
+				cmp.Transformer("canonicalize_cycle", func(cycle []string) map[string]struct{} {
+					out := map[string]struct{}{}
+					for _, n := range cycle {
+						out[n] = struct{}{}
+					}
+					return out
+				}),
+			)
+
 			anyMatched := false
 			if len(tc.want) == 0 && len(got) == 0 {
 				anyMatched = true
