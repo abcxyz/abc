@@ -17,7 +17,6 @@ package templatesource
 import (
 	"context"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -187,17 +186,11 @@ func TestForUpgrade(t *testing.T) {
 
 			opts := []cmp.Option{
 				cmp.AllowUnexported(remoteGitDownloader{}, LocalDownloader{}),
-
-				// If the downloader is a local downloader, it has an
-				// unpredictable temp directory in its SrcPath field that
-				// couldn't be included in wantDownloader. Therefore, when
-				// comparing the "got" downloader to the "want" downloader, we
-				// want to strip out the temp dir.
-				cmp.Transformer("strip_temp_dir", func(l *LocalDownloader) *LocalDownloader {
-					cp := *l
-					cp.SrcPath = strings.TrimPrefix(cp.SrcPath, tempDir+"/")
-					return &cp
-				}),
+				abctestutil.TransformStructFields(
+					abctestutil.TrimStringPrefixTransformer(tempDir+"/"),
+					LocalDownloader{},
+					"SrcPath",
+				),
 			}
 			if diff := cmp.Diff(downloader, tc.wantDownloader, opts...); diff != "" {
 				t.Errorf("downloader was not as expected: %s", diff)

@@ -18,7 +18,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -1081,20 +1080,14 @@ yellow is my favorite color
 				t.Fatal(diff)
 			}
 
-			// For testing purposes, remove the temp directory prefix from the
-			// absolute path. We need a deterministic path to check, not
-			// containing a temp dir name.
-			if result != nil {
-				prefix := destDir + "/"
-				for _, rc := range result.ReversalConflicts {
-					rc.AbsPath = mustTrimPrefix(t, rc.AbsPath, prefix)
-					rc.RejectedHunks = mustTrimPrefix(t, rc.RejectedHunks, prefix)
-				}
-			}
-
 			opts := []cmp.Option{
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
+				abctestutil.TransformStructFields(
+					abctestutil.TrimStringPrefixTransformer(destDir+"/"),
+					ReversalConflict{},
+					"AbsPath", "RejectedHunks",
+				),
 			}
 			if diff := cmp.Diff(result, tc.want, opts...); diff != "" {
 				t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
@@ -1496,12 +1489,4 @@ func manifestWith(m *manifest.Manifest, change func(*manifest.Manifest)) *manife
 	out := *m
 	change(&out)
 	return &out
-}
-
-func mustTrimPrefix(tb testing.TB, s, prefix string) string {
-	tb.Helper()
-	if !strings.HasPrefix(s, prefix) {
-		tb.Fatalf("got string %q, but required a string having prefix %q", s, prefix)
-	}
-	return strings.TrimPrefix(s, prefix)
 }
