@@ -39,6 +39,28 @@ func TestTopoSort(t *testing.T) {
 			want: [][]string{},
 		},
 		{
+			name: "one_node_no_edges",
+			g: func() *Graph[string] {
+				g := NewGraph[string]()
+				g.AddNode("a")
+				return g
+			}(),
+			want: [][]string{{"a"}},
+		},
+		{
+			name: "two_nodes_no_edges",
+			g: func() *Graph[string] {
+				g := NewGraph[string]()
+				g.AddNode("a")
+				g.AddNode("b")
+				return g
+			}(),
+			want: [][]string{
+				{"a", "b"},
+				{"b", "a"},
+			},
+		},
+		{
 			name: "one_edge",
 			g: func() *Graph[string] {
 				g := NewGraph[string]()
@@ -53,6 +75,28 @@ func TestTopoSort(t *testing.T) {
 				g := NewGraph[string]()
 				g.AddEdge("a", "b")
 				g.AddEdge("b", "c")
+				return g
+			}(),
+			want: [][]string{{"c", "b", "a"}},
+		},
+		{
+			name: "two_edges_superfluous_addnode_first",
+			g: func() *Graph[string] {
+				g := NewGraph[string]()
+				g.AddNode("a")
+				g.AddEdge("a", "b")
+				g.AddEdge("b", "c")
+				return g
+			}(),
+			want: [][]string{{"c", "b", "a"}},
+		},
+		{
+			name: "two_edges_superfluous_addnode_last",
+			g: func() *Graph[string] {
+				g := NewGraph[string]()
+				g.AddEdge("a", "b")
+				g.AddEdge("b", "c")
+				g.AddNode("a")
 				return g
 			}(),
 			want: [][]string{{"c", "b", "a"}},
@@ -79,6 +123,18 @@ func TestTopoSort(t *testing.T) {
 				g.AddEdge("a", "b")
 				g.AddEdge("b", "c")
 				g.AddEdge("c", "a")
+				return g
+			}(),
+			wantErr: &CyclicError[string]{Cycle: []string{"a", "b", "c"}},
+		},
+		{
+			name: "3_cycle_with_unconnected_node",
+			g: func() *Graph[string] {
+				g := NewGraph[string]()
+				g.AddEdge("a", "b")
+				g.AddEdge("b", "c")
+				g.AddEdge("c", "a")
+				g.AddNode("d")
 				return g
 			}(),
 			wantErr: &CyclicError[string]{Cycle: []string{"a", "b", "c"}},
