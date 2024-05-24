@@ -165,7 +165,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	subdirToCopy := filepath.Join(tmpDir, subdir)
 
 	if err := g.cloner.Clone(ctx, g.remote, versionToDownload, tmpDir); err != nil {
-		return nil, fmt.Errorf("Clone(): %w", err)
+		return nil, fmt.Errorf("Clone() of %s: %w", g.remote, err)
 	}
 
 	fi, err := os.Stat(subdirToCopy)
