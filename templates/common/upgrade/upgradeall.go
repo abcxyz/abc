@@ -27,7 +27,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 )
 
-// TODO(upgrade): remove this, if avoids an "unused" error.
+// TODO(upgrade): remove this, it avoids an "unused" error from the compiler.
 var (
 	_ = depGraph
 	_ = crawlManifests
@@ -41,9 +41,10 @@ func crawlManifests(startFrom string) ([]string, error) {
 	err := filepath.WalkDir(startFrom, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			if common.IsNotExistErr(err) {
-				// If the user provides a nonexistent path to upgade, then we'll
-				// just return an empty list of manifests from this function and
-				// let a higher level function say "no manifests were found."
+				// If the user provides a nonexistent path to upgrade, then
+				// we'll just return an empty list of manifests from this
+				// function and let a higher level function say "no manifests
+				// were found."
 				return nil
 			}
 			return err
@@ -75,9 +76,12 @@ func crawlManifests(startFrom string) ([]string, error) {
 // a template that itself was the output of another template. It basically
 // specifies the upgrade order for templates.
 //
-// upgradeLocation is the file or directory provided by the user.
-// The returned map keys and values are relative paths to manifest files
-// relative to upgradeLocation.
+// upgradeLocation is the file or directory provided by the user containing the
+// template installations to upgrade.
+//
+// The returned Graph contains relative manifest paths, such that there is an
+// edge from manifest1 to manifest2 if manifest2 should be upgraded before
+// manifest1.
 //
 // This is basically a "self join" on manifests where the *source* spec.yaml
 // file from one manifest is joined with the manifest that *created* that
@@ -144,6 +148,8 @@ func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []s
 		}
 	}
 
+	// Do the join: simplify from "manifest -> spec -> manifest" to just
+	// "manifest -> manifest" by joining on the spec path.
 	for _, manifestRel := range manifestsRel {
 		sourceSpec, ok := manifestToSourceSpec[manifestRel]
 		if !ok {
