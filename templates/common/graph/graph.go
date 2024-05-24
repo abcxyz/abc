@@ -47,6 +47,19 @@ func (g *Graph[T]) AddEdge(source, destination T) {
 	g.edges[source] = append(g.edges[source], destination)
 }
 
+// AddNode adds a node to the graph without adding any edges. [AddEdge]
+// implicitly creates nodes, so this function is only needed in the case where
+// you have a node with no edges to or from it.
+//
+// This function is always safe to call. You can call it before adding edges to
+// the node or after adding edges. It is idempotent.
+func (g *Graph[T]) AddNode(n T) {
+	if _, ok := g.edges[n]; ok {
+		return // we already know that this node exists
+	}
+	g.edges[n] = nil // node exists in map, but has no outgoing edges
+}
+
 // TopologicalSort performs a topological sort. For all edges a->b, the output
 // will have b before a.
 //
