@@ -17,7 +17,6 @@ package templatesource
 import (
 	"context"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -288,15 +287,11 @@ func TestParseSource(t *testing.T) {
 
 			opts := []cmp.Option{
 				cmp.AllowUnexported(remoteGitDownloader{}, LocalDownloader{}),
-
-				// The localDownloader may modify the provided source path if it was
-				// relative. This comparer removes the tempDir prefix so that test cases
-				// can still do relative filepath comparisons.
-				cmp.Comparer(func(a, b LocalDownloader) bool {
-					l := strings.TrimPrefix(a.SrcPath, tempDir+string(filepath.Separator))
-					r := strings.TrimPrefix(b.SrcPath, tempDir+string(filepath.Separator))
-					return l == r
-				}),
+				abctestutil.TransformStructFields(
+					abctestutil.TrimStringPrefixTransformer(tempDir+"/"),
+					LocalDownloader{},
+					"SrcPath",
+				),
 			}
 			if diff := cmp.Diff(got, tc.want, opts...); diff != "" {
 				t.Errorf("downloader was not as expected (-got,+want): %s", diff)
