@@ -81,8 +81,12 @@ func (g *Graph[T]) TopologicalSort() ([]T, error) {
 	out := make([]T, 0, len(g.edges))
 	cycleDetect := make(map[T]struct{})
 
-	nodes := maps.Keys(g.edges) // output order must be the same across multiple CLI invocations
+	// Output order must be the same across multiple CLI invocations. If we
+	// care about the inefficient asymptotic runtime of this approach, we could
+	// switch to a heap-based algorithm and abandon this DFS algorithm.
+	nodes := maps.Keys(g.edges)
 	slices.Sort(nodes)
+
 	for _, node := range nodes {
 		if _, ok := visited[node]; !ok {
 			if err := g.dfs(node, visited, &out, cycleDetect); err != nil {
