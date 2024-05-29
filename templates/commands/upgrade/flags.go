@@ -15,7 +15,6 @@
 package upgrade
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/posener/complete/v2/predict"
@@ -26,7 +25,7 @@ import (
 )
 
 type Flags struct {
-	Manifest string
+	Location string
 
 	// A list of files that were...
 	//   - changed in place by a previous render operation...
@@ -62,11 +61,19 @@ type Flags struct {
 	// See common/flags.KeepTempDirs().
 	KeepTempDirs bool
 
+	// The manifest to start with, when upgrading multiple manifests. This is
+	// used when a previous upgrade operation required manual intervention, and
+	// the manual intervention is done, and the user wants to resume.
+	// TODO(upgrade): implement this feature.
+	ResumeFrom string
+
 	// See common/flags.Prompt().
 	Prompt bool
 
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
+
+	Verbose bool
 
 	// The template version to upgrade to; defaults to "latest".
 	Version string
@@ -79,8 +86,16 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Example: "my_file.txt,my_dir/my_other_file.txt",
 		Predict: predict.Files(""),
 		Target:  &f.AlreadyResolved,
-		Usage:   "a list of files where a patch failed to apply during the upgrade process, generating a .patch.rej file that was manually resolved by the user",
+		Usage:   "a list of files where a patch failed to apply during the upgrade process, generating a .patch.rej file that was manually resolved by the user; usually combined with --resume-from",
 	})
+	u.StringVar(&cli.StringVar{
+		Name:    "resume-from",
+		Example: "./some/dir/.abc/manifest.foo.yaml",
+		Predict: predict.Files("*.yaml"),
+		Target:  &f.ResumeFrom,
+		Usage:   "begin or resume the upgrade starting at this manifest file",
+	})
+	u.BoolVar(flags.Verbose(&f.Verbose))
 
 	r := set.NewSection("RENDER OPTIONS")
 
@@ -104,13 +119,10 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	g := set.NewSection("GIT OPTIONS")
 	g.StringVar(flags.GitProtocol(&f.GitProtocol))
 
-	// Manifest is the first CLI argument.
 	set.AfterParse(func(existingErr error) error {
-		f.Manifest = strings.TrimSpace(set.Arg(0))
-		if f.Manifest == "" {
-			return fmt.Errorf("missing <manifest> file argument")
-		}
-
+		// Default location to the first CLI argument, if given.
+		// If not given, default to current directory.
+		f.Location = strings.TrimSpace(set.Arg(0))
 		return nil
 	})
 }

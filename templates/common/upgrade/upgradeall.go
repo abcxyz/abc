@@ -16,6 +16,7 @@ package upgrade
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -27,11 +28,123 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 )
 
-// TODO(upgrade): remove this, it avoids an "unused" error from the compiler.
-var (
-	_ = depGraph
-	_ = crawlManifests
-)
+// Result is the return value from an upgrade operation. It will be returned
+// even if there's an error, to report any partial progress. It contains an
+// error field to report an error that may have happened.
+type Result struct {
+	// The "most severe" or "most interesting" upgrade result out of all the
+	// upgrades attempted. The ascending order of severity is None ->
+	// AlreadyUpToDate -> Success -> PatchReversalConflict -> MergeConflict
+	//
+	// For example, if we ran an upgrade on a directory containing three
+	// installed templates, and the results of the upgrades were Success,
+	// AlreadyUpToDate, and MergeConflict (in any order), then the overall
+	// result would be MergeConflict since that's the must severe.
+	Overall ResultType
+
+	// A map from manifestPath to the result of non-erroring upgrade attempts.
+	// Merge conflicts are included in this map. There are potentially multiple
+	// results per manifest because we loop and upgrade repeatedly.
+	//
+	// Since we stop the upgrade operation when encountering an error or
+	// conflict, it's guaranteed that at most 1 of the entries in this map are
+	// a conflict (Type equals MergeConflict or PatchReversalConflict).
+	//
+	// All slices in this map will have length at least one.
+	Results []*ManifestResult
+
+	// Err is any error encountered during the upgrade operation. A merge
+	// conflict during upgrade is not considered an error.
+	//
+	// If Err is set, then ErrManifestPath may also be set. No other fields will
+	// be set.
+	Err             error
+	ErrManifestPath string // The optional path to the manifest whose upgrade resulted in error
+}
+
+// ErrNoManifests is returned when upgrade is called with a directory that
+// contains no manifest, or a filename that is not a manifest. Nothing could be
+// found to be upgraded.
+var ErrNoManifests error = fmt.Errorf("found no template manifests to upgrade")
+
+// UpgradeAll crawls the given directory looking for manifest files to upgrade,
+// then calls Upgrade() for each one, until no more upgrades are possible. Stops
+// if any errors are encountered.
+//
+// If no manifests could be found, then ErrNoManifests is returned.
+func UpgradeAll(ctx context.Context, p *Params) *Result {
+	// logger := logging.FromContext(ctx).With("logger", "UpgradeAll")
+
+	var err error
+	p, err = fillDefaults(p) // includes shallow copying of input
+	if err != nil {
+		return &Result{Err: err}
+	}
+
+	manifests, err := crawlManifests(p.Location)
+	if err != nil {
+		return &Result{Err: fmt.Errorf("while crawling manifests: %w", err)}
+	}
+	if len(manifests) == 0 {
+		// Perhaps this isn't strictly an error, but in the case where the user
+		// invokes the tool incorrectly and doesn't actually do the work they
+		// intended, we want to tell them and not just pretend things are fine.
+		return &Result{Err: ErrNoManifests}
+	}
+
+	depGraph, err := depGraph(ctx, p.CWD, p.Location, manifests)
+	if err != nil {
+		return &Result{Err: err}
+	}
+
+	sorted, err := depGraph.TopologicalSort()
+	if err != nil {
+		errCycle := &graph.CyclicError[string]{}
+		if errors.As(err, &errCycle) {
+			return &Result{Err: fmt.Errorf("there is somehow a cyclic dependency among these manifests: %v", errCycle.Cycle)}
+		}
+		return &Result{Err: fmt.Errorf("topological sorting of manifest depencies gave an unexpected error: %w", err)}
+	}
+
+	out := &Result{
+		Results: make([]*ManifestResult, 0, len(manifests)),
+	}
+
+	for _, m := range sorted {
+		absManifestPath := filepath.Join(p.Location, m)
+		if !filepath.IsAbs(absManifestPath) {
+			absManifestPath = filepath.Join(p.CWD, absManifestPath)
+		}
+		result, err := upgrade(ctx, p, absManifestPath)
+		if err != nil {
+			path := filepath.Join(p.Location, m)
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(p.CWD, path)
+			}
+			out.Err = fmt.Errorf("when upgrading the manifest at %s:\n%w", path, err)
+			break
+		}
+
+		result.ManifestPath = m
+		result.DependedOn = depGraph.EdgesFrom(m)
+
+		out.Results = append(out.Results, result)
+	}
+
+	out.Overall = overallResult(out.Results)
+
+	return out
+}
+
+func overallResult(results []*ManifestResult) ResultType {
+	var out ResultType
+	for _, result := range results {
+		if resultTypeLess(out, result.Type) {
+			out = result.Type
+		}
+	}
+	return out
+}
 
 // crawlManifests finds all the template manifest files underneath the given
 // file or directory. startFrom can be either a single manifest file or a

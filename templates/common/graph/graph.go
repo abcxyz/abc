@@ -60,6 +60,10 @@ func (g *Graph[T]) AddNode(n T) {
 	g.edges[n] = nil // node exists in map, but has no outgoing edges
 }
 
+func (g *Graph[T]) EdgesFrom(n T) []T {
+	return g.edges[n]
+}
+
 // TopologicalSort performs a topological sort. For all edges a->b, the output
 // will have b before a.
 //

@@ -44,10 +44,12 @@ import (
 	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/sets"
 )
 
 // TODO(upgrade):
 //   - add "abort if conflict" feature
+//   - rethink overly complex manifest file name?
 //   - validate that manifest paths don't contain traversals
 //   - add "check for update and exit" feature
 //   - add "upgrade all template installations within directory"
@@ -57,7 +59,6 @@ import (
 //     instead of a 2-way merge.
 //   - support --merge-strategy=ours|theirs to resolve conflicts
 //   - support --merge-strategy=ai to try to get an LLM to semantically resolve the diff
-//   - try an automatic 2-way merge: diff the two files, then apply the diff?
 //   - interactive conflict resolution
 //   - patch .rej files look the same on all platforms (mac and Linux differ)
 
@@ -68,11 +69,14 @@ type Params struct {
 	// Relative paths where patch reversal has already happened. This is a flag
 	// supplied by the user. This will be set if there were merge conflicts
 	// during patch reversal that were manually resolved by the user.
+	// TODO(upgrade): implement this, should only apply to first upgrade
 	AlreadyResolved []string
 
 	Clock clock.Clock
 
-	// CWD is the value of os.Getwd(), or in testing, a temp directory.
+	// The directory that relative paths are interpreted as being relative to.
+	// In testing, this is a temp directory. If empty, the value of os.Getwd()
+	// will be used.
 	CWD string
 
 	// The value of --debug-scratch-contents.
@@ -96,10 +100,10 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// The path to the manifest file where the template was previously installed
-	// to that will now be upgraded. This is also overwritten with the new
-	// manifest after a successful upgrade.
-	ManifestPath string // Must be an absolute path.
+	// The path to either a directory or file. If a directory, it will be
+	// crawled looking for manifests to upgrade. If a single manifest file,
+	// that single template will be upgraded.
+	Location string
 
 	// The value of --prompt.
 	Prompt   bool
@@ -125,41 +129,89 @@ type Params struct {
 	Version string
 }
 
-type ResultType string
+// ResultType is the outcome of attempting an upgrade. It may succeed, may be
+// unnecessary, or may have some sort of merge conflict.
+type ResultType int
 
 const (
 	// This is the value of Result.Type when the upgrade was vacuously
 	// successful because the template is already on the latest version.
-	AlreadyUpToDate ResultType = "already_up_to_date"
+	AlreadyUpToDate ResultType = iota
 
 	// This is the value of Result.Type when there was an upgrade and it was
 	// successful, and no user intervention is needed.
-	Success ResultType = "success"
+	Success ResultType = iota
 
 	// This is the value of Result.Type when abc tried to apply the reversal
 	// patches from the manifest to included-from-destination files, and the
 	// patches could not be applied cleanly. User intervention is needed, and
 	// the ReversalConflicts field should be used.
-	PatchReversalConflict ResultType = "patch_reversal_conflict"
+	PatchReversalConflict ResultType = iota
 
 	// The new version of the template conflicted with local modifications and
 	// manual resolution is required. The Conflicts field should be used.
-	MergeConflict ResultType = "merge_conflict"
+	MergeConflict ResultType = iota
 )
 
-// Result is returned from Upgrade if there's no error. It may indicate that
-// there were merge conflicts requiring manual resolution.
-type Result struct {
-	// Conflicts is the set of files that require manual intervention by the
+func (r ResultType) String() string {
+	switch r {
+	case AlreadyUpToDate:
+		return "already_up_to_date"
+	case Success:
+		return "success"
+	case PatchReversalConflict:
+		return "patch_reversal_conflict"
+	case MergeConflict:
+		return "merge_conflict"
+	}
+	panic("unreachable") // the go lint exhaustive check prevents this
+}
+
+func (r ResultType) RequiresUserAttention() bool {
+	switch r {
+	case AlreadyUpToDate, Success:
+		return false
+	case PatchReversalConflict, MergeConflict:
+		return true
+	}
+	panic("unreachable") // the go lint exhaustive check prevents this
+}
+
+var interestingnessOrder = []ResultType{AlreadyUpToDate, Success, PatchReversalConflict, MergeConflict}
+
+func resultTypeLess(l, r ResultType) bool {
+	// Subtle note: this will sort the zero value "" as the least/smallest,
+	// since slices.Index returns -1 when not found.
+	return slices.Index(interestingnessOrder, l) < slices.Index(interestingnessOrder, r)
+}
+
+// ManifestResult is the result of upgrading a single template installation
+// (potentially one of many that may be found underneath a given directory).
+type ManifestResult struct {
+	// MergeConflicts is the set of files that require manual intervention by the
 	// user to resolve a merge conflict. For example, there may be a file that
 	// was edited by the user and that edit conflicts with changes to that same
 	// file by the upgraded version of the template.
 	//
 	// This field should only be used when Type==MergeConflict.
-	Conflicts []ActionTaken
+	MergeConflicts []ActionTaken
+
+	// If this template installation needed to wait to be upgraded before
+	// another template installation, this will be the ManifestPath of the other
+	// ManifestResult that happened first. These dependencies arise when the
+	// output of one template is itself a template.
+	//
+	// This is mainly useful for debugging and testing.
+	DependedOn []string
 
 	// The metadata returned by the template downloader.
 	DLMeta *templatesource.DownloadMetadata
+
+	// The relative path to the manifest file of this template installation
+	// that's being upgraded. It's relative to the path that the user provided
+	// to the "upgrade" commnd. If the user provided a path to a manifest file,
+	// this will just be "." (a single dot).
+	ManifestPath string
 
 	// The paths to files where abc tried to apply the reversal
 	// patches from the manifest to included-from-destination files, and the
@@ -234,26 +286,25 @@ type ActionTaken struct {
 	IncomingTemplatePath string
 }
 
-// Upgrade takes a directory containing previously rendered template output and
+// upgrade takes a directory containing previously rendered template output and
 // updates it using the newest version of the template, which is pointed to by
 // the manifest file.
 //
+// p.Location is ignored, and absManifestPath is used to find the manifest to
+// upgrade.
+//
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
+func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *ManifestResult, rErr error) {
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
-	installedDir := filepath.Join(filepath.Dir(p.ManifestPath), "..")
+	installedDir := filepath.Join(filepath.Dir(absManifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
 		return nil, err
 	}
 
-	if !filepath.IsAbs(p.ManifestPath) {
-		return nil, fmt.Errorf("internal error: manifest path must be absolute, but got %q", p.ManifestPath)
-	}
-
-	oldManifest, err := loadManifest(ctx, p.FS, p.ManifestPath)
+	oldManifest, err := loadManifest(ctx, p.FS, absManifestPath)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +347,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
-		return &Result{
+		return &ManifestResult{
 			Type:   AlreadyUpToDate,
 			DLMeta: dlMeta,
 		}, nil
@@ -326,7 +377,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		return nil, err
 	}
 	if len(reversalConflicts) > 0 {
-		return &Result{
+		return &ManifestResult{
 			DLMeta:            dlMeta,
 			ReversalConflicts: reversalConflicts,
 			Type:              PatchReversalConflict,
@@ -341,6 +392,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		Downloader:              downloader,
 		FS:                      p.FS,
 		GitProtocol:             p.GitProtocol,
+		IgnoreUnknownInputs:     true, // The old manifest may have inputs that were removed in the latest template version
 		InputFiles:              p.InputFiles,
 		IncludeFromDestExtraDir: reversedDir,
 		Inputs:                  inputsToMap(oldManifest.Inputs),
@@ -356,7 +408,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		TempDirBase:             p.TempDirBase,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed rendering template as part of upgrade operation: %w", err)
+		return nil, fmt.Errorf("failed rendering template: %w", err)
 	}
 
 	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
@@ -368,7 +420,7 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 		fs:               p.FS,
 		installedDir:     installedDir,
 		mergeDir:         mergeDir,
-		oldManifestPath:  p.ManifestPath,
+		oldManifestPath:  absManifestPath,
 		oldManifest:      oldManifest,
 		newManifest:      newManifest,
 		reversedPatchDir: reversedDir,
@@ -384,12 +436,27 @@ func Upgrade(ctx context.Context, p *Params) (_ *Result, rErr error) {
 	if len(conflicts) == 0 {
 		resultType = Success
 	}
-	return &Result{
-		Conflicts:    conflicts,
-		DLMeta:       dlMeta,
-		NonConflicts: nonConflicts,
-		Type:         resultType,
+	return &ManifestResult{
+		MergeConflicts: conflicts,
+		DLMeta:         dlMeta,
+		NonConflicts:   nonConflicts,
+		Type:           resultType,
 	}, nil
+}
+
+func fillDefaults(p *Params) (*Params, error) {
+	out := *p // shallow copy
+	if out.Version == "" {
+		out.Version = templatesource.Latest
+	}
+	if out.CWD == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("os.Getwd(): %w", err)
+		}
+		out.CWD = cwd
+	}
+	return &out, nil
 }
 
 // mergeTentatively does a dry-run commit followed by a real commit.
@@ -591,6 +658,15 @@ type reversePatchesParams struct {
 // undoing the changes that were made by that template version.
 func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalConflict, error) {
 	var out []*ReversalConflict
+
+	filesInManifest := make([]string, 0, len(p.oldManifest.OutputFiles))
+	for _, f := range p.oldManifest.OutputFiles {
+		filesInManifest = append(filesInManifest, f.File.Val)
+	}
+	if unknownFiles := sets.Subtract(p.alreadyResolved, filesInManifest); len(unknownFiles) > 0 {
+		return nil, fmt.Errorf("you specified --already-resolved file(s) that were not part of this template's manifest: %s", strings.Join(unknownFiles, ", "))
+	}
+
 	for _, f := range p.oldManifest.OutputFiles {
 		if f.Patch == nil || len(f.Patch.Val) == 0 {
 			continue

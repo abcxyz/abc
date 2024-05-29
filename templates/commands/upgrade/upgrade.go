@@ -18,7 +18,6 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -105,7 +104,7 @@ Background on conflict types:
    (1) renaming one of these files to "yourfile and deleting the other, or (2)
    merging the two files into "yourfile".`
 
-	patchReversalInstructionsPart1 = `
+	patchReversalInstructions = `
 There was a merge conflict when trying to undo changes to file(s) that were
 modified in-place by a previous version of the template.
 
@@ -128,30 +127,22 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
-	fs := &common.RealFS{}
-
-	absManifestPath, err := filepath.Abs(c.flags.Manifest)
+	absLocation, err := filepath.Abs(c.flags.Location)
 	if err != nil {
-		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Manifest, err)
+		return fmt.Errorf("filepath.Abs(%q): %w", c.flags.Location, err)
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("os.Getwd(): %w", err)
-	}
-
-	r, err := upgrade.Upgrade(ctx, &upgrade.Params{
+	result := upgrade.UpgradeAll(ctx, &upgrade.Params{
 		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
-		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
 		DebugScratchContents: c.flags.DebugScratchContents,
-		FS:                   fs,
+		FS:                   &common.RealFS{},
 		GitProtocol:          c.flags.GitProtocol,
 		InputFiles:           c.flags.InputFiles,
 		Inputs:               c.flags.Inputs,
 		KeepTempDirs:         c.flags.KeepTempDirs,
-		ManifestPath:         absManifestPath,
+		Location:             absLocation,
 		Prompt:               c.flags.Prompt,
 		Prompter:             c,
 		SkipInputValidation:  c.flags.SkipInputValidation,
@@ -159,31 +150,75 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Stdout:               c.Stdout(),
 		Version:              c.flags.Version,
 	})
-	if err != nil {
-		return err //nolint:wrapcheck
+	if result.Err != nil {
+		if result.ErrManifestPath != "" {
+			return fmt.Errorf("when upgrading the manifest at %s:\n%w",
+				result.ErrManifestPath, result.Err)
+		}
+		return result.Err
 	}
 
-	msg, exitCode := summarizeResult(r, absManifestPath)
-	if exitCode == 0 {
-		fmt.Fprintln(c.Stdout(), msg)
-		return nil
+	for i, oneManifestResult := range result.Results {
+		isLast := i == len(result.Results)-1
+		if isPrintable(c.flags.Verbose, isLast, oneManifestResult.Type) {
+			fmt.Fprintln(c.Stdout(), summarizeResult(oneManifestResult, absLocation))
+		}
 	}
-	fmt.Fprintln(c.Stdout(), msg)
-	return &common.ExitCodeError{Code: exitCode}
+
+	exitCode := exitCode(result.Overall)
+	if exitCode != 0 {
+		return &common.ExitCodeError{Code: exitCode}
+	}
+
+	return nil
 }
 
-func summarizeResult(r *upgrade.Result, absManifestPath string) (message string, exitCode int) {
+func isPrintable(verboseFlag, isLast bool, rt upgrade.ResultType) bool {
+	if verboseFlag {
+		return true
+	}
+	if !isLast {
+		// all results before the last are successful, because we abort on
+		// failure. Therefore we only print them if we're in verbose mode.
+		return false
+	}
+	return rt.RequiresUserAttention()
+}
+
+func exitCode(overallResult upgrade.ResultType) int {
+	switch overallResult {
+	case upgrade.AlreadyUpToDate, upgrade.Success:
+		return 0
+	case upgrade.MergeConflict:
+		return 1
+	case upgrade.PatchReversalConflict:
+		return 2
+	}
+	panic("unreachable") // the go lint exhaustive check prevents this
+}
+
+func summarizeResult(r *upgrade.ManifestResult, location string) string {
+	// You might wonder: why are the merge instructions printed here, *inside*
+	// the loop that loops over manifests? Won't that result in a large block of
+	// instructions being printed multiple times? No, because there's at most
+	// one failing upgrade, because we stop after a single failure (merge
+	// conflict or patch reversal conflict).
+	manifestPath := filepath.Join(location, r.ManifestPath)
 	switch r.Type {
 	case upgrade.AlreadyUpToDate:
-		return "Already up to date with latest template version", 0
+		// TODO(upgrade): show version
+		return "Already up to date with latest template version"
 	case upgrade.Success:
-		return "Upgrade complete with no conflicts", 0
+		// TODO(upgrade): show version upgraded to
+		return "Upgrade complete with no conflicts"
 	case upgrade.MergeConflict:
 		// TODO(upgrade):
 		//  - suggest diff / meld / vim commands?
 		var out strings.Builder
+		fmt.Fprintf(&out, "When upgrading manifest %s:\n", manifestPath)
+
 		fmt.Fprintf(&out, mergeInstructions+"\n\nList of conflicting files:\n--")
-		for _, cf := range r.Conflicts {
+		for _, cf := range r.MergeConflicts {
 			fmt.Fprintf(&out, "\nfile: %s\n", cf.Path)
 			fmt.Fprintf(&out, "conflict type: %s\n", cf.Action)
 			if cf.OursPath != "" {
@@ -194,10 +229,18 @@ func summarizeResult(r *upgrade.Result, absManifestPath string) (message string,
 			}
 			fmt.Fprintf(&out, "--")
 		}
-		return out.String(), 1
+		fmt.Fprintf(&out, `
+
+After manually resolving the merge conflict, run this command to continue
+upgrading other template installations that may exist:
+
+  abc upgrade %s`, location)
+
+		return out.String()
 	case upgrade.PatchReversalConflict:
 		var out strings.Builder
-		fmt.Fprint(&out, patchReversalInstructionsPart1+"\n\n--")
+		fmt.Fprintf(&out, "When upgrading manifest %s:\n", manifestPath)
+		fmt.Fprint(&out, patchReversalInstructions+"\n\n--")
 		relPaths := make([]string, 0, len(r.ReversalConflicts))
 		for _, rc := range r.ReversalConflicts {
 			fmt.Fprintf(&out, "\nyour file: %s\n", rc.AbsPath)
@@ -205,12 +248,22 @@ func summarizeResult(r *upgrade.Result, absManifestPath string) (message string,
 			fmt.Fprintf(&out, "--")
 			relPaths = append(relPaths, shellescape.Quote(rc.RelPath))
 		}
-		fmt.Fprintf(&out, `
-After manually applying the rejected hunks, run this upgrade command:
 
-  abc upgrade --already_resolved=%s %s`, strings.Join(relPaths, ","), absManifestPath)
-		return out.String(), 2
-	default:
-		return fmt.Sprintf("internal error: unknown upgrade result type %q", r.Type), 127
+		// In the case where the user specified just a single manifest to
+		// upgrade, like "abc upgrade foo/.abc/manifest.yaml, then we'll leave
+		// out the "--resume-from=" flag. This would be confusing and
+		// unnecessary, since you don't need to specify a template to resume
+		// from when you're just upgrading one template.
+		resumeFrom := ""
+		if r.ManifestPath != "." {
+			resumeFrom = fmt.Sprintf(" --resume-from=%s", r.ManifestPath)
+		}
+		fmt.Fprintf(&out, `
+After manually applying the rejected hunks, run this command to continue:
+
+  abc upgrade %s --already-resolved=%s%s`,
+			shellescape.Quote(location), strings.Join(relPaths, ","), resumeFrom)
+		return out.String()
 	}
+	panic("unreachable") // the go lint exhaustive check prevents this
 }

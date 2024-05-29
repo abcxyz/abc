@@ -128,3 +128,15 @@ func Prompt(p *bool) *cli.BoolVar {
 		Usage: "Prompt the user for template inputs that weren't provided as flags.",
 	}
 }
+
+// Verbose causes more output to be produced.
+func Verbose(v *bool) *cli.BoolVar {
+	return &cli.BoolVar{
+		Name:    "verbose",
+		Aliases: []string{"v"},
+		Target:  v,
+		Default: false,
+		EnvVar:  "ABC_VERBOSE",
+		Usage:   "include more output; intended for power users",
+	}
+}
