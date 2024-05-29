@@ -112,8 +112,12 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// The value of --manifest.
+	// The value of --manifest. Whether to create a manifest file.
 	Manifest bool
+
+	// The value of --manifest-only. Whether to *only* create a manifest file
+	// without outputting any other files from the template.
+	ManifestOnly bool
 
 	// The directory where the rendered output will be written.
 	OutDir string
@@ -121,6 +125,7 @@ type Params struct {
 	// Whether to prompt the user for inputs on stdin in the case where they're
 	// not all provided in Inputs or InputFiles.
 	Prompt bool
+
 	// If Prompt is true, Prompter will be used if needed to ask the user for
 	// any missing inputs. If Prompt is false, this is ignored.
 	Prompter input.Prompter
@@ -201,6 +206,9 @@ func Render(ctx context.Context, p *Params) (_ *Result, rErr error) {
 func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.DownloadMetadata, templateDir string, p *Params) (_ *Result, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "RenderAlreadyDownloaded")
 
+	if err := validate(p); err != nil {
+		return nil, err
+	}
 	p = fillDefaults(p)
 
 	logger.DebugContext(ctx, "loading spec file")
@@ -258,6 +266,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 		rp:               p,
 		scope:            scope,
 		scratchDir:       scratchDir,
+		suppressPrint:    p.ManifestOnly, // if --manifest-only was given, then the user doesn't want printed output.
 		templateDir:      templateDir,
 	}
 
@@ -431,6 +440,9 @@ type stepParams struct {
 	// like for_each keys.
 	scope *common.Scope
 
+	// If true, print actions will not actually print anything.
+	suppressPrint bool
+
 	extraPrintVars map[string]string
 
 	debugDiffsDir string
@@ -592,7 +604,8 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 	}
 
 	for _, dryRun := range []bool{true, false} {
-		outputHashes, err := commit(ctx, dryRun, p, cp.scratchDir, cp.includedFromDest)
+		commitDryRun := dryRun || p.ManifestOnly
+		outputHashes, err := commit(ctx, commitDryRun, p, cp.scratchDir, cp.includedFromDest)
 		if err != nil {
 			return "", err
 		}
@@ -707,4 +720,11 @@ func fillDefaults(p *Params) *Params {
 		out.DestDir = out.OutDir
 	}
 	return &out
+}
+
+func validate(p *Params) error {
+	if p.ManifestOnly && !p.Manifest {
+		return fmt.Errorf("if ManifestOnly is true, then Manifest must be true")
+	}
+	return nil
 }
