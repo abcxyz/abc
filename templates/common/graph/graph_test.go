@@ -15,12 +15,13 @@
 package graph
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"math/rand"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
@@ -192,11 +193,11 @@ func TestTopoSort(t *testing.T) {
 
 			got, err := tc.g.TopologicalSort()
 
-			cmp.Equal(err, tc.wantErr,
+			gocmp.Equal(err, tc.wantErr,
 				// Cycles can appear in a variety of forms ({a b c a} or
 				// {c a b c}), so we canonicalize by just checking the *set* of
 				// nodes involved in the cycle.
-				cmp.Transformer("canonicalize_cycle", func(cycle []string) map[string]struct{} {
+				gocmp.Transformer("canonicalize_cycle", func(cycle []string) map[string]struct{} {
 					out := map[string]struct{}{}
 					for _, n := range cycle {
 						out[n] = struct{}{}
@@ -210,7 +211,7 @@ func TestTopoSort(t *testing.T) {
 				anyMatched = true
 			}
 			for _, want := range tc.want {
-				if cmp.Equal(got, want, cmpopts.EquateEmpty()) {
+				if gocmp.Equal(got, want, cmpopts.EquateEmpty()) {
 					anyMatched = true
 					break
 				}
@@ -245,9 +246,8 @@ func TestTopoSortRandomGraph(t *testing.T) {
 
 // makeRandomDAG randomly generates and returns a directed acyclic graph.
 func makeRandomDAG(rand *rand.Rand) *Graph[int] {
-	const (
-		maxNodes = 20
-	)
+	const maxNodes = 20
+
 	// We generate a DAG by just iterating over a list of nodes and randomly
 	// adding edges that only go "forward" in the list. By only adding forward
 	// edges we guarantee that there are no cycles.
@@ -288,7 +288,7 @@ func intMin(x, y int) int {
 	return y
 }
 
-func assertSortIsTopological[T comparable](t *testing.T, g *Graph[T], candidateSort []T) {
+func assertSortIsTopological[T cmp.Ordered](t *testing.T, g *Graph[T], candidateSort []T) {
 	t.Helper()
 
 	seen := make(map[T]struct{}, len(g.edges))

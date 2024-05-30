@@ -15,7 +15,11 @@
 package graph
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
+
+	"golang.org/x/exp/maps"
 )
 
 // CyclicError is returned when the input graph has a cycle.
@@ -28,12 +32,12 @@ func (e *CyclicError[T]) Error() string {
 }
 
 // Graph represents a directed graph.
-type Graph[T comparable] struct {
+type Graph[T cmp.Ordered] struct {
 	edges map[T][]T
 }
 
 // NewGraph creates a new graph.
-func NewGraph[T comparable]() *Graph[T] {
+func NewGraph[T cmp.Ordered]() *Graph[T] {
 	return &Graph[T]{
 		edges: make(map[T][]T),
 	}
@@ -67,6 +71,9 @@ func (g *Graph[T]) EdgesFrom(n T) []T {
 // TopologicalSort performs a topological sort. For all edges a->b, the output
 // will have b before a.
 //
+// For the same graph, the same result will be returned, regardless of the order
+// of Add*() calls, and regardless of Go's random map iteration order.
+//
 // If there is a cycle in the graph, an error message will be returned that
 // names the nodes involved in the cycle.
 func (g *Graph[T]) TopologicalSort() ([]T, error) {
@@ -74,7 +81,13 @@ func (g *Graph[T]) TopologicalSort() ([]T, error) {
 	out := make([]T, 0, len(g.edges))
 	cycleDetect := make(map[T]struct{})
 
-	for node := range g.edges {
+	// Output order must be the same across multiple CLI invocations. If we
+	// care about the inefficient asymptotic runtime of this approach, we could
+	// switch to a heap-based algorithm and abandon this DFS algorithm.
+	nodes := maps.Keys(g.edges)
+	slices.Sort(nodes)
+
+	for _, node := range nodes {
 		if _, ok := visited[node]; !ok {
 			if err := g.dfs(node, visited, &out, cycleDetect); err != nil {
 				return nil, err
@@ -91,7 +104,9 @@ func (g *Graph[T]) dfs(node T, visited map[T]struct{}, stack *[]T, cycleDetect m
 	visited[node] = struct{}{}
 	cycleDetect[node] = struct{}{}
 
-	for _, neighbor := range g.edges[node] {
+	neighbors := g.edges[node]
+	slices.Sort(neighbors) // output order must be the same across multiple CLI invocations
+	for _, neighbor := range neighbors {
 		if _, ok := visited[neighbor]; !ok {
 			if err := g.dfs(neighbor, visited, stack, cycleDetect); err != nil {
 				return err
