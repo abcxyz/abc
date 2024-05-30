@@ -672,11 +672,11 @@ func commit(ctx context.Context, commitDryRun bool, p *Params, scratchDir string
 		// Edge case 3: we're in "manifest only" mode, which means that we don't
 		// want to output any files except the manifest.
 		_, ok := includedFromDest[relPath]
-		overwrite := ok || p.ForceOverwrite || p.ManifestOnly
+		allowPreexisting := ok || p.ForceOverwrite || p.ManifestOnly
 
 		return common.CopyHint{
 			BackupIfExists:   p.Backups,
-			AllowPreexisting: overwrite,
+			AllowPreexisting: allowPreexisting,
 		}, nil
 	}
 
