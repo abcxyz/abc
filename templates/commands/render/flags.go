@@ -74,6 +74,10 @@ type RenderFlags struct {
 	// Manifest enables the writing of manifest files, which are an experimental
 	// feature related to template upgrades.
 	Manifest bool
+
+	// Whether to *only* create a manifest file without outputting any other
+	// files from the template.
+	ManifestOnly bool
 }
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
@@ -115,7 +119,17 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Target:  &r.Manifest,
 		Default: false,
 		EnvVar:  "ABC_MANIFEST",
-		Usage:   "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
+		// TODO(upgrade): remove "(experimental)"
+		Usage: "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "manifest-only",
+		Target:  &r.ManifestOnly,
+		Default: false,
+		EnvVar:  "ABC_MANIFEST_ONLY",
+		// TODO(upgrade): remove "(experimental)"
+		Usage: "(experimental) write only a manifest file and no other files; implicitly sets --manifest=true",
 	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")
@@ -131,6 +145,11 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		r.Source = strings.TrimSpace(set.Arg(0))
 		if r.Source == "" {
 			return fmt.Errorf("missing <source> file")
+		}
+
+		if r.ManifestOnly {
+			// --manifest-only implies the user wants a manifest.
+			r.Manifest = true
 		}
 
 		return nil

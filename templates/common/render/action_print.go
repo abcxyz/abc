@@ -34,6 +34,9 @@ func actionPrint(_ context.Context, p *spec.Print, sp *stepParams) error {
 		msg += "\n"
 	}
 
+	if sp.suppressPrint {
+		return nil
+	}
 	// We can ignore the int returned from Write() because the docs promise that
 	// incomplete writes always return error.
 	if _, err := sp.rp.Stdout.Write([]byte(msg)); err != nil {
