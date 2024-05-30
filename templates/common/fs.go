@@ -105,19 +105,21 @@ type CopyParams struct {
 	// either relative to the cwd or absolute. Use os.MkdirTemp() in real code
 	// and something hardcoded in tests.
 	BackupDirMaker func(FS) (string, error)
-	// // backupDir provides the path at which files will be saved before they're
-	// // overwritten.
-	// backupDir string
-	// dryRun skips actually copy anything, just checks whether the copy would
-	// be likely to succeed.
+
+	// DryRun skips actually copying anything, just checks whether the copy
+	// would be likely to succeed.
 	DryRun bool
-	// dstRoot is the output directory. May be absolute or relative.
+
+	// DstRoot is the output directory. May be absolute or relative.
 	DstRoot string
-	// srcRoot is the file or directory from which to copy. May be absolute or
+
+	// SrcRoot is the file or directory from which to copy. May be absolute or
 	// relative.
 	SrcRoot string
+
 	// FS is the filesytem to use.
 	FS FS
+
 	// visitor is an optional function that will be called for each file in the
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
@@ -144,11 +146,11 @@ type CopyHint struct {
 	// This has no effect on directories, only files.
 	BackupIfExists bool
 
-	// Overwrite files in the destination if they already exist. The default is
-	// to conservatively fail.
+	// AllowPreexisting prevents CopyRecursive from returning error when copying
+	// over an existing file. The default is to conservatively fail.
 	//
 	// This has no effect on directories, only files.
-	Overwrite bool
+	AllowPreexisting bool
 
 	// Whether to skip this file or directory (don't write it to the
 	// destination). For directories, this will cause all files underneath the
@@ -213,7 +215,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			if dstInfo.IsDir() {
 				return pos.Errorf("cannot overwrite a directory with a file of the same name; destination is %q, source is %q", dst, path)
 			}
-			if !ch.Overwrite {
+			if !ch.AllowPreexisting {
 				return pos.Errorf("destination file %s already exists and overwriting was not enabled with --force-overwrite", relToSrc)
 			}
 			if ch.BackupIfExists && !p.DryRun {

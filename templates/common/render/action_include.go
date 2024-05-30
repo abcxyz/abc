@@ -117,7 +117,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 				// scratch directory. This doesn't affect whether files in
 				// the final *destination* directory will be overwritten;
 				// that comes later.
-				Overwrite: true,
+				AllowPreexisting: true,
 			}, nil
 		},
 	}
