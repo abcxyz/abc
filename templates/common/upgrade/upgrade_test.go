@@ -1234,15 +1234,12 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	manifestFullPath := filepath.Join(templateDir, "manifest.yaml")
-	if err := os.WriteFile(manifestFullPath, buf, common.OwnerRWPerms); err != nil {
-		t.Fatal(err)
-	}
+	abctestutil.Overwrite(t, templateDir, "manifest.yaml", string(buf))
 
 	params := &Params{
 		CWD:      tempBase,
 		FS:       &common.RealFS{},
-		Location: manifestFullPath,
+		Location: filepath.Join(templateDir, "manifest.yaml"),
 	}
 
 	_, err = upgrade(ctx, params, params.Location)
@@ -1571,7 +1568,6 @@ func TestUpgradeAll_MultipleTemplates(t *testing.T) {
 		t.Fatal(allResult.Err)
 	}
 
-	// TODO the map is an awkward API, make it a list of structs containing lists
 	if len(allResult.Results) != 2 {
 		t.Errorf("got %d results, expected exactly 2", len(allResult.Results))
 	}
@@ -1587,6 +1583,118 @@ func TestUpgradeAll_MultipleTemplates(t *testing.T) {
 	}
 	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifest are too unpredictable, don't assert their contents
 	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
+	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
+		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+	}
+}
+
+func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	clk := clock.NewMock()
+
+	tempBase := t.TempDir()
+
+	// Make the temp dir into a git repo so template locations will be treated
+	// as canonical.
+	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
+	template1Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old template1 file contents",
+	}
+	template2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old template2 file contents",
+	}
+
+	templateDir1 := filepath.Join(tempBase, "templateDir1")
+	templateDir2 := filepath.Join(tempBase, "templateDir2")
+	destBase := filepath.Join(tempBase, "dest")
+	destDir1 := filepath.Join(destBase, "destDir1")
+	destDir2 := filepath.Join(destBase, "destDir2")
+	abctestutil.WriteAll(t, templateDir1, template1Files)
+	abctestutil.WriteAll(t, templateDir2, template2Files)
+	mustRender(t, ctx, clk, tempBase, templateDir1, destDir1)
+	mustRender(t, ctx, clk, tempBase, templateDir2, destDir2)
+
+	abctestutil.Overwrite(t, destDir1, "myfile.txt", "my local edits")
+
+	upgradedTemplate1Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template1 file contents",
+	}
+	upgradedTemplate2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template2 file contents",
+	}
+
+	abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
+	abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
+
+	upgradeParams := &Params{
+		Clock:    clk,
+		CWD:      tempBase,
+		FS:       &common.RealFS{},
+		Location: tempBase,
+		Stdout:   os.Stdout,
+	}
+	allResult := UpgradeAll(ctx, upgradeParams)
+	if allResult.Err != nil {
+		t.Fatal(allResult.Err)
+	}
+	if allResult.Overall != MergeConflict {
+		t.Errorf("got overall result %q, want %q", allResult.Overall, MergeConflict)
+	}
+
+	if len(allResult.Results) != 1 {
+		t.Errorf("got %d results, expected exactly 1", len(allResult.Results))
+	}
+	result := allResult.Results[0]
+
+	if result.Type != MergeConflict {
+		t.Fatalf("got result type %q, wanted %q", result.Type, MergeConflict)
+	}
+
+	wantDestContents := map[string]string{
+		"destDir1/myfile.txt" + SuffixFromNewTemplate: "my new template1 file contents",
+		"destDir1/myfile.txt" + SuffixLocallyEdited:   "my local edits",
+		"destDir2/myfile.txt":                         "my old template2 file contents",
+	}
+	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifest are too unpredictable, don't assert their contents
+	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
+	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
+		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+	}
+
+	abctestutil.Overwrite(t, destDir1, "myfile.txt", "my resolved contents")
+	abctestutil.Remove(t, destDir1, "myfile.txt"+SuffixFromNewTemplate)
+	abctestutil.Remove(t, destDir1, "myfile.txt"+SuffixLocallyEdited)
+
+	allResult = UpgradeAll(ctx, upgradeParams)
+	if allResult.Err != nil {
+		t.Fatal(allResult.Err)
+	}
+	if allResult.Overall != Success {
+		t.Errorf("got overall result %q, want %q", allResult.Overall, Success)
+	}
+
+	if len(allResult.Results) != 2 {
+		t.Fatalf("got %d results, expected exactly 2", len(allResult.Results))
+	}
+	if got := allResult.Results[0].Type; got != AlreadyUpToDate {
+		t.Fatalf("got result[0] %q, expected %q", got, AlreadyUpToDate)
+	}
+	if got := allResult.Results[1].Type; got != Success {
+		t.Fatalf("got result[1] %q, expected %q", got, Success)
+	}
+
+	wantDestContents = map[string]string{
+		"destDir1/myfile.txt": "my resolved contents",
+		"destDir2/myfile.txt": "my new template2 file contents",
+	}
+	gotDestContents = abctestutil.LoadDir(t, destBase, opt)
 	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
 		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
 	}
