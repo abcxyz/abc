@@ -26,6 +26,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/graph"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
+	"github.com/abcxyz/pkg/logging"
 )
 
 // Result is the return value from an upgrade operation. It will be returned
@@ -73,7 +74,7 @@ var ErrNoManifests error = fmt.Errorf("found no template manifests to upgrade")
 //
 // If no manifests could be found, then ErrNoManifests is returned.
 func UpgradeAll(ctx context.Context, p *Params) *Result {
-	// logger := logging.FromContext(ctx).With("logger", "UpgradeAll")
+	logger := logging.FromContext(ctx).With("logger", "UpgradeAll")
 
 	var err error
 	p, err = fillDefaults(p) // includes shallow copying of input
@@ -115,6 +116,8 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		if !filepath.IsAbs(absManifestPath) {
 			absManifestPath = filepath.Join(p.CWD, absManifestPath)
 		}
+		logger.InfoContext(ctx, "beginning upgrade of manifest",
+			"manifest", absManifestPath)
 		result, err := upgrade(ctx, p, absManifestPath)
 		if err != nil {
 			path := filepath.Join(p.Location, m)
@@ -129,6 +132,10 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		result.DependedOn = depGraph.EdgesFrom(m)
 
 		out.Results = append(out.Results, result)
+
+		if result.Type.RequiresUserAttention() {
+			break
+		}
 	}
 
 	out.Overall = overallResult(out.Results)
