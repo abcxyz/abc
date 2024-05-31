@@ -133,7 +133,7 @@ func recordTestCase(ctx context.Context, templateLocation string, tc *TestCase, 
 				"testdata", relToAbsSrc)
 		}
 		return common.CopyHint{
-			Overwrite: true,
+			AllowPreexisting: true,
 		}, nil
 	}
 	params := &common.CopyParams{

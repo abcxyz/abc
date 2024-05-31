@@ -81,7 +81,7 @@ func TestCopyRecursive(t *testing.T) {
 			mkdirAllErr: fmt.Errorf("MkdirAll shouldn't be called in dry run mode"),
 		},
 		{
-			name: "dry_run_with_overwrite_doesnt_make_backups",
+			name: "dry_run_with_allow_preexisting_doesnt_make_backups",
 			srcDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "new contents"},
 			},
@@ -90,8 +90,8 @@ func TestCopyRecursive(t *testing.T) {
 			},
 			visitor: func(relPath string, de fs.DirEntry) (CopyHint, error) {
 				return CopyHint{
-					BackupIfExists: true,
-					Overwrite:      true,
+					BackupIfExists:   true,
+					AllowPreexisting: true,
 				}, nil
 			},
 			want: map[string]abctestutil.ModeAndContents{
@@ -101,7 +101,7 @@ func TestCopyRecursive(t *testing.T) {
 			dryRun: true,
 		},
 		{
-			name: "dry_run_without_overwrite_should_detect_conflicting_files",
+			name: "dry_run_without_allow_preexisting_should_detect_conflicting_files",
 			dstDirInitialContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "old contents"},
 			},
@@ -115,7 +115,7 @@ func TestCopyRecursive(t *testing.T) {
 			dryRun: true,
 			visitor: func(relPath string, de fs.DirEntry) (CopyHint, error) {
 				return CopyHint{
-					Overwrite: false,
+					AllowPreexisting: false,
 				}, nil
 			},
 			openFileErr: fmt.Errorf("OpenFile shouldn't be called in dry run mode"),
@@ -191,7 +191,7 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
-			name: "overwriting_with_overwrite_true_should_succeed",
+			name: "overwriting_with_allow_preexisting_true_should_succeed",
 			srcDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "new contents"},
 			},
@@ -200,7 +200,7 @@ func TestCopyRecursive(t *testing.T) {
 			},
 			visitor: func(relPath string, de fs.DirEntry) (CopyHint, error) {
 				return CopyHint{
-					Overwrite: true,
+					AllowPreexisting: true,
 				}, nil
 			},
 			want: map[string]abctestutil.ModeAndContents{
@@ -208,7 +208,7 @@ func TestCopyRecursive(t *testing.T) {
 			},
 		},
 		{
-			name: "overwriting_with_overwrite_false_should_fail",
+			name: "overwriting_with_allow_preexisting_false_should_fail",
 			srcDirContents: map[string]abctestutil.ModeAndContents{
 				"file1.txt": {Mode: 0o600, Contents: "new contents"},
 			},
@@ -224,7 +224,7 @@ func TestCopyRecursive(t *testing.T) {
 			name: "overwriting_dir_with_child_file_should_fail",
 			visitor: func(relPath string, de fs.DirEntry) (CopyHint, error) {
 				return CopyHint{
-					Overwrite: true,
+					AllowPreexisting: true,
 				}, nil
 			},
 			srcDirContents: map[string]abctestutil.ModeAndContents{
@@ -242,7 +242,7 @@ func TestCopyRecursive(t *testing.T) {
 			name: "overwriting_file_with_dir_should_fail",
 			visitor: func(relPath string, de fs.DirEntry) (CopyHint, error) {
 				return CopyHint{
-					Overwrite: true,
+					AllowPreexisting: true,
 				}, nil
 			},
 			srcDirContents: map[string]abctestutil.ModeAndContents{
@@ -312,8 +312,8 @@ func TestCopyRecursive(t *testing.T) {
 			},
 			visitor: func(relPath string, de fs.DirEntry) (CopyHint, error) {
 				return CopyHint{
-					BackupIfExists: true,
-					Overwrite:      true,
+					BackupIfExists:   true,
+					AllowPreexisting: true,
 				}, nil
 			},
 			want: map[string]abctestutil.ModeAndContents{
