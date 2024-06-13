@@ -258,8 +258,11 @@ upgrading.`)
 			resumeFrom = fmt.Sprintf(" --resume-from=%s", r.ManifestPath)
 		}
 		fmt.Fprintf(&out, `
+
 After manually applying the rejected hunks, re-run the upgrade command with
---already-resolved=%s%s`,
+these flags:
+
+  --already-resolved=%s%s`,
 			strings.Join(relPaths, ","), resumeFrom)
 		return out.String()
 	}
