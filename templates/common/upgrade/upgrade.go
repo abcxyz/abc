@@ -49,6 +49,9 @@ import (
 
 // TODO(upgrade):
 //   - add "abort if conflict" feature
+//   - store the branch-to-upgrade-from in the manifest instead of always using
+//     "latest", so we can support use cases that installed from main, and using
+//     "latest" would actually be a downgrade.
 //   - rethink overly complex manifest file name?
 //   - validate that manifest paths don't contain traversals
 //   - add "check for update and exit" feature
