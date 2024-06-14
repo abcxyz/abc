@@ -67,11 +67,11 @@ type DownloadMetadata struct {
 	LocationType    LocationType
 
 	// Depending on where the template was taken from, there might be a version
-	// string associated with it (e.g. a git tag or a git SHA).
-	//
-	// HasVersion is true if and only if Version is non-empty.
-	HasVersion bool
-	Version    string
+	// string associated with it (e.g. a git tag or a git SHA). May be empty.
+	Version string
+
+	// TODO
+	RequestedVersion string
 
 	// Values for template variables like _git_tag and _git_sha.
 	Vars DownloaderVars

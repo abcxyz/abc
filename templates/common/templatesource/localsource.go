@@ -107,7 +107,6 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 		IsCanonical:     canonicalSource != "",
 		CanonicalSource: canonicalSource,
 		LocationType:    locType,
-		HasVersion:      version != "",
 		Version:         version,
 		Vars:            *gitVars,
 	}

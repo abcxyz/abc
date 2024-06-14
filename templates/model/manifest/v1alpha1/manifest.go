@@ -52,6 +52,19 @@ type Manifest struct {
 	// The tag, branch, SHA, or other version information.
 	TemplateVersion model.String `yaml:"template_version"`
 
+	TrackRemote model.String `yaml:"track_remote"`
+
+	// // TODO
+	// //
+	// // This addresses the use case where the
+	// // user originally installs the template from the `main` branch and
+	// // therefore we should upgrade from the same branch, rather than using the
+	// // "latest" release, which might actually be a downgrade.
+	// //
+	// // At upgrade time when this field is read, it will only be used if the
+	// // location_type is "remote_git".
+	// RequestedVersion model.String `yaml:"requested_version"`
+
 	// The dirhash (https://pkg.go.dev/golang.org/x/mod/sumdb/dirhash) of the
 	// template source tree (not the output). This shows exactly what version of
 	// the template was installed.

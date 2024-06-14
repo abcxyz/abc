@@ -222,9 +222,10 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		IsCanonical:     true, // Remote git sources are always canonical.
 		CanonicalSource: g.canonicalSource,
 		LocationType:    RemoteGit,
-		HasVersion:      true, // Remote git sources always have a tag or SHA.
 		Version:         canonicalVersion,
-		Vars:            *vars,
+
+		// RequestedVersion: g.version,
+		Vars: *vars,
 	}
 
 	return dlMeta, nil
