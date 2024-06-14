@@ -98,6 +98,7 @@ steps:
 		flagIgnoreUnknownInputs bool
 		flagSkipInputValidation bool
 		flagManifest            bool
+		flagManifestOnly        bool
 		flagDebugStepDiffs      bool
 		overrideBuiltinVars     map[string]string
 		removeAllErr            error
@@ -175,6 +176,113 @@ steps:
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
+				Inputs: []*manifest.Input{
+					{
+						Name:  mdl.S("emoji_suffix"),
+						Value: mdl.S("\U0001F408"),
+					},
+					{
+						Name:  mdl.S("ending_punctuation"),
+						Value: mdl.S("!"),
+					},
+					{
+						Name:  mdl.S("name_to_greet"),
+						Value: mdl.S("Bob"),
+					},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("dir1/file_in_dir.txt"),
+						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
+					},
+					{
+						File: mdl.S("dir2/file2.txt"),
+						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
+					},
+					{
+						File: mdl.S("file1.txt"),
+						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
+					},
+				},
+			},
+		},
+		{
+			name: "simple_success_with_manifest_only_flag",
+			flagInputs: map[string]string{
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			flagManifest:     true,
+			flagManifestOnly: true,
+			wantDestContents: map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
+				Inputs: []*manifest.Input{
+					{
+						Name:  mdl.S("emoji_suffix"),
+						Value: mdl.S("\U0001F408"),
+					},
+					{
+						Name:  mdl.S("ending_punctuation"),
+						Value: mdl.S("!"),
+					},
+					{
+						Name:  mdl.S("name_to_greet"),
+						Value: mdl.S("Bob"),
+					},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("dir1/file_in_dir.txt"),
+						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
+					},
+					{
+						File: mdl.S("dir2/file2.txt"),
+						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
+					},
+					{
+						File: mdl.S("file1.txt"),
+						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
+					},
+				},
+			},
+		},
+		{
+			name: "preexisting_dest_files_with_manifest_only_flag",
+			flagInputs: map[string]string{
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			flagManifest:     true,
+			flagManifestOnly: true,
+			existingDestContents: map[string]string{
+				"file1.txt": "existing contents",
+			},
+			wantDestContents: map[string]string{
+				"file1.txt": "existing contents",
 			},
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
@@ -1332,6 +1440,7 @@ steps:
 				Inputs:              tc.flagInputs,
 				KeepTempDirs:        tc.flagKeepTempDirs,
 				Manifest:            tc.flagManifest,
+				ManifestOnly:        tc.flagManifestOnly,
 				OutDir:              outDir,
 				OverrideBuiltinVars: tc.overrideBuiltinVars,
 				SkipInputValidation: tc.flagSkipInputValidation,
@@ -1414,6 +1523,7 @@ func verifyManifest(ctx context.Context, tb testing.TB, gotManifest bool, manife
 			return
 		}
 		tb.Errorf("got no manifest, but wanted %v", want)
+		return
 	}
 
 	got := abctestutil.MustLoadManifest(ctx, tb, manifestPath)

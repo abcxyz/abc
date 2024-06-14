@@ -33,6 +33,18 @@
                 "${workspaceFolder}/examples/templates/render/hello_jupiter",
                 "example_test"
             ]
-        }
+        },
+
+        {
+            "name": "Debug abc upgrade",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "cmd/abc/abc.go",
+            "args": [
+                "upgrade",
+                "/usr/local/google/home/revell/git/abcxyz/infra-gcp"
+            ]
+        },
     ]
 }

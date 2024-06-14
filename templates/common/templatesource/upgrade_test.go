@@ -17,7 +17,6 @@ package templatesource
 import (
 	"context"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -32,7 +31,7 @@ func TestForUpgrade(t *testing.T) {
 	cases := []struct {
 		name              string
 		canonicalLocation string
-		locType           string
+		locType           LocationType
 		gitProtocol       string
 		installedInSubdir string
 		dirContents       map[string]string
@@ -43,7 +42,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_https_no_subdir",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -57,7 +56,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_ssh_no_subdir",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "ssh",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -71,7 +70,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_https_subdir",
 			canonicalLocation: "github.com/abcxyz/abc/sub",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -86,7 +85,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "remote_git_ssh_subdir",
 			canonicalLocation: "github.com/abcxyz/abc/sub",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "ssh",
 			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
@@ -101,7 +100,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "non_default_version",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			version:           "someversion",
 			wantDownloader: &remoteGitDownloader{
@@ -115,7 +114,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "malformed_remote_git",
 			canonicalLocation: "asdfasdfasdf",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "https",
 			wantErr:           `failed parsing canonical location "asdfasdfasdf"`,
 		},
@@ -153,7 +152,7 @@ func TestForUpgrade(t *testing.T) {
 		{
 			name:              "unknown_git_protocol",
 			canonicalLocation: "github.com/abcxyz/abc",
-			locType:           "remote_git",
+			locType:           RemoteGit,
 			gitProtocol:       "nonexistent",
 			wantErr:           `protocol "nonexistent" isn't usable with a template sourced from a remote git repo`,
 		},
@@ -187,17 +186,11 @@ func TestForUpgrade(t *testing.T) {
 
 			opts := []cmp.Option{
 				cmp.AllowUnexported(remoteGitDownloader{}, LocalDownloader{}),
-
-				// If the downloader is a local downloader, it has an
-				// unpredictable temp directory in its SrcPath field that
-				// couldn't be included in wantDownloader. Therefore, when
-				// comparing the "got" downloader to the "want" downloader, we
-				// want to strip out the temp dir.
-				cmp.Transformer("strip_temp_dir", func(l *LocalDownloader) *LocalDownloader {
-					cp := *l
-					cp.SrcPath = strings.TrimPrefix(cp.SrcPath, tempDir+"/")
-					return &cp
-				}),
+				abctestutil.TransformStructFields(
+					abctestutil.TrimStringPrefixTransformer(tempDir+"/"),
+					LocalDownloader{},
+					"SrcPath",
+				),
 			}
 			if diff := cmp.Diff(downloader, tc.wantDownloader, opts...); diff != "" {
 				t.Errorf("downloader was not as expected: %s", diff)

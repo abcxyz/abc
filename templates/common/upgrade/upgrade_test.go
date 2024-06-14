@@ -18,6 +18,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,7 +40,17 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 )
 
-func TestUpgrade(t *testing.T) {
+const includeDotSpec = `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'include .'
+    action: 'include'
+    params:
+      paths: ['.']
+`
+
+func TestUpgradeAll(t *testing.T) {
 	t.Parallel()
 
 	// We don't use UTC time here because we want to make sure local time
@@ -49,20 +61,6 @@ func TestUpgrade(t *testing.T) {
 	}
 	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
 	afterUpgradeTime := beforeUpgradeTime.Add(time.Hour)
-
-	// This spec file is used for some (but not all) of the tests.
-	includeDotSpec := `
-api_version: 'cli.abcxyz.dev/v1beta6'
-kind: 'Template'
-
-desc: 'my template'
-
-steps:
-  - desc: 'include .'
-    action: 'include'
-    params:
-      paths: ['.']
-`
 
 	outTxtOnlyManifest := &manifest.Manifest{
 		CreationTime:     beforeUpgradeTime.UTC(),
@@ -75,6 +73,18 @@ steps:
 			{
 				File: mdl.S("out.txt"),
 			},
+		},
+	}
+
+	wantDLMeta := &templatesource.DownloadMetadata{
+		IsCanonical:     true,
+		CanonicalSource: "../template_dir",
+		LocationType:    templatesource.LocalGit,
+		HasVersion:      true,
+		Version:         abctestutil.MinimalGitHeadSHA,
+		Vars: templatesource.DownloaderVars{
+			GitSHA:      abctestutil.MinimalGitHeadSHA,
+			GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 		},
 	}
 
@@ -114,9 +124,11 @@ steps:
 		want                         *Result
 		wantErr                      string
 
-		// wantRejectFile is a hack since Mac and Linux `patch` commands
-		// generate different formats for their reject hunk files. We therefore
-		// just test for the presence of the file.
+		// wantRejectFile, if set, is a path to a file that should contain the
+		// rejected hunks from the patch command. This is a hack since Mac and
+		// Linux `patch` commands generate different formats for their reject
+		// hunk files. We therefore just test for the presence of the file, not
+		// the contents.
 		wantRejectFile string
 	}{
 		// TODO(upgrade): tests to add:
@@ -142,19 +154,35 @@ steps:
       with: 'world'`,
 			},
 			want: &Result{
-				Type:         Success,
-				NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						Type:         Success,
+						NonConflicts: []ActionTaken{{Path: "out.txt", Action: WriteNew}},
+						DLMeta:       wantDLMeta,
+						ManifestPath: ".",
+					},
+				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\nworld\n",
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.ModificationTime = afterUpgradeTime
+				m.ModificationTime = afterUpgradeTime.UTC()
 			}),
 		},
 		{
 			name: "short_circuit_if_already_latest_version",
-			want: &Result{Type: AlreadyUpToDate},
+			want: &Result{
+				Overall: AlreadyUpToDate,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         AlreadyUpToDate,
+						DLMeta:       wantDLMeta,
+					},
+				},
+			},
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -178,10 +206,17 @@ steps:
 				"spec.yaml":        includeDotSpec,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
-					{Action: WriteNew, Path: "another_file.txt"},
-					{Action: Noop, Path: "out.txt"},
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: WriteNew, Path: "another_file.txt"},
+							{Action: Noop, Path: "out.txt"},
+						},
+						DLMeta: wantDLMeta,
+					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -225,10 +260,17 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
-					{Action: DeleteAction, Path: "another_file.txt"},
-					{Action: Noop, Path: "out.txt"},
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: DeleteAction, Path: "another_file.txt"},
+							{Action: Noop, Path: "out.txt"},
+						},
+						DLMeta: wantDLMeta,
+					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -268,18 +310,25 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
-				Type: MergeConflict,
-				NonConflicts: []ActionTaken{
+				Overall: MergeConflict,
+				Results: []*ManifestResult{
 					{
-						Action: Noop,
-						Path:   "out.txt",
-					},
-				},
-				Conflicts: []ActionTaken{
-					{
-						Action:   EditDeleteConflict,
-						Path:     "another_file.txt",
-						OursPath: "another_file.txt.abcmerge_template_wants_to_delete",
+						ManifestPath: ".",
+						Type:         MergeConflict,
+						NonConflicts: []ActionTaken{
+							{
+								Action: Noop,
+								Path:   "out.txt",
+							},
+						},
+						MergeConflicts: []ActionTaken{
+							{
+								Action:   EditDeleteConflict,
+								Path:     "another_file.txt",
+								OursPath: "another_file.txt.abcmerge_template_wants_to_delete",
+							},
+						},
+						DLMeta: wantDLMeta,
 					},
 				},
 			},
@@ -324,10 +373,17 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
-					{Action: Noop, Path: "another_file.txt"},
-					{Action: Noop, Path: "out.txt"},
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: Noop, Path: "another_file.txt"},
+							{Action: Noop, Path: "out.txt"},
+						},
+						DLMeta: wantDLMeta,
+					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -363,13 +419,20 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
-				Type: MergeConflict,
-				Conflicts: []ActionTaken{
+				Overall: MergeConflict,
+				Results: []*ManifestResult{
 					{
-						Action:               EditEditConflict,
-						Path:                 "out.txt",
-						OursPath:             "out.txt.abcmerge_locally_edited",
-						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+						ManifestPath: ".",
+						Type:         MergeConflict,
+						MergeConflicts: []ActionTaken{
+							{
+								Action:               EditEditConflict,
+								Path:                 "out.txt",
+								OursPath:             "out.txt.abcmerge_locally_edited",
+								IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+							},
+						},
+						DLMeta: wantDLMeta,
 					},
 				},
 			},
@@ -410,12 +473,19 @@ steps:
 				"spec.yaml": includeDotSpec,
 			},
 			want: &Result{
-				Type: MergeConflict,
-				Conflicts: []ActionTaken{
+				Overall: MergeConflict,
+				Results: []*ManifestResult{
 					{
-						Action:               DeleteEditConflict,
-						Path:                 "out.txt",
-						IncomingTemplatePath: "out.txt.abcmerge_locally_deleted_vs_new_template_version",
+						ManifestPath: ".",
+						Type:         MergeConflict,
+						MergeConflicts: []ActionTaken{
+							{
+								Action:               DeleteEditConflict,
+								Path:                 "out.txt",
+								IncomingTemplatePath: "out.txt.abcmerge_locally_deleted_vs_new_template_version",
+							},
+						},
+						DLMeta: wantDLMeta,
 					},
 				},
 			},
@@ -462,10 +532,17 @@ steps:
 				"spec.yaml":                      includeDotSpec,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
-					{Action: WriteNew, Path: "template_changes_this_file.txt"},
-					{Action: Noop, Path: "user_deletes_this_file.txt"},
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: WriteNew, Path: "template_changes_this_file.txt"},
+							{Action: Noop, Path: "user_deletes_this_file.txt"},
+						},
+						DLMeta: wantDLMeta,
+					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -512,10 +589,17 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
-					{Action: Noop, Path: "out.txt"},
-					{Action: WriteNew, Path: "some_other_file.txt"},
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: Noop, Path: "out.txt"},
+							{Action: WriteNew, Path: "some_other_file.txt"},
+						},
+						DLMeta: wantDLMeta,
+					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -564,19 +648,26 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
-				Type: MergeConflict,
-				NonConflicts: []ActionTaken{
+				Overall: MergeConflict,
+				Results: []*ManifestResult{
 					{
-						Action: "noop",
-						Path:   "some_other_file.txt",
-					},
-				},
-				Conflicts: []ActionTaken{
-					{
-						Action:               "addAddConflict",
-						Path:                 "out.txt",
-						OursPath:             "out.txt.abcmerge_locally_added",
-						IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+						ManifestPath: ".",
+						Type:         MergeConflict,
+						NonConflicts: []ActionTaken{
+							{
+								Action: "noop",
+								Path:   "some_other_file.txt",
+							},
+						},
+						MergeConflicts: []ActionTaken{
+							{
+								Action:               "addAddConflict",
+								Path:                 "out.txt",
+								OursPath:             "out.txt.abcmerge_locally_added",
+								IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
+							},
+						},
+						DLMeta: wantDLMeta,
 					},
 				},
 			},
@@ -626,10 +717,17 @@ steps:
 				"spec.yaml":           includeDotSpec,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
-					{Action: "noop", Path: "out.txt"},
-					{Action: "noop", Path: "some_other_file.txt"},
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: "noop", Path: "out.txt"},
+							{Action: "noop", Path: "some_other_file.txt"},
+						},
+						DLMeta: wantDLMeta,
+					},
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
@@ -669,6 +767,7 @@ steps:
 				"foo.abcmerge_locally_added": "whatever",
 			},
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
+			want:                     &Result{}, // errors are checked separately
 			wantErr:                  "already an upgrade in progress",
 		},
 		{
@@ -682,16 +781,15 @@ steps:
   - desc: 'include a file to be modified in place'
     action: 'include'
     params:
-      from: 'destination'
-      paths: ['file.txt']
+        from: 'destination'
+        paths: ['file.txt']
   - desc: 'Change favorite color'
     action: 'string_replace'
     params:
-      paths: ['file.txt']
-      replacements: 
-        - to_replace: 'purple'
-          with: 'red'  
-`,
+        paths: ['file.txt']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
 			},
 			origDestContents: map[string]string{
 				"file.txt": "purple is my favorite color\n",
@@ -730,17 +828,24 @@ steps:
     action: 'string_replace'
     params:
       paths: ['file.txt']
-      replacements: 
+      replacements:
         - to_replace: 'purple'
-          with: 'yellow'  
+          with: 'yellow'
 `,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
+				Overall: Success,
+				Results: []*ManifestResult{
 					{
-						Action: WriteNew,
-						Path:   "file.txt",
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{
+								Action: WriteNew,
+								Path:   "file.txt",
+							},
+						},
+						DLMeta: wantDLMeta,
 					},
 				},
 			},
@@ -784,9 +889,9 @@ steps:
     action: 'string_replace'
     params:
       paths: ['file.txt']
-      replacements: 
+      replacements:
         - to_replace: 'purple'
-          with: 'red'  
+          with: 'red'
 `,
 			},
 			origDestContents: map[string]string{
@@ -830,13 +935,27 @@ steps:
     action: 'string_replace'
     params:
       paths: ['file.txt']
-      replacements: 
+      replacements:
         - to_replace: 'purple'
-          with: 'yellow'  
+          with: 'yellow'
 `,
 			},
 			want: &Result{
-				ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+				Overall: PatchReversalConflict,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						DLMeta:       wantDLMeta,
+						Type:         PatchReversalConflict,
+						ReversalConflicts: []*ReversalConflict{
+							{
+								RelPath:       "file.txt",
+								AbsPath:       "file.txt",
+								RejectedHunks: "file.txt.patch.rej",
+							},
+						},
+					},
+				},
 			},
 			// manifest should be unchanged if there's a reversal conflict
 			wantManifestAfterUpgrade: &manifest.Manifest{
@@ -881,9 +1000,9 @@ steps:
     action: 'string_replace'
     params:
       paths: ['file.txt']
-      replacements: 
+      replacements:
         - to_replace: 'purple'
-          with: 'red'  
+          with: 'red'
 `,
 			},
 			origDestContents: map[string]string{
@@ -927,17 +1046,24 @@ steps:
     action: 'string_replace'
     params:
       paths: ['file.txt']
-      replacements: 
+      replacements:
         - to_replace: 'purple'
-          with: 'yellow'  
+          with: 'yellow'
 `,
 			},
 			want: &Result{
-				Type: Success,
-				NonConflicts: []ActionTaken{
+				Overall: Success,
+				Results: []*ManifestResult{
 					{
-						Action: "writeNew",
-						Path:   "file.txt",
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{
+								Action: "writeNew",
+								Path:   "file.txt",
+							},
+						},
+						DLMeta: wantDLMeta,
 					},
 				},
 			},
@@ -1010,11 +1136,11 @@ yellow is my favorite color
 			clk.Set(afterUpgradeTime) // simulate time passing between initial installation and upgrade
 
 			params := &Params{
-				Clock:        clk,
-				CWD:          destDir,
-				FS:           &common.RealFS{},
-				ManifestPath: manifestFullPath,
-				Stdout:       os.Stdout,
+				Clock:    clk,
+				CWD:      destDir,
+				FS:       &common.RealFS{},
+				Location: manifestFullPath,
+				Stdout:   os.Stdout,
 			}
 
 			if tc.localEdits != nil {
@@ -1039,16 +1165,22 @@ yellow is my favorite color
 				abctestutil.WriteAll(t, templateDir, tc.templateReplacementForUpgrade)
 			}
 
-			result, err := Upgrade(ctx, params)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+			upgradeResult := UpgradeAll(ctx, params)
+			if diff := testutil.DiffErrString(upgradeResult.Err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
 			opts := []cmp.Option{
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
+				cmpopts.IgnoreFields(Result{}, "Err"),              // errors are verified separately
+				abctestutil.TransformStructFields(
+					abctestutil.TrimStringPrefixTransformer(destDir+"/"),
+					ReversalConflict{},
+					"AbsPath", "RejectedHunks",
+				),
 			}
-			if diff := cmp.Diff(result, tc.want, opts...); diff != "" {
+			if diff := cmp.Diff(upgradeResult, tc.want, opts...); diff != "" {
 				t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 			}
 
@@ -1102,18 +1234,15 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	manifestFullPath := filepath.Join(templateDir, "manifest.yaml")
-	if err := os.WriteFile(manifestFullPath, buf, common.OwnerRWPerms); err != nil {
-		t.Fatal(err)
-	}
+	abctestutil.Overwrite(t, templateDir, "manifest.yaml", string(buf))
 
 	params := &Params{
-		CWD:          tempBase,
-		FS:           &common.RealFS{},
-		ManifestPath: manifestFullPath,
+		CWD:      tempBase,
+		FS:       &common.RealFS{},
+		Location: filepath.Join(templateDir, "manifest.yaml"),
 	}
 
-	_, err = Upgrade(ctx, params)
+	_, err = upgrade(ctx, params, params.Location)
 	wantErr := "this template can't be upgraded because its manifest doesn't contain a template_location"
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 		t.Fatal(diff)
@@ -1223,19 +1352,37 @@ steps:
 	abctestutil.Overwrite(t, destDir, "file.txt", "green is my favorite color\n")
 
 	upgradeParams := &Params{
-		Clock:        clk,
-		CWD:          destDir,
-		FS:           &common.RealFS{},
-		ManifestPath: manifestFullPath,
-		Stdout:       os.Stdout,
+		Clock:    clk,
+		CWD:      destDir,
+		FS:       &common.RealFS{},
+		Location: manifestFullPath,
+		Stdout:   os.Stdout,
 	}
 
-	gotReversalConflictResult, err := Upgrade(ctx, upgradeParams)
+	gotReversalConflictResult, err := upgrade(ctx, upgradeParams, manifestFullPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantReversalConflictResult := &Result{
-		ReversalConflicts: []*ReversalConflict{{Path: "file.txt"}},
+	wantReversalConflictResult := &ManifestResult{
+		Type: PatchReversalConflict,
+		ReversalConflicts: []*ReversalConflict{
+			{
+				RelPath:       "file.txt",
+				AbsPath:       filepath.Join(destDir, "file.txt"),
+				RejectedHunks: filepath.Join(destDir, "file.txt.patch.rej"),
+			},
+		},
+		DLMeta: &templatesource.DownloadMetadata{
+			IsCanonical:     true,
+			CanonicalSource: "../template_dir",
+			LocationType:    "local_git",
+			HasVersion:      true,
+			Version:         abctestutil.MinimalGitHeadSHA,
+			Vars: templatesource.DownloaderVars{
+				GitSHA:      abctestutil.MinimalGitHeadSHA,
+				GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+			},
+		},
 	}
 	opts := []cmp.Option{
 		cmpopts.EquateEmpty(),
@@ -1281,16 +1428,27 @@ steps:
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.AlreadyResolved = []string{"file.txt"}
 
-	gotResult, err := Upgrade(ctx, upgradeParams)
+	gotResult, err := upgrade(ctx, upgradeParams, manifestFullPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantResult := &Result{
+	wantResult := &ManifestResult{
 		Type: Success,
 		NonConflicts: []ActionTaken{
 			{
 				Action: "writeNew",
 				Path:   "file.txt",
+			},
+		},
+		DLMeta: &templatesource.DownloadMetadata{
+			IsCanonical:     true,
+			CanonicalSource: "../template_dir",
+			LocationType:    templatesource.LocalGit,
+			HasVersion:      true,
+			Version:         abctestutil.MinimalGitHeadSHA,
+			Vars: templatesource.DownloaderVars{
+				GitSHA:      abctestutil.MinimalGitHeadSHA,
+				GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
 			},
 		},
 	}
@@ -1350,6 +1508,329 @@ func TestDetectUnmergedConflicts(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TODO(upgrade): add tests:
+//   - upgrade multiple with already-resolved
+//   - upgrade template-that-outputs-template
+func TestUpgradeAll_MultipleTemplates(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	clk := clock.NewMock()
+
+	tempBase := t.TempDir()
+
+	// Make the temp dir into a git repo so template locations will be treated
+	// as canonical.
+	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
+	template1Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old template1 file contents",
+	}
+	template2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old template2 file contents",
+	}
+
+	templateDir1 := filepath.Join(tempBase, "templateDir1")
+	templateDir2 := filepath.Join(tempBase, "templateDir2")
+	destBase := filepath.Join(tempBase, "dest")
+	destDir1 := filepath.Join(destBase, "destDir1")
+	destDir2 := filepath.Join(destBase, "destDir2")
+	abctestutil.WriteAll(t, templateDir1, template1Files)
+	abctestutil.WriteAll(t, templateDir2, template2Files)
+	mustRender(t, ctx, clk, tempBase, templateDir1, destDir1)
+	mustRender(t, ctx, clk, tempBase, templateDir2, destDir2)
+
+	upgradedTemplate1Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template1 file contents",
+	}
+	upgradedTemplate2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template2 file contents",
+	}
+
+	abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
+	abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
+
+	allResult := UpgradeAll(ctx, &Params{
+		Clock:    clk,
+		CWD:      tempBase,
+		FS:       &common.RealFS{},
+		Location: tempBase,
+		Stdout:   os.Stdout,
+	})
+
+	if allResult.Err != nil {
+		t.Fatal(allResult.Err)
+	}
+
+	if len(allResult.Results) != 2 {
+		t.Errorf("got %d results, expected exactly 2", len(allResult.Results))
+	}
+	for _, result := range allResult.Results {
+		if result.Type != Success {
+			t.Fatalf("got upgrade result %q, expected %q", result.Type, Success)
+		}
+	}
+
+	wantDestContents := map[string]string{
+		"destDir1/myfile.txt": "my new template1 file contents",
+		"destDir2/myfile.txt": "my new template2 file contents",
+	}
+	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifest are too unpredictable, don't assert their contents
+	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
+	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
+		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+	}
+}
+
+func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	clk := clock.NewMock()
+
+	tempBase := t.TempDir()
+
+	// Make the temp dir into a git repo so template locations will be treated
+	// as canonical.
+	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
+	template1Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old template1 file contents",
+	}
+	template2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old template2 file contents",
+	}
+
+	templateDir1 := filepath.Join(tempBase, "templateDir1")
+	templateDir2 := filepath.Join(tempBase, "templateDir2")
+	destBase := filepath.Join(tempBase, "dest")
+	destDir1 := filepath.Join(destBase, "destDir1")
+	destDir2 := filepath.Join(destBase, "destDir2")
+	abctestutil.WriteAll(t, templateDir1, template1Files)
+	abctestutil.WriteAll(t, templateDir2, template2Files)
+	mustRender(t, ctx, clk, tempBase, templateDir1, destDir1)
+	mustRender(t, ctx, clk, tempBase, templateDir2, destDir2)
+
+	abctestutil.Overwrite(t, destDir1, "myfile.txt", "my local edits")
+
+	upgradedTemplate1Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template1 file contents",
+	}
+	upgradedTemplate2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template2 file contents",
+	}
+
+	abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
+	abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
+
+	upgradeParams := &Params{
+		Clock:    clk,
+		CWD:      tempBase,
+		FS:       &common.RealFS{},
+		Location: tempBase,
+		Stdout:   os.Stdout,
+	}
+	allResult := UpgradeAll(ctx, upgradeParams)
+	if allResult.Err != nil {
+		t.Fatal(allResult.Err)
+	}
+	if allResult.Overall != MergeConflict {
+		t.Errorf("got overall result %q, want %q", allResult.Overall, MergeConflict)
+	}
+
+	if len(allResult.Results) != 1 {
+		t.Errorf("got %d results, expected exactly 1", len(allResult.Results))
+	}
+	result := allResult.Results[0]
+
+	if result.Type != MergeConflict {
+		t.Fatalf("got result type %q, wanted %q", result.Type, MergeConflict)
+	}
+
+	wantDestContents := map[string]string{
+		"destDir1/myfile.txt" + SuffixFromNewTemplate: "my new template1 file contents",
+		"destDir1/myfile.txt" + SuffixLocallyEdited:   "my local edits",
+		"destDir2/myfile.txt":                         "my old template2 file contents",
+	}
+	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifest are too unpredictable, don't assert their contents
+	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
+	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
+		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+	}
+
+	abctestutil.Overwrite(t, destDir1, "myfile.txt", "my resolved contents")
+	abctestutil.Remove(t, destDir1, "myfile.txt"+SuffixFromNewTemplate)
+	abctestutil.Remove(t, destDir1, "myfile.txt"+SuffixLocallyEdited)
+
+	allResult = UpgradeAll(ctx, upgradeParams)
+	if allResult.Err != nil {
+		t.Fatal(allResult.Err)
+	}
+	if allResult.Overall != Success {
+		t.Errorf("got overall result %q, want %q", allResult.Overall, Success)
+	}
+
+	if len(allResult.Results) != 2 {
+		t.Fatalf("got %d results, expected exactly 2", len(allResult.Results))
+	}
+	if got := allResult.Results[0].Type; got != AlreadyUpToDate {
+		t.Fatalf("got result[0] %q, expected %q", got, AlreadyUpToDate)
+	}
+	if got := allResult.Results[1].Type; got != Success {
+		t.Fatalf("got result[1] %q, expected %q", got, Success)
+	}
+
+	wantDestContents = map[string]string{
+		"destDir1/myfile.txt": "my resolved contents",
+		"destDir2/myfile.txt": "my new template2 file contents",
+	}
+	gotDestContents = abctestutil.LoadDir(t, destBase, opt)
+	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
+		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+	}
+}
+
+func TestUpgradeAll_Dependency(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	clk := clock.NewMock()
+
+	tempBase := t.TempDir()
+
+	// Make the temp dir into a git repo so template locations will be treated
+	// as canonical.
+	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
+
+	template1Files := map[string]string{
+		"spec.yaml":             includeDotSpec,
+		"outer_output_file.txt": "my old outer output file",
+		"inner/spec.yaml":       includeDotSpec,
+		"inner/output.txt":      "my old inner output file",
+	}
+	template2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my old template2 file contents",
+	}
+
+	templateDir1 := filepath.Join(tempBase, "templateDir1")
+	templateDir2 := filepath.Join(tempBase, "templateDir2")
+	destBase := filepath.Join(tempBase, "dest")
+	destDirA := filepath.Join(destBase, "destDirA")
+	destDirB := filepath.Join(destBase, "destDirB")
+	destDirC := filepath.Join(destBase, "destDirC")
+	abctestutil.WriteAll(t, templateDir1, template1Files)
+	abctestutil.WriteAll(t, templateDir2, template2Files)
+	mustRender(t, ctx, clk, tempBase, templateDir1, destDirA)
+	mustRender(t, ctx, clk, tempBase, templateDir2, destDirB)
+	mustRender(t, ctx, clk, tempBase, destDirA+"/inner", destDirC)
+
+	wantRendered := map[string]string{
+		"destDirA/outer_output_file.txt": "my old outer output file",
+		"destDirA/inner/spec.yaml":       includeDotSpec,
+		"destDirA/inner/output.txt":      "my old inner output file",
+		"destDirB/myfile.txt":            "my old template2 file contents",
+		"destDirC/output.txt":            "my old inner output file",
+	}
+	gotRendered := abctestutil.LoadDir(t, destBase,
+		abctestutil.SkipGlob("*/.abc/*"), // manifests are too unpredictable, don't assert their contents
+	)
+	if diff := cmp.Diff(gotRendered, wantRendered); diff != "" {
+		t.Fatalf("initially rendered template output was not as expected (-got,+want):\n%s", diff)
+	}
+
+	upgradedTemplate1Files := map[string]string{
+		"outer_output_file.txt": "my new outer output file",
+		"inner/output.txt":      "my new inner output file",
+	}
+	upgradedTemplate2Files := map[string]string{
+		"spec.yaml":  includeDotSpec,
+		"myfile.txt": "my new template2 file contents",
+	}
+
+	abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
+	abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
+
+	result := UpgradeAll(ctx, &Params{
+		Clock:    clk,
+		CWD:      tempBase,
+		FS:       &common.RealFS{},
+		Location: destBase,
+		Stdout:   os.Stdout,
+	})
+
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+
+	const wantResults = 3
+	if len(result.Results) != wantResults {
+		t.Errorf("got %d results, expected exactly %d", len(result.Results), wantResults)
+	}
+	for _, r := range result.Results {
+		if r.Type != Success {
+			t.Fatalf("got upgrade result %q, expected %q", r.Type, Success)
+		}
+	}
+
+	wantDestContents := map[string]string{
+		"destDirA/outer_output_file.txt": "my new outer output file",
+		"destDirA/inner/spec.yaml":       includeDotSpec,
+		"destDirA/inner/output.txt":      "my new inner output file",
+		"destDirB/myfile.txt":            "my new template2 file contents",
+		"destDirC/output.txt":            "my new inner output file",
+	}
+	opt := abctestutil.SkipGlob("*/.abc/*") // manifests are too unpredictable, don't assert their contents
+	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
+	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
+		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+	}
+
+	// Since destDirC depends on destDirA (because destDirA contains the
+	// spec.yaml that was used to render destDirC), then destDirA should come
+	// before destDirC in the
+	indexA := mustIndexFunc(t, result.Results, func(mr *ManifestResult) bool {
+		return strings.Contains(mr.ManifestPath, "destDirA")
+	})
+	indexC := mustIndexFunc(t, result.Results, func(mr *ManifestResult) bool {
+		return strings.Contains(mr.ManifestPath, "destDirC")
+	})
+	if indexA > indexC {
+		t.Errorf("upgrades were out of order. destDirC index %d should be less than destDirA index %d",
+			indexC, indexA)
+	}
+	cResult := result.Results[indexC]
+	if len(cResult.DependedOn) == 0 {
+		t.Errorf("destDirC showed no dependencies, sbut should have depended on destDirA")
+	} else {
+		const wantPrefix = "destDirA/.abc/manifest"
+		if !strings.HasPrefix(cResult.DependedOn[0], wantPrefix) {
+			t.Errorf("destDirC depended on %s, but should have a dependency beginning with %q",
+				cResult.DependedOn[0], wantPrefix)
+		}
+	}
+}
+
+// mustIndexFunc is a wrapper around slices.IndexFunc that saves the caller from
+// worrying about the case where nothing is found and -1 is returned.
+func mustIndexFunc[T any](t *testing.T, s []T, f func(T) bool) int {
+	t.Helper()
+
+	idx := slices.IndexFunc(s, f)
+	if idx < 0 {
+		t.Fatal("IndexFunc returned -1")
+	}
+	return idx
 }
 
 func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, path string) {

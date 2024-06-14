@@ -112,8 +112,12 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// The value of --manifest.
+	// The value of --manifest. Whether to create a manifest file.
 	Manifest bool
+
+	// The value of --manifest-only. Whether to *only* create a manifest file
+	// without outputting any other files from the template.
+	ManifestOnly bool
 
 	// The directory where the rendered output will be written.
 	OutDir string
@@ -121,6 +125,7 @@ type Params struct {
 	// Whether to prompt the user for inputs on stdin in the case where they're
 	// not all provided in Inputs or InputFiles.
 	Prompt bool
+
 	// If Prompt is true, Prompter will be used if needed to ask the user for
 	// any missing inputs. If Prompt is false, this is ignored.
 	Prompter input.Prompter
@@ -201,6 +206,9 @@ func Render(ctx context.Context, p *Params) (_ *Result, rErr error) {
 func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.DownloadMetadata, templateDir string, p *Params) (_ *Result, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "RenderAlreadyDownloaded")
 
+	if err := validate(p); err != nil {
+		return nil, err
+	}
 	p = fillDefaults(p)
 
 	logger.DebugContext(ctx, "loading spec file")
@@ -258,6 +266,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 		rp:               p,
 		scope:            scope,
 		scratchDir:       scratchDir,
+		suppressPrint:    p.ManifestOnly, // if --manifest-only was given, then the user doesn't want printed output.
 		templateDir:      templateDir,
 	}
 
@@ -430,6 +439,9 @@ type stepParams struct {
 	// user-provided scope, as well as any programmatically created variables
 	// like for_each keys.
 	scope *common.Scope
+
+	// If true, print actions will not actually print anything.
+	suppressPrint bool
 
 	extraPrintVars map[string]string
 
@@ -625,10 +637,10 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 // The return value is a map containing a SHA256 hash of each file in
 // scratchDir. The keys are paths relative to scratchDir, using forward slashes
 // regardless of the OS.
-func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, includedFromDest map[string]string) (map[string][]byte, error) {
+func commit(ctx context.Context, commitDryRun bool, p *Params, scratchDir string, includedFromDest map[string]string) (map[string][]byte, error) {
 	logger := logging.FromContext(ctx).With("logger", "commit")
 
-	if !dryRun {
+	if !commitDryRun {
 		// Output dirs will be created as needed, but we'll still create the
 		// output dir here to handle the edge case where the template generates
 		// no output files. In that case, the output directory should be created
@@ -645,18 +657,26 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 				relPath, common.ABCInternalDir)
 		}
 
+		// In any of these cases, we enable overwriting:
+		//
+		// Edge case 1: this file was "include"d from the *destination*
+		// directory (rather than the template directory), and is therefore
+		// always allowed to be overwritten. For example, if we grab
+		// file_to_modify.txt from the --dest dir, then we always allow ourself
+		// to write back to that file, even when --force-overwrite=false. When
+		// the template uses this feature, we know that the intent is to modify
+		// the files in place.
+		//
+		// Edge case 2: the user specified --force-overwrite.
+		//
+		// Edge case 3: we're in "manifest only" mode, which means that we don't
+		// want to output any files except the manifest.
 		_, ok := includedFromDest[relPath]
-		return common.CopyHint{
-			BackupIfExists: p.Backups,
+		allowPreexisting := ok || p.ForceOverwrite || p.ManifestOnly
 
-			// Special case: files that were "include"d from the
-			// *destination* directory (rather than the template directory),
-			// are always allowed to be overwritten. For example, if we grab
-			// file_to_modify.txt from the --dest dir, then we always allow
-			// ourself to write back to that file, even when
-			// --force-overwrite=false. When the template uses this feature,
-			// we know that the intent is to modify the files in place.
-			Overwrite: ok || p.ForceOverwrite,
+		return common.CopyHint{
+			BackupIfExists:   p.Backups,
+			AllowPreexisting: allowPreexisting,
 		}, nil
 	}
 
@@ -676,9 +696,17 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 		return backupDir, err //nolint:wrapcheck // err already contains path, and it will be wrapped later
 	}
 
+	// Perhaps confusing: there are two separate concepts of "dry run" happening
+	// here. There's the "commit dry run mode" and the "CopyRecursive dry run
+	// mode." If the commit dry run mode is enabled, then the CopyRecursive dry
+	// run mode is also enabled. There's also another case where CopyRecursive
+	// dry run mode is enabled: when --manifest-only is turned on, which means
+	// we never write any output files except the manifest.
+	copyDryRun := commitDryRun || p.ManifestOnly
+
 	params := &common.CopyParams{
 		BackupDirMaker: backupDirMaker,
-		DryRun:         dryRun,
+		DryRun:         copyDryRun,
 		DstRoot:        p.OutDir,
 		Hasher:         sha256.New,
 		OutHashes:      map[string][]byte{},
@@ -689,7 +717,7 @@ func commit(ctx context.Context, dryRun bool, p *Params, scratchDir string, incl
 	if err := common.CopyRecursive(ctx, nil, params); err != nil {
 		return nil, fmt.Errorf("failed writing to --dest directory: %w", err)
 	}
-	if dryRun {
+	if commitDryRun {
 		logger.DebugContext(ctx, "template render (dry run) succeeded")
 	} else {
 		logger.InfoContext(ctx, "template render succeeded")
@@ -707,4 +735,11 @@ func fillDefaults(p *Params) *Params {
 		out.DestDir = out.OutDir
 	}
 	return &out
+}
+
+func validate(p *Params) error {
+	if p.ManifestOnly && !p.Manifest {
+		return fmt.Errorf("if ManifestOnly is true, then Manifest must be true")
+	}
+	return nil
 }

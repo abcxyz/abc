@@ -118,7 +118,7 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 // directories qualify as a canonical source, and if so, returns the
 // canonicalized version of the source. See the docs on DownloadMetadata for an
 // explanation of canonical sources.
-func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSource, version, locType string, _ error) {
+func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSource, version string, locType LocationType, _ error) {
 	logger := logging.FromContext(ctx).With("logger", "canonicalize")
 
 	absSource := common.JoinIfRelative(cwd, source)
@@ -134,13 +134,16 @@ func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSo
 	if err != nil {
 		return "", "", "", err //nolint:wrapcheck
 	}
-	if !sourceIsGit || !destIsGit || sourceGitWorkspace != destGitWorkspace {
+	if !sourceIsGit {
+		return "", "", LocalNonGit, nil
+	}
+	if !destIsGit || sourceGitWorkspace != destGitWorkspace {
 		logger.DebugContext(ctx, "local template source is not canonical, template dir and dest dir do not share a git workspace",
 			"source_dir", absSource,
 			"dest_dir", absDestDir,
 			"source_git_workspace", sourceGitWorkspace,
 			"dest_git_workspace", destGitWorkspace)
-		return "", "", "", nil
+		return "", "", LocalGit, nil
 	}
 
 	logger.DebugContext(ctx, "local template source is canonical because template dir and dest dir are both in the same git workspace",
@@ -156,5 +159,5 @@ func canonicalize(ctx context.Context, cwd, source, destDir string) (canonicalSo
 	if err != nil {
 		return "", "", "", err
 	}
-	return filepath.ToSlash(out), version, LocTypeLocalGit, nil
+	return filepath.ToSlash(out), version, LocalGit, nil
 }

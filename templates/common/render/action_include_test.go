@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -977,15 +976,7 @@ func TestActionInclude(t *testing.T) {
 
 			opts := []cmp.Option{
 				cmpopts.EquateEmpty(),
-				cmp.Comparer(func(s1, s2 string) bool {
-					// We can't write our test assertions to include the temp
-					// directory, so dynamically rewrite the paths in the output
-					// files to remove the temp directory name.
-					trim := func(s string) string {
-						return strings.TrimPrefix(s, tempDir+"/")
-					}
-					return trim(s1) == trim(s2)
-				}),
+				abctestutil.TrimStringPrefixTransformer(tempDir + "/"),
 			}
 			if diff := cmp.Diff(sp.includedFromDest, tc.wantIncludedFromDest, opts...); diff != "" {
 				t.Errorf("includedFromDest was not as expected (-got,+want): %s", diff)

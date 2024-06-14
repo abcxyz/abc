@@ -54,7 +54,8 @@ func TestWriteManifest(t *testing.T) {
 				"a.txt": "some other stuff",
 			},
 			dlMeta: &templatesource.DownloadMetadata{
-				IsCanonical: false,
+				IsCanonical:  false,
+				LocationType: templatesource.LocalNonGit,
 			},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
@@ -98,7 +99,7 @@ output_files:
 			dlMeta: &templatesource.DownloadMetadata{
 				IsCanonical:     true,
 				CanonicalSource: "github.com/foo/bar",
-				LocationType:    "remote_git",
+				LocationType:    templatesource.RemoteGit,
 				HasVersion:      true,
 				Version:         "v1.2.3",
 			},
@@ -135,7 +136,8 @@ output_files:
 		{
 			name: "dryrun_no_output",
 			dlMeta: &templatesource.DownloadMetadata{
-				IsCanonical:     false,
+				IsCanonical:     true,
+				LocationType:    templatesource.RemoteGit,
 				CanonicalSource: "github.com/foo/bar",
 			},
 			dryRun: true,
@@ -166,9 +168,7 @@ output_files:
 			destDirContents: map[string]string{
 				"a.txt": "some other stuff",
 			},
-			dlMeta: &templatesource.DownloadMetadata{
-				IsCanonical: false,
-			},
+			dlMeta: &templatesource.DownloadMetadata{},
 			inputs: map[string]string{},
 			outputHashes: map[string][]byte{
 				"a.txt": []byte("fake_output_hash_32_bytes_sha256"),
@@ -199,9 +199,7 @@ output_files:
 				"a.txt":     "some other stuff",
 			},
 			destDirContents: map[string]string{},
-			dlMeta: &templatesource.DownloadMetadata{
-				IsCanonical: false,
-			},
+			dlMeta:          &templatesource.DownloadMetadata{},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
 				"pineapple": "deal with it",

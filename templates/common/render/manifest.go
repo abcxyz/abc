@@ -193,6 +193,11 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 	now := p.clock.Now().UTC()
 	apiVersion := decode.LatestSupportedAPIVersion(version.IsReleaseBuild())
 
+	locType := string(p.dlMeta.LocationType)
+	if p.dlMeta.CanonicalSource == "" {
+		locType = "" // we only save the location type in the manifest if the location is canonical
+	}
+
 	return &manifest.WithHeader{
 		Header: &header.Fields{
 			NewStyleAPIVersion: model.String{Val: apiVersion},
@@ -200,7 +205,7 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 		},
 		Wrapped: &manifest.ForMarshaling{
 			TemplateLocation: model.String{Val: p.dlMeta.CanonicalSource}, // may be empty string if location isn't canonical
-			LocationType:     model.String{Val: p.dlMeta.LocationType},
+			LocationType:     model.String{Val: locType},                  // may be empty string if location isn't canonical
 			TemplateDirhash:  model.String{Val: templateDirhash},
 			TemplateVersion:  model.String{Val: p.dlMeta.Version},
 			CreationTime:     now,

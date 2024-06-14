@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/model"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/logging"
@@ -116,7 +117,7 @@ func copyToDst(ctx context.Context, sp *stepParams, skipPaths []model.String, po
 				// scratch directory. This doesn't affect whether files in
 				// the final *destination* directory will be overwritten;
 				// that comes later.
-				Overwrite: true,
+				AllowPreexisting: true,
 			}, nil
 		},
 	}
@@ -189,7 +190,7 @@ func includeFromOneDir(ctx context.Context, inc *spec.IncludePath, sp *stepParam
 		// 2. testdata/golden directory, this is reserved for golden test usage.
 		skipPaths = append(skipPaths,
 			model.String{
-				Val: "spec.yaml",
+				Val: specutil.SpecFileName,
 			},
 			model.String{
 				Val: filepath.Join("testdata", "golden"),
