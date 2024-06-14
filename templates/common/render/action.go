@@ -174,7 +174,6 @@ func processGlobs(ctx context.Context, paths []model.String, fromDir string, ski
 			})
 			continue
 		}
-
 		globPaths, err := filepath.Glob(filepath.Join(fromDir, p.Val))
 		if err != nil {
 			return nil, p.Pos.Errorf("file globbing error: %w", err)

@@ -18,12 +18,31 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/posener/complete/v2/predict"
+
 	"github.com/abcxyz/abc/templates/common/flags"
+	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/pkg/cli"
 )
 
 type Flags struct {
 	Manifest string
+
+	// A list of files that were...
+	//   - changed in place by a previous render operation...
+	//   - then an upgrade operation was attempted, which attempted to undo the
+	//     change by applying the reversal patch in the manifest...
+	//   - but the patch failed to apply cleanly...
+	//   - and the user was asked to manually resolve the conflict by manually
+	//     applying the .rej rejected patch file...
+	//   - which the user did, and removed the patch file...
+	//   - which means that we can resume the upgrade operation, without needing
+	//     to patch these files, because they've already been patched.
+	//
+	// So basically it's a set of included-from-destination files that will be
+	// skipped when doing the phase of the upgrade operation that tries to
+	// reverse changes that were previously made to modifed-in-place files.
+	AlreadyResolved []string
 
 	// See common/flags.DebugScratchContents().
 	DebugScratchContents bool
@@ -48,9 +67,21 @@ type Flags struct {
 
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
+
+	// The template version to upgrade to; defaults to "latest".
+	Version string
 }
 
 func (f *Flags) Register(set *cli.FlagSet) {
+	u := set.NewSection("UPGRADE OPTIONS")
+	u.StringSliceVar(&cli.StringSliceVar{
+		Name:    "already-resolved",
+		Example: "my_file.txt,my_dir/my_other_file.txt",
+		Predict: predict.Files(""),
+		Target:  &f.AlreadyResolved,
+		Usage:   "a list of files where a patch failed to apply during the upgrade process, generating a .patch.rej file that was manually resolved by the user",
+	})
+
 	r := set.NewSection("RENDER OPTIONS")
 
 	r.StringMapVar(flags.Inputs(&f.Inputs))
@@ -59,7 +90,14 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.BoolVar(flags.DebugStepDiffs(&f.DebugStepDiffs))
 	r.BoolVar(flags.KeepTempDirs(&f.KeepTempDirs))
 	r.BoolVar(flags.Prompt(&f.Prompt))
-
+	r.StringVar(&cli.StringVar{
+		Name:    "version",
+		Usage:   "for remote templates, the version to upgrade to; may be git tag, branch, or SHA",
+		Example: "main",
+		Default: templatesource.Latest,
+		EnvVar:  "ABC_UPGRADE_TO_VERSION",
+		Target:  &f.Version,
+	})
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(flags.DebugScratchContents(&f.DebugScratchContents))
 

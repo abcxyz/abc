@@ -90,6 +90,10 @@ type Params struct {
 	// The value of --git-protocol.
 	GitProtocol string
 
+	// Ignore any values in the Inputs map that aren't valid template inputs,
+	// rather than returning error.
+	IgnoreUnknownInputs bool
+
 	// An optional extra directory that will be copied from in the case where an
 	// "include" action has "from: destination". This is in addition to DestDir
 	// above. The include action will copy from DestDir first and then from this
@@ -208,6 +212,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	logger.DebugContext(ctx, "resolving inputs")
 	resolvedInputs, err := input.Resolve(ctx, &input.ResolveParams{
 		FS:                  p.FS,
+		IgnoreUnknownInputs: p.IgnoreUnknownInputs,
 		InputFiles:          p.InputFiles,
 		Inputs:              p.Inputs,
 		Prompt:              p.Prompt,

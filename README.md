@@ -53,6 +53,54 @@ The `<template_location>` parameter is one of these two things:
 
 #### Flags
 
+- `--dest <output_dir>`: the directory on the local filesystem to write output
+  to. Defaults to the current directory. If it doesn't exist, it will be
+  created.
+- `--input=key=val`: provide an input parameter to the template. `key` must be
+  one of the inputs declared by the template in its `spec.yaml`. May be repeated
+  to provide multiple inputs, like
+  `--input=name=alice --input=email=alice@example.com`. Every input must
+  correspond to a template input value (unless you also provide
+  `--ignore-unknown-inputs`).
+- `--input-file=file`: provide a YAML file with input(s) to the template. The
+  file must contain a YAML object whose keys and values are strings. If a key
+  exists in the file but is also provided as an `--input`, the `--input` value
+  takes precedence.
+
+  This flag may be repeated, like
+  `--input-file=some-inputs.yaml --input-file=more-inputs.yaml`. When there are
+  multiple input files, they must not have any overlapping keys.
+
+  Any inputs in this file that are not accepted by the template are ignored.
+
+- `--git-protocol=[https|ssh]`: controls the protocol to use when connecting to
+  a remote git repository. The default is to use https, but you may want to use
+  ssh if you want to authenticate using SSH keys. You can also set the
+  environment variable `ABC_GIT_PROTOCOL=ssh` if you don't want to type this
+  flag for every abc command.
+- `--force-overwrite`: normally, the template rendering operation will abort if
+  the template would output a file at a location that already exists on the
+  filesystem. This flag allows it to continue.
+- `--keep-temp-dirs`: there are two temp directories created during template
+  rendering. Normally, they are removed at the end of the template rendering
+  operation, but this flag causes them to be kept. Inspecting the temp
+  directories can be helpful in debugging problems with `spec.yaml` or with the
+  `abc` command itself. The two temp directories are the "template directory",
+  into which the template is downloaded, and the "scratch directory", where
+  files are staged during transformations before being written to the output
+  directory. Use environment variable `ABC_LOG_LEVEL=debug` to see the locations
+  of the directories.
+- `--prompt`: the user will be prompted for inputs that are needed by the
+  template but are not supplied by `--inputs` or `--input-file`. You can specify
+  the environment variable `ABC_PROMPT=true` to avoid typing this every time.
+- `--skip-input-validation`: don't run any of the validation rules for template
+  inputs. This could be useful if a template has overly strict validation logic
+  and you know for sure that the value you want to use is OK.
+- `--ignore-unknown-inputs`: silently ignore any `--input` values that aren't
+  accepted by the template.
+
+Flags for template developers:
+
 - `--debug-step-diffs`: for template authors, not regular users. This will log
   the diffs made by each step as git commits in a tmp git repository. If you
   want to see the git logs and diffs with your usual git commands, please
@@ -67,39 +115,7 @@ The `<template_location>` parameter is one of these two things:
   print the filename of every file in the scratch directory after executing each
   step of the spec.yaml. Useful for debugging errors like
   `path "src/app.js" doesn't exist in the scratch directory, did you forget to "include" it first?"`.
-- `--dest <output_dir>`: the directory on the local filesystem to write output
-  to. Defaults to the current directory. If it doesn't exist, it will be
-  created.
-- `--input=key=val`: provide an input parameter to the template. `key` must be
-  one of the inputs declared by the template in its `spec.yaml`. May be repeated
-  to provide multiple inputs, like
-  `--input=name=alice --input=email=alice@example.com`.
-- `--input-file=file`: provide a YAML file with input(s) to the template. The
-  file must contain a YAML object whose keys and values are strings. If a key
-  exists in the file but is also provided as an `--input`, the `--input` value
-  takes precedence.
 
-  This flag may be repeated, like
-  `--input-file=some-inputs.yaml --input-file=more-inputs.yaml`. When there are
-  multiple input files, they must not have any overlapping keys.
-
-- `--force-overwrite`: normally, the template rendering operation will abort if
-  the template would output a file at a location that already exists on the
-  filesystem. This flag allows it to continue.
-- `--keep-temp-dirs`: there are two temp directories created during template
-  rendering. Normally, they are removed at the end of the template rendering
-  operation, but this flag causes them to be kept. Inspecting the temp
-  directories can be helpful in debugging problems with `spec.yaml` or with the
-  `abc` command itself. The two temp directories are the "template directory",
-  into which the template is downloaded, and the "scratch directory", where
-  files are staged during transformations before being written to the output
-  directory. Use environment variable `ABC_LOG_LEVEL=debug` to see the locations
-  of the directories.
-- `--prompt`: the user will be prompted for inputs that are needed by the
-  template but are not supplied by `--inputs` or `--input-file`.
-- `--skip-input-validation`: don't run any of the validation rules for template
-  inputs. This could be useful if a template has overly strict validation logic
-  and you know for sure that the value you want to use is OK.
 
 #### Logging
 
@@ -375,6 +391,14 @@ create a "hello world" Go web service.
 
    # Assuming you're using GitHub, now go create a PR.
    ```
+
+### Authentication errors
+
+If `abc` asks you for a username and password, that probably means that the
+template you're rendering is in a private git repository, and HTTPS
+authentication didn't work. You may want to try cloning over SSH instead. To use
+SSH, you can add `--git-protocol=ssh` to your command line or set the
+environment variable `ABC_GIT_PROTOCOL=ssh`.
 
 ## Template developer guide
 

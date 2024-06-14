@@ -36,6 +36,7 @@ func TestForUpgrade(t *testing.T) {
 		gitProtocol       string
 		installedInSubdir string
 		dirContents       map[string]string
+		version           string
 		wantDownloader    Downloader
 		wantErr           string
 	}{
@@ -44,6 +45,7 @@ func TestForUpgrade(t *testing.T) {
 			canonicalLocation: "github.com/abcxyz/abc",
 			locType:           "remote_git",
 			gitProtocol:       "https",
+			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc",
 				cloner:          &realCloner{},
@@ -57,6 +59,7 @@ func TestForUpgrade(t *testing.T) {
 			canonicalLocation: "github.com/abcxyz/abc",
 			locType:           "remote_git",
 			gitProtocol:       "ssh",
+			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc",
 				cloner:          &realCloner{},
@@ -70,6 +73,7 @@ func TestForUpgrade(t *testing.T) {
 			canonicalLocation: "github.com/abcxyz/abc/sub",
 			locType:           "remote_git",
 			gitProtocol:       "https",
+			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc/sub",
 				cloner:          &realCloner{},
@@ -84,6 +88,7 @@ func TestForUpgrade(t *testing.T) {
 			canonicalLocation: "github.com/abcxyz/abc/sub",
 			locType:           "remote_git",
 			gitProtocol:       "ssh",
+			version:           "latest",
 			wantDownloader: &remoteGitDownloader{
 				canonicalSource: "github.com/abcxyz/abc/sub",
 				cloner:          &realCloner{},
@@ -91,6 +96,20 @@ func TestForUpgrade(t *testing.T) {
 				subdir:          "sub",
 				tagser:          &realTagser{},
 				version:         "latest",
+			},
+		},
+		{
+			name:              "non_default_version",
+			canonicalLocation: "github.com/abcxyz/abc",
+			locType:           "remote_git",
+			gitProtocol:       "https",
+			version:           "someversion",
+			wantDownloader: &remoteGitDownloader{
+				canonicalSource: "github.com/abcxyz/abc",
+				cloner:          &realCloner{},
+				remote:          "https://github.com/abcxyz/abc.git",
+				tagser:          &realTagser{},
+				version:         "someversion",
 			},
 		},
 		{
@@ -160,6 +179,7 @@ func TestForUpgrade(t *testing.T) {
 				CanonicalLocation: location,
 				InstalledDir:      installedInDir,
 				GitProtocol:       tc.gitProtocol,
+				Version:           tc.version,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)

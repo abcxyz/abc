@@ -120,6 +120,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	r, err := upgrade.Upgrade(ctx, &upgrade.Params{
+		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
 		CWD:                  cwd,
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
@@ -135,6 +136,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		SkipInputValidation:  c.flags.SkipInputValidation,
 		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
 		Stdout:               c.Stdout(),
+		Version:              c.flags.Version,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck

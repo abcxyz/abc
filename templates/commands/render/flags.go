@@ -46,6 +46,10 @@ type RenderFlags struct {
 	// with the output of the template.
 	ForceOverwrite bool
 
+	// Ignore any values in the Inputs map that aren't valid template inputs,
+	// rather than returning error.
+	IgnoreUnknownInputs bool
+
 	// See common/flags.Inputs().
 	Inputs map[string]string
 
@@ -97,12 +101,20 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Usage:   "If an output file already exists in the destination, overwrite it instead of failing.",
 	})
 
+	f.BoolVar(&cli.BoolVar{
+		Name:    "ignore-unknown-inputs",
+		Target:  &r.IgnoreUnknownInputs,
+		Default: false,
+		Usage:   "If a user-provided input name isn't recognized by the template, ignore that input value instead of failing.",
+	})
+
 	f.BoolVar(flags.Prompt(&r.Prompt))
 
 	f.BoolVar(&cli.BoolVar{
 		Name:    "manifest",
 		Target:  &r.Manifest,
 		Default: false,
+		EnvVar:  "ABC_MANIFEST",
 		Usage:   "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
 	})
 

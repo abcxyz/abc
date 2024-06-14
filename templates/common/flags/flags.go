@@ -30,6 +30,7 @@ func GitProtocol(target *string) *cli.StringVar {
 		Default: "https",
 		Predict: predict.Set([]string{"https", "ssh"}),
 		Target:  target,
+		EnvVar:  "ABC_GIT_PROTOCOL",
 		Usage:   "Either ssh or https, the protocol for connecting to git. Only used if the template source is a git repo.",
 	}
 }
@@ -121,6 +122,8 @@ func Prompt(p *bool) *cli.BoolVar {
 		// we prompted the user, they'd be tempted to enter something creative
 		// rather than realize that their playbook needs to be updated.
 		Default: false,
+
+		EnvVar: "ABC_PROMPT",
 
 		Usage: "Prompt the user for template inputs that weren't provided as flags.",
 	}

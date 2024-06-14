@@ -256,3 +256,25 @@ func Overwrite(tb testing.TB, dir, baseName, contents string) {
 		tb.Fatal(err)
 	}
 }
+
+// Prepends adds contents the beginning of the file dir/baseName, failing the
+// test on error.
+func Prepend(tb testing.TB, dir, baseName, contents string) {
+	tb.Helper()
+
+	filename := filepath.Join(dir, baseName)
+	buf, err := os.ReadFile(filename)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	Overwrite(tb, dir, baseName, contents+string(buf))
+}
+
+func Remove(tb testing.TB, dir, baseName string) {
+	tb.Helper()
+
+	filename := filepath.Join(dir, baseName)
+	if err := os.Remove(filename); err != nil {
+		tb.Fatal(err)
+	}
+}
