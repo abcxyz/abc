@@ -231,10 +231,9 @@ func summarizeResult(r *upgrade.ManifestResult, location string) string {
 		}
 		fmt.Fprintf(&out, `
 
-After manually resolving the merge conflict, run this command to continue
-upgrading other template installations that may exist:
-
-  abc upgrade %s`, location)
+After manually resolving the merge conflict, re-run the upgrade command to
+upgrade any other rendered templates in this location that may still need
+upgrading.`)
 
 		return out.String()
 	case upgrade.PatchReversalConflict:
@@ -259,10 +258,12 @@ upgrading other template installations that may exist:
 			resumeFrom = fmt.Sprintf(" --resume-from=%s", r.ManifestPath)
 		}
 		fmt.Fprintf(&out, `
-After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade %s --already-resolved=%s%s`,
-			shellescape.Quote(location), strings.Join(relPaths, ","), resumeFrom)
+After manually applying the rejected hunks, re-run the upgrade command with
+these flags:
+
+  --already-resolved=%s%s`,
+			strings.Join(relPaths, ","), resumeFrom)
 		return out.String()
 	}
 	panic("unreachable") // the go lint exhaustive check prevents this

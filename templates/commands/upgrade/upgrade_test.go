@@ -129,10 +129,9 @@ your file was renamed to: greet.txt.abcmerge_locally_edited
 incoming file: greet.txt.abcmerge_from_new_template
 --
 
-After manually resolving the merge conflict, run this command to continue
-upgrading other template installations that may exist:
-
-  abc upgrade TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml
+After manually resolving the merge conflict, re-run the upgrade command to
+upgrade any other rendered templates in this location that may still need
+upgrading.
 `,
 		},
 		{
@@ -192,9 +191,11 @@ steps:
 your file: TEMPDIR/dest_dir/hello.txt
 Rejected hunks for you to apply: TEMPDIR/dest_dir/hello.txt.patch.rej
 --
-After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml --already-resolved=hello.txt
+After manually applying the rejected hunks, re-run the upgrade command with
+these flags:
+
+  --already-resolved=hello.txt
 `,
 			wantErr: []string{"exit code 2"},
 		},
@@ -568,10 +569,9 @@ your file was renamed to: some/other/file.txt.abcmerge_locally_edited
 incoming file: some/other/file.txt.abcmerge_from_new_template
 --
 
-After manually resolving the merge conflict, run this command to continue
-upgrading other template installations that may exist:
-
-  abc upgrade my-location`,
+After manually resolving the merge conflict, re-run the upgrade command to
+upgrade any other rendered templates in this location that may still need
+upgrading.`,
 		},
 		{
 			name: "reversal_conflict",
@@ -601,9 +601,11 @@ Rejected hunks for you to apply: /my/template/output/dir/some/path.txt.patch.rej
 your file: /my/template/output/dir/some/other/path.txt
 Rejected hunks for you to apply: /my/template/output/dir/some/other/path.txt.patch.rej
 --
-After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade my-location --already-resolved=some/path.txt,some/other/path.txt --resume-from=/foo/bar/my_manifest.yaml`,
+After manually applying the rejected hunks, re-run the upgrade command with
+these flags:
+
+  --already-resolved=some/path.txt,some/other/path.txt --resume-from=/foo/bar/my_manifest.yaml`,
 		},
 
 		{
@@ -634,9 +636,11 @@ Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.tx
 your file: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt
 Rejected hunks for you to apply: /my/template/output/dir/some/?!@#$%^&*()[]{}.txt.patch.rej
 --
-After manually applying the rejected hunks, run this command to continue:
 
-  abc upgrade my-location --already-resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' --resume-from=/foo/bar/my_manifest.yaml`,
+After manually applying the rejected hunks, re-run the upgrade command with
+these flags:
+
+  --already-resolved='a?b!c@d#e$f` + "`" + `g-h^i&j'"'"'k*l(m)n[o]p{q}r.txt','a;b'"'"'c,d.e?f~g"h'"'"'i.txt' --resume-from=/foo/bar/my_manifest.yaml`,
 		},
 	}
 
