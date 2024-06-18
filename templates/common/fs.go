@@ -124,7 +124,7 @@ type CopyParams struct {
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
 
-	// Return [ErrSymlinkForbidden] if any symlinks are found when copying.
+	// Return [SymlinkForbiddenError] if any symlinks are found when copying.
 	//
 	// Why are symlinks risky in a template?
 	//
@@ -175,15 +175,15 @@ type CopyHint struct {
 	Skip bool
 }
 
-// ErrSymlinkForbidden is the type returned from CopyRecursive in the case where
+// SymlinkForbiddenError is the type returned from CopyRecursive in the case where
 // ForbidSymlinks is configured to true, and a symlink is encountered in the
 // source directory.
-type ErrSymlinkForbidden struct {
+type SymlinkForbiddenError struct {
 	// The relative path where the symlink was found. Relative to SrcRoot.
 	Path string
 }
 
-func (e *ErrSymlinkForbidden) Error() string {
+func (e *SymlinkForbiddenError) Error() string {
 	return fmt.Sprintf("a symlink was found at %q, but symlinks are forbidden here", e.Path)
 }
 
@@ -209,7 +209,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 
 		isSymlink := (de.Type() & fs.ModeSymlink) > 0
 		if isSymlink && p.ForbidSymlinks {
-			return &ErrSymlinkForbidden{Path: relToSrc}
+			return &SymlinkForbiddenError{Path: relToSrc}
 		}
 
 		var ch CopyHint

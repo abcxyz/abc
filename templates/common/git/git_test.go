@@ -260,6 +260,7 @@ func TestCheckout(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -282,6 +283,7 @@ func TestCheckout(t *testing.T) {
 }
 
 func mustRun(ctx context.Context, tb testing.TB, args ...string) {
+	tb.Helper()
 	if _, _, err := run.Simple(ctx, args...); err != nil {
 		tb.Fatal(err)
 	}

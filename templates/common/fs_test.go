@@ -559,7 +559,7 @@ func TestCopyRecursive_ForbidSymlinks(t *testing.T) {
 			if tc.wantErrPath == "" {
 				t.Fatalf("got an unexpected error %q", err)
 			}
-			var symlinkErr *ErrSymlinkForbidden
+			var symlinkErr *SymlinkForbiddenError
 			if !errors.As(err, &symlinkErr) {
 				t.Fatalf("got unexpected error type %T: %v", err, err)
 			}

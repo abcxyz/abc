@@ -52,7 +52,7 @@ func Clone(ctx context.Context, remote, outDir string) error {
 // what "git checkout" does in that case, and check out the branch.
 //
 // If the version does not exist as a branch, tag, or SHA in this repo, then
-// *ErrNoSuchVersion will be returned.
+// *NoSuchVersionError will be returned.
 func Checkout(ctx context.Context, version, workspaceDir string) error {
 	// Note to maintainers: you might be asking: shouldn't we use "--", like
 	// "git checkout -- $branch_tag_or_sha" ? That *seems* like a good idea, except
@@ -71,7 +71,7 @@ func Checkout(ctx context.Context, version, workspaceDir string) error {
 	if err != nil {
 		exitErr := &exec.ExitError{}
 		if errors.As(err, &exitErr) {
-			return &ErrNoSuchVersion{
+			return &NoSuchVersionError{
 				Version: version,
 			}
 		}
@@ -81,11 +81,13 @@ func Checkout(ctx context.Context, version, workspaceDir string) error {
 	return nil
 }
 
-type ErrNoSuchVersion struct {
+// NoSuchVersionError is returned from Checkout when the requested version
+// doesn't exist.
+type NoSuchVersionError struct {
 	Version string
 }
 
-func (e *ErrNoSuchVersion) Error() string {
+func (e *NoSuchVersionError) Error() string {
 	return fmt.Sprintf("the requested version %q doesn't exist", e.Version)
 }
 

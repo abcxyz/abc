@@ -18,9 +18,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestRemoteGitDownloader_Download(t *testing.T) {
@@ -406,7 +407,9 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, outDir string) error {
 	return nil
 }
 
-func createFakeGitRepo(t testing.TB, branches, tags []string, outDir string) error {
+func createFakeGitRepo(tb testing.TB, branches, tags []string, outDir string) {
+	tb.Helper()
+
 	files := abctestutil.WithGitRepoAt("", nil)
 
 	for _, tag := range tags {
@@ -418,6 +421,5 @@ func createFakeGitRepo(t testing.TB, branches, tags []string, outDir string) err
 		files[".git/refs/heads/"+branch] = abctestutil.MinimalGitHeadSHA
 	}
 
-	abctestutil.WriteAll(t, outDir, files)
-	return nil
+	abctestutil.WriteAll(tb, outDir, files)
 }
