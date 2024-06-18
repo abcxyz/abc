@@ -105,9 +105,11 @@ func TestClone(t *testing.T) {
 			remote: "https://github.com/abcxyz/abc.git",
 		},
 		{
-			name:    "nonexistent_remote",
-			remote:  "https://example.com/foo/bar.git",
-			wantErr: "repository 'https://example.com/foo/bar.git' not found",
+			name:   "nonexistent_remote",
+			remote: "https://example.com/foo/bar.git",
+			// The error message is completely differnet between linux and mac.
+			// This is the only substring that appears on both platforms. 🙃
+			wantErr: "https://example.com/foo/bar.git",
 		},
 	}
 
