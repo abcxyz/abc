@@ -62,8 +62,13 @@ func TestLocalTags(t *testing.T) {
 	}
 
 	abctestutil.Overwrite(t, tempDir, "myfile1.txt", "some contents")
+
+	// If we don't do this, there will be an error on commit
+	mustRun(ctx, t, "git", "config", "-f", tempDir+"/.git/config", "user.email", "fake@example.com")
+	mustRun(ctx, t, "git", "config", "-f", tempDir+"/.git/config", "user.name", "Nobody")
+
 	mustRun(ctx, t, "git", "-C", tempDir, "add", "-A")
-	mustRun(ctx, t, "git", "-C", tempDir, "commit", "--no-gpg-sign", "-m", "my first commit")
+	mustRun(ctx, t, "git", "-C", tempDir, "commit", "--no-gpg-sign", "--author", "nobody <nobody>", "-m", "my first commit")
 	mustRun(ctx, t, "git", "-C", tempDir, "tag", "mytag1")
 
 	got, err = LocalTags(ctx, tempDir)
@@ -77,7 +82,7 @@ func TestLocalTags(t *testing.T) {
 
 	abctestutil.Overwrite(t, tempDir, "myfile2.txt", "some contents")
 	mustRun(ctx, t, "git", "-C", tempDir, "add", "-A")
-	mustRun(ctx, t, "git", "-C", tempDir, "commit", "--no-gpg-sign", "-m", "my second commit")
+	mustRun(ctx, t, "git", "-C", tempDir, "commit", "--no-gpg-sign", "--author", "nobody <nobody>", "-m", "my second commit")
 	mustRun(ctx, t, "git", "-C", tempDir, "tag", "mytag2")
 
 	got, err = LocalTags(ctx, tempDir)
