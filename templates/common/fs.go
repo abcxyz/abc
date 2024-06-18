@@ -124,6 +124,23 @@ type CopyParams struct {
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
 
+	// Return [ErrSymlinkForbidden] if any symlinks are found when copying.
+	//
+	// Why are symlinks risky in a template?
+	//
+	//  - A symlink could point outside the template directory, resulting in
+	//    unintended exfiltration of user data into the template output
+	//  - Users might be surprised if a template outputs a symlink, which
+	//    could point to any location outside the render destination dir.
+	//
+	// We're trying to provide a bit of protect for template users against
+	// malicious or overzealous template authors.
+	//
+	// In general, it could cause all kinds of surprising behavior. We could
+	// be more permissive in the future and allow symlinks to exist in the
+	// repo as long as they're not involved with the template.
+	ForbidSymlinks bool
+
 	// If Hasher and OutHashes are not nil, then each copied file will be hashed
 	// and the hex hash will be saved in OutHashes. If a file is "skipped"
 	// (CopyHint.Skip==true) then the hash will not be computed. In dry run
@@ -158,6 +175,14 @@ type CopyHint struct {
 	Skip bool
 }
 
+type ErrSymlinkForbidden struct {
+	Path string
+}
+
+func (e *ErrSymlinkForbidden) Error() string {
+	return fmt.Sprintf("a symlink was found at %q, but symlinks are forbidden here", e.Path)
+}
+
 // CopyRecursive recursively copies folder contents with designated config
 // params.
 func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (outErr error) {
@@ -169,6 +194,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
+
 		logger.DebugContext(ctx, "handling directory entry",
 			"path", path)
 		relToSrc, err := filepath.Rel(p.SrcRoot, path)
@@ -176,6 +202,11 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			return pos.Errorf("filepath.Rel(%s,%s): %w", p.SrcRoot, path, err)
 		}
 		dst := filepath.Join(p.DstRoot, relToSrc)
+
+		isSymlink := (de.Type() & fs.ModeSymlink) > 0
+		if isSymlink && p.ForbidSymlinks {
+			return &ErrSymlinkForbidden{Path: relToSrc}
+		}
 
 		var ch CopyHint
 		if p.Visitor != nil {

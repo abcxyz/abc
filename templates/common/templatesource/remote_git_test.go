@@ -18,10 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestRemoteGitDownloader_Download(t *testing.T) {
@@ -48,8 +47,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t:          t,
-					addTag:     "v1.2.3",
+					tb:         t,
+					addTags:    []string{"v1.2.3"},
 					out:        basicFiles,
 					wantRemote: "fake-remote",
 				},
@@ -76,18 +75,10 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         "latest",
 				cloner: &fakeCloner{
-					t:          t,
-					addTag:     "v1.2.3",
+					tb:         t,
+					addTags:    []string{"v0.0.1", "v1.2.3", "v0.1.2"},
 					out:        basicFiles,
 					wantRemote: "fake-remote",
-				},
-				tagser: &fakeTagser{
-					t:          t,
-					wantRemote: "fake-remote",
-					out: []string{
-						"v1.2.3",
-						"v0.1.2",
-					},
 				},
 			},
 			want: basicFiles,
@@ -112,8 +103,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "my-subdir",
 				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t:      t,
-					addTag: "v1.2.3",
+					tb:      t,
+					addTags: []string{"v1.2.3"},
 					out: map[string]string{
 						"my-subdir/file1.txt": "hello",
 						"file2.txt":           "world",
@@ -145,8 +136,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "my/deep",
 				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t:      t,
-					addTag: "v1.2.3",
+					tb:      t,
+					addTags: []string{"v1.2.3"},
 					out: map[string]string{
 						"my/deep/subdir/file1.txt": "hello",
 						"file2.txt":                "world",
@@ -187,8 +178,9 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:  "nonexistent",
 				version: "v1.2.3",
 				cloner: &fakeCloner{
-					t:          t,
+					tb:         t,
 					out:        basicFiles,
+					addTags:    []string{"v1.2.3"},
 					wantRemote: "fake-remote",
 				},
 			},
@@ -202,8 +194,9 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:  "file1.txt",
 				version: "v1.2.3",
 				cloner: &fakeCloner{
-					t:          t,
+					tb:         t,
 					out:        basicFiles,
+					addTags:    []string{"v1.2.3"},
 					wantRemote: "fake-remote",
 				},
 			},
@@ -218,7 +211,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         abctestutil.MinimalGitHeadSHA,
 				cloner: &fakeCloner{
-					t:          t,
+					tb:         t,
 					out:        basicFiles,
 					wantRemote: "fake-remote",
 				},
@@ -245,8 +238,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         abctestutil.MinimalGitHeadSHA,
 				cloner: &fakeCloner{
-					t:          t,
-					addTag:     "v1.2.3",
+					tb:         t,
+					addTags:    []string{"v1.2.3"},
 					out:        basicFiles,
 					wantRemote: "fake-remote",
 				},
@@ -370,7 +363,7 @@ func TestResolveVersion(t *testing.T) {
 			in:       "latest",
 			inRemote: "my-remote",
 			tags:     []string{},
-			wantErr:  `there were no semver-formatted tags beginning with "v" in "my-remote"`,
+			wantErr:  `there were no semver-formatted tags beginning with "v"`,
 		},
 	}
 
@@ -382,7 +375,7 @@ func TestResolveVersion(t *testing.T) {
 
 			ctx := context.Background()
 			outDir := t.TempDir()
-			createFakeGitRepo(t, ctx, tc.branches, tc.tags, outDir)
+			createFakeGitRepo(t, tc.branches, tc.tags, outDir)
 
 			got, err := resolveVersion(ctx, outDir, tc.in)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
@@ -399,7 +392,7 @@ func TestResolveVersion(t *testing.T) {
 type fakeCloner struct {
 	tb         testing.TB
 	out        map[string]string
-	addTag     string
+	addTags    []string
 	wantRemote string
 }
 
@@ -408,16 +401,12 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, outDir string) error {
 		f.tb.Errorf("got remote %q, want %q", remote, f.wantRemote)
 	}
 
-	tags := []string{}
-	if f.addTag != "" {
-		tags = append(tags, f.addTag)
-	}
-	createFakeGitRepo(f.tb, ctx, nil, tags, outDir)
+	createFakeGitRepo(f.tb, nil, f.addTags, outDir)
 	abctestutil.WriteAll(f.tb, outDir, f.out)
 	return nil
 }
 
-func createFakeGitRepo(t testing.TB, ctx context.Context, branches, tags []string, outDir string) error {
+func createFakeGitRepo(t testing.TB, branches, tags []string, outDir string) error {
 	files := abctestutil.WithGitRepoAt("", nil)
 
 	for _, tag := range tags {

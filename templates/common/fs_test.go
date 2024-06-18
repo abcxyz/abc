@@ -19,9 +19,11 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -474,6 +476,99 @@ func TestCopyRecursive(t *testing.T) {
 			}
 			if diff := cmp.Diff(hashes, wantHashes, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("hashes were not as expected: (-got,+want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestCopyRecursive_SymlinkHandling(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		regularFiles []string
+		// regularFiles []string
+		symlinks    []string
+		wantErrPath string
+	}{
+		{
+			name:        "one_symlink",
+			symlinks:    []string{"my-symlink"},
+			wantErrPath: "my-symlink",
+		},
+		{
+			name:        "one_symlink_in_subdir",
+			symlinks:    []string{"dir1/my-symlink"},
+			wantErrPath: "dir1/my-symlink",
+		},
+		{
+			name:         "no_symlinks",
+			regularFiles: []string{"file1.txt", "dir/file1.txt"},
+		},
+		{
+			name:        "multi_symlinks",
+			symlinks:    []string{"dir/my-symlink-1", "dir/my-symlink-2"},
+			wantErrPath: "dir/my-symlink-1",
+		},
+		{
+			name:         "mix_symlinks_and_regular",
+			regularFiles: []string{"my-regular-file"},
+			symlinks:     []string{"my-symlink"},
+			wantErrPath:  "my-symlink",
+		},
+		{
+			name: "empty_dir",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sourceTempDir := t.TempDir()
+
+			for _, r := range tc.regularFiles {
+				path := filepath.Join(sourceTempDir, r)
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				abctestutil.Overwrite(t, sourceTempDir, r, "contents")
+			}
+			for _, s := range tc.symlinks {
+				path := filepath.Join(sourceTempDir, s)
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("link-dest", path); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			destTempDir := t.TempDir()
+			ctx := context.Background()
+			err := CopyRecursive(ctx, nil, &CopyParams{
+				FS:             &RealFS{},
+				SrcRoot:        sourceTempDir,
+				DstRoot:        destTempDir,
+				ForbidSymlinks: true,
+			})
+			if err == nil {
+				if tc.wantErrPath != "" {
+					t.Fatal("got no error, but wanted ErrSymlinkForbidden")
+				}
+				return
+			}
+			if tc.wantErrPath == "" {
+				t.Fatalf("got an unexpected error %q", err)
+			}
+			var symlinkErr *ErrSymlinkForbidden
+			if !errors.As(err, &symlinkErr) {
+				t.Fatalf("got unexpected error type %T: %v", err, err)
+			}
+			if symlinkErr.Path != tc.wantErrPath {
+				t.Fatalf("got unexpected error path %q, wanted %q", symlinkErr.Path, tc.wantErrPath)
 			}
 		})
 	}

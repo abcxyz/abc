@@ -18,9 +18,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -39,61 +39,31 @@ func Clone(ctx context.Context, remote, outDir string) error {
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-
-	links, err := findSymlinks(outDir)
-	if err != nil {
-		return fmt.Errorf("findSymlinks: %w", err)
-	}
-	if len(links) > 0 {
-		return fmt.Errorf("one or more symlinks were found in %q at %v; for security reasons, git repos containing symlinks are not allowed", remote, links)
-	}
 	return nil
-}
-
-func findSymlinks(dir string) ([]string, error) {
-	var out []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		relativeToOutDir, err := filepath.Rel(dir, path)
-		if err != nil {
-			return fmt.Errorf("Rel(): %w", err)
-		}
-		if relativeToOutDir == ".git" {
-			return fs.SkipDir // skip crawling the git directory to save time.
-		}
-		fi, err := os.Lstat(path)
-		if err != nil {
-			return fmt.Errorf("Lstat(): %w", err)
-		}
-		if fi.Mode()&os.ModeSymlink == 0 {
-			return nil
-		}
-
-		out = append(out, relativeToOutDir)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
-	}
-
-	return out, nil
 }
 
 // Checkout checks out the provided version (branch, tag, or SHA) from the
 // already-cloned given git workspace. It uses the git CLI already installed on
 // the system.
 func Checkout(ctx context.Context, version, workspaceDir string) error {
-	_, _, err := run.Simple(ctx, "git", "-C", workspaceDir, "checkout", "--", version)
+	if version[0] == '-' {
+		// You might be asking: couldn't we support versions beginning with dash
+		// by doing "git checkout -- version"? It turns out no, git checkout
+		// does not allow a branch/tag to come after "--".
+		return fmt.Errorf("versions beginning with dash aren't supported")
+	}
+
+	_, _, err := run.Simple(ctx, "git", "-C", workspaceDir, "checkout", version)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
+
 	return nil
 }
 
-// LocalTags looks up the tags in the given locally cloned repo. If there are no tags,
-// that's not an error, and the returned slice is len 0.
+// LocalTags looks up the tags in the given locally cloned repo. If there are no
+// tags, that's not an error, and the returned slice is len 0. The return values
+// are sorted lexicographically.
 func LocalTags(ctx context.Context, tmpDir string) ([]string, error) {
 	stdout, _, err := run.Simple(ctx, "git", "-C", tmpDir, "tag")
 	if err != nil {
@@ -105,6 +75,8 @@ func LocalTags(ctx context.Context, tmpDir string) ([]string, error) {
 		line := lineScanner.Text()
 		tags = append(tags, line)
 	}
+
+	sort.Strings(tags)
 
 	return tags, nil
 }

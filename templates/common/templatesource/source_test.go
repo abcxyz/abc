@@ -19,10 +19,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParseSource(t *testing.T) {
@@ -48,7 +47,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "",
 				version:         "latest",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -61,7 +59,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "",
 				version:         "v1.2.3",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -74,7 +71,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "",
 				version:         "v1.2.3-foo/bar",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -87,7 +83,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "mysubdir",
 				version:         "v1.2.3",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -100,7 +95,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "my/deep/subdir",
 				version:         "v1.2.3",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -180,7 +174,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "mysubdir",
 				version:         "latest",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -193,7 +186,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "sub/dir",
 				version:         "latest",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -206,7 +198,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "",
 				version:         "latest",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -219,7 +210,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "",
 				version:         "latest",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -232,7 +222,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "sub/dir",
 				version:         "latest",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -245,7 +234,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "subdir",
 				version:         "latest",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 		{
@@ -258,7 +246,6 @@ func TestParseSource(t *testing.T) {
 				subdir:          "",
 				version:         "v1.2.3",
 				cloner:          &realCloner{},
-				tagser:          &realTagser{},
 			},
 		},
 	}

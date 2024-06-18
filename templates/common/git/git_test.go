@@ -24,12 +24,13 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/run"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
 )
 
-// To actually run the tests in this file, you'll need to set this environment
-// variable.
+// To actually run the tests in this file that require a remote git repo, you'll
+// need to set this environment variable.
 //
 // For example:
 //
@@ -43,19 +44,49 @@ func skipUnlessEnvEnabled(t *testing.T) {
 	}
 }
 
-func TestTags(t *testing.T) {
-	skipUnlessEnvEnabled(t)
-
+func TestLocalTags(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	tags, err := RemoteTags(ctx, "https://github.com/abcxyz/abc.git")
+
+	tempDir := t.TempDir()
+
+	abctestutil.WriteAll(t, tempDir, abctestutil.WithGitRepoAt("", nil))
+
+	got, err := LocalTags(ctx, tempDir)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	wantTag := "v0.2.0"
-	if !slices.Contains(tags, wantTag) {
-		t.Errorf("got versions %v, but wanted a list of versions containing %v", tags, wantTag)
+	if len(got) != 0 {
+		t.Fatalf("got %d tags, but expected 0 tags in an empty repo", len(got))
+	}
+
+	abctestutil.Overwrite(t, tempDir, "myfile1.txt", "some contents")
+	mustRun(ctx, t, "git", "-C", tempDir, "add", "-A")
+	mustRun(ctx, t, "git", "-C", tempDir, "commit", "--no-gpg-sign", "-m", "my first commit")
+	mustRun(ctx, t, "git", "-C", tempDir, "tag", "mytag1")
+
+	got, err = LocalTags(ctx, tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"mytag1"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got tags %v, want %v", got, want)
+	}
+
+	abctestutil.Overwrite(t, tempDir, "myfile2.txt", "some contents")
+	mustRun(ctx, t, "git", "-C", tempDir, "add", "-A")
+	mustRun(ctx, t, "git", "-C", tempDir, "commit", "--no-gpg-sign", "-m", "my second commit")
+	mustRun(ctx, t, "git", "-C", tempDir, "tag", "mytag2")
+
+	got, err = LocalTags(ctx, tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = []string{"mytag1", "mytag2"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got tags %v, want %v", got, want)
 	}
 }
 
@@ -67,58 +98,16 @@ func TestClone(t *testing.T) {
 	cases := []struct {
 		name    string
 		remote  string
-		version string
 		wantErr string
 	}{
 		{
-			name:    "clone_tag",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "v0.2.0",
-		},
-		{
-			name:    "alternative_tag_format_fails",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "refs/tags/v0.2.0",
-			wantErr: "refs/tags/v0.2.0 not found",
-		},
-		{
-			name:    "clone_branch",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "main",
-		},
-		{
-			name:    "alternative_branch_format_fails",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "refs/heads/v0.2.0",
-			wantErr: "refs/heads/v0.2.0 not found",
-		},
-		{
-			name:    "long_commit_supported",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "b6687471f424efd125f9a3e156c68ed78b9d3b47",
-		},
-		{
-			name:    "non_hexadecimal_long_commit",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "z668747&-424.fd125f9a3e156c68ed78b9d3b47",
-			wantErr: "z668747&-424.fd125f9a3e156c68ed78b9d3b47 not found",
-		},
-		{
-			name:    "short_commit_not_supported",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "b668747",
-			wantErr: "Could not find remote branch b668747 to clone",
+			name:   "clone_tag",
+			remote: "https://github.com/abcxyz/abc.git",
 		},
 		{
 			name:    "nonexistent_remote",
 			remote:  "https://example.com/foo/bar",
-			wantErr: "fatal: ", // the part of the error message that's the same on win and linux
-		},
-		{
-			name:    "symlinks_forbidden",
-			remote:  "https://github.com/abcxyz/abc.git",
-			version: "drevell/forbidden-symlink-for-test",
-			wantErr: `one or more symlinks were found in "https://github.com/abcxyz/abc.git" at [example-symlink]`,
+			wantErr: "repository 'https://example.com/foo/bar/' not found",
 		},
 	}
 
@@ -129,8 +118,8 @@ func TestClone(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
-			outDir := t.TempDir()
-			err := Clone(ctx, tc.remote, tc.version, outDir)
+			tempDir := t.TempDir()
+			err := Clone(ctx, tc.remote, tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -140,94 +129,12 @@ func TestClone(t *testing.T) {
 
 			// We check for an arbitrary file to ensure that the clone really happened.
 			wantFile := "README.md"
-			exists, err := common.Exists(filepath.Join(outDir, wantFile))
+			exists, err := common.Exists(filepath.Join(tempDir, wantFile))
 			if err != nil {
 				t.Error(err)
 			}
 			if !exists {
 				t.Fatalf("git clone seemed to work but the output didn't contain %q, something weird happened", wantFile)
-			}
-		})
-	}
-}
-
-func TestFindSymlinks(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name         string
-		regularFiles []string
-		symlinks     []string
-		want         []string
-	}{
-		{
-			name:     "one_symlink",
-			symlinks: []string{"my-symlink"},
-			want:     []string{"my-symlink"},
-		},
-		{
-			name: "multi_symlinks",
-			symlinks: []string{
-				"my-symlink-1",
-				"my-symlink-2",
-			},
-			want: []string{"my-symlink-1", "my-symlink-2"},
-		},
-		{
-			name:         "mix_symlinks_and_regular",
-			symlinks:     []string{"my-symlink"},
-			regularFiles: []string{"my-regular-file"},
-			want:         []string{"my-symlink"},
-		},
-		{
-			name:         "no_symlinks",
-			regularFiles: []string{"my-regular-file"},
-		},
-		{
-			name:     "dot_git_is_skipped",
-			symlinks: []string{".git/my-symlink"},
-		},
-		{
-			name:     "dot_git_outside_of_root_is_not_skipped",
-			symlinks: []string{"foo/.git/my-symlink"},
-			want:     []string{"foo/.git/my-symlink"},
-		},
-		{
-			name: "empty_dir",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			tempDir := t.TempDir()
-
-			for _, r := range tc.regularFiles {
-				path := filepath.Join(tempDir, r)
-				if err := os.WriteFile(path, []byte("my-contents"), 0o644); err != nil { //nolint:gosec
-					t.Fatal(err)
-				}
-			}
-			for _, s := range tc.symlinks {
-				path := filepath.Join(tempDir, s)
-				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.Symlink("link-dest", path); err != nil {
-					t.Fatal(err)
-				}
-			}
-
-			got, err := findSymlinks(tempDir)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if !slices.Equal(got, tc.want) {
-				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -308,5 +215,14 @@ func TestHeadTags(t *testing.T) {
 				t.Errorf("output tags weren't as expected (-got,+want): %s", diff)
 			}
 		})
+	}
+}
+
+func TestCheckout(t *testing.T) {
+}
+
+func mustRun(ctx context.Context, tb testing.TB, args ...string) {
+	if _, _, err := run.Simple(ctx, args...); err != nil {
+		tb.Fatal(err)
 	}
 }
