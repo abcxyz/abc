@@ -107,7 +107,7 @@ func TestClone(t *testing.T) {
 		{
 			name:   "nonexistent_remote",
 			remote: "https://example.com/foo/bar.git",
-			// The error message is completely differnet between linux and mac.
+			// The error message is completely different between linux and mac.
 			// This is the only substring that appears on both platforms. 🙃
 			wantErr: "https://example.com/foo/bar.git",
 		},
