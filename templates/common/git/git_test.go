@@ -101,13 +101,13 @@ func TestClone(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:   "clone_tag",
+			name:   "simple_success",
 			remote: "https://github.com/abcxyz/abc.git",
 		},
 		{
 			name:    "nonexistent_remote",
-			remote:  "https://example.com/foo/bar",
-			wantErr: "repository 'https://example.com/foo/bar/' not found",
+			remote:  "https://example.com/foo/bar.git",
+			wantErr: "repository 'https://example.com/foo/bar.git' not found",
 		},
 	}
 
@@ -219,6 +219,66 @@ func TestHeadTags(t *testing.T) {
 }
 
 func TestCheckout(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		branch  string
+		tag     string
+		version string
+		wantErr string
+	}{
+		{
+			name:    "branch",
+			branch:  "mybranch",
+			version: "mybranch",
+		},
+		{
+			name:    "tag",
+			tag:     "mytag",
+			version: "mytag",
+		},
+		{
+			name:    "sha",
+			version: abctestutil.MinimalGitHeadSHA,
+		},
+		{
+			name:    "branch_tag_collision",
+			branch:  "foo",
+			tag:     "foo",
+			version: "foo",
+		},
+		{
+			name:    "empty_version",
+			wantErr: "empty string is not a valid version",
+		},
+		{
+			name:    "nonexistent",
+			version: "some-nonexistent-branch",
+			wantErr: `version "some-nonexistent-branch" doesn't exist`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			abctestutil.WriteAll(t, tempDir, abctestutil.WithGitRepoAt("", nil))
+
+			ctx := context.Background()
+			if len(tc.branch) > 0 {
+				abctestutil.Overwrite(t, tempDir, ".git/refs/heads/"+tc.branch, abctestutil.MinimalGitHeadSHA)
+			}
+			if len(tc.tag) > 0 {
+				abctestutil.Overwrite(t, tempDir, ".git/refs/tags/"+tc.tag, abctestutil.MinimalGitHeadSHA)
+			}
+			err := Checkout(ctx, tc.version, tempDir)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
+		})
+	}
 }
 
 func mustRun(ctx context.Context, tb testing.TB, args ...string) {

@@ -17,8 +17,10 @@ package git
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -45,20 +47,46 @@ func Clone(ctx context.Context, remote, outDir string) error {
 // Checkout checks out the provided version (branch, tag, or SHA) from the
 // already-cloned given git workspace. It uses the git CLI already installed on
 // the system.
+//
+// If the given version is both a valid branch name and tag name, then we'll do
+// what "git checkout" does in that case, and check out the branch.
+//
+// If the version does not exist as a branch, tag, or SHA in this repo, then
+// *ErrNoSuchVersion will be returned.
 func Checkout(ctx context.Context, version, workspaceDir string) error {
+	// Note to maintainers: you might be asking: shouldn't we use "--", like
+	// "git checkout -- $branch_tag_or_sha" ? That *seems* like a good idea, except
+	// that it doesn't work; "git checkout" will not accept a branch or tag name
+	// after "--". That's also the reason why we forbid versions that begin with
+	// dash, because "git checkout" will interpret them as flags.
+
+	if version == "" {
+		return fmt.Errorf("empty string is not a valid version")
+	}
 	if version[0] == '-' {
-		// You might be asking: couldn't we support versions beginning with dash
-		// by doing "git checkout -- version"? It turns out no, git checkout
-		// does not allow a branch/tag to come after "--".
 		return fmt.Errorf("versions beginning with dash aren't supported")
 	}
 
 	_, _, err := run.Simple(ctx, "git", "-C", workspaceDir, "checkout", version)
 	if err != nil {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
+			return &ErrNoSuchVersion{
+				Version: version,
+			}
+		}
 		return err //nolint:wrapcheck
 	}
 
 	return nil
+}
+
+type ErrNoSuchVersion struct {
+	Version string
+}
+
+func (e *ErrNoSuchVersion) Error() string {
+	return fmt.Sprintf("the requested version %q doesn't exist", e.Version)
 }
 
 // LocalTags looks up the tags in the given locally cloned repo. If there are no

@@ -133,12 +133,12 @@ type CopyParams struct {
 	//  - Users might be surprised if a template outputs a symlink, which
 	//    could point to any location outside the render destination dir.
 	//
-	// We're trying to provide a bit of protect for template users against
+	// In general, symlinks could cause all kinds of surprising behavior. We're
+	// trying to provide a bit of protection for template users against
 	// malicious or overzealous template authors.
 	//
-	// In general, it could cause all kinds of surprising behavior. We could
-	// be more permissive in the future and allow symlinks to exist in the
-	// repo as long as they're not involved with the template.
+	// We could be more permissive in the future and allow symlinks to exist in
+	// the repo as long as they're not involved with the template.
 	ForbidSymlinks bool
 
 	// If Hasher and OutHashes are not nil, then each copied file will be hashed
@@ -175,7 +175,11 @@ type CopyHint struct {
 	Skip bool
 }
 
+// ErrSymlinkForbidden is the type returned from CopyRecursive in the case where
+// ForbidSymlinks is configured to true, and a symlink is encountered in the
+// source directory.
 type ErrSymlinkForbidden struct {
+	// The relative path where the symlink was found. Relative to SrcRoot.
 	Path string
 }
 

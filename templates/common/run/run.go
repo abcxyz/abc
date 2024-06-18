@@ -33,7 +33,7 @@ const DefaultRunTimeout = time.Minute
 // This is intended to be used for commands that run non-interactively then
 // exit.
 //
-// If the command exits with a nonzero status code, an *os.ExitError will be
+// If the command exits with a nonzero status code, an *exec.ExitError will be
 // returned.
 //
 // If the command fails, the error message will include the contents of stdout

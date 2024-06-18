@@ -481,7 +481,7 @@ func TestCopyRecursive(t *testing.T) {
 	}
 }
 
-func TestCopyRecursive_SymlinkHandling(t *testing.T) {
+func TestCopyRecursive_ForbidSymlinks(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -530,10 +530,6 @@ func TestCopyRecursive_SymlinkHandling(t *testing.T) {
 			sourceTempDir := t.TempDir()
 
 			for _, r := range tc.regularFiles {
-				path := filepath.Join(sourceTempDir, r)
-				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-					t.Fatal(err)
-				}
 				abctestutil.Overwrite(t, sourceTempDir, r, "contents")
 			}
 			for _, s := range tc.symlinks {
