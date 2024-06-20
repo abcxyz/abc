@@ -18,6 +18,7 @@ package templatesource
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -92,6 +93,11 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 		SrcRoot: l.SrcPath,
 		DstRoot: templateDir,
 		FS:      &common.RealFS{},
+		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
+			return common.CopyHint{
+				Skip: relPath == ".git",
+			}, nil
+		},
 	}); err != nil {
 		return nil, err //nolint:wrapcheck
 	}

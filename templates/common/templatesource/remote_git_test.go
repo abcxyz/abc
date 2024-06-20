@@ -48,11 +48,10 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t:           t,
-					addTag:      "v1.2.3",
-					out:         basicFiles,
-					wantRemote:  "fake-remote",
-					wantVersion: "v1.2.3",
+					tb:         t,
+					addTags:    []string{"v1.2.3"},
+					out:        basicFiles,
+					wantRemote: "fake-remote",
 				},
 			},
 			want: basicFiles,
@@ -77,19 +76,10 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         "latest",
 				cloner: &fakeCloner{
-					t:           t,
-					addTag:      "v1.2.3",
-					out:         basicFiles,
-					wantRemote:  "fake-remote",
-					wantVersion: "v1.2.3",
-				},
-				tagser: &fakeTagser{
-					t:          t,
+					tb:         t,
+					addTags:    []string{"v0.0.1", "v1.2.3", "v0.1.2"},
+					out:        basicFiles,
 					wantRemote: "fake-remote",
-					out: []string{
-						"v1.2.3",
-						"v0.1.2",
-					},
 				},
 			},
 			want: basicFiles,
@@ -114,14 +104,13 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "my-subdir",
 				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t:      t,
-					addTag: "v1.2.3",
+					tb:      t,
+					addTags: []string{"v1.2.3"},
 					out: map[string]string{
 						"my-subdir/file1.txt": "hello",
 						"file2.txt":           "world",
 					},
-					wantRemote:  "fake-remote",
-					wantVersion: "v1.2.3",
+					wantRemote: "fake-remote",
 				},
 			},
 			want: map[string]string{
@@ -148,14 +137,13 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "my/deep",
 				version:         "v1.2.3",
 				cloner: &fakeCloner{
-					t:      t,
-					addTag: "v1.2.3",
+					tb:      t,
+					addTags: []string{"v1.2.3"},
 					out: map[string]string{
 						"my/deep/subdir/file1.txt": "hello",
 						"file2.txt":                "world",
 					},
-					wantRemote:  "fake-remote",
-					wantVersion: "v1.2.3",
+					wantRemote: "fake-remote",
 				},
 			},
 			want: map[string]string{
@@ -191,10 +179,10 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:  "nonexistent",
 				version: "v1.2.3",
 				cloner: &fakeCloner{
-					t:           t,
-					out:         basicFiles,
-					wantRemote:  "fake-remote",
-					wantVersion: "v1.2.3",
+					tb:         t,
+					out:        basicFiles,
+					addTags:    []string{"v1.2.3"},
+					wantRemote: "fake-remote",
 				},
 			},
 			wantErr: `doesn't contain a subdirectory named "nonexistent"`,
@@ -207,10 +195,10 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:  "file1.txt",
 				version: "v1.2.3",
 				cloner: &fakeCloner{
-					t:           t,
-					out:         basicFiles,
-					wantRemote:  "fake-remote",
-					wantVersion: "v1.2.3",
+					tb:         t,
+					out:        basicFiles,
+					addTags:    []string{"v1.2.3"},
+					wantRemote: "fake-remote",
 				},
 			},
 			wantErr: "is not a directory",
@@ -224,10 +212,9 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         abctestutil.MinimalGitHeadSHA,
 				cloner: &fakeCloner{
-					t:           t,
-					out:         basicFiles,
-					wantRemote:  "fake-remote",
-					wantVersion: abctestutil.MinimalGitHeadSHA,
+					tb:         t,
+					out:        basicFiles,
+					wantRemote: "fake-remote",
 				},
 			},
 			want: basicFiles,
@@ -252,11 +239,10 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				subdir:          "",
 				version:         abctestutil.MinimalGitHeadSHA,
 				cloner: &fakeCloner{
-					t:           t,
-					addTag:      "v1.2.3",
-					out:         basicFiles,
-					wantRemote:  "fake-remote",
-					wantVersion: abctestutil.MinimalGitHeadSHA,
+					tb:         t,
+					addTags:    []string{"v1.2.3"},
+					out:        basicFiles,
+					wantRemote: "fake-remote",
 				},
 			},
 			want: basicFiles,
@@ -305,7 +291,8 @@ func TestResolveVersion(t *testing.T) {
 		name     string
 		in       string
 		inRemote string
-		tagser   *fakeTagser
+		branches []string
+		tags     []string
 		want     string
 		wantErr  string
 	}{
@@ -348,56 +335,36 @@ func TestResolveVersion(t *testing.T) {
 			name:     "latest_lookup",
 			in:       "latest",
 			inRemote: "my-remote",
-			tagser: &fakeTagser{
-				t:          t,
-				wantRemote: "my-remote",
-				out:        []string{"v1.2.3", "v2.3.4"},
-			},
-			want: "v2.3.4",
+			tags:     []string{"v1.2.3", "v2.3.4"},
+			want:     "v2.3.4",
 		},
 		{
 			name:     "latest_lookup_v_prefix_is_required",
 			in:       "latest",
 			inRemote: "my-remote",
-			tagser: &fakeTagser{
-				t:          t,
-				wantRemote: "my-remote",
-				out:        []string{"v1.2.3", "2.3.4"},
-			},
-			want: "v1.2.3",
+			tags:     []string{"v1.2.3", "2.3.4"},
+			want:     "v1.2.3",
 		},
 		{
 			name:     "latest_lookup_ignores_alpha",
 			in:       "latest",
 			inRemote: "my-remote",
-			tagser: &fakeTagser{
-				t:          t,
-				wantRemote: "my-remote",
-				out:        []string{"v1.2.3", "v2.3.4-alpha"},
-			},
-			want: "v1.2.3",
+			tags:     []string{"v1.2.3", "v2.3.4-alpha"},
+			want:     "v1.2.3",
 		},
 		{
 			name:     "latest_lookup_ignores_nonsense_tag",
 			in:       "latest",
 			inRemote: "my-remote",
-			tagser: &fakeTagser{
-				t:          t,
-				wantRemote: "my-remote",
-				out:        []string{"v1.2.3", "nonsense"},
-			},
-			want: "v1.2.3",
+			tags:     []string{"v1.2.3", "nonsense"},
+			want:     "v1.2.3",
 		},
 		{
 			name:     "no_tags_exist",
 			in:       "latest",
 			inRemote: "my-remote",
-			tagser: &fakeTagser{
-				t:          t,
-				wantRemote: "my-remote",
-				out:        []string{},
-			},
-			wantErr: `there were no semver-formatted tags beginning with "v" in "my-remote"`,
+			tags:     []string{},
+			wantErr:  `there were no semver-formatted tags beginning with "v"`,
 		},
 	}
 
@@ -408,8 +375,10 @@ func TestResolveVersion(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
+			outDir := t.TempDir()
+			createFakeGitRepo(t, tc.branches, tc.tags, outDir)
 
-			got, err := resolveVersion(ctx, tc.tagser, tc.inRemote, tc.in)
+			got, err := resolveVersion(ctx, outDir, tc.in)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -422,41 +391,35 @@ func TestResolveVersion(t *testing.T) {
 }
 
 type fakeCloner struct {
-	t           *testing.T
-	out         map[string]string
-	addTag      string
-	wantRemote  string
-	wantVersion string
-}
-
-func (f *fakeCloner) Clone(ctx context.Context, remote, version, outDir string) error {
-	if remote != f.wantRemote {
-		f.t.Errorf("got remote %q, want %q", remote, f.wantRemote)
-	}
-	if version != f.wantVersion {
-		f.t.Errorf("got version %q, want %q", version, f.wantVersion)
-	}
-
-	files := abctestutil.WithGitRepoAt("", f.out)
-
-	if f.addTag != "" {
-		// Adding a tag is just creating a file under .git/refs/tags.
-		files[".git/refs/tags/"+f.addTag] = abctestutil.MinimalGitHeadSHA
-	}
-
-	abctestutil.WriteAll(f.t, outDir, files)
-	return nil
-}
-
-type fakeTagser struct {
-	t          *testing.T
-	out        []string
+	tb         testing.TB
+	out        map[string]string
+	addTags    []string
 	wantRemote string
 }
 
-func (f *fakeTagser) Tags(ctx context.Context, remote string) ([]string, error) {
+func (f *fakeCloner) Clone(ctx context.Context, remote, outDir string) error {
 	if remote != f.wantRemote {
-		f.t.Errorf("got remote %q, want %q", remote, f.wantRemote)
+		f.tb.Errorf("got remote %q, want %q", remote, f.wantRemote)
 	}
-	return f.out, nil
+
+	createFakeGitRepo(f.tb, nil, f.addTags, outDir)
+	abctestutil.WriteAll(f.tb, outDir, f.out)
+	return nil
+}
+
+func createFakeGitRepo(tb testing.TB, branches, tags []string, outDir string) {
+	tb.Helper()
+
+	files := abctestutil.WithGitRepoAt("", nil)
+
+	for _, tag := range tags {
+		// Adding a tag is just creating a file under .git/refs/tags.
+		files[".git/refs/tags/"+tag] = abctestutil.MinimalGitHeadSHA
+	}
+	for _, branch := range branches {
+		// Adding a branch is just creating a file under .git/refs/branch.
+		files[".git/refs/heads/"+branch] = abctestutil.MinimalGitHeadSHA
+	}
+
+	abctestutil.WriteAll(tb, outDir, files)
 }

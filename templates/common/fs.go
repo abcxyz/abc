@@ -158,8 +158,21 @@ type CopyHint struct {
 	Skip bool
 }
 
-// CopyRecursive recursively copies folder contents with designated config
-// params.
+// SymlinkForbiddenError is the error returned from CopyRecursive when a symlink
+// is encountered in the source directory.
+type SymlinkForbiddenError struct {
+	// The relative path where the symlink was found. Relative to SrcRoot.
+	Path string
+}
+
+func (e *SymlinkForbiddenError) Error() string {
+	return fmt.Sprintf("a symlink was found at %q, but symlinks are forbidden here", e.Path)
+}
+
+// CopyRecursive recursively copies a directory to another directory.
+//
+// If the source directory contains a symlink, then [SymlinkForbiddenError] will
+// be returned.
 func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "CopyRecursive")
 
@@ -169,6 +182,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		if err != nil {
 			return err // There was some filesystem error. Give up.
 		}
+
 		logger.DebugContext(ctx, "handling directory entry",
 			"path", path)
 		relToSrc, err := filepath.Rel(p.SrcRoot, path)
@@ -176,6 +190,11 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 			return pos.Errorf("filepath.Rel(%s,%s): %w", p.SrcRoot, path, err)
 		}
 		dst := filepath.Join(p.DstRoot, relToSrc)
+
+		isSymlink := (de.Type() & fs.ModeSymlink) > 0
+		if isSymlink {
+			return &SymlinkForbiddenError{Path: relToSrc}
+		}
 
 		var ch CopyHint
 		if p.Visitor != nil {

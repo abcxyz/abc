@@ -112,7 +112,6 @@ func newRemoteGitDownloader(p *newRemoteGitDownloaderParams) (Downloader, bool, 
 		cloner:          &realCloner{},
 		remote:          remote,
 		subdir:          subdir,
-		tagser:          &realTagser{},
 		version:         version,
 	}, true, nil
 }
@@ -131,7 +130,6 @@ type remoteGitDownloader struct {
 	canonicalSource string
 
 	cloner cloner
-	tagser tagser
 }
 
 // Download implements Downloader.
@@ -143,14 +141,6 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	if err != nil {
 		return nil, fmt.Errorf("invalid subdirectory: %w", err)
 	}
-
-	versionToDownload, err := resolveVersion(ctx, g.tagser, g.remote, g.version)
-	if err != nil {
-		return nil, err
-	}
-	logger.DebugContext(ctx, "resolved version from",
-		"input", g.version,
-		"to", versionToDownload)
 
 	// Rather than cloning directly into templateDir, we clone into a temp dir.
 	// It would be incorrect to clone the whole repo into templateDir if the
@@ -164,24 +154,35 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	}
 	subdirToCopy := filepath.Join(tmpDir, subdir)
 
-	if err := g.cloner.Clone(ctx, g.remote, versionToDownload, tmpDir); err != nil {
+	if err := g.cloner.Clone(ctx, g.remote, tmpDir); err != nil {
 		return nil, fmt.Errorf("Clone() of %s: %w", g.remote, err)
+	}
+
+	versionToCheckout, err := resolveVersion(ctx, tmpDir, g.version)
+	if err != nil {
+		return nil, err
+	}
+	logger.DebugContext(ctx, "resolved version from",
+		"input", g.version,
+		"to", versionToCheckout)
+
+	if err := git.Checkout(ctx, versionToCheckout, tmpDir); err != nil {
+		return nil, fmt.Errorf("Checkout(): %w", err)
 	}
 
 	fi, err := os.Stat(subdirToCopy)
 	if err != nil {
 		if common.IsNotExistErr(err) {
-			return nil, fmt.Errorf(`the repo %q at tag %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, versionToDownload, subdir, versionToDownload)
+			return nil, fmt.Errorf(`the repo %q at version %q doesn't contain a subdirectory named %q; it's possible that the template exists in the "main" branch but is not part of the release %q`, g.remote, versionToCheckout, subdir, versionToCheckout)
 		}
 		return nil, err //nolint:wrapcheck // Stat() returns a decently informative error
 	}
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("the path %q is not a directory", subdir)
 	}
-
 	logger.DebugContext(ctx, "cloned repo",
 		"remote", g.remote,
-		"version", versionToDownload)
+		"version", versionToCheckout)
 
 	// Copy only the requested subdir to templateDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
@@ -266,27 +267,27 @@ func gitTemplateVars(ctx context.Context, srcDir string) (*DownloaderVars, error
 // resolveVersion returns the latest release tag if version is "latest", and otherwise
 // just returns the input version. The return value is either a branch, tag, or
 // a long commit SHA (unless there's an error).
-func resolveVersion(ctx context.Context, t tagser, remote, version string) (string, error) {
+func resolveVersion(ctx context.Context, tmpDir, version string) (string, error) {
 	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
 
 	switch version {
 	case "":
 		return "", fmt.Errorf("the template source version cannot be empty")
 	case Latest:
-		return resolveLatest(ctx, t, remote)
+		return resolveLatest(ctx, tmpDir)
 	default:
-		logger.DebugContext(ctx, "using user provided version and skipping remote tags lookup", "version", version)
+		logger.DebugContext(ctx, "using user provided version and skipping local tags lookup", "version", version)
 		return version, nil
 	}
 }
 
-// resolveLatest retrieves the tags from the remote repository and returns the
+// resolveLatest retrieves the tags from the locally cloned repository and returns the
 // highest semver tag. An error is thrown if no semver tags are found.
-func resolveLatest(ctx context.Context, t tagser, remote string) (string, error) {
+func resolveLatest(ctx context.Context, tmpDir string) (string, error) {
 	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
 
-	logger.DebugContext(ctx, `looking up semver tags to resolve "latest"`, "git_remote", remote)
-	tags, err := t.Tags(ctx, remote)
+	logger.DebugContext(ctx, `looking up semver tags to resolve "latest"`)
+	tags, err := git.LocalTags(ctx, tmpDir)
 	if err != nil {
 		return "", fmt.Errorf("Tags(): %w", err)
 	}
@@ -309,7 +310,7 @@ func resolveLatest(ctx context.Context, t tagser, remote string) (string, error)
 	}
 
 	if len(versions) == 0 {
-		return "", fmt.Errorf(`the template source requested the "latest" release, but there were no semver-formatted tags beginning with "v" in %q. Available tags were: %v`, remote, tags)
+		return "", fmt.Errorf(`the template source requested the "latest" release, but there were no semver-formatted tags beginning with "v". Available tags were: %v`, tags)
 	}
 
 	max := slices.MaxFunc(versions, func(l, r *semver.Version) int {
@@ -321,24 +322,13 @@ func resolveLatest(ctx context.Context, t tagser, remote string) (string, error)
 
 // A fakeable interface around the lower-level git Clone function, for testing.
 type cloner interface {
-	Clone(ctx context.Context, remote, version, destDir string) error
+	Clone(ctx context.Context, remote, destDir string) error
 }
 
 type realCloner struct{}
 
-func (r *realCloner) Clone(ctx context.Context, remote, version, destDir string) error {
-	return git.Clone(ctx, remote, version, destDir) //nolint:wrapcheck
-}
-
-// A fakeable interface around the lower-level git Tags function, for testing.
-type tagser interface {
-	Tags(ctx context.Context, remote string) ([]string, error)
-}
-
-type realTagser struct{}
-
-func (r *realTagser) Tags(ctx context.Context, remote string) ([]string, error) {
-	return git.RemoteTags(ctx, remote) //nolint:wrapcheck
+func (r *realCloner) Clone(ctx context.Context, remote, destDir string) error {
+	return git.Clone(ctx, remote, destDir) //nolint:wrapcheck
 }
 
 // gitRemote returns a git remote string (see "man git-remote") for the given

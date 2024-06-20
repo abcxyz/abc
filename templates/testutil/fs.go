@@ -247,11 +247,15 @@ func TestMustGlob(tb testing.TB, glob string) (string, bool) {
 	panic("unreachable") // silence compiler warning for "missing return"
 }
 
-// Overwrite writes the given contents to dir/baseName, failing the test on
-// error.
-func Overwrite(tb testing.TB, dir, baseName, contents string) {
+// Overwrite writes the given contents to the path created by filepath.Join(dir,
+// name), failing the test on error. If the enclosing directory doesn't exist,
+// it will be created.
+func Overwrite(tb testing.TB, dir, name, contents string) {
 	tb.Helper()
-	filename := filepath.Join(dir, baseName)
+	filename := filepath.Join(dir, name)
+	if err := os.MkdirAll(filepath.Dir(filename), 0o700); err != nil {
+		tb.Fatal(err)
+	}
 	if err := os.WriteFile(filename, []byte(contents), 0o600); err != nil {
 		tb.Fatal(err)
 	}
