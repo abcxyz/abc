@@ -90,10 +90,9 @@ func (l *LocalDownloader) Download(ctx context.Context, cwd, templateDir, destDi
 		"src_path", l.SrcPath,
 		"template_dir", templateDir)
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
-		SrcRoot:        l.SrcPath,
-		DstRoot:        templateDir,
-		FS:             &common.RealFS{},
-		ForbidSymlinks: true,
+		SrcRoot: l.SrcPath,
+		DstRoot: templateDir,
+		FS:      &common.RealFS{},
 		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
 			return common.CopyHint{
 				Skip: relPath == ".git",

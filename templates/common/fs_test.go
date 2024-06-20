@@ -545,10 +545,9 @@ func TestCopyRecursive_ForbidSymlinks(t *testing.T) {
 			destTempDir := t.TempDir()
 			ctx := context.Background()
 			err := CopyRecursive(ctx, nil, &CopyParams{
-				FS:             &RealFS{},
-				SrcRoot:        sourceTempDir,
-				DstRoot:        destTempDir,
-				ForbidSymlinks: true,
+				FS:      &RealFS{},
+				SrcRoot: sourceTempDir,
+				DstRoot: destTempDir,
 			})
 			if err == nil {
 				if tc.wantErrPath != "" {

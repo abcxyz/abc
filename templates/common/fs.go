@@ -124,23 +124,6 @@ type CopyParams struct {
 	// source, to allow customization of the copy operation on a per-file basis.
 	Visitor CopyVisitor
 
-	// Return [SymlinkForbiddenError] if any symlinks are found when copying.
-	//
-	// Why are symlinks risky in a template?
-	//
-	//  - A symlink could point outside the template directory, resulting in
-	//    unintended exfiltration of user data into the template output
-	//  - Users might be surprised if a template outputs a symlink, which
-	//    could point to any location outside the render destination dir.
-	//
-	// In general, symlinks could cause all kinds of surprising behavior. We're
-	// trying to provide a bit of protection for template users against
-	// malicious or overzealous template authors.
-	//
-	// We could be more permissive in the future and allow symlinks to exist in
-	// the repo as long as they're not involved with the template.
-	ForbidSymlinks bool
-
 	// If Hasher and OutHashes are not nil, then each copied file will be hashed
 	// and the hex hash will be saved in OutHashes. If a file is "skipped"
 	// (CopyHint.Skip==true) then the hash will not be computed. In dry run
@@ -175,9 +158,8 @@ type CopyHint struct {
 	Skip bool
 }
 
-// SymlinkForbiddenError is the type returned from CopyRecursive in the case where
-// ForbidSymlinks is configured to true, and a symlink is encountered in the
-// source directory.
+// SymlinkForbiddenError is the error returned from CopyRecursive when a symlink
+// is encountered in the source directory.
 type SymlinkForbiddenError struct {
 	// The relative path where the symlink was found. Relative to SrcRoot.
 	Path string
@@ -187,8 +169,10 @@ func (e *SymlinkForbiddenError) Error() string {
 	return fmt.Sprintf("a symlink was found at %q, but symlinks are forbidden here", e.Path)
 }
 
-// CopyRecursive recursively copies folder contents with designated config
-// params.
+// CopyRecursive recursively copies a directory to another directory.
+//
+// If the source directory contains a symlink, then [SymlinkForbiddenError] will
+// be returned.
 func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (outErr error) {
 	logger := logging.FromContext(ctx).With("logger", "CopyRecursive")
 
@@ -208,7 +192,7 @@ func CopyRecursive(ctx context.Context, pos *model.ConfigPos, p *CopyParams) (ou
 		dst := filepath.Join(p.DstRoot, relToSrc)
 
 		isSymlink := (de.Type() & fs.ModeSymlink) > 0
-		if isSymlink && p.ForbidSymlinks {
+		if isSymlink {
 			return &SymlinkForbiddenError{Path: relToSrc}
 		}
 

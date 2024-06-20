@@ -186,10 +186,9 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 
 	// Copy only the requested subdir to templateDir.
 	if err := common.CopyRecursive(ctx, nil, &common.CopyParams{
-		DstRoot:        templateDir,
-		SrcRoot:        subdirToCopy,
-		ForbidSymlinks: true,
-		FS:             &common.RealFS{},
+		DstRoot: templateDir,
+		SrcRoot: subdirToCopy,
+		FS:      &common.RealFS{},
 		Visitor: func(relPath string, de fs.DirEntry) (common.CopyHint, error) {
 			return common.CopyHint{
 				Skip: relPath == ".git",
