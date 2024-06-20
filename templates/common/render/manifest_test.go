@@ -74,8 +74,8 @@ creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
 location_type: ""
-requested_version: ""
 template_version: ""
+upgrade_track: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -98,11 +98,11 @@ output_files:
 				"a.txt": "some other stuff",
 			},
 			dlMeta: &templatesource.DownloadMetadata{
-				IsCanonical:      true,
-				CanonicalSource:  "github.com/foo/bar",
-				LocationType:     templatesource.RemoteGit,
-				Version:          "v1.2.3",
-				RequestedVersion: "v1.2.3",
+				IsCanonical:     true,
+				CanonicalSource: "github.com/foo/bar",
+				LocationType:    templatesource.RemoteGit,
+				Version:         "v1.2.3",
+				UpgradeTrack:    "latest",
 			},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
@@ -121,8 +121,8 @@ creation_time: 2023-12-08T23:59:02.000000013Z
 modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: github.com/foo/bar
 location_type: remote_git
-requested_version: v1.2.3
 template_version: v1.2.3
+upgrade_track: latest
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -138,10 +138,10 @@ output_files:
 		{
 			name: "dryrun_no_output",
 			dlMeta: &templatesource.DownloadMetadata{
-				IsCanonical:      true,
-				LocationType:     templatesource.RemoteGit,
-				CanonicalSource:  "github.com/foo/bar",
-				RequestedVersion: "latest",
+				IsCanonical:     true,
+				LocationType:    templatesource.RemoteGit,
+				CanonicalSource: "github.com/foo/bar",
+				UpgradeTrack:    "latest",
 			},
 			dryRun: true,
 			templateContents: map[string]string{
@@ -187,7 +187,7 @@ modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
 location_type: ""
 template_version: ""
-requested_version: ""
+upgrade_track: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs: []
 output_files:
@@ -219,7 +219,7 @@ modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
 location_type: ""
 template_version: ""
-requested_version: ""
+upgrade_track: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple

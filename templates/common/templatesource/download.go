@@ -71,7 +71,7 @@ type DownloadMetadata struct {
 	Version string
 
 	// TODO
-	RequestedVersion string
+	UpgradeTrack string
 
 	// Values for template variables like _git_tag and _git_sha.
 	Vars DownloaderVars

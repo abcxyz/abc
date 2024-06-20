@@ -52,7 +52,7 @@ type Manifest struct {
 	// The tag, branch, SHA, or other version information.
 	TemplateVersion model.String `yaml:"template_version"`
 
-	TrackRemote model.String `yaml:"track_remote"`
+	UpgradeTrack model.String `yaml:"upgrade_track"`
 
 	// // TODO
 	// //
