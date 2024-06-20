@@ -163,10 +163,10 @@ func TestLocalDownloader_Download(t *testing.T) {
 						"copy_from/spec.yaml": "spec contents",
 						"copy_from/file1.txt": "file1 contents",
 					})),
-			wantTemplateDirFiles: abctestutil.WithGitRepoAt("", map[string]string{
+			wantTemplateDirFiles: map[string]string{
 				"spec.yaml": "spec contents",
 				"file1.txt": "file1 contents",
-			}),
+			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:  false,
 				LocationType: LocalGit,
@@ -186,10 +186,10 @@ func TestLocalDownloader_Download(t *testing.T) {
 					"copy_from/spec.yaml": "spec contents",
 					"copy_from/file1.txt": "file1 contents",
 				}),
-			wantTemplateDirFiles: abctestutil.WithGitRepoAt("", map[string]string{
+			wantTemplateDirFiles: map[string]string{
 				"spec.yaml": "spec contents",
 				"file1.txt": "file1 contents",
-			}),
+			},
 			wantDLMeta: &DownloadMetadata{
 				IsCanonical:  false,
 				LocationType: LocalGit,

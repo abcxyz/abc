@@ -17,11 +17,12 @@ package git
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
-	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -30,81 +31,71 @@ import (
 	"github.com/abcxyz/abc/templates/common/run"
 )
 
-var sha = regexp.MustCompile("^[0-9a-f]{40}$")
-
-// Clone checks out the given branch, tag or long commit SHA from the given repo.
+// Clone checks out the given repo.
 // It uses the git CLI already installed on the system.
-//
-// To optimize storage and bandwidth, the full git history is not fetched.
 //
 // "remote" may be any format accepted by git, such as
 // https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
-func Clone(ctx context.Context, remote, version, outDir string) error {
-	if sha.MatchString(version) {
-		_, _, err := run.Simple(ctx, "git", "clone", remote, outDir)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
-
-		_, _, err = run.Simple(ctx, "git", "-C", outDir, "reset", "--hard", version)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
-	} else {
-		_, _, err := run.Simple(ctx, "git", "clone", "--depth", "1", "--branch", version, remote, outDir)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	links, err := findSymlinks(outDir)
+func Clone(ctx context.Context, remote, outDir string) error {
+	_, _, err := run.Simple(ctx, "git", "clone", "--", remote, outDir)
 	if err != nil {
-		return fmt.Errorf("findSymlinks: %w", err)
-	}
-	if len(links) > 0 {
-		return fmt.Errorf("one or more symlinks were found in %q at %v; for security reasons, git repos containing symlinks are not allowed", remote, links)
+		return err //nolint:wrapcheck
 	}
 	return nil
 }
 
-func findSymlinks(dir string) ([]string, error) {
-	var out []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		relativeToOutDir, err := filepath.Rel(dir, path)
-		if err != nil {
-			return fmt.Errorf("Rel(): %w", err)
-		}
-		if relativeToOutDir == ".git" {
-			return fs.SkipDir // skip crawling the git directory to save time.
-		}
-		fi, err := os.Lstat(path)
-		if err != nil {
-			return fmt.Errorf("Lstat(): %w", err)
-		}
-		if fi.Mode()&os.ModeSymlink == 0 {
-			return nil
-		}
+// Checkout checks out the provided version (branch, tag, or SHA) from the
+// already-cloned given git workspace. It uses the git CLI already installed on
+// the system.
+//
+// If the given version is both a valid branch name and tag name, then we'll do
+// what "git checkout" does in that case, and check out the branch.
+//
+// If the version does not exist as a branch, tag, or SHA in this repo, then
+// *NoSuchVersionError will be returned.
+func Checkout(ctx context.Context, version, workspaceDir string) error {
+	// Note to maintainers: you might be asking: shouldn't we use "--", like
+	// "git checkout -- $branch_tag_or_sha" ? That *seems* like a good idea, except
+	// that it doesn't work; "git checkout" will not accept a branch or tag name
+	// after "--". That's also the reason why we forbid versions that begin with
+	// dash, because "git checkout" will interpret them as flags.
 
-		out = append(out, relativeToOutDir)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("WalkDir: %w", err) // There was some filesystem error while crawling.
+	if version == "" {
+		return fmt.Errorf("empty string is not a valid version")
+	}
+	if version[0] == '-' {
+		return fmt.Errorf("versions beginning with dash aren't supported")
 	}
 
-	return out, nil
+	_, _, err := run.Simple(ctx, "git", "-C", workspaceDir, "checkout", version)
+	if err != nil {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
+			return &NoSuchVersionError{
+				Version: version,
+			}
+		}
+		return err //nolint:wrapcheck
+	}
+
+	return nil
 }
 
-// RemoteTags looks up the tags in the given remote repo. If there are no tags,
-// that's not an error, and the returned slice is len 0.
-//
-// "remote" may be any format accepted by git, such as
-// https://github.com/abcxyz/abc.git or git@github.com:abcxyz/abc.git .
-func RemoteTags(ctx context.Context, remote string) ([]string, error) {
-	stdout, _, err := run.Simple(ctx, "git", "ls-remote", "--tags", remote)
+// NoSuchVersionError is returned from Checkout when the requested version
+// doesn't exist.
+type NoSuchVersionError struct {
+	Version string
+}
+
+func (e *NoSuchVersionError) Error() string {
+	return fmt.Sprintf("the requested version %q doesn't exist", e.Version)
+}
+
+// LocalTags looks up the tags in the given locally cloned repo. If there are no
+// tags, that's not an error, and the returned slice is len 0. The return values
+// are sorted lexicographically.
+func LocalTags(ctx context.Context, tmpDir string) ([]string, error) {
+	stdout, _, err := run.Simple(ctx, "git", "-C", tmpDir, "tag")
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -112,16 +103,10 @@ func RemoteTags(ctx context.Context, remote string) ([]string, error) {
 	var tags []string
 	for lineScanner.Scan() {
 		line := lineScanner.Text()
-		fields := strings.Fields(line)
-		prefixedTag := fields[len(fields)-1]
-		if strings.HasSuffix(prefixedTag, "^{}") {
-			// Skip the weird extra duplicate tags ending with "^{}" that git
-			// prints for some reason.
-			continue
-		}
-		tag := strings.TrimPrefix(prefixedTag, "refs/tags/")
-		tags = append(tags, tag)
+		tags = append(tags, line)
 	}
+
+	sort.Strings(tags)
 
 	return tags, nil
 }
