@@ -288,30 +288,30 @@ func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA
 		// the behavior on upgrade should be to upgrade to the latest semver
 		// release.
 		return version, Latest, nil
-	default:
-		isBranch, err := common.Exists(filepath.Join(tmpDir, ".git", "refs", "heads", version))
-		if err != nil {
-			return "", "", err //nolint:wrapcheck
-		}
-		if isBranch {
-			// When the user is installing from a given branch like "abc render
-			// github.com/foo/bar@main", then when they upgrade in the future,
-			// we should upgrade to the tip of that same branch.
-			return version, version, nil
-		}
-
-		isTag, err := common.Exists(filepath.Join(tmpDir, ".git", "refs", "tags", version))
-		if err != nil {
-			return "", "", err //nolint:wrapcheck
-		}
-		if isTag {
-			// When the user is installing from a given tag like "abc render
-			// github.com/foo/bar@my-tag", then when they upgrade in the future,
-			// we should upgrade to the latest tag.
-			return version, Latest, nil
-		}
-		return "", "", fmt.Errorf("%q is not a tag, branch, or SHA that exists in this repo", version)
 	}
+
+	isBranch, err := common.Exists(filepath.Join(tmpDir, ".git", "refs", "heads", version))
+	if err != nil {
+		return "", "", err //nolint:wrapcheck
+	}
+	if isBranch {
+		// When the user is installing from a given branch like "abc render
+		// github.com/foo/bar@main", then when they upgrade in the future,
+		// we should upgrade to the tip of that same branch.
+		return version, version, nil
+	}
+
+	isTag, err := common.Exists(filepath.Join(tmpDir, ".git", "refs", "tags", version))
+	if err != nil {
+		return "", "", err //nolint:wrapcheck
+	}
+	if isTag {
+		// When the user is installing from a given tag like "abc render
+		// github.com/foo/bar@my-tag", then when they upgrade in the future,
+		// we should upgrade to the latest tag.
+		return version, Latest, nil
+	}
+	return "", "", fmt.Errorf("%q is not a tag, branch, or SHA that exists in this repo", version)
 }
 
 // resolveLatest retrieves the tags from the locally cloned repository and returns the

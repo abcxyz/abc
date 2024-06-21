@@ -70,7 +70,9 @@ type DownloadMetadata struct {
 	// string associated with it (e.g. a git tag or a git SHA). May be empty.
 	Version string
 
-	// TODO
+	// Either the special string "latest", or the name of a branch to use to
+	// upgrade from in the future. "latest" means the same thing as it does
+	// when passed on the render command line: find the latest semver tag.
 	UpgradeTrack string
 
 	// Values for template variables like _git_tag and _git_sha.

@@ -97,6 +97,35 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			},
 		},
 		{
+			name: "main_branch",
+			dl: &remoteGitDownloader{
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "",
+				version:         "main",
+				cloner: &fakeCloner{
+					tb:          t,
+					addBranches: []string{"main"},
+					addTags:     []string{"v1.2.3"},
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+				},
+			},
+			want: basicFiles,
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				LocationType:    RemoteGit,
+				Version:         "v1.2.3",
+				UpgradeTrack:    "main",
+				Vars: DownloaderVars{
+					GitTag:      "v1.2.3",
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+				},
+			},
+		},
+		{
 			name: "with_subdir",
 			dl: &remoteGitDownloader{
 				canonicalSource: "mysource",
@@ -408,10 +437,11 @@ func TestResolveVersion(t *testing.T) {
 }
 
 type fakeCloner struct {
-	tb         testing.TB
-	out        map[string]string
-	addTags    []string
-	wantRemote string
+	tb          testing.TB
+	out         map[string]string
+	addTags     []string
+	addBranches []string
+	wantRemote  string
 }
 
 func (f *fakeCloner) Clone(ctx context.Context, remote, outDir string) error {
@@ -419,7 +449,7 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, outDir string) error {
 		f.tb.Errorf("got remote %q, want %q", remote, f.wantRemote)
 	}
 
-	createFakeGitRepo(f.tb, nil, f.addTags, outDir)
+	createFakeGitRepo(f.tb, f.addBranches, f.addTags, outDir)
 	abctestutil.WriteAll(f.tb, outDir, f.out)
 	return nil
 }
