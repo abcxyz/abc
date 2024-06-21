@@ -16,12 +16,17 @@ package templatesource
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 
 	"github.com/abcxyz/abc/templates/common/git"
 )
+
+var sha = regexp.MustCompile("^[0-9a-f]{40}$")
 
 // gitCanonicalVersion examines a template directory and tries to determine the
 // "best" template version by looking at .git. The "best" template version is
@@ -74,7 +79,7 @@ func bestHeadTag(ctx context.Context, dir string) (string, bool, error) {
 	var nonSemverTags []string
 	var semverTags []*semver.Version
 	for _, tag := range tags {
-		semverTag, err := git.ParseSemverTag(tag)
+		semverTag, err := parseSemverTag(tag)
 		if err != nil {
 			nonSemverTags = append(nonSemverTags, tag)
 		} else {
@@ -94,4 +99,20 @@ func bestHeadTag(ctx context.Context, dir string) (string, bool, error) {
 	}
 
 	return "", false, nil
+}
+
+// parseSemverTag parses a string of the form "v1.2.3" into a semver tag. In abc
+// CLI, we require that tags begin with "v", and anything else is a parse error.
+//
+// WARNING: the returned semver.Version has had the "v" prefix stripped,
+// so the string returned from .Original() will be missing the "v".
+func parseSemverTag(t string) (*semver.Version, error) {
+	if !strings.HasPrefix(t, "v") {
+		return nil, fmt.Errorf("tag is not a valid semver tag because it didn't begin with 'v': %q", t)
+	}
+	sv, err := semver.StrictNewVersion(t[1:])
+	if err != nil {
+		return nil, fmt.Errorf("error parsing %q as a semver: %w", t, err)
+	}
+	return sv, nil
 }

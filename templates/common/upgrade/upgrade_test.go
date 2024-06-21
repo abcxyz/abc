@@ -80,7 +80,6 @@ func TestUpgradeAll(t *testing.T) {
 		IsCanonical:     true,
 		CanonicalSource: "../template_dir",
 		LocationType:    templatesource.LocalGit,
-		HasVersion:      true,
 		Version:         abctestutil.MinimalGitHeadSHA,
 		Vars: templatesource.DownloaderVars{
 			GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -1376,7 +1375,6 @@ steps:
 			IsCanonical:     true,
 			CanonicalSource: "../template_dir",
 			LocationType:    "local_git",
-			HasVersion:      true,
 			Version:         abctestutil.MinimalGitHeadSHA,
 			Vars: templatesource.DownloaderVars{
 				GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -1444,7 +1442,6 @@ steps:
 			IsCanonical:     true,
 			CanonicalSource: "../template_dir",
 			LocationType:    templatesource.LocalGit,
-			HasVersion:      true,
 			Version:         abctestutil.MinimalGitHeadSHA,
 			Vars: templatesource.DownloaderVars{
 				GitSHA:      abctestutil.MinimalGitHeadSHA,

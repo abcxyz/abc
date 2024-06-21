@@ -158,7 +158,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		return nil, fmt.Errorf("Clone() of %s: %w", g.remote, err)
 	}
 
-	versionToCheckout, err := resolveVersion(ctx, tmpDir, g.version)
+	versionToCheckout, track, err := resolveVersion(ctx, tmpDir, g.version)
 	if err != nil {
 		return nil, err
 	}
@@ -223,8 +223,8 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		IsCanonical:     true, // Remote git sources are always canonical.
 		CanonicalSource: g.canonicalSource,
 		LocationType:    RemoteGit,
-		HasVersion:      true, // Remote git sources always have a tag or SHA.
 		Version:         canonicalVersion,
+		UpgradeTrack:    track,
 		Vars:            *vars,
 	}
 
@@ -267,24 +267,57 @@ func gitTemplateVars(ctx context.Context, srcDir string) (*DownloaderVars, error
 // resolveVersion returns the latest release tag if version is "latest", and otherwise
 // just returns the input version. The return value is either a branch, tag, or
 // a long commit SHA (unless there's an error).
-func resolveVersion(ctx context.Context, tmpDir, version string) (string, error) {
-	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
-
-	switch version {
-	case "":
-		return "", fmt.Errorf("the template source version cannot be empty")
-	case Latest:
-		return resolveLatest(ctx, tmpDir)
-	default:
-		logger.DebugContext(ctx, "using user provided version and skipping local tags lookup", "version", version)
-		return version, nil
+func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA, upgradeTrack string, _ error) {
+	isSemver := false
+	if len(version) > 0 {
+		_, err := semver.StrictNewVersion(version[1:])
+		isSemver = err == nil
 	}
+
+	switch {
+	case version == "":
+		return "", "", fmt.Errorf("the template source version cannot be empty")
+	case version == Latest:
+		tagBranchOrSHA, err := resolveLatest(ctx, tmpDir)
+		if err != nil {
+			return "", "", err
+		}
+		return tagBranchOrSHA, Latest, nil
+	case sha.MatchString(version) || isSemver:
+		// If the requested version is a SHA or a vX.Y.Z semver version, then
+		// the behavior on upgrade should be to upgrade to the latest semver
+		// release.
+		return version, Latest, nil
+	}
+
+	isBranch, err := common.Exists(filepath.Join(tmpDir, ".git", "refs", "heads", version))
+	if err != nil {
+		return "", "", err //nolint:wrapcheck
+	}
+	if isBranch {
+		// When the user is installing from a given branch like "abc render
+		// github.com/foo/bar@main", then when they upgrade in the future,
+		// we should upgrade to the tip of that same branch.
+		return version, version, nil
+	}
+
+	isTag, err := common.Exists(filepath.Join(tmpDir, ".git", "refs", "tags", version))
+	if err != nil {
+		return "", "", err //nolint:wrapcheck
+	}
+	if isTag {
+		// When the user is installing from a given tag like "abc render
+		// github.com/foo/bar@my-tag", then when they upgrade in the future,
+		// we should upgrade to the latest tag.
+		return version, Latest, nil
+	}
+	return "", "", fmt.Errorf("%q is not a tag, branch, or SHA that exists in this repo", version)
 }
 
 // resolveLatest retrieves the tags from the locally cloned repository and returns the
 // highest semver tag. An error is thrown if no semver tags are found.
 func resolveLatest(ctx context.Context, tmpDir string) (string, error) {
-	logger := logging.FromContext(ctx).With("logger", "resolveVersion")
+	logger := logging.FromContext(ctx).With("logger", "resolveLatest")
 
 	logger.DebugContext(ctx, `looking up semver tags to resolve "latest"`)
 	tags, err := git.LocalTags(ctx, tmpDir)
@@ -293,7 +326,7 @@ func resolveLatest(ctx context.Context, tmpDir string) (string, error) {
 	}
 	versions := make([]*semver.Version, 0, len(tags))
 	for _, t := range tags {
-		sv, err := git.ParseSemverTag(t)
+		sv, err := parseSemverTag(t)
 		if err != nil {
 			logger.DebugContext(ctx, "ignoring non-semver-formatted tag", "tag", t)
 			continue // This is not a semver release tag

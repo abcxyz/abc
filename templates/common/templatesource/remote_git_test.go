@@ -59,8 +59,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
-				HasVersion:      true,
 				Version:         "v1.2.3",
+				UpgradeTrack:    "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -87,8 +87,37 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
-				HasVersion:      true,
 				Version:         "v1.2.3",
+				UpgradeTrack:    "latest",
+				Vars: DownloaderVars{
+					GitTag:      "v1.2.3",
+					GitSHA:      abctestutil.MinimalGitHeadSHA,
+					GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+				},
+			},
+		},
+		{
+			name: "main_branch",
+			dl: &remoteGitDownloader{
+				canonicalSource: "mysource",
+				remote:          "fake-remote",
+				subdir:          "",
+				version:         "main",
+				cloner: &fakeCloner{
+					tb:          t,
+					addBranches: []string{"main"},
+					addTags:     []string{"v1.2.3"},
+					out:         basicFiles,
+					wantRemote:  "fake-remote",
+				},
+			},
+			want: basicFiles,
+			wantDLMeta: &DownloadMetadata{
+				IsCanonical:     true,
+				CanonicalSource: "mysource",
+				LocationType:    RemoteGit,
+				Version:         "v1.2.3",
+				UpgradeTrack:    "main",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -120,8 +149,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
-				HasVersion:      true,
 				Version:         "v1.2.3",
+				UpgradeTrack:    "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -153,8 +182,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
-				HasVersion:      true,
 				Version:         "v1.2.3",
+				UpgradeTrack:    "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -222,8 +251,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
-				HasVersion:      true,
 				Version:         abctestutil.MinimalGitHeadSHA,
+				UpgradeTrack:    "latest",
 				Vars: DownloaderVars{
 					GitTag:      "",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -250,8 +279,8 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
-				HasVersion:      true,
 				Version:         "v1.2.3",
+				UpgradeTrack:    "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -288,38 +317,47 @@ func TestResolveVersion(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name     string
-		in       string
-		inRemote string
-		branches []string
-		tags     []string
-		want     string
-		wantErr  string
+		name             string
+		in               string
+		inRemote         string
+		branches         []string
+		tags             []string
+		wantVersion      string
+		wantUpgradeTrack string
+		wantErr          string
 	}{
 		{
-			name: "version_other_than_latest_is_returned_verbatim",
-			in:   "v1.2.3",
-			want: "v1.2.3",
+			name:             "version_other_than_latest_is_returned_verbatim",
+			in:               "v1.2.3",
+			wantVersion:      "v1.2.3",
+			wantUpgradeTrack: "latest",
 		},
 		{
-			name: "version_with_sha",
-			in:   "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
-			want: "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+			name:             "version_with_sha",
+			in:               "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+			wantVersion:      "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+			wantUpgradeTrack: "latest",
 		},
 		{
-			name: "version_with_main_branch",
-			in:   "main",
-			want: "main",
+			name:             "version_with_main_branch",
+			in:               "main",
+			branches:         []string{"main"},
+			wantVersion:      "main",
+			wantUpgradeTrack: "main",
 		},
 		{
-			name: "version_with_forward_slash",
-			in:   "username/branch-name",
-			want: "username/branch-name",
+			name:             "version_with_forward_slash",
+			in:               "username/branch-name",
+			wantVersion:      "username/branch-name",
+			wantUpgradeTrack: "username/branch-name",
+			branches:         []string{"username/branch-name"},
 		},
 		{
-			name: "version_with_snake_case",
-			in:   "branch_name",
-			want: "branch_name",
+			name:             "version_with_snake_case",
+			in:               "branch_name",
+			wantVersion:      "branch_name",
+			wantUpgradeTrack: "branch_name",
+			branches:         []string{"branch_name"},
 		},
 		{
 			name:    "empty_input",
@@ -327,37 +365,42 @@ func TestResolveVersion(t *testing.T) {
 			wantErr: "cannot be empty",
 		},
 		{
-			name: "version_with_suffix_can_be_specifically_requested",
-			in:   "v1.2.3-alpha",
-			want: "v1.2.3-alpha",
+			name:             "version_with_suffix_can_be_specifically_requested",
+			in:               "v1.2.3-alpha",
+			wantVersion:      "v1.2.3-alpha",
+			wantUpgradeTrack: "latest",
 		},
 		{
-			name:     "latest_lookup",
-			in:       "latest",
-			inRemote: "my-remote",
-			tags:     []string{"v1.2.3", "v2.3.4"},
-			want:     "v2.3.4",
+			name:             "latest_lookup",
+			in:               "latest",
+			inRemote:         "my-remote",
+			tags:             []string{"v1.2.3", "v2.3.4"},
+			wantVersion:      "v2.3.4",
+			wantUpgradeTrack: "latest",
 		},
 		{
-			name:     "latest_lookup_v_prefix_is_required",
-			in:       "latest",
-			inRemote: "my-remote",
-			tags:     []string{"v1.2.3", "2.3.4"},
-			want:     "v1.2.3",
+			name:             "latest_lookup_v_prefix_is_required",
+			in:               "latest",
+			inRemote:         "my-remote",
+			tags:             []string{"v1.2.3", "2.3.4"},
+			wantVersion:      "v1.2.3",
+			wantUpgradeTrack: "latest",
 		},
 		{
-			name:     "latest_lookup_ignores_alpha",
-			in:       "latest",
-			inRemote: "my-remote",
-			tags:     []string{"v1.2.3", "v2.3.4-alpha"},
-			want:     "v1.2.3",
+			name:             "latest_lookup_ignores_alpha",
+			in:               "latest",
+			inRemote:         "my-remote",
+			tags:             []string{"v1.2.3", "v2.3.4-alpha"},
+			wantVersion:      "v1.2.3",
+			wantUpgradeTrack: "latest",
 		},
 		{
-			name:     "latest_lookup_ignores_nonsense_tag",
-			in:       "latest",
-			inRemote: "my-remote",
-			tags:     []string{"v1.2.3", "nonsense"},
-			want:     "v1.2.3",
+			name:             "latest_lookup_ignores_nonsense_tag",
+			in:               "latest",
+			inRemote:         "my-remote",
+			tags:             []string{"v1.2.3", "nonsense"},
+			wantVersion:      "v1.2.3",
+			wantUpgradeTrack: "latest",
 		},
 		{
 			name:     "no_tags_exist",
@@ -378,23 +421,27 @@ func TestResolveVersion(t *testing.T) {
 			outDir := t.TempDir()
 			createFakeGitRepo(t, tc.branches, tc.tags, outDir)
 
-			got, err := resolveVersion(ctx, outDir, tc.in)
+			gotVersion, gotTrack, err := resolveVersion(ctx, outDir, tc.in)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
 
-			if got != tc.want {
-				t.Errorf("got %q, want %q", got, tc.want)
+			if gotVersion != tc.wantVersion {
+				t.Errorf("got %q, want %q", gotVersion, tc.wantVersion)
+			}
+			if gotTrack != tc.wantUpgradeTrack {
+				t.Errorf("got upgrade track %q, want %q", gotTrack, tc.wantUpgradeTrack)
 			}
 		})
 	}
 }
 
 type fakeCloner struct {
-	tb         testing.TB
-	out        map[string]string
-	addTags    []string
-	wantRemote string
+	tb          testing.TB
+	out         map[string]string
+	addTags     []string
+	addBranches []string
+	wantRemote  string
 }
 
 func (f *fakeCloner) Clone(ctx context.Context, remote, outDir string) error {
@@ -402,7 +449,7 @@ func (f *fakeCloner) Clone(ctx context.Context, remote, outDir string) error {
 		f.tb.Errorf("got remote %q, want %q", remote, f.wantRemote)
 	}
 
-	createFakeGitRepo(f.tb, nil, f.addTags, outDir)
+	createFakeGitRepo(f.tb, f.addBranches, f.addTags, outDir)
 	abctestutil.WriteAll(f.tb, outDir, f.out)
 	return nil
 }

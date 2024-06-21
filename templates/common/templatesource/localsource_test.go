@@ -78,7 +78,6 @@ func TestLocalDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "../copy_from",
 				LocationType:    "local_git",
-				HasVersion:      true,
 				Version:         abctestutil.MinimalGitHeadSHA,
 				Vars: DownloaderVars{
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -109,7 +108,6 @@ func TestLocalDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "../copy_from",
 				LocationType:    "local_git",
-				HasVersion:      true,
 				Version:         "mytag",
 				Vars: DownloaderVars{
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -143,7 +141,6 @@ func TestLocalDownloader_Download(t *testing.T) {
 				IsCanonical:     true,
 				CanonicalSource: "../copy_from",
 				LocationType:    "local_git",
-				HasVersion:      true,
 				Version:         abctestutil.MinimalGitHeadSHA,
 				Vars: DownloaderVars{
 					GitSHA:      abctestutil.MinimalGitHeadSHA,

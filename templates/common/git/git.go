@@ -25,8 +25,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
-
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/run"
 )
@@ -204,20 +202,4 @@ func CurrentSHA(ctx context.Context, dir string) (string, error) {
 		return "", err //nolint:wrapcheck
 	}
 	return strings.TrimSpace(stdout), nil
-}
-
-// ParseSemverTag parses a string of the form "v1.2.3" into a semver tag. In abc
-// CLI, we require that tags begin with "v", and anything else is a parse error.
-//
-// WARNING: the returned semver.Version has had the "v" prefix stripped,
-// so the string returned from .Original() will be missing the "v".
-func ParseSemverTag(t string) (*semver.Version, error) {
-	if !strings.HasPrefix(t, "v") {
-		return nil, fmt.Errorf("tag is not a valid semver tag because it didn't begin with 'v': %q", t)
-	}
-	sv, err := semver.StrictNewVersion(t[1:])
-	if err != nil {
-		return nil, fmt.Errorf("error parsing %q as a semver: %w", t, err)
-	}
-	return sv, nil
 }
