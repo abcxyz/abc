@@ -123,7 +123,7 @@ type Params struct {
 	TempDirBase string
 
 	// An optional version to update to, overriding the upgrade_track field in
-	// in the manifest.
+	// the manifest.
 	//
 	// For the case of remote git templates, this may be a branch, tag, SHA, or
 	// the special string "latest", which means "the vX.Y.Z tag that is largest
@@ -335,7 +335,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	version := oldManifest.UpgradeTrack.Val
 	if p.Version != "" {
 		// The user specified --version, overriding the default, which is to
-		// to the version implied by the upgrade_track in the manifest.
+		// upgrade to the version implied by the upgrade_track in the manifest.
 		version = p.Version
 	}
 

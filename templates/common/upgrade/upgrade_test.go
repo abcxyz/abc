@@ -1343,7 +1343,7 @@ func (f *fakeDownloader) Download(ctx context.Context, cwd, templateDir, destDir
 	return f.outDLMeta, nil
 }
 
-// TODO(upgrade): test non-canonical upgrade with manual location and version
+// TODO(upgrade): test non-canonical upgrade with manual location and version.
 func TestUpgrade_NonCanonical(t *testing.T) {
 	t.Parallel()
 
