@@ -122,7 +122,7 @@ type Params struct {
 	// Empty string, except in tests. Will be used as the parent of temp dirs.
 	TempDirBase string
 
-	// An optional version to update to, overriding the upgrade_track field in
+	// An optional version to update to, overriding the upgrade_channel field in
 	// the manifest.
 	//
 	// For the case of remote git templates, this may be a branch, tag, SHA, or
@@ -332,10 +332,10 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
-	version := oldManifest.UpgradeTrack.Val
+	version := oldManifest.UpgradeChannel.Val
 	if p.Version != "" {
 		// The user specified --version, overriding the default, which is to
-		// upgrade to the version implied by the upgrade_track in the manifest.
+		// upgrade to the version implied by the upgrade_channel in the manifest.
 		version = p.Version
 	}
 

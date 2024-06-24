@@ -55,7 +55,7 @@ type Manifest struct {
 	// Either the special string "latest", or the name of a branch to use to
 	// upgrade from in the future. "latest" means the same thing as it does
 	// when passed on the render command line: find the latest semver tag.
-	UpgradeTrack model.String `yaml:"upgrade_track"`
+	UpgradeChannel model.String `yaml:"upgrade_channel"`
 
 	// The dirhash (https://pkg.go.dev/golang.org/x/mod/sumdb/dirhash) of the
 	// template source tree (not the output). This shows exactly what version of
