@@ -17,6 +17,7 @@ package manifest
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -229,6 +230,66 @@ output_files:
 			opt := cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}) // don't force test authors to assert the line and column numbers
 			if diff := cmp.Diff(got, tc.want, opt); diff != "" {
 				t.Errorf("unmarshaling didn't yield expected struct. Diff (-got +want): %s", diff)
+			}
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+
+		// For ease of writing test cases, each test case receives a valid
+		// manifest and can alter it to make it invalid in a specific way to be
+		// tested.
+		mutate func(valid *Manifest)
+
+		in      *Manifest
+		wantErr string
+	}{
+		{
+			name: "empty_dirhash",
+			mutate: func(in *Manifest) {
+				in.TemplateDirhash.Val = ""
+			},
+			wantErr: "todo",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			manifest := &Manifest{
+				CreationTime:     time.Date(2024, time.June, 25, 11, 0, 0, 0, time.UTC),
+				ModificationTime: time.Date(2024, time.June, 25, 12, 0, 0, 0, time.UTC),
+				TemplateLocation: mdl.S("some_template_location"),
+				LocationType:     mdl.S("some_location_type"),
+				TemplateVersion:  mdl.S("some_version"),
+				UpgradeChannel:   mdl.S("some_upgrade_channel"),
+				TemplateDirhash:  mdl.S("some_dirhash"),
+				Inputs: []*Input{
+					{
+						Name:  mdl.S("some_input_name"),
+						Value: mdl.S("some_input_value"),
+					},
+				},
+				OutputFiles: []*OutputFile{
+					{
+						File: mdl.S("some_output_file"),
+						Hash: mdl.S("some_hash"),
+					},
+				},
+			}
+
+			tc.mutate(manifest)
+			got := manifest.Validate()
+			if diff := testutil.DiffErrString(got, tc.wantErr); diff != "" {
+				t.Fatal(diff)
 			}
 		})
 	}

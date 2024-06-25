@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -33,6 +34,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/decode"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
@@ -1526,7 +1528,7 @@ func verifyManifest(ctx context.Context, tb testing.TB, gotManifest bool, manife
 		return
 	}
 
-	got := abctestutil.MustLoadManifest(ctx, tb, manifestPath)
+	got := mustLoadManifest(ctx, tb, manifestPath)
 
 	opts := []cmp.Option{
 		// Don't force test authors to assert the line and column numbers
@@ -1849,4 +1851,27 @@ Enter value, or leave empty to accept default: `,
 			}
 		})
 	}
+}
+
+// mustLoadManifest parses the given manifest file.
+func mustLoadManifest(ctx context.Context, tb testing.TB, path string) *manifest.Manifest {
+	tb.Helper()
+
+	f, err := os.Open(path)
+	if err != nil {
+		tb.Fatalf("failed to open manifest file at %q: %v", path, err)
+	}
+	defer f.Close()
+
+	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	if err != nil {
+		tb.Fatalf("error reading manifest file: %v", err)
+	}
+
+	out, ok := manifestI.(*manifest.Manifest)
+	if !ok {
+		tb.Fatalf("internal error: manifest file did not decode to *manifest.Manifest")
+	}
+
+	return out
 }
