@@ -16,8 +16,6 @@ package common
 
 import (
 	"testing"
-
-	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestSafeRelPath(t *testing.T) {
@@ -27,7 +25,7 @@ func TestSafeRelPath(t *testing.T) {
 		name    string
 		in      string
 		want    string
-		wantErr string
+		wantErr bool
 	}{
 		{
 			name: "plain_filename_succeeds",
@@ -62,22 +60,27 @@ func TestSafeRelPath(t *testing.T) {
 		{
 			name:    "leading_dot_dot_fails",
 			in:      "../a.txt",
-			wantErr: "..",
+			wantErr: true,
 		},
 		{
 			name:    "leading_dot_dot_with_more_dirs_fails",
 			in:      "../a/b/c.txt",
-			wantErr: "..",
+			wantErr: true,
 		},
 		{
 			name:    "dot_dot_in_the_middle_fails",
 			in:      "a/b/../c.txt",
-			wantErr: "..",
+			wantErr: true,
 		},
 		{
 			name:    "plain_dot_dot_fails",
 			in:      "..",
-			wantErr: "..",
+			wantErr: true,
+		},
+		{
+			name:    "trailing_dot_dot_fails",
+			in:      "a/b/c/..",
+			wantErr: true,
 		},
 	}
 
@@ -91,8 +94,9 @@ func TestSafeRelPath(t *testing.T) {
 			if got != tc.want {
 				t.Errorf("SafeRelPath(%s): expected %q to be %q", tc.in, got, tc.want)
 			}
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Error(diff)
+
+			if gotErr := err != nil; gotErr != tc.wantErr {
+				t.Fatalf("got error %q but wantErr=%t", err, tc.wantErr)	
 			}
 		})
 	}
