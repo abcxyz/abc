@@ -96,7 +96,7 @@ func TestSafeRelPath(t *testing.T) {
 			}
 
 			if gotErr := err != nil; gotErr != tc.wantErr {
-				t.Fatalf("got error %q but wantErr=%t", err, tc.wantErr)	
+				t.Fatalf("got error %q but wantErr=%t", err, tc.wantErr)
 			}
 		})
 	}

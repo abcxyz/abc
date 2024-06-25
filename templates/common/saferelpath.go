@@ -36,4 +36,3 @@ func SafeRelPath(pos *model.ConfigPos, p string) (string, error) {
 func HasDotDot(path string) bool {
 	return slices.Contains(strings.Split(path, "/"), "..")
 }
-
