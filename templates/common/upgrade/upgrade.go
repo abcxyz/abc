@@ -49,9 +49,6 @@ import (
 
 // TODO(upgrade):
 //   - add "abort if conflict" feature
-//   - store the branch-to-upgrade-from in the manifest instead of always using
-//     "latest", so we can support use cases that installed from main, and using
-//     "latest" would actually be a downgrade.
 //   - rethink overly complex manifest file name?
 //   - validate that manifest paths don't contain traversals
 //   - add "check for update and exit" feature
@@ -125,12 +122,24 @@ type Params struct {
 	// Empty string, except in tests. Will be used as the parent of temp dirs.
 	TempDirBase string
 
-	// An optional version to update to. In the case of a remote git template,
-	// it defaults to "latest", which means "the vX.Y.Z that is largest by
-	// semver ordering." In the case of a template on the local filesystem, it's
-	// ignored because we only have the one version that's on the filesystem.
+	// An optional version to update to, overriding the upgrade_track field in
+	// the manifest.
+	//
+	// For the case of remote git templates, this may be a branch, tag, SHA, or
+	// the special string "latest", which means "the vX.Y.Z tag that is largest
+	// by semver ordering." In the case of a template on the local filesystem,
+	// it's ignored because we only have the one version that's on the
+	// filesystem.
 	Version string
+
+	// In tests, this can be overridden to provide a downloader that pretends to
+	// download a remote template. Otherwise nil.
+	downloaderFactory func(context.Context, *templatesource.ForUpgradeParams) (templatesource.Downloader, error)
 }
+
+// This is the type of templatesource.ForUpgrade, but abstracted so it can be
+// substituted with a fake.
+type downloaderFactory func(context.Context, *templatesource.ForUpgradeParams) (templatesource.Downloader, error)
 
 // ResultType is the outcome of attempting an upgrade. It may succeed, may be
 // unnecessary, or may have some sort of merge conflict.
@@ -180,12 +189,13 @@ func (r ResultType) RequiresUserAttention() bool {
 	panic("unreachable") // the go lint exhaustive check prevents this
 }
 
-var interestingnessOrder = []ResultType{AlreadyUpToDate, Success, PatchReversalConflict, MergeConflict}
+// The upgrade results, sorted in increasing order of severity.
+var resultSeverityOrder = []ResultType{AlreadyUpToDate, Success, PatchReversalConflict, MergeConflict}
 
 func resultTypeLess(l, r ResultType) bool {
 	// Subtle note: this will sort the zero value "" as the least/smallest,
 	// since slices.Index returns -1 when not found.
-	return slices.Index(interestingnessOrder, l) < slices.Index(interestingnessOrder, r)
+	return slices.Index(resultSeverityOrder, l) < slices.Index(resultSeverityOrder, r)
 }
 
 // ManifestResult is the result of upgrading a single template installation
@@ -322,12 +332,23 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
-	downloader, err := templatesource.ForUpgrade(ctx, &templatesource.ForUpgradeParams{
+	version := oldManifest.UpgradeTrack.Val
+	if p.Version != "" {
+		// The user specified --version, overriding the default, which is to
+		// upgrade to the version implied by the upgrade_track in the manifest.
+		version = p.Version
+	}
+
+	downloaderFactory := p.downloaderFactory
+	if downloaderFactory == nil {
+		downloaderFactory = templatesource.ForUpgrade
+	}
+	downloader, err := downloaderFactory(ctx, &templatesource.ForUpgradeParams{
 		InstalledDir:      installedDir,
 		CanonicalLocation: oldManifest.TemplateLocation.Val,
 		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
 		GitProtocol:       p.GitProtocol,
-		Version:           p.Version,
+		Version:           version,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
@@ -449,9 +470,6 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 
 func fillDefaults(p *Params) (*Params, error) {
 	out := *p // shallow copy
-	if out.Version == "" {
-		out.Version = templatesource.Latest
-	}
 	if out.CWD == "" {
 		cwd, err := os.Getwd()
 		if err != nil {

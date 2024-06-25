@@ -20,7 +20,6 @@ import (
 	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc/templates/common/flags"
-	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/pkg/cli"
 )
 
@@ -75,7 +74,8 @@ type Flags struct {
 
 	Verbose bool
 
-	// The template version to upgrade to; defaults to "latest".
+	// The template version to upgrade to. If not specified, the underlying
+	// upgrade library will use the upgrade track specified in the manifest.
 	Version string
 }
 
@@ -107,9 +107,8 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.BoolVar(flags.Prompt(&f.Prompt))
 	r.StringVar(&cli.StringVar{
 		Name:    "version",
-		Usage:   "for remote templates, the version to upgrade to; may be git tag, branch, or SHA",
+		Usage:   "for remote templates, the version to upgrade to; may be a git tag, branch, or SHA",
 		Example: "main",
-		Default: templatesource.Latest,
 		EnvVar:  "ABC_UPGRADE_TO_VERSION",
 		Target:  &f.Version,
 	})
