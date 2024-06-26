@@ -75,7 +75,7 @@ modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
 location_type: ""
 template_version: ""
-upgrade_track: ""
+upgrade_channel: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -102,7 +102,7 @@ output_files:
 				CanonicalSource: "github.com/foo/bar",
 				LocationType:    templatesource.RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 			},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
@@ -122,7 +122,7 @@ modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: github.com/foo/bar
 location_type: remote_git
 template_version: v1.2.3
-upgrade_track: latest
+upgrade_channel: latest
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple
@@ -141,7 +141,7 @@ output_files:
 				IsCanonical:     true,
 				LocationType:    templatesource.RemoteGit,
 				CanonicalSource: "github.com/foo/bar",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 			},
 			dryRun: true,
 			templateContents: map[string]string{
@@ -187,7 +187,7 @@ modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
 location_type: ""
 template_version: ""
-upgrade_track: ""
+upgrade_channel: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs: []
 output_files:
@@ -219,7 +219,7 @@ modification_time: 2023-12-08T23:59:02.000000013Z
 template_location: ""
 location_type: ""
 template_version: ""
-upgrade_track: ""
+upgrade_channel: ""
 template_dirhash: h1:uh/nUYc3HpipWEon9kYOsvSrEadfu8Q9TdfBuHcnF3o=
 inputs:
     - name: pineapple

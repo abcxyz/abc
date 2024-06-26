@@ -124,7 +124,7 @@ func TestUpgradeAll(t *testing.T) {
 		wantErr                      string
 
 		// If these fields are set, then we'll fake a remote download using
-		// fakeXXXDownloaderFactory. This allows testing of the "upgrade_track"
+		// fakeXXXDownloaderFactory. This allows testing of the "upgrade_channel"
 		// logic.
 		fakeDownloader               *fakeDownloader
 		fakeUpgradeDownloaderFactory *fakeUpgradeDownloaderFactory
@@ -763,7 +763,7 @@ func TestUpgradeAll(t *testing.T) {
 				m.TemplateLocation.Val = "fake_canonical_source"
 				m.LocationType.Val = "fake_location_type"
 				m.TemplateVersion.Val = "fake_version"
-				m.UpgradeTrack.Val = "fake_upgrade_track"
+				m.UpgradeChannel.Val = "fake_upgrade_channel"
 				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("out.txt"),
@@ -782,14 +782,14 @@ func TestUpgradeAll(t *testing.T) {
 					CanonicalSource: "fake_canonical_source",
 					LocationType:    "fake_location_type",
 					Version:         "fake_version",
-					UpgradeTrack:    "fake_upgrade_track",
+					UpgradeChannel:  "fake_upgrade_channel",
 				},
 			},
 			fakeUpgradeDownloaderFactory: &fakeUpgradeDownloaderFactory{
 				wantParams: &templatesource.ForUpgradeParams{
 					LocType:           "fake_location_type",
 					CanonicalLocation: "fake_canonical_source",
-					Version:           "fake_upgrade_track",
+					Version:           "fake_upgrade_channel",
 				},
 				outDownloader: &fakeDownloader{
 					outDLMeta: &templatesource.DownloadMetadata{
@@ -797,7 +797,7 @@ func TestUpgradeAll(t *testing.T) {
 						CanonicalSource: "fake_canonical_source",
 						LocationType:    "fake_location_type",
 						Version:         "fake_version",
-						UpgradeTrack:    "fake_upgrade_track",
+						UpgradeChannel:  "fake_upgrade_channel",
 					},
 				},
 			},
@@ -816,7 +816,7 @@ func TestUpgradeAll(t *testing.T) {
 							CanonicalSource: "fake_canonical_source",
 							LocationType:    "fake_location_type",
 							Version:         "fake_version",
-							UpgradeTrack:    "fake_upgrade_track",
+							UpgradeChannel:  "fake_upgrade_channel",
 						},
 					},
 				},
@@ -829,7 +829,7 @@ func TestUpgradeAll(t *testing.T) {
 				m.TemplateLocation.Val = "fake_canonical_source"
 				m.LocationType.Val = "fake_location_type"
 				m.TemplateVersion.Val = "fake_version"
-				m.UpgradeTrack.Val = "fake_upgrade_track"
+				m.UpgradeChannel.Val = "fake_upgrade_channel"
 				m.ModificationTime = afterUpgradeTime.UTC()
 				m.OutputFiles = []*manifest.OutputFile{
 					{

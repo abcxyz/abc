@@ -208,7 +208,7 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 			LocationType:     model.String{Val: locType},                  // may be empty string if location isn't canonical
 			TemplateDirhash:  model.String{Val: templateDirhash},
 			TemplateVersion:  model.String{Val: p.dlMeta.Version},
-			UpgradeTrack:     model.String{Val: p.dlMeta.UpgradeTrack},
+			UpgradeChannel:   model.String{Val: p.dlMeta.UpgradeChannel},
 			CreationTime:     now,
 			ModificationTime: now,
 			Inputs:           inputList,
