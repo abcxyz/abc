@@ -60,7 +60,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -88,7 +88,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -117,7 +117,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "main",
+				UpgradeChannel:  "main",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -150,7 +150,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -183,7 +183,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -252,7 +252,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         abctestutil.MinimalGitHeadSHA,
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 				Vars: DownloaderVars{
 					GitTag:      "",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -280,7 +280,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 				Vars: DownloaderVars{
 					GitTag:      "v1.2.3",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -317,47 +317,47 @@ func TestResolveVersion(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name             string
-		in               string
-		inRemote         string
-		branches         []string
-		tags             []string
-		wantVersion      string
-		wantUpgradeTrack string
-		wantErr          string
+		name               string
+		in                 string
+		inRemote           string
+		branches           []string
+		tags               []string
+		wantVersion        string
+		wantUpgradeChannel string
+		wantErr            string
 	}{
 		{
-			name:             "version_other_than_latest_is_returned_verbatim",
-			in:               "v1.2.3",
-			wantVersion:      "v1.2.3",
-			wantUpgradeTrack: "latest",
+			name:               "version_other_than_latest_is_returned_verbatim",
+			in:                 "v1.2.3",
+			wantVersion:        "v1.2.3",
+			wantUpgradeChannel: "latest",
 		},
 		{
-			name:             "version_with_sha",
-			in:               "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
-			wantVersion:      "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
-			wantUpgradeTrack: "latest",
+			name:               "version_with_sha",
+			in:                 "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+			wantVersion:        "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
+			wantUpgradeChannel: "latest",
 		},
 		{
-			name:             "version_with_main_branch",
-			in:               "main",
-			branches:         []string{"main"},
-			wantVersion:      "main",
-			wantUpgradeTrack: "main",
+			name:               "version_with_main_branch",
+			in:                 "main",
+			branches:           []string{"main"},
+			wantVersion:        "main",
+			wantUpgradeChannel: "main",
 		},
 		{
-			name:             "version_with_forward_slash",
-			in:               "username/branch-name",
-			wantVersion:      "username/branch-name",
-			wantUpgradeTrack: "username/branch-name",
-			branches:         []string{"username/branch-name"},
+			name:               "version_with_forward_slash",
+			in:                 "username/branch-name",
+			wantVersion:        "username/branch-name",
+			wantUpgradeChannel: "username/branch-name",
+			branches:           []string{"username/branch-name"},
 		},
 		{
-			name:             "version_with_snake_case",
-			in:               "branch_name",
-			wantVersion:      "branch_name",
-			wantUpgradeTrack: "branch_name",
-			branches:         []string{"branch_name"},
+			name:               "version_with_snake_case",
+			in:                 "branch_name",
+			wantVersion:        "branch_name",
+			wantUpgradeChannel: "branch_name",
+			branches:           []string{"branch_name"},
 		},
 		{
 			name:    "empty_input",
@@ -365,42 +365,42 @@ func TestResolveVersion(t *testing.T) {
 			wantErr: "cannot be empty",
 		},
 		{
-			name:             "version_with_suffix_can_be_specifically_requested",
-			in:               "v1.2.3-alpha",
-			wantVersion:      "v1.2.3-alpha",
-			wantUpgradeTrack: "latest",
+			name:               "version_with_suffix_can_be_specifically_requested",
+			in:                 "v1.2.3-alpha",
+			wantVersion:        "v1.2.3-alpha",
+			wantUpgradeChannel: "latest",
 		},
 		{
-			name:             "latest_lookup",
-			in:               "latest",
-			inRemote:         "my-remote",
-			tags:             []string{"v1.2.3", "v2.3.4"},
-			wantVersion:      "v2.3.4",
-			wantUpgradeTrack: "latest",
+			name:               "latest_lookup",
+			in:                 "latest",
+			inRemote:           "my-remote",
+			tags:               []string{"v1.2.3", "v2.3.4"},
+			wantVersion:        "v2.3.4",
+			wantUpgradeChannel: "latest",
 		},
 		{
-			name:             "latest_lookup_v_prefix_is_required",
-			in:               "latest",
-			inRemote:         "my-remote",
-			tags:             []string{"v1.2.3", "2.3.4"},
-			wantVersion:      "v1.2.3",
-			wantUpgradeTrack: "latest",
+			name:               "latest_lookup_v_prefix_is_required",
+			in:                 "latest",
+			inRemote:           "my-remote",
+			tags:               []string{"v1.2.3", "2.3.4"},
+			wantVersion:        "v1.2.3",
+			wantUpgradeChannel: "latest",
 		},
 		{
-			name:             "latest_lookup_ignores_alpha",
-			in:               "latest",
-			inRemote:         "my-remote",
-			tags:             []string{"v1.2.3", "v2.3.4-alpha"},
-			wantVersion:      "v1.2.3",
-			wantUpgradeTrack: "latest",
+			name:               "latest_lookup_ignores_alpha",
+			in:                 "latest",
+			inRemote:           "my-remote",
+			tags:               []string{"v1.2.3", "v2.3.4-alpha"},
+			wantVersion:        "v1.2.3",
+			wantUpgradeChannel: "latest",
 		},
 		{
-			name:             "latest_lookup_ignores_nonsense_tag",
-			in:               "latest",
-			inRemote:         "my-remote",
-			tags:             []string{"v1.2.3", "nonsense"},
-			wantVersion:      "v1.2.3",
-			wantUpgradeTrack: "latest",
+			name:               "latest_lookup_ignores_nonsense_tag",
+			in:                 "latest",
+			inRemote:           "my-remote",
+			tags:               []string{"v1.2.3", "nonsense"},
+			wantVersion:        "v1.2.3",
+			wantUpgradeChannel: "latest",
 		},
 		{
 			name:     "no_tags_exist",
@@ -429,8 +429,8 @@ func TestResolveVersion(t *testing.T) {
 			if gotVersion != tc.wantVersion {
 				t.Errorf("got %q, want %q", gotVersion, tc.wantVersion)
 			}
-			if gotTrack != tc.wantUpgradeTrack {
-				t.Errorf("got upgrade track %q, want %q", gotTrack, tc.wantUpgradeTrack)
+			if gotTrack != tc.wantUpgradeChannel {
+				t.Errorf("got upgrade track %q, want %q", gotTrack, tc.wantUpgradeChannel)
 			}
 		})
 	}
