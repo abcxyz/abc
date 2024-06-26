@@ -1492,16 +1492,17 @@ steps:
 		Clock:    clk,
 		CWD:      destDir,
 		FS:       &common.RealFS{},
-		Location: manifestFullPath,
+		Location: destDir,
 		Stdout:   os.Stdout,
 	}
 
-	gotReversalConflictResult, err := upgrade(ctx, upgradeParams, manifestFullPath)
-	if err != nil {
+	result := UpgradeAll(ctx, upgradeParams)
+	if result.Err != nil {
 		t.Fatal(err)
 	}
 	wantReversalConflictResult := &ManifestResult{
-		Type: PatchReversalConflict,
+		ManifestPath: ".abc/manifest_..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
+		Type:         PatchReversalConflict,
 		ReversalConflicts: []*ReversalConflict{
 			{
 				RelPath:       "file.txt",
@@ -1524,7 +1525,7 @@ steps:
 		cmpopts.EquateEmpty(),
 		cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
 	}
-	if diff := cmp.Diff(gotReversalConflictResult, wantReversalConflictResult, opts...); diff != "" {
+	if diff := cmp.Diff(result.Results[0], wantReversalConflictResult, opts...); diff != "" {
 		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 	}
 
@@ -1563,13 +1564,15 @@ steps:
 
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.AlreadyResolved = []string{"file.txt"}
+	upgradeParams.ResumeFrom = ".abc/manifest_..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml"
 
-	gotResult, err := upgrade(ctx, upgradeParams, manifestFullPath)
-	if err != nil {
-		t.Fatal(err)
+	result = UpgradeAll(ctx, upgradeParams)
+	if result.Err != nil {
+		t.Fatal(result.Err)
 	}
 	wantResult := &ManifestResult{
-		Type: Success,
+		Type:         Success,
+		ManifestPath: ".abc/manifest_..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
 		NonConflicts: []ActionTaken{
 			{
 				Action: "writeNew",
@@ -1587,7 +1590,7 @@ steps:
 			},
 		},
 	}
-	if diff := cmp.Diff(gotResult, wantResult, opts...); diff != "" {
+	if diff := cmp.Diff(result.Results[0], wantResult, opts...); diff != "" {
 		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 	}
 

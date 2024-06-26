@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -107,8 +108,16 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		return &Result{Err: fmt.Errorf("topological sorting of manifest depencies gave an unexpected error: %w", err)}
 	}
 
+	if p.ResumeFrom != "" {
+		resumeFromIdx := slices.Index(sorted, p.ResumeFrom)
+		if resumeFromIdx == -1 {
+			return &Result{Err: fmt.Errorf("the --resume-from value %q is not valid, it must be one of %q", p.ResumeFrom, sorted)}
+		}
+		sorted = sorted[resumeFromIdx:]
+	}
+
 	out := &Result{
-		Results: make([]*ManifestResult, 0, len(manifests)),
+		Results: make([]*ManifestResult, 0, len(sorted)),
 	}
 
 	for _, m := range sorted {

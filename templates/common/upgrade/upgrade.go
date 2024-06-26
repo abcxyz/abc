@@ -109,6 +109,10 @@ type Params struct {
 	Prompt   bool
 	Prompter input.Prompter
 
+	// The value of --resume-from. Used after a patch reversal conflict to
+	// continue upgrading at the point where the conflict occurred.
+	ResumeFrom string
+
 	// The value of --skip-input-validation.
 	SkipInputValidation bool
 
