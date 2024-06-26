@@ -201,8 +201,8 @@ func crawlManifests(startFrom string) ([]string, error) {
 	return manifests, nil
 }
 
-// depGraph returns a depdendency graph saying which manifests were output by
-// a template that itself was the output of another template. It basically
+// depGraph returns a dependency graph saying which manifests were output by a
+// template that itself was the output of another template. It basically
 // specifies the upgrade order for templates.
 //
 // upgradeLocation is the file or directory provided by the user containing the

@@ -16,10 +16,12 @@ package manifest
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/header"
 )
@@ -88,6 +90,7 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 func (m *Manifest) Validate() error {
 	// Inputs and OutputHashes can legally be empty, since a template doesn't
 	// necessarily have these.
+
 	return errors.Join(
 		model.NotZeroModel(&m.Pos, m.TemplateDirhash, "template_dirhash"),
 		model.ValidateEach(m.Inputs),
@@ -145,7 +148,13 @@ func (f *OutputFile) UnmarshalYAML(n *yaml.Node) error {
 
 // Validate() implements model.Validator.
 func (f *OutputFile) Validate() error {
+	var merr error
+	if common.HasDotDot(f.File.Val) {
+		err := fmt.Errorf(`manifest output file %q had a disallowed ".." path token`, f.File.Val)
+		merr = errors.Join(merr, err)
+	}
 	return errors.Join(
+		merr,
 		model.NotZeroModel(&f.Pos, f.File, "file"),
 		model.NotZeroModel(&f.Pos, f.Hash, "hash"),
 	)

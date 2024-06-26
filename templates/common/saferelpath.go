@@ -16,6 +16,7 @@ package common
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/abcxyz/abc/templates/model"
@@ -24,8 +25,14 @@ import (
 // SafeRelPath returns an error if the path contains a ".." traversal, and
 // converts it to a relative path by removing any leading "/".
 func SafeRelPath(pos *model.ConfigPos, p string) (string, error) {
-	if strings.Contains(p, "..") {
+	if HasDotDot(p) {
 		return "", pos.Errorf(`path %q must not contain ".."`, p)
 	}
 	return strings.TrimLeft(p, string(filepath.Separator)), nil
+}
+
+// HasDotDot returns whether the input path contains any ".." parent directory
+// references, so they can be rejected in certain cases.
+func HasDotDot(path string) bool {
+	return slices.Contains(strings.Split(path, "/"), "..")
 }
