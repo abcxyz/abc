@@ -102,7 +102,7 @@ output_files:
 				CanonicalSource: "github.com/foo/bar",
 				LocationType:    templatesource.RemoteGit,
 				Version:         "v1.2.3",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 			},
 			inputs: map[string]string{
 				"pizza":     "hawaiian",
@@ -141,7 +141,7 @@ output_files:
 				IsCanonical:     true,
 				LocationType:    templatesource.RemoteGit,
 				CanonicalSource: "github.com/foo/bar",
-				UpgradeTrack:    "latest",
+				UpgradeChannel:  "latest",
 			},
 			dryRun: true,
 			templateContents: map[string]string{

@@ -224,7 +224,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		CanonicalSource: g.canonicalSource,
 		LocationType:    RemoteGit,
 		Version:         canonicalVersion,
-		UpgradeTrack:    track,
+		UpgradeChannel:  track,
 		Vars:            *vars,
 	}
 
@@ -267,7 +267,7 @@ func gitTemplateVars(ctx context.Context, srcDir string) (*DownloaderVars, error
 // resolveVersion returns the latest release tag if version is "latest", and otherwise
 // just returns the input version. The return value is either a branch, tag, or
 // a long commit SHA (unless there's an error).
-func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA, upgradeTrack string, _ error) {
+func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA, upgradeChannel string, _ error) {
 	isSemver := false
 	if len(version) > 0 {
 		_, err := semver.StrictNewVersion(version[1:])

@@ -73,7 +73,7 @@ type DownloadMetadata struct {
 	// Either the special string "latest", or the name of a branch to use to
 	// upgrade from in the future. "latest" means the same thing as it does
 	// when passed on the render command line: find the latest semver tag.
-	UpgradeTrack string
+	UpgradeChannel string
 
 	// Values for template variables like _git_tag and _git_sha.
 	Vars DownloaderVars
