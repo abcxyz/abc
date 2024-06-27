@@ -1393,13 +1393,12 @@ func TestPatchReversalManualResolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("time.LoadLocation(): %v", err)
 	}
-	beforeUpgradeTime := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
+	render1Time := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
 
 	tempBase := t.TempDir()
 	// Make tempBase into a valid git repo.
 	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
-	destDir := filepath.Join(tempBase, "dest_dir")
 	templateDir := filepath.Join(tempBase, "template_dir")
 
 	origTemplateDirContents := map[string]string{
@@ -1427,17 +1426,25 @@ steps:
 	origDestContents := map[string]string{
 		"file.txt": "purple is my favorite color\n",
 	}
-	abctestutil.WriteAll(t, destDir, origDestContents)
+
+	// We have multiple template installations so we can test resuming after
+	// resolving a conflict.
+	destDirsBase := filepath.Join(tempBase, "dest")
+	destDir1 := filepath.Join(destDirsBase, "1")
+	destDir2 := filepath.Join(destDirsBase, "2")
+
+	abctestutil.WriteAll(t, destDir1, origDestContents)
+	abctestutil.WriteAll(t, destDir2, origDestContents)
 
 	ctx := context.Background()
 	clk := clock.NewMock()
-	clk.Set(beforeUpgradeTime)
-	renderResult := mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir)
+	clk.Set(render1Time)
+	render1Result := mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir1)
 
 	wantManifestBeforeUpgrade := &manifest.Manifest{
-		CreationTime:     beforeUpgradeTime,
-		ModificationTime: beforeUpgradeTime,
-		TemplateLocation: mdl.S("../template_dir"),
+		CreationTime:     render1Time,
+		ModificationTime: render1Time,
+		TemplateLocation: mdl.S("../../template_dir"),
 		LocationType:     mdl.S("local_git"),
 		TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
 		Inputs:           []*manifest.Input{},
@@ -1453,8 +1460,16 @@ steps:
 			},
 		},
 	}
-	manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
+	manifestFullPath := filepath.Join(destDir1, render1Result.ManifestPath)
 	assertManifest(ctx, t, "before upgrade", wantManifestBeforeUpgrade, manifestFullPath)
+
+	clk.Add(time.Second)
+	mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir2) // don't bother checking the manifest for the second render; it's the same as the first one
+
+	// Simulate the user making some edits to the included-from-destination file
+	// after the render operation but before the upgrade
+	abctestutil.Overwrite(t, destDir1, "file.txt", "green is my favorite color\n")
+	abctestutil.Overwrite(t, destDir2, "file.txt", "green is my favorite color\n")
 
 	templateReplacementForUpgrade := map[string]string{
 		"spec.yaml": `
@@ -1476,23 +1491,14 @@ steps:
           with: 'yellow'
 `,
 	}
-	if err := os.RemoveAll(templateDir); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(templateDir, common.OwnerRWXPerms); err != nil {
-		t.Fatal(err)
-	}
 	abctestutil.WriteAll(t, templateDir, templateReplacementForUpgrade)
 
-	// Simulate the user making some edits to the included-from-destination file
-	// after the render operation but before the upgrade
-	abctestutil.Overwrite(t, destDir, "file.txt", "green is my favorite color\n")
-
+	clk.Add(time.Second)
 	upgradeParams := &Params{
 		Clock:    clk,
-		CWD:      destDir,
+		CWD:      destDirsBase,
 		FS:       &common.RealFS{},
-		Location: destDir,
+		Location: destDirsBase,
 		Stdout:   os.Stdout,
 	}
 
@@ -1500,24 +1506,29 @@ steps:
 	if result.Err != nil {
 		t.Fatal(err)
 	}
-	wantReversalConflictResult := &ManifestResult{
-		ManifestPath: ".abc/manifest_..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
-		Type:         PatchReversalConflict,
-		ReversalConflicts: []*ReversalConflict{
+	wantResult := &Result{
+		Overall: PatchReversalConflict,
+		Results: []*ManifestResult{
 			{
-				RelPath:       "file.txt",
-				AbsPath:       filepath.Join(destDir, "file.txt"),
-				RejectedHunks: filepath.Join(destDir, "file.txt.patch.rej"),
-			},
-		},
-		DLMeta: &templatesource.DownloadMetadata{
-			IsCanonical:     true,
-			CanonicalSource: "../template_dir",
-			LocationType:    "local_git",
-			Version:         abctestutil.MinimalGitHeadSHA,
-			Vars: templatesource.DownloaderVars{
-				GitSHA:      abctestutil.MinimalGitHeadSHA,
-				GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+				ManifestPath: "1/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
+				Type:         PatchReversalConflict,
+				ReversalConflicts: []*ReversalConflict{
+					{
+						RelPath:       "file.txt",
+						AbsPath:       filepath.Join(destDir1, "file.txt"),
+						RejectedHunks: filepath.Join(destDir1, "file.txt.patch.rej"),
+					},
+				},
+				DLMeta: &templatesource.DownloadMetadata{
+					IsCanonical:     true,
+					CanonicalSource: "../../template_dir",
+					LocationType:    "local_git",
+					Version:         abctestutil.MinimalGitHeadSHA,
+					Vars: templatesource.DownloaderVars{
+						GitSHA:      abctestutil.MinimalGitHeadSHA,
+						GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+					},
+				},
 			},
 		},
 	}
@@ -1525,7 +1536,7 @@ steps:
 		cmpopts.EquateEmpty(),
 		cmpopts.IgnoreFields(ActionTaken{}, "Explanation"), // don't assert on debugging messages. That would make test cases overly verbose.
 	}
-	if diff := cmp.Diff(result.Results[0], wantReversalConflictResult, opts...); diff != "" {
+	if diff := cmp.Diff(result, wantResult, opts...); diff != "" {
 		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 	}
 
@@ -1543,14 +1554,14 @@ steps:
 	wantManifestAfterFailedUpgrade := wantManifestBeforeUpgrade
 	assertManifest(ctx, t, "after upgrade", wantManifestAfterFailedUpgrade, manifestFullPath)
 
-	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir,
+	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir1,
 		abctestutil.SkipGlob(".abc/manifest*"),     // the manifest is verified separately
 		abctestutil.SkipGlob("file.txt.patch.rej"), // the patch reject file is just checked for presence, separately
 	)
 	if diff := cmp.Diff(gotDestContentsAfterFailedUpgrade, wantDestContentsAfterFailedUpgrade); diff != "" {
 		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 	}
-	ok, err := common.Exists(filepath.Join(destDir, "file.txt.patch.rej"))
+	ok, err := common.Exists(filepath.Join(destDir1, "file.txt.patch.rej"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1559,47 +1570,116 @@ steps:
 	}
 
 	// Resolve the merge conflict
-	abctestutil.Overwrite(t, destDir, "file.txt", "purple is my favorite color\n")
-	abctestutil.Remove(t, destDir, "file.txt.patch.rej")
+	abctestutil.Overwrite(t, destDir1, "file.txt", "purple is my favorite color\n")
+	abctestutil.Remove(t, destDir1, "file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.AlreadyResolved = []string{"file.txt"}
-	upgradeParams.ResumeFrom = ".abc/manifest_..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml"
+	upgradeParams.ResumeFrom = "1/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml"
 
 	result = UpgradeAll(ctx, upgradeParams)
 	if result.Err != nil {
 		t.Fatal(result.Err)
 	}
-	wantResult := &ManifestResult{
-		Type:         Success,
-		ManifestPath: ".abc/manifest_..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
-		NonConflicts: []ActionTaken{
+	wantResult = &Result{
+		Overall: PatchReversalConflict,
+		Results: []*ManifestResult{
 			{
-				Action: "writeNew",
-				Path:   "file.txt",
+				Type:         Success,
+				ManifestPath: "1/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
+				NonConflicts: []ActionTaken{
+					{
+						Action: "writeNew",
+						Path:   "file.txt",
+					},
+				},
+				DLMeta: &templatesource.DownloadMetadata{
+					IsCanonical:     true,
+					CanonicalSource: "../../template_dir",
+					LocationType:    templatesource.LocalGit,
+					Version:         abctestutil.MinimalGitHeadSHA,
+					Vars: templatesource.DownloaderVars{
+						GitSHA:      abctestutil.MinimalGitHeadSHA,
+						GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+					},
+				},
 			},
-		},
-		DLMeta: &templatesource.DownloadMetadata{
-			IsCanonical:     true,
-			CanonicalSource: "../template_dir",
-			LocationType:    templatesource.LocalGit,
-			Version:         abctestutil.MinimalGitHeadSHA,
-			Vars: templatesource.DownloaderVars{
-				GitSHA:      abctestutil.MinimalGitHeadSHA,
-				GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+			{
+				Type:         PatchReversalConflict,
+				ManifestPath: "2/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:07.000000007Z.lock.yaml",
+				ReversalConflicts: []*ReversalConflict{
+					{
+						RelPath:       "file.txt",
+						AbsPath:       filepath.Join(destDir2, "file.txt"),
+						RejectedHunks: filepath.Join(destDir2, "file.txt.patch.rej"),
+					},
+				},
+				DLMeta: &templatesource.DownloadMetadata{
+					IsCanonical:     true,
+					CanonicalSource: "../../template_dir",
+					LocationType:    "local_git",
+					Version:         abctestutil.MinimalGitHeadSHA,
+					Vars: templatesource.DownloaderVars{
+						GitSHA:      abctestutil.MinimalGitHeadSHA,
+						GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+					},
+				},
 			},
 		},
 	}
-	if diff := cmp.Diff(result.Results[0], wantResult, opts...); diff != "" {
+	if diff := cmp.Diff(result, wantResult, opts...); diff != "" {
 		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 	}
 
 	wantDestContentsAfterSuccessfulUpgrade := map[string]string{
 		"file.txt": "yellow is my favorite color\n",
 	}
-	gotDestContentsAfterSuccessfulUpgrade := abctestutil.LoadDir(t, destDir, abctestutil.SkipGlob(".abc/manifest*"))
+	gotDestContentsAfterSuccessfulUpgrade := abctestutil.LoadDir(t, destDir1, abctestutil.SkipGlob(".abc/manifest*"))
 	if diff := cmp.Diff(gotDestContentsAfterSuccessfulUpgrade, wantDestContentsAfterSuccessfulUpgrade); diff != "" {
 		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
+	}
+
+	// Resolve the merge conflict
+	abctestutil.Overwrite(t, destDir2, "file.txt", "purple is my favorite color\n")
+	abctestutil.Remove(t, destDir2, "file.txt.patch.rej")
+
+	// Inform the upgrade command that patch reversal has already happened
+	upgradeParams.AlreadyResolved = []string{"file.txt"}
+	upgradeParams.ResumeFrom = "2/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:07.000000007Z.lock.yaml"
+
+	result = UpgradeAll(ctx, upgradeParams)
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+
+	wantResult = &Result{
+		Overall: Success,
+		Results: []*ManifestResult{
+			{
+				Type:         Success,
+				ManifestPath: "2/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:07.000000007Z.lock.yaml",
+				NonConflicts: []ActionTaken{
+					{
+						Action: "writeNew",
+						Path:   "file.txt",
+					},
+				},
+				DLMeta: &templatesource.DownloadMetadata{
+					IsCanonical:     true,
+					CanonicalSource: "../../template_dir",
+					LocationType:    templatesource.LocalGit,
+					Version:         abctestutil.MinimalGitHeadSHA,
+					Vars: templatesource.DownloaderVars{
+						GitSHA:      abctestutil.MinimalGitHeadSHA,
+						GitShortSHA: abctestutil.MinimalGitHeadShortSHA,
+					},
+				},
+			},
+		},
+	}
+
+	if diff := cmp.Diff(result, wantResult, opts...); diff != "" {
+		t.Errorf("result was not as expected, diff is (-got, +want): %v", diff)
 	}
 }
 

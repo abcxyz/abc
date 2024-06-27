@@ -63,7 +63,6 @@ type Flags struct {
 	// The manifest to start with, when upgrading multiple manifests. This is
 	// used when a previous upgrade operation required manual intervention, and
 	// the manual intervention is done, and the user wants to resume.
-	// TODO(upgrade): implement this feature.
 	ResumeFrom string
 
 	// See common/flags.Prompt().
