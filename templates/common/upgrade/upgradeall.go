@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/abcxyz/abc/templates/common"
@@ -94,18 +95,9 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		return &Result{Err: ErrNoManifests}
 	}
 
-	depGraph, err := depGraph(ctx, p.CWD, p.Location, manifests)
+	sorted, depGraph, err := depOrder(ctx, p.CWD, p.Location, p.TemplateLocation, manifests)
 	if err != nil {
 		return &Result{Err: err}
-	}
-
-	sorted, err := depGraph.TopologicalSort()
-	if err != nil {
-		errCycle := &graph.CyclicError[string]{}
-		if errors.As(err, &errCycle) {
-			return &Result{Err: fmt.Errorf("there is somehow a cyclic dependency among these manifests: %v", errCycle.Cycle)}
-		}
-		return &Result{Err: fmt.Errorf("topological sorting of manifest depencies gave an unexpected error: %w", err)}
 	}
 
 	if p.ResumeFrom != "" {
@@ -138,7 +130,9 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		}
 
 		result.ManifestPath = m
-		result.DependedOn = depGraph.EdgesFrom(m)
+		if depGraph != nil {
+			result.DependedOn = depGraph.EdgesFrom(m)
+		}
 
 		out.Results = append(out.Results, result)
 
@@ -165,6 +159,7 @@ func overallResult(results []*ManifestResult) ResultType {
 // crawlManifests finds all the template manifest files underneath the given
 // file or directory. startFrom can be either a single manifest file or a
 // directory to search recursively. Returned paths are relative to startFrom.
+// The returned slice is sorted lexicographically.
 func crawlManifests(startFrom string) ([]string, error) {
 	var manifests []string
 	err := filepath.WalkDir(startFrom, func(path string, d fs.DirEntry, err error) error {
@@ -198,7 +193,34 @@ func crawlManifests(startFrom string) ([]string, error) {
 		return nil, err //nolint:wrapcheck
 	}
 
+	sort.Strings(manifests)
+
 	return manifests, nil
+}
+
+func depOrder(ctx context.Context, cwd, upgradeLocation, localTemplateLocationOverride string, manifestsRel []string) ([]string, *graph.Graph[string], error) {
+	if localTemplateLocationOverride != "" {
+		// Subtle point: when the user provides --template-location, then that
+		// means that all the manifest cannot logically have any dependencies
+		// between them. They are all being updated from --template-location,
+		// and that is their only depdendency.
+		return manifestsRel, nil, nil
+	}
+
+	depGraph, err := depGraph(ctx, cwd, upgradeLocation, manifestsRel)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sorted, err := depGraph.TopologicalSort()
+	if err != nil {
+		errCycle := &graph.CyclicError[string]{}
+		if errors.As(err, &errCycle) {
+			return nil, nil, fmt.Errorf("there is somehow a cyclic dependency among these manifests: %v", errCycle.Cycle)
+		}
+		return nil, nil, fmt.Errorf("topological sorting of manifest depencies gave an unexpected error: %w", err)
+	}
+	return sorted, depGraph, nil
 }
 
 // depGraph returns a dependency graph saying which manifests were output by a
@@ -260,6 +282,10 @@ func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []s
 		if err != nil {
 			return nil, err
 		}
+
+		// If the manifest is at /foo/bar/.abc/manifest.yaml, then the
+		// template was installed to /foo/bar (the parent dir of the dir
+		// that contains the manifest).
 		destDir := filepath.Dir(filepath.Dir(manifestPath))
 
 		for _, outputFile := range manifest.OutputFiles {
@@ -269,9 +295,6 @@ func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []s
 			}
 		}
 		if manifest.TemplateLocation.Val != "" && templatesource.LocationType(manifest.LocationType.Val) == templatesource.LocalGit {
-			// If the manifest is at /foo/bar/.abc/manifest.yaml, then the
-			// template was installed the /foo/bar (the parent dir of the dir
-			// that contains the manifest).
 			installedBySpec := filepath.Join(destDir, manifest.TemplateLocation.Val, specutil.SpecFileName)
 			manifestToSourceSpec[manifestRel] = installedBySpec
 		}

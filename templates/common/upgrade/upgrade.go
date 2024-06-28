@@ -126,6 +126,10 @@ type Params struct {
 	// Empty string, except in tests. Will be used as the parent of temp dirs.
 	TempDirBase string
 
+	// Upgrade to the template specified by this location, rather than the
+	// template location stored in the manifest (which is the default).
+	TemplateLocation string
+
 	// An optional version to update to, overriding the upgrade_channel field in
 	// the manifest.
 	//
@@ -217,6 +221,9 @@ type ManifestResult struct {
 	// another template installation, this will be the ManifestPath of the other
 	// ManifestResult that happened first. These dependencies arise when the
 	// output of one template is itself a template.
+	//
+	// This is not set when the TemplateLocation (--template-location) flag is
+	// used.
 	//
 	// This is mainly useful for debugging and testing.
 	DependedOn []string
@@ -313,6 +320,8 @@ type ActionTaken struct {
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
 func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *ManifestResult, rErr error) {
+	logger := logging.FromContext(ctx).With("logger", "upgrade")
+
 	// For now, manifest files are always located in the .abc directory under
 	// the directory where they were installed.
 	installedDir := filepath.Join(filepath.Dir(absManifestPath), "..")
@@ -326,38 +335,13 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		return nil, err
 	}
 
-	if oldManifest.TemplateLocation.Val == "" {
-		// TODO(upgrade): add a flag to manually specify template location, to
-		// be used if the template location changes or if it was installed from
-		// a non-canonical location.
-		return nil, fmt.Errorf("this template can't be upgraded because its manifest doesn't contain a template_location. This happens when the template is installed from a non-canonical location, such as a local temp dir, instead of from a permanent location like a remote github repo")
+	downloader, err := makeDownloader(ctx, p, installedDir, oldManifest)
+	if err != nil {
+		return nil, err
 	}
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
-
-	version := oldManifest.UpgradeChannel.Val
-	if p.Version != "" {
-		// The user specified --version, overriding the default, which is to
-		// upgrade to the version implied by the upgrade_channel in the manifest.
-		version = p.Version
-	}
-
-	downloaderFactory := p.downloaderFactory
-	if downloaderFactory == nil {
-		downloaderFactory = templatesource.ForUpgrade
-	}
-	downloader, err := downloaderFactory(ctx, &templatesource.ForUpgradeParams{
-		InstalledDir:      installedDir,
-		CanonicalLocation: oldManifest.TemplateLocation.Val,
-		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
-		GitProtocol:       p.GitProtocol,
-		Version:           version,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
-			oldManifest.TemplateLocation.Val, oldManifest.LocationType.Val, p.GitProtocol, err)
-	}
 
 	templateDir, err := tempTracker.MkdirTempTracked(p.TempDirBase, tempdir.TemplateDirNamePart)
 	if err != nil {
@@ -375,6 +359,8 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	}
 	if hashMatch {
 		// No need to upgrade. We already have the latest template version.
+		logger.InfoContext(ctx, "template installation is already up to date",
+			"manifest_path", absManifestPath)
 		return &ManifestResult{
 			Type:   AlreadyUpToDate,
 			DLMeta: dlMeta,
@@ -463,6 +449,8 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	resultType := MergeConflict
 	if len(conflicts) == 0 {
 		resultType = Success
+		logger.InfoContext(ctx, "successfully upgraded template installation",
+			"manifest_path", absManifestPath)
 	}
 	return &ManifestResult{
 		MergeConflicts: conflicts,
@@ -470,6 +458,52 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		NonConflicts:   nonConflicts,
 		Type:           resultType,
 	}, nil
+}
+
+func makeDownloader(ctx context.Context, p *Params, installedDir string, oldManifest *manifest.Manifest) (templatesource.Downloader, error) {
+	if p.TemplateLocation != "" { // the user provided --template-location
+		if p.Version != "" { // the user provided --version
+			return nil, fmt.Errorf("--template-location and --version must not be used together; to specify the version with --template-version, use the @version syntax, like github.com/foo/bar@main")
+		}
+		downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
+			CWD:         p.CWD,
+			Source:      p.TemplateLocation,
+			GitProtocol: p.GitProtocol,
+		})
+		if err != nil {
+			return nil, err //nolint:wrapcheck
+		}
+		return downloader, nil
+	}
+
+	if oldManifest.TemplateLocation.Val == "" {
+		return nil, fmt.Errorf("this template was installed without a canonical location; please use the --template-location flag to specify where to upgrade from")
+	}
+
+	version := oldManifest.UpgradeChannel.Val
+	if p.Version != "" {
+		// The user specified --version, overriding the default, which is to
+		// upgrade to the version implied by the upgrade_channel in the manifest.
+		version = p.Version
+	}
+
+	downloaderFactory := p.downloaderFactory
+	if downloaderFactory == nil {
+		downloaderFactory = templatesource.ForUpgrade
+	}
+	downloader, err := downloaderFactory(ctx, &templatesource.ForUpgradeParams{
+		InstalledDir:      installedDir,
+		CanonicalLocation: oldManifest.TemplateLocation.Val,
+		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
+		GitProtocol:       p.GitProtocol,
+		Version:           version,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
+			oldManifest.TemplateLocation.Val, oldManifest.LocationType.Val, p.GitProtocol, err)
+	}
+
+	return downloader, nil
 }
 
 func fillDefaults(p *Params) (*Params, error) {
