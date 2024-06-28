@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -136,6 +137,11 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 			out.Err = fmt.Errorf("when upgrading the manifest at %s:\n%w", path, err)
 			break
 		}
+
+		// When the user passes "--already-resolved=file,file2", that should
+		// only apply to the *first* manifest to be upgraded. That was the one
+		// that had a patch reversal conflict earlier.
+		p.AlreadyResolved = nil
 
 		result.ManifestPath = m
 		result.DependedOn = depGraph.EdgesFrom(m)
@@ -292,4 +298,16 @@ func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []s
 	}
 
 	return g, nil
+}
+
+func fillDefaults(p *Params) (*Params, error) {
+	out := *p // shallow copy
+	if out.CWD == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("os.Getwd(): %w", err)
+		}
+		out.CWD = cwd
+	}
+	return &out, nil
 }
