@@ -69,7 +69,6 @@ type Params struct {
 	// Relative paths where patch reversal has already happened. This is a flag
 	// supplied by the user. This will be set if there were merge conflicts
 	// during patch reversal that were manually resolved by the user.
-	// TODO(upgrade): implement this, should only apply to first upgrade
 	AlreadyResolved []string
 
 	Clock clock.Clock
@@ -504,18 +503,6 @@ func makeDownloader(ctx context.Context, p *Params, installedDir string, oldMani
 	}
 
 	return downloader, nil
-}
-
-func fillDefaults(p *Params) (*Params, error) {
-	out := *p // shallow copy
-	if out.CWD == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, fmt.Errorf("os.Getwd(): %w", err)
-		}
-		out.CWD = cwd
-	}
-	return &out, nil
 }
 
 // mergeTentatively does a dry-run commit followed by a real commit.
