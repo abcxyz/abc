@@ -1393,7 +1393,7 @@ func TestPatchReversalManualResolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("time.LoadLocation(): %v", err)
 	}
-	render1Time := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
+	renderTime1 := time.Date(2024, 3, 1, 4, 5, 6, 7, loc)
 
 	tempBase := t.TempDir()
 	// Make tempBase into a valid git repo.
@@ -1438,12 +1438,12 @@ steps:
 
 	ctx := context.Background()
 	clk := clock.NewMock()
-	clk.Set(render1Time)
-	render1Result := mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir1)
+	clk.Set(renderTime1)
+	renderResult1 := mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir1)
 
 	wantManifestBeforeUpgrade := &manifest.Manifest{
-		CreationTime:     render1Time,
-		ModificationTime: render1Time,
+		CreationTime:     renderTime1,
+		ModificationTime: renderTime1,
 		TemplateLocation: mdl.S("../../template_dir"),
 		LocationType:     mdl.S("local_git"),
 		TemplateVersion:  mdl.S(abctestutil.MinimalGitHeadSHA),
@@ -1460,7 +1460,7 @@ steps:
 			},
 		},
 	}
-	manifestFullPath := filepath.Join(destDir1, render1Result.ManifestPath)
+	manifestFullPath := filepath.Join(destDir1, renderResult1.ManifestPath)
 	assertManifest(ctx, t, "before upgrade", wantManifestBeforeUpgrade, manifestFullPath)
 
 	clk.Add(time.Second)
