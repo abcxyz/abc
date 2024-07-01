@@ -71,6 +71,10 @@ type Flags struct {
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
 
+	// Upgrade to the template specified by this location, rather than the
+	// template location stored in the manifest (which is the default).
+	TemplateLocation string
+
 	Verbose bool
 
 	// The template version to upgrade to. If not specified, the underlying
@@ -111,6 +115,14 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		EnvVar:  "ABC_UPGRADE_TO_VERSION",
 		Target:  &f.Version,
 	})
+	r.StringVar(&cli.StringVar{
+		Name:    "template-location",
+		Usage:   "upgrade to the template specified by this location, rather than the template location stored in the manifest (which is the default); this is useful when your template was installed from a non-canonical location and therefore has no template location stored in the manifest",
+		Example: "github.com/abcxyz/abc/t/rest_server@mybranch",
+		EnvVar:  "ABC_UPGRADE_TEMPLATE_LOCATION",
+		Target:  &f.TemplateLocation,
+	})
+
 	t := set.NewSection("TEMPLATE AUTHORS")
 	t.BoolVar(flags.DebugScratchContents(&f.DebugScratchContents))
 

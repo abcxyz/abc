@@ -34,12 +34,6 @@ const (
 // LocationType is an enum describing where we got a template from.
 type LocationType string
 
-func (l LocationType) IsRemote() bool {
-	// If we ever add a new remote location type (like "remote_svn") then we
-	// should update this function to return true for that one too.
-	return l == RemoteGit
-}
-
 // sourceParser is implemented for each particular kind of template source (git,
 // local file, etc.).
 type sourceParser interface {

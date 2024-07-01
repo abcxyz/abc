@@ -26,14 +26,11 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
-	"github.com/abcxyz/abc/templates/model/decode"
-	"github.com/abcxyz/abc/templates/model/header"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
@@ -1343,46 +1340,60 @@ func (f *fakeDownloader) Download(ctx context.Context, cwd, templateDir, destDir
 	return f.outDLMeta, nil
 }
 
-// TODO(upgrade): test non-canonical upgrade with manual location and version.
+// TODO(upgrade): test non-canonical upgrade with a remote foo@main style template.
 func TestUpgrade_NonCanonical(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	tempBase := t.TempDir()
 	templateDir := filepath.Join(tempBase, "template_dir")
+	destDir := filepath.Join(tempBase, "dest")
 	if err := os.MkdirAll(templateDir, common.OwnerRWXPerms); err != nil {
 		t.Fatal(err)
 	}
 
-	m := &manifest.WithHeader{
-		Header: &header.Fields{
-			NewStyleAPIVersion: model.String{Val: "cli.abcxyz.dev/v1beta6"},
-			Kind:               model.String{Val: decode.KindManifest},
-		},
-		Wrapped: &manifest.ForMarshaling{
-			TemplateLocation: model.String{Val: ""},
-			LocationType:     model.String{Val: ""},
-			TemplateDirhash:  model.String{Val: "asdfasdfasdfasdfasdf"},
-		},
+	origTemplateDirContents := map[string]string{
+		"out.txt":   "hello\n",
+		"spec.yaml": includeDotSpec,
 	}
+	abctestutil.WriteAll(t, templateDir, origTemplateDirContents)
+	clk := clock.NewMock()
+	clk.Set(time.Date(2024, 3, 1, 4, 5, 6, 7, time.UTC))
+	mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir)
 
-	buf, err := yaml.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	abctestutil.Overwrite(t, templateDir, "manifest.yaml", string(buf))
-
+	clk.Add(time.Second)
 	params := &Params{
+		Clock:    clk,
 		CWD:      tempBase,
 		FS:       &common.RealFS{},
-		Location: filepath.Join(templateDir, "manifest.yaml"),
+		Location: destDir,
 	}
 
-	_, err = upgrade(ctx, params, params.Location)
-	wantErr := "this template can't be upgraded because its manifest doesn't contain a template_location"
-	if diff := testutil.DiffErrString(err, wantErr); diff != "" {
+	// Attempting to upgrade without a canonical location should fail
+	result := UpgradeAll(ctx, params)
+	wantErr := "this template was installed without a canonical location; please use the --template-location flag to specify where to upgrade from"
+	if diff := testutil.DiffErrString(result.Err, wantErr); diff != "" {
 		t.Fatal(diff)
+	}
+
+	// "Upgrading" to the original template should return "already up to date"
+	params.TemplateLocation = templateDir
+	result = UpgradeAll(ctx, params)
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+	if result.Overall != AlreadyUpToDate {
+		t.Fatalf("got result.Overall %q, want %q", result.Overall, AlreadyUpToDate)
+	}
+
+	// Now modify the template so there's something to actually do during upgrade
+	abctestutil.Overwrite(t, templateDir, "out.txt", "new contents")
+	result = UpgradeAll(ctx, params)
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+	if result.Overall != Success {
+		t.Fatalf("got result.Overall %q, want %q", result.Overall, Success)
 	}
 }
 
