@@ -50,9 +50,7 @@ import (
 // TODO(upgrade):
 //   - add "abort if conflict" feature
 //   - rethink overly complex manifest file name?
-//   - validate that manifest paths don't contain traversals
 //   - add "check for update and exit" feature
-//   - add "upgrade all template installations within directory"
 //   - maybe switch file hashes to SHA1, so then we can opportunistically get
 //     the common base from the installedDir repo or template repo (which might
 //     be the same repo), so then we can do a 3-way merge (`git merge-file`)

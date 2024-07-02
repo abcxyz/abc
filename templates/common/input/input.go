@@ -84,16 +84,19 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 			return nil, fmt.Errorf("unknown input(s): %s", strings.Join(unknownInputs, ", "))
 		}
 	}
+	cliInputs := filterUnknownInputs(rp.Spec, rp.Inputs)
 
 	fileInputs, err := loadInputFiles(rp.FS, rp.InputFiles)
 	if err != nil {
 		return nil, err
 	}
-	// Effectively ignore inputs in file that are not in spec inputs, thereby ignoring them
+
+	// Unknown inputs from --input-file files are always ignored regardless of
+	// the --ignore-unknown-inputs flag.
 	knownFileInputs := filterUnknownInputs(rp.Spec, fileInputs)
 
 	// Order matters: values from --input take precedence over --input-file.
-	inputs := sets.UnionMapKeys(rp.Inputs, knownFileInputs)
+	inputs := sets.UnionMapKeys(cliInputs, knownFileInputs)
 
 	if rp.Prompt {
 		if !rp.SkipPromptTTYCheck {
@@ -221,12 +224,24 @@ func checkUnknownInputs(spec *spec.Spec, inputs map[string]string) []string {
 	return unknownInputs
 }
 
+// filterUnknownInputs returns the subset of the given inputs that appear in the
+// the given spec. Essentially it discards any inputs that aren't declared in
+// the spec.
 func filterUnknownInputs(spec *spec.Spec, inputs map[string]string) map[string]string {
-	specInputs := make(map[string]string)
+	specInputs := make(map[string]struct{})
+
 	for _, v := range spec.Inputs {
-		specInputs[v.Name.Val] = ""
+		specInputs[v.Name.Val] = struct{}{}
 	}
-	return sets.IntersectMapKeys(inputs, specInputs)
+
+	out := make(map[string]string, len(specInputs))
+	for k, v := range inputs {
+		if _, ok := specInputs[k]; ok {
+			out[k] = v
+		}
+	}
+
+	return out
 }
 
 // loadInputFiles iterates over each --input-file and combines them all into a map.
