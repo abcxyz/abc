@@ -279,8 +279,7 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 
 const (
 	// These are appended to files that need manual merge conflict resolution.
-	SuffixLocallyAdded                  = ".abcmerge_locally_added"
-	SuffixLocallyEdited                 = ".abcmerge_locally_edited"
+	SuffixLocallyAdded = ".abcmerge_locally_added"
 	SuffixFromNewTemplate               = ".abcmerge_from_new_template"
 	SuffixFromNewTemplateLocallyDeleted = ".abcmerge_locally_deleted_vs_new_template_version"
 	SuffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
@@ -382,33 +381,17 @@ func actuateMergeDecision(ctx context.Context, p *commitParams, dryRun bool, dec
 		actionTaken.OursPath = paths.relative + SuffixWantToDelete
 		return actionTaken, nil
 	case EditEditConflict:
-		renamedPath := installedPath + SuffixLocallyEdited
 		incomingPath := installedPath + SuffixFromNewTemplate
-		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
-			return ActionTaken{}, err //nolint:wrapcheck
-		}
-		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
-			return ActionTaken{}, err
-		}
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, incomingPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.OursPath = paths.relative + SuffixLocallyEdited
 		actionTaken.IncomingTemplatePath = paths.relative + SuffixFromNewTemplate
 		return actionTaken, nil
 	case AddAddConflict:
-		renamedPath := installedPath + SuffixLocallyAdded
-		if err := common.CopyFile(ctx, nil, p.fs, paths.fromOldLocal, renamedPath, dryRun, nil); err != nil {
-			return ActionTaken{}, err //nolint:wrapcheck
-		}
-		if err := removeOrDryRun(p.fs, dryRun, installedPath); err != nil {
-			return ActionTaken{}, err
-		}
 		incomingPath := installedPath + SuffixFromNewTemplate
 		if err := common.CopyFile(ctx, nil, p.fs, paths.fromNewTemplate, incomingPath, dryRun, nil); err != nil {
 			return ActionTaken{}, err //nolint:wrapcheck
 		}
-		actionTaken.OursPath = paths.relative + SuffixLocallyAdded
 		actionTaken.IncomingTemplatePath = paths.relative + SuffixFromNewTemplate
 		return actionTaken, nil
 	default:
