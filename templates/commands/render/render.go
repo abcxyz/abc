@@ -131,7 +131,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
 		SourceForMessages:    c.flags.Source,
 		Stdout:               c.Stdout(),
-		UpgradeChannel: c.flags.UpgradeChannel,
+		UpgradeChannel:       c.flags.UpgradeChannel,
 	})
 
 	return err //nolint:wrapcheck

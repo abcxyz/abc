@@ -128,11 +128,11 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	f.StringVar(&cli.StringVar{
-		Name: "upgrade-channel",
-		Target: &r.UpgradeChannel,
+		Name:    "upgrade-channel",
+		Target:  &r.UpgradeChannel,
 		Default: "",
-		EnvVar: "ABC_UPGRADE_CHANNEL",
-		Usage: `overrides the "upgrade_channel" field in the output manifest, which controls where upgraded template versions will be pulled from in the future by "abc uprade". Can be either a branch name or the special string "latest". The default is to upgrade from the branch that the template was originally rendered from if rendered from a branch, or in any other case to use the value "latest" to upgrade to the latest release tag by semver order.`,
+		EnvVar:  "ABC_UPGRADE_CHANNEL",
+		Usage:   `overrides the "upgrade_channel" field in the output manifest, which controls where upgraded template versions will be pulled from in the future by "abc uprade". Can be either a branch name or the special string "latest". The default is to upgrade from the branch that the template was originally rendered from if rendered from a branch, or in any other case to use the value "latest" to upgrade to the latest release tag by semver order.`,
 	})
 
 	f.BoolVar(&cli.BoolVar{
