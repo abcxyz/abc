@@ -535,9 +535,9 @@ func TestSummarizeResult(t *testing.T) {
 				ManifestPath: "foo/bar/my_manifest.yaml",
 				MergeConflicts: []upgrade.ActionTaken{
 					{
-						Action:      upgrade.EditEditConflict,
-						Explanation: "ignored",
-						Path:        "some/file.txt",
+						Action:               upgrade.EditEditConflict,
+						Explanation:          "ignored",
+						Path:                 "some/file.txt",
 						IncomingTemplatePath: "some/file.txt" + upgrade.SuffixFromNewTemplate,
 					},
 					{

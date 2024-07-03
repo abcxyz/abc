@@ -279,7 +279,7 @@ func mergeAll(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken,
 
 const (
 	// These are appended to files that need manual merge conflict resolution.
-	SuffixLocallyAdded = ".abcmerge_locally_added"
+	SuffixLocallyAdded                  = ".abcmerge_locally_added"
 	SuffixFromNewTemplate               = ".abcmerge_from_new_template"
 	SuffixFromNewTemplateLocallyDeleted = ".abcmerge_locally_deleted_vs_new_template_version"
 	SuffixWantToDelete                  = ".abcmerge_template_wants_to_delete"
