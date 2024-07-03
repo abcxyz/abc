@@ -120,12 +120,10 @@ List of conflicting files:
 --
 file: color.txt
 conflict type: addAddConflict
-your file was renamed to: color.txt.abcmerge_locally_added
 incoming file: color.txt.abcmerge_from_new_template
 --
 file: greet.txt
 conflict type: editEditConflict
-your file was renamed to: greet.txt.abcmerge_locally_edited
 incoming file: greet.txt.abcmerge_from_new_template
 --
 
@@ -540,15 +538,13 @@ func TestSummarizeResult(t *testing.T) {
 						Action:               upgrade.EditEditConflict,
 						Explanation:          "ignored",
 						Path:                 "some/file.txt",
-						OursPath:             "some/file.txt" + upgrade.SuffixLocallyEdited,
 						IncomingTemplatePath: "some/file.txt" + upgrade.SuffixFromNewTemplate,
 					},
 					{
 						Action:               upgrade.DeleteEditConflict,
 						Explanation:          "ignored",
 						Path:                 "some/other/file.txt",
-						OursPath:             "some/other/file.txt" + upgrade.SuffixLocallyEdited,
-						IncomingTemplatePath: "some/other/file.txt" + upgrade.SuffixFromNewTemplate,
+						IncomingTemplatePath: "some/other/file.txt" + upgrade.SuffixFromNewTemplateLocallyDeleted,
 					},
 				},
 				NonConflicts: []upgrade.ActionTaken{{Path: "should_not_appear.txt", Action: upgrade.WriteNew}},
@@ -560,13 +556,11 @@ List of conflicting files:
 --
 file: some/file.txt
 conflict type: editEditConflict
-your file was renamed to: some/file.txt.abcmerge_locally_edited
 incoming file: some/file.txt.abcmerge_from_new_template
 --
 file: some/other/file.txt
 conflict type: deleteEditConflict
-your file was renamed to: some/other/file.txt.abcmerge_locally_edited
-incoming file: some/other/file.txt.abcmerge_from_new_template
+incoming file: some/other/file.txt.abcmerge_locally_deleted_vs_new_template_version
 --
 
 After manually resolving the merge conflict, re-run the upgrade command to

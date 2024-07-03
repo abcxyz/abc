@@ -430,7 +430,6 @@ func TestUpgradeAll(t *testing.T) {
 							{
 								Action:               EditEditConflict,
 								Path:                 "out.txt",
-								OursPath:             "out.txt.abcmerge_locally_edited",
 								IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
 							},
 						},
@@ -439,7 +438,7 @@ func TestUpgradeAll(t *testing.T) {
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
-				"out.txt.abcmerge_locally_edited":    "my edited contents",
+				"out.txt":                            "my edited contents",
 				"out.txt.abcmerge_from_new_template": "goodbye",
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
@@ -665,7 +664,6 @@ func TestUpgradeAll(t *testing.T) {
 							{
 								Action:               "addAddConflict",
 								Path:                 "out.txt",
-								OursPath:             "out.txt.abcmerge_locally_added",
 								IncomingTemplatePath: "out.txt.abcmerge_from_new_template",
 							},
 						},
@@ -674,7 +672,7 @@ func TestUpgradeAll(t *testing.T) {
 				},
 			},
 			wantDestContentsAfterUpgrade: map[string]string{
-				"out.txt.abcmerge_locally_added":     "my cool new file",
+				"out.txt":                            "my cool new file",
 				"out.txt.abcmerge_from_new_template": "template now outputs this",
 				"some_other_file.txt":                "some other file contents",
 			},
@@ -1888,7 +1886,7 @@ func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
 
 	wantDestContents := map[string]string{
 		"destDir1/myfile.txt" + SuffixFromNewTemplate: "my new template1 file contents",
-		"destDir1/myfile.txt" + SuffixLocallyEdited:   "my local edits",
+		"destDir1/myfile.txt":                         "my local edits",
 		"destDir2/myfile.txt":                         "my old template2 file contents",
 	}
 	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifest are too unpredictable, don't assert their contents
@@ -1899,7 +1897,6 @@ func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
 
 	abctestutil.Overwrite(t, destDir1, "myfile.txt", "my resolved contents")
 	abctestutil.Remove(t, destDir1, "myfile.txt"+SuffixFromNewTemplate)
-	abctestutil.Remove(t, destDir1, "myfile.txt"+SuffixLocallyEdited)
 
 	allResult = UpgradeAll(ctx, upgradeParams)
 	if allResult.Err != nil {
