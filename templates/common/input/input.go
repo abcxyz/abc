@@ -225,8 +225,8 @@ func checkUnknownInputs(spec *spec.Spec, inputs map[string]string) []string {
 }
 
 // filterUnknownInputs returns the subset of the given inputs that appear in the
-// the given spec. Essentially it discards any inputs that aren't declared in
-// the spec.
+// given spec. Essentially it discards any inputs that aren't declared in the
+// spec.
 func filterUnknownInputs(spec *spec.Spec, inputs map[string]string) map[string]string {
 	specInputs := make(map[string]struct{})
 
