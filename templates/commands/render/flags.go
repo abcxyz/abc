@@ -78,6 +78,10 @@ type RenderFlags struct {
 	// Whether to *only* create a manifest file without outputting any other
 	// files from the template.
 	ManifestOnly bool
+
+	// Overrides the `upgrade_channel` field in the output manifest. Can be
+	// either a branch name or the special string "latest".
+	UpgradeChannel string
 }
 
 func (r *RenderFlags) Register(set *cli.FlagSet) {
@@ -121,6 +125,14 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		EnvVar:  "ABC_MANIFEST",
 		// TODO(upgrade): remove "(experimental)"
 		Usage: "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name: "upgrade-channel",
+		Target: &r.UpgradeChannel,
+		Default: "",
+		EnvVar: "ABC_UPGRADE_CHANNEL",
+		Usage: `overrides the "upgrade_channel" field in the output manifest, which controls where upgraded template versions will be pulled from in the future by "abc uprade". Can be either a branch name or the special string "latest". The default is to upgrade from the branch that the template was originally rendered from if rendered from a branch, or in any other case to use the value "latest" to upgrade to the latest release tag by semver order.`,
 	})
 
 	f.BoolVar(&cli.BoolVar{

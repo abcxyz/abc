@@ -68,6 +68,9 @@ type DownloadMetadata struct {
 
 	// Depending on where the template was taken from, there might be a version
 	// string associated with it (e.g. a git tag or a git SHA). May be empty.
+	// This field does not use the magic string "latest" which is used
+	// elsewhere; by the time this field is set, the "latest" version has been
+	// resolved to a specific concrete version.
 	Version string
 
 	// Either the special string "latest", or the name of a branch to use to
