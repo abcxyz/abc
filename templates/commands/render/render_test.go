@@ -55,6 +55,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"--manifest-only",
 				"--manifest",
 				"--skip-input-validation",
+				"--upgrade-channel", "main",
 				"helloworld@v1",
 			},
 			want: RenderFlags{
@@ -71,6 +72,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				ManifestOnly:         true,
 				SkipInputValidation:  true,
 				Source:               "helloworld@v1",
+				UpgradeChannel:       "main",
 			},
 		},
 		{
