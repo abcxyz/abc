@@ -18,9 +18,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -132,10 +132,16 @@ func writeManifest(p *writeManifestParams) (path string, rErr error) {
 	return filepath.Join(common.ABCInternalDir, baseName), nil
 }
 
+var disallowedFilenameCharsRegex = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
+
 func manifestBaseName(p *writeManifestParams) string {
 	namePart := "nolocation"
 	if p.dlMeta.IsCanonical {
-		namePart = url.PathEscape(p.dlMeta.CanonicalSource)
+		// Replace characters that are forbidden in filenames with underscore.
+		// Collisions such as "a/b/c" and "a_b/c" colliding on output "a_b_c"
+		// are actually fine, because we'll add a nanosecond timestamp to the
+		// filename later that will disambiguate them.
+		namePart = disallowedFilenameCharsRegex.ReplaceAllLiteralString(p.dlMeta.CanonicalSource, "_")
 	}
 
 	// We include the creation time in the filename to disambiguate between

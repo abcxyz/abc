@@ -113,7 +113,7 @@ steps:
 			},
 			wantExitCode: 1,
 			wantErr:      []string{"exit code 1"},
-			wantStdout: `When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+			wantStdout: `When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_.._template_dir_1970-01-01T00:00:00Z.lock.yaml:
 ` + mergeInstructions + `
 
 List of conflicting files:
@@ -182,7 +182,7 @@ steps:
           with: "Z"`,
 			},
 			wantExitCode: 2,
-			wantStdout: `When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+			wantStdout: `When upgrading manifest TEMPDIR/dest_dir/.abc/manifest_.._template_dir_1970-01-01T00:00:00Z.lock.yaml:
 ` + patchReversalInstructions + `
 
 --
@@ -378,7 +378,7 @@ steps:
 				"out.txt":   "",
 				"spec.yaml": specOneInput,
 			},
-			wantErr: `when upgrading the manifest at TEMPDIR/dest_dir/.abc/manifest_..%2Ftemplate_dir_1970-01-01T00:00:00Z.lock.yaml:
+			wantErr: `when upgrading the manifest at TEMPDIR/dest_dir/.abc/manifest_.._template_dir_1970-01-01T00:00:00Z.lock.yaml:
 failed rendering template: missing input(s): animal, you may want to use one of the flags --prompt, --input, or --input-file`,
 			wantDestContents: map[string]string{
 				"out.txt": "",

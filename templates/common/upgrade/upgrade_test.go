@@ -1519,7 +1519,7 @@ steps:
 		Overall: PatchReversalConflict,
 		Results: []*ManifestResult{
 			{
-				ManifestPath: "1/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
+				ManifestPath: "1/.abc/manifest_.._.._template_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
 				Type:         PatchReversalConflict,
 				ReversalConflicts: []*ReversalConflict{
 					{
@@ -1584,7 +1584,7 @@ steps:
 
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.AlreadyResolved = []string{"file.txt"}
-	upgradeParams.ResumeFrom = "1/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml"
+	upgradeParams.ResumeFrom = "1/.abc/manifest_.._.._template_dir_2024-03-01T12:05:06.000000007Z.lock.yaml"
 
 	result = UpgradeAll(ctx, upgradeParams)
 	if result.Err != nil {
@@ -1595,7 +1595,7 @@ steps:
 		Results: []*ManifestResult{
 			{
 				Type:         Success,
-				ManifestPath: "1/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
+				ManifestPath: "1/.abc/manifest_.._.._template_dir_2024-03-01T12:05:06.000000007Z.lock.yaml",
 				NonConflicts: []ActionTaken{
 					{
 						Action: "writeNew",
@@ -1615,7 +1615,7 @@ steps:
 			},
 			{
 				Type:         PatchReversalConflict,
-				ManifestPath: "2/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:07.000000007Z.lock.yaml",
+				ManifestPath: "2/.abc/manifest_.._.._template_dir_2024-03-01T12:05:07.000000007Z.lock.yaml",
 				ReversalConflicts: []*ReversalConflict{
 					{
 						RelPath:       "file.txt",
@@ -1654,7 +1654,7 @@ steps:
 
 	// Inform the upgrade command that patch reversal has already happened
 	upgradeParams.AlreadyResolved = []string{"file.txt"}
-	upgradeParams.ResumeFrom = "2/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:07.000000007Z.lock.yaml"
+	upgradeParams.ResumeFrom = "2/.abc/manifest_.._.._template_dir_2024-03-01T12:05:07.000000007Z.lock.yaml"
 
 	result = UpgradeAll(ctx, upgradeParams)
 	if result.Err != nil {
@@ -1666,7 +1666,7 @@ steps:
 		Results: []*ManifestResult{
 			{
 				Type:         Success,
-				ManifestPath: "2/.abc/manifest_..%2F..%2Ftemplate_dir_2024-03-01T12:05:07.000000007Z.lock.yaml",
+				ManifestPath: "2/.abc/manifest_.._.._template_dir_2024-03-01T12:05:07.000000007Z.lock.yaml",
 				NonConflicts: []ActionTaken{
 					{
 						Action: "writeNew",
