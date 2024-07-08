@@ -149,6 +149,10 @@ type Params struct {
 	// The directory under which to create temp directories. Normally empty,
 	// except in testing.
 	TempDirBase string
+
+	// The value of the --upgrade-channel flag. Leave blank to use the
+	// autodetected upgrade channel (most common).
+	UpgradeChannel string
 }
 
 // Result gives some metadata about the outcome of the render operation.
@@ -621,6 +625,7 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 				inputs:                 cp.inputs,
 				outputHashes:           outputHashes,
 				templateDir:            cp.templateDir,
+				upgradeChannel:         p.UpgradeChannel,
 			}); err != nil {
 				return "", err
 			}
