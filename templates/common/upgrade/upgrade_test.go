@@ -1346,7 +1346,7 @@ yellow is my favorite color
 			}
 
 			var upgradeResult *Result
-			prompt.DialogTestNoCmd(ctx, t, tc.dialogSteps, func(prompter input.Prompter) {
+			prompt.DialogTestFunc(ctx, t, tc.dialogSteps, func(prompter input.Prompter) {
 				params.Prompter = prompter
 				upgradeResult = UpgradeAll(ctx, params)
 			})

@@ -175,7 +175,12 @@ func (f *FakePrompter) IsTestFake() {
 	panic("this function is never called, it just satisfies an interface")
 }
 
-func DialogTestNoCmd(ctx context.Context, tb testing.TB, steps []DialogStep, f func(input.Prompter)) {
+// DialogTestFunc is like DialogTest except it doesn't depend on having a
+// cli.Command. A background goroutine is started that will execute the
+// back-and-forth conversation defined in the given steps, simulating the user.
+// Your provided callback should prompt the user for some input using the
+// provided Prompter.
+func DialogTestFunc(ctx context.Context, tb testing.TB, steps []DialogStep, f func(input.Prompter)) {
 	tb.Helper()
 
 	done := make(chan struct{})
