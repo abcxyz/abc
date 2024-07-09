@@ -133,6 +133,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	result := upgrade.UpgradeAll(ctx, &upgrade.Params{
+		AcceptDefaults:       c.flags.AcceptDefaults,
 		AlreadyResolved:      c.flags.AlreadyResolved,
 		Clock:                clock.New(),
 		DebugStepDiffs:       c.flags.DebugStepDiffs,

@@ -44,6 +44,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 		{
 			name: "all_flags_present",
 			args: []string{
+				"--accept-defaults",
 				"--debug-scratch-contents",
 				"--debug-step-diffs",
 				"--dest", "my_dir",
@@ -60,6 +61,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"helloworld@v1",
 			},
 			want: RenderFlags{
+				AcceptDefaults:       true,
 				DebugScratchContents: true,
 				DebugStepDiffs:       true,
 				Dest:                 "my_dir",

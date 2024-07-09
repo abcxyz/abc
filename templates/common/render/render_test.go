@@ -96,6 +96,7 @@ steps:
 		flagInputs              map[string]string
 		inputFileNames          []string
 		inputFileContents       map[string]string
+		flagAcceptDefaults      bool
 		flagKeepTempDirs        bool
 		flagForceOverwrite      bool
 		flagIgnoreUnknownInputs bool
@@ -385,7 +386,8 @@ steps:
 			inputFileContents: map[string]string{
 				"inputs.yaml": `
 name_to_greet: 'Bob'
-emoji_suffix: '🐈'`,
+emoji_suffix: '🐈'
+ending_punctuation: '.'`,
 			},
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
@@ -417,7 +419,8 @@ emoji_suffix: '🐈'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			wantStdout: "Hello, Robert🐈.\n",
+			flagAcceptDefaults: true,
+			wantStdout:         "Hello, Robert🐈.\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -433,6 +436,7 @@ name_to_greet: 'Bob'`,
 				"other-inputs.yaml": `
 emoji_suffix: '🐈'`,
 			},
+			flagAcceptDefaults: true,
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -465,7 +469,8 @@ emoji_suffix: '🐈'`,
 				"name_to_greet": "Bob",
 				"emoji_suffix":  "🐈",
 			},
-			flagKeepTempDirs: true,
+			flagKeepTempDirs:   true,
+			flagAcceptDefaults: true,
 			templateContents: map[string]string{
 				"spec.yaml":            specContents,
 				"file1.txt":            "my favorite color is blue",
@@ -508,8 +513,9 @@ emoji_suffix: '🐈'`,
 		{
 			name: "existing_dest_file_with_overwrite_flag_should_succeed",
 			flagInputs: map[string]string{
-				"name_to_greet": "Bob",
-				"emoji_suffix":  "🐈",
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": ".",
 			},
 			flagForceOverwrite: true,
 			existingDestContents: map[string]string{
@@ -535,8 +541,9 @@ emoji_suffix: '🐈'`,
 		{
 			name: "existing_dest_file_without_overwrite_flag_should_fail",
 			flagInputs: map[string]string{
-				"name_to_greet": "Bob",
-				"emoji_suffix":  "🐈",
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": ".",
 			},
 			flagForceOverwrite: false,
 			existingDestContents: map[string]string{
@@ -567,6 +574,7 @@ emoji_suffix: '🐈'`,
 				"name_to_greet": "Bob",
 				"emoji_suffix":  "🐈",
 			},
+			flagAcceptDefaults: true,
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -601,6 +609,7 @@ emoji_suffix: '🐈'`,
 		{
 			name:       "handles_missing_required_inputs",
 			flagInputs: map[string]string{},
+			// flagAcceptDefaults: ,
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -947,8 +956,9 @@ steps:
     params:
       message: 'Goodbye'`,
 			},
-			wantStdout:       "Hello\n",
-			wantDestContents: map[string]string{},
+			flagAcceptDefaults: true,
+			wantStdout:         "Hello\n",
+			wantDestContents:   map[string]string{},
 		},
 		{
 			name: "step_with_if_needs_v1beta1",
@@ -983,7 +993,7 @@ steps:
 			wantErr: `"if" expression "bad_expression" failed at step index 0 action "print"`,
 		},
 		{
-			name:           "unknown_input_file_flags should be ignored",
+			name:           "unknown_input_file_flags_should_be_ignored",
 			flagInputs:     map[string]string{"name_to_greet": "Robert"},
 			inputFileNames: []string{"inputs.yaml"},
 			inputFileContents: map[string]string{
@@ -991,6 +1001,7 @@ steps:
 unknown_key: 'unknown value'
 emoji_suffix: '🐈'`,
 			},
+			flagAcceptDefaults: true,
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -1520,6 +1531,7 @@ steps:
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
+				AcceptDefaults: tc.flagAcceptDefaults,
 				Backups:        true,
 				BackupDir:      backupDir,
 				Clock:          clk,
