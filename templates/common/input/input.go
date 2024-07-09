@@ -315,20 +315,6 @@ func insertDefaultInputs(spec *spec.Spec, userInputs map[string]string) []string
 		defaulted = append(defaulted, specInput.Name.Val)
 	}
 
-	// if len(inputsForError) > 0 {
-	// 	// This avoids a specific poor user experience. Suppose the user runs
-	// 	// `abc upgrade` (without --prompt), which is a very reasonable thing to
-	// 	// do. Suppose the upgraded version of the template has a new input with
-	// 	// a default value for that input. It would be bad for abc to just
-	// 	// silently use the default value for that new input; technically you
-	// 	// could argue that the user should have used the --prompt flag if they
-	// 	// wanted a chance to override the default, but that would be a footgun
-	// 	// and we can't expect users to be that diligent. So we'll reject the
-	// 	// current operation and ask the user to clarify their intent with
-	// 	// either --prompt or --accept-defaults.
-	// 	return fmt.Errorf("there are some inputs for which a value was not provided but a default is available; please use either --prompt or --accept-defaults: %v", inputsForError)
-	// }
-
 	return defaulted
 }
 
