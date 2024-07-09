@@ -346,11 +346,11 @@ func resolveLatest(ctx context.Context, tmpDir string) (string, error) {
 		return "", fmt.Errorf(`the template source requested the "latest" release, but there were no semver-formatted tags beginning with "v". Available tags were: %v`, tags)
 	}
 
-	max := slices.MaxFunc(versions, func(l, r *semver.Version) int {
+	maxVer := slices.MaxFunc(versions, func(l, r *semver.Version) int {
 		return l.Compare(r)
 	})
 
-	return "v" + max.Original(), nil
+	return "v" + maxVer.Original(), nil
 }
 
 // A fakeable interface around the lower-level git Clone function, for testing.

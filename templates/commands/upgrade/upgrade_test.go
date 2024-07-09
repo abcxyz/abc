@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/common/upgrade"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	"github.com/abcxyz/abc/templates/testutil/prompt"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 )
@@ -334,7 +335,7 @@ steps:
 
 	cases := []struct {
 		name              string
-		dialog            []abctestutil.DialogStep
+		dialog            []prompt.DialogStep
 		prompt            bool
 		inputFileContents string
 		origTemplate      map[string]string
@@ -355,7 +356,7 @@ steps:
 				"out.txt":   "",
 				"spec.yaml": specOneInput,
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: "Input name:   animal\nDescription:  An animal name\n\nEnter value: ",
 					ThenRespond:   "alligator\n",
@@ -415,7 +416,7 @@ steps:
 `,
 			},
 			inputFileContents: `color: 'orange'`,
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: "Input name:   animal\nDescription:  An animal name\n\nEnter value: ",
 					ThenRespond:   "alligator\n",
@@ -490,7 +491,7 @@ steps:
 			}
 			args = append(args, manifestFullPath)
 
-			err = abctestutil.DialogTest(ctx, t, tc.dialog, cmd, args)
+			err = prompt.DialogTest(ctx, t, tc.dialog, cmd, args)
 			wantErr := strings.ReplaceAll(tc.wantErr, "TEMPDIR", tempBase)
 			if diff := testutil.DiffErrString(err, wantErr); diff != "" {
 				t.Fatal(diff)

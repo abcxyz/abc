@@ -39,6 +39,7 @@ import (
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
+	"github.com/abcxyz/abc/templates/testutil/prompt"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -1641,7 +1642,7 @@ func TestPromptDialog(t *testing.T) {
 		name          string
 		inputs        []*spec.Input
 		flagInputVals map[string]string // Simulates some inputs having already been provided by flags, like --input=foo=bar means we shouldn't prompt for "foo"
-		dialog        []abctestutil.DialogStep
+		dialog        []prompt.DialogStep
 		want          map[string]string
 		wantErr       string
 	}{
@@ -1653,7 +1654,7 @@ func TestPromptDialog(t *testing.T) {
 					Desc: mdl.S("your favorite animal"),
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1681,7 +1682,7 @@ Enter value: `,
 					},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1715,7 +1716,7 @@ Enter value: `,
 					},
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1745,7 +1746,7 @@ Enter value: `,
 					Desc: mdl.S("your favorite car"),
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1799,7 +1800,7 @@ Enter value: `,
 			flagInputVals: map[string]string{
 				"animal": "duck",
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   car
@@ -1827,7 +1828,7 @@ Enter value: `,
 					Default: mdl.SP("shark"),
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1851,7 +1852,7 @@ Enter value, or leave empty to accept default: `,
 					Default: mdl.SP("shark"),
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1875,7 +1876,7 @@ Enter value, or leave empty to accept default: `,
 					Default: mdl.SP(""),
 				},
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   animal
@@ -1896,6 +1897,8 @@ Enter value, or leave empty to accept default: `,
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			// TODO rewrite to use framework
 
 			cmd := &cli.BaseCommand{}
 
@@ -1927,8 +1930,8 @@ Enter value, or leave empty to accept default: `,
 			}()
 
 			for _, ds := range tc.dialog {
-				abctestutil.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
-				abctestutil.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
+				prompt.ReadWithTimeout(t, stdoutReader, ds.WaitForPrompt)
+				prompt.WriteWithTimeout(t, stdinWriter, ds.ThenRespond)
 			}
 
 			select {
