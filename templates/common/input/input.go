@@ -297,10 +297,12 @@ func loadInputFiles(fs common.FS, paths []string) (map[string]string, error) {
 	return out, nil
 }
 
-// insertDefaultInputs defaults any missing inputs for which a default
-// exists. The input map will be mutated by adding new keys.
+// insertDefaultInputs defaults any missing inputs for which a default exists.
+// The input map will be mutated by adding new keys. The return value is the
+// list of input names that had default values set because they were not already
+// set.
 func insertDefaultInputs(spec *spec.Spec, userInputs map[string]string) []string {
-	var defaulted []string
+	var defaulted []string //nolint:prealloc
 
 	for _, specInput := range spec.Inputs {
 		_, userGaveInput := userInputs[specInput.Name.Val]
