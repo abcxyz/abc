@@ -135,7 +135,7 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 
 // This interface is satisfied by *prompt.FakePrompter.
 type fakePrompter interface {
-	PretendStdinIsTTY()
+	IsTestFake()
 }
 
 func validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map[string]string) error {

@@ -27,9 +27,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/google/go-cmp/cmp"
 )
 
 const (
@@ -170,9 +171,13 @@ func (f *FakePrompter) Stdin() io.Reader {
 
 // This function doesn't do anything and is never called. It just satisfies an
 // interface so a type assertion can check for a fake prompter.
-func (f *FakePrompter) PretendStdinIsTTY() {}
+func (f *FakePrompter) IsTestFake() {
+	panic("this function is never called, it just satisfies an interface")
+}
 
 func DialogTestNoCmd(ctx context.Context, tb testing.TB, steps []DialogStep, f func(input.Prompter)) {
+	tb.Helper()
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
