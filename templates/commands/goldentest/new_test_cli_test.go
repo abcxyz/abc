@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	"github.com/abcxyz/abc/templates/testutil/prompt"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -330,7 +331,7 @@ func TestNewTestPrompt(t *testing.T) {
 		newTestName      string
 		flagBuiltinVars  map[string]string
 		flagPrompt       bool
-		dialog           []abctestutil.DialogStep
+		dialog           []prompt.DialogStep
 		templateContents map[string]string
 		expectedContents map[string]string
 		wantErr          string
@@ -358,7 +359,7 @@ steps:
     params:
       message: 'Hello, {{.name}}!'`,
 			},
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   name
@@ -407,7 +408,7 @@ builtin_vars:
 			r := &NewTestCommand{}
 			r.skipPromptTTYCheck = true
 
-			err := abctestutil.DialogTest(ctx, t, tc.dialog, r, args)
+			err := prompt.DialogTest(ctx, t, tc.dialog, r, args)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

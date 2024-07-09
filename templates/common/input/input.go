@@ -99,7 +99,13 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 	inputs := sets.UnionMapKeys(cliInputs, knownFileInputs)
 
 	if rp.Prompt {
-		if !rp.SkipPromptTTYCheck {
+		_, ok := rp.Prompter.(fakePrompter)
+		runningUnderTest := ok || rp.SkipPromptTTYCheck
+
+		// When running in a test, we allow prompting, even though stdin has
+		// been faked for testing and isn't a terminal. This lets us test the
+		// prompting logic.
+		if !runningUnderTest {
 			isATTY := (rp.Prompter.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()))
 			if !isATTY {
 				return nil, fmt.Errorf("the flag --prompt was provided, but standard input is not a terminal")
@@ -125,6 +131,11 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 	}
 
 	return inputs, nil
+}
+
+// This interface is satisfied by *prompt.FakePrompter.
+type fakePrompter interface {
+	PretendStdinIsTTY()
 }
 
 func validateInputs(ctx context.Context, specInputs []*spec.Input, inputVals map[string]string) error {

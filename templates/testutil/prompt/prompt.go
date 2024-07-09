@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package testutil contains util functions to facilitate tests.
-package testutil
+// Package prompt allows testing of "prompting" that simulates asking the user
+// for input using stdin and stdout.
+package prompt
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"runtime"
 	"strings"
@@ -25,7 +27,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/google/go-cmp/cmp"
 )
 
 const (
@@ -129,6 +133,62 @@ func DialogTest(ctx context.Context, tb testing.TB, steps []DialogStep, cmd cli.
 	}
 
 	return nil
+}
+
+type FakePrompter struct {
+	steps     []DialogStep // Immutable.
+	stepIndex int          // Mutable. Incremented after each back-and-forth
+}
+
+func (f *FakePrompter) Prompt(ctx context.Context, msg string, args ...any) (string, error) {
+	// Note for maintainers: we call panic() rather than t.Fatal() in this
+	// function because panic() will stop all goroutines while t.Fatal() won't.
+	// If the other goroutines are left running, they will produce misleading
+	// failure messages that will obscure the true cause of the problem.
+
+	if f.stepIndex >= len(f.steps) {
+		if len(f.steps) == 0 {
+			panic("there was an unexpected prompt for user input")
+		}
+		panic(fmt.Sprintf("there were %d prompts for user input, but expected only %d", f.stepIndex+1, f.stepIndex))
+	}
+	dialogStep := f.steps[f.stepIndex]
+
+	gotPrompt := fmt.Sprintf(msg, args...)
+	if gotPrompt != dialogStep.WaitForPrompt {
+		diff := cmp.Diff(gotPrompt, dialogStep.WaitForPrompt)
+		panic(fmt.Sprintf("Got prompt %q at step index %d but wanted %q. Diff was (-got, +want):\n%s", gotPrompt, f.stepIndex, dialogStep.WaitForPrompt, diff))
+	}
+
+	f.stepIndex++
+	return dialogStep.ThenRespond, nil
+}
+
+func (f *FakePrompter) Stdin() io.Reader {
+	panic("should never be called")
+}
+
+// This function doesn't do anything and is never called. It just satisfies an
+// interface so a type assertion can check for a fake prompter.
+func (f *FakePrompter) PretendStdinIsTTY() {}
+
+func DialogTestNoCmd(ctx context.Context, tb testing.TB, steps []DialogStep, f func(input.Prompter)) {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		p := &FakePrompter{
+			steps: steps,
+		}
+		f(p)
+	}()
+
+	select {
+	case <-time.After(overallTimeout):
+		buf := make([]byte, 1_000_000) // size is arbitrary
+		length := runtime.Stack(buf, true)
+		tb.Fatalf("timed out waiting for background goroutine to finish. Here's a stack trace to show where things are blocked: %s", buf[:length])
+	case <-done:
+	}
 }
 
 // ReadWithTimeout does a single read from the given reader. It calls Fatal if

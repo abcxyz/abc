@@ -26,6 +26,7 @@ import (
 
 	"github.com/abcxyz/abc/templates/common"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	"github.com/abcxyz/abc/templates/testutil/prompt"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -193,7 +194,7 @@ steps:
 		name             string
 		templateContents map[string]string
 		flagPrompt       bool
-		dialog           []abctestutil.DialogStep
+		dialog           []prompt.DialogStep
 		wantDestContents map[string]string
 		wantErr          string
 	}{
@@ -207,7 +208,7 @@ steps:
 				"dir2/file2.txt":       "file2 contents",
 			},
 			flagPrompt: true,
-			dialog: []abctestutil.DialogStep{
+			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
 Input name:   name_of_favourite_person
@@ -247,7 +248,7 @@ Enter value: `,
 
 			r := &Command{skipPromptTTYCheck: true}
 
-			err := abctestutil.DialogTest(ctx, t, tc.dialog, r, args)
+			err := prompt.DialogTest(ctx, t, tc.dialog, r, args)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

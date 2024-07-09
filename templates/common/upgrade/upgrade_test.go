@@ -28,12 +28,14 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/common/input"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	mdl "github.com/abcxyz/abc/templates/testutil/model"
+	"github.com/abcxyz/abc/templates/testutil/prompt"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -115,6 +117,8 @@ func TestUpgradeAll(t *testing.T) {
 		wantManifestBeforeUpgrade *manifest.Manifest
 
 		localEdits                   func(tb testing.TB, installedDir string)
+		dialogSteps                  []prompt.DialogStep
+		prompt                       bool
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
 		wantManifestAfterUpgrade     *manifest.Manifest
 		want                         *Result
@@ -139,6 +143,82 @@ func TestUpgradeAll(t *testing.T) {
 		//    inputs from file
 		//    inputs provided as flags
 		//    upgraded template removes input(s)
+		{
+			// Scenario: an input that did not exist in the old template version
+			// is added, and has a default. The user should be prompted.
+			name: "new_input_with_default",
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+			wantManifestBeforeUpgrade: outTxtOnlyManifest,
+			dialogSteps: []prompt.DialogStep{
+				{
+					WaitForPrompt: `
+Input name:   rename_to
+Description:  New filename for out.txt
+Default:      default_filename.txt
+
+Enter value, or leave empty to accept default: `,
+					ThenRespond: "manual_filename.txt",
+				},
+			},
+			prompt: true,
+			templateUnionForUpgrade: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+inputs:
+  - name: "rename_to"
+    default: "default_filename.txt" 
+    desc: "New filename for out.txt"
+steps:
+  - desc: 'include out.txt'
+    action: 'include'
+    params:
+      paths: ['out.txt']
+      as: ['{{.rename_to}}']
+`,
+			},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						Type: Success,
+						NonConflicts: []ActionTaken{
+							{
+								Action: WriteNew,
+								Path:   "manual_filename.txt",
+							},
+							{
+								Action:      DeleteAction,
+								Explanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
+								Path:        "out.txt",
+							},
+						},
+						DLMeta:       wantDLMeta,
+						ManifestPath: ".",
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"manual_filename.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.Inputs = []*manifest.Input{
+					{
+						Name:  mdl.S("rename_to"),
+						Value: mdl.S("manual_filename.txt"),
+					},
+				}
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("manual_filename.txt"),
+					},
+				}
+			}),
+		},
 
 		{
 			name: "new_template_has_updated_file_without_local_edits",
@@ -1238,6 +1318,7 @@ yellow is my favorite color
 				CWD:               destDir,
 				FS:                &common.RealFS{},
 				Location:          manifestFullPath,
+				Prompt:            tc.prompt,
 				Stdout:            os.Stdout,
 				downloaderFactory: dlFactory,
 			}
@@ -1264,7 +1345,11 @@ yellow is my favorite color
 				abctestutil.WriteAll(t, templateDir, tc.templateReplacementForUpgrade)
 			}
 
-			upgradeResult := UpgradeAll(ctx, params)
+			var upgradeResult *Result
+			prompt.DialogTestNoCmd(ctx, t, tc.dialogSteps, func(prompter input.Prompter) {
+				params.Prompter = prompter
+				upgradeResult = UpgradeAll(ctx, params)
+			})
 			if diff := testutil.DiffErrString(upgradeResult.Err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
