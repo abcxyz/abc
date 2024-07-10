@@ -45,6 +45,9 @@ import (
 
 // Params contains the arguments to Render().
 type Params struct {
+	// The value of --accept-defaults.
+	AcceptDefaults bool
+
 	// BackupDir is the directory where overwritten files will be backed up.
 	// BackupDir is ignored if Backups is false.
 	BackupDir string
@@ -223,6 +226,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 
 	logger.DebugContext(ctx, "resolving inputs")
 	resolvedInputs, err := input.Resolve(ctx, &input.ResolveParams{
+		AcceptDefaults:      p.AcceptDefaults,
 		FS:                  p.FS,
 		IgnoreUnknownInputs: p.IgnoreUnknownInputs,
 		InputFiles:          p.InputFiles,

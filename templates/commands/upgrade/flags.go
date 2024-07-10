@@ -26,6 +26,9 @@ import (
 type Flags struct {
 	Location string
 
+	// See common/flags.AcceptDefaults().
+	AcceptDefaults bool
+
 	// A list of files that were...
 	//   - changed in place by a previous render operation...
 	//   - then an upgrade operation was attempted, which attempted to undo the
@@ -108,6 +111,8 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.BoolVar(flags.DebugStepDiffs(&f.DebugStepDiffs))
 	r.BoolVar(flags.KeepTempDirs(&f.KeepTempDirs))
 	r.BoolVar(flags.Prompt(&f.Prompt))
+	r.BoolVar(flags.AcceptDefaults(&f.AcceptDefaults))
+
 	r.StringVar(&cli.StringVar{
 		Name:    "version",
 		Usage:   "for remote templates, the version to upgrade to; may be a git tag, branch, or SHA",

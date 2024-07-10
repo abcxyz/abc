@@ -38,8 +38,9 @@ import (
 type ResolveParams struct {
 	FS common.FS
 
-	// The template spec.yaml model.
-	Spec *spec.Spec
+	// Whether to silently accept default values for template inputs in the case
+	// where prompting is disabled.
+	AcceptDefaults bool
 
 	// Ignore any values in the Inputs map that aren't valid template inputs,
 	// rather than returning error.
@@ -63,6 +64,9 @@ type ResolveParams struct {
 	// can be set to true to bypass the check and allow stdin to be something
 	// other than a TTY, like an os.Pipe.
 	SkipPromptTTYCheck bool
+
+	// The template spec.yaml model.
+	Spec *spec.Spec
 }
 
 // Prompter prints messages to the user asking them to enter a value. This is
@@ -116,9 +120,23 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 			return nil, err
 		}
 	} else {
-		insertDefaultInputs(rp.Spec, inputs)
+		defaulted := insertDefaultInputs(rp.Spec, inputs)
 		if missing := checkInputsMissing(rp.Spec, inputs); len(missing) > 0 {
 			return nil, fmt.Errorf("missing input(s): %s, you may want to use one of the flags --prompt, --input, or --input-file", strings.Join(missing, ", "))
+		}
+		if len(defaulted) > 0 && !rp.AcceptDefaults {
+			// This avoids a specific poor user experience. Suppose the user
+			// runs `abc upgrade` (without --prompt), which is a very reasonable
+			// thing to do. Suppose the upgraded version of the template has a
+			// new input with a default value for that input. It would be bad
+			// for abc to just silently use the default value for that new
+			// input; technically you could argue that the user should have used
+			// the --prompt flag if they wanted a chance to override the
+			// default, but that would be a footgun and we can't expect users to
+			// be that diligent. So we'll reject the current operation and ask
+			// the user to clarify their intent with either --prompt or
+			// --accept-defaults.
+			return nil, fmt.Errorf("there are some inputs for which a value was not provided but a default is available; please use either --prompt or --accept-defaults: %v", defaulted)
 		}
 	}
 
@@ -279,14 +297,25 @@ func loadInputFiles(fs common.FS, paths []string) (map[string]string, error) {
 	return out, nil
 }
 
-// insertDefaultInputs defaults any missing inputs for which a default
-// exists. The input map will be mutated by adding new keys.
-func insertDefaultInputs(spec *spec.Spec, inputs map[string]string) {
+// insertDefaultInputs defaults any missing inputs for which a default exists.
+// The input map will be mutated by adding new keys. The return value is the
+// list of input names that had default values set because they were not already
+// set.
+func insertDefaultInputs(spec *spec.Spec, userInputs map[string]string) []string {
+	var defaulted []string //nolint:prealloc
+
 	for _, specInput := range spec.Inputs {
-		if _, ok := inputs[specInput.Name.Val]; !ok && specInput.Default != nil {
-			inputs[specInput.Name.Val] = specInput.Default.Val
+		_, userGaveInput := userInputs[specInput.Name.Val]
+		defaultExists := specInput.Default != nil
+		if userGaveInput || !defaultExists {
+			continue
 		}
+
+		userInputs[specInput.Name.Val] = specInput.Default.Val
+		defaulted = append(defaulted, specInput.Name.Val)
 	}
+
+	return defaulted
 }
 
 // checkInputsMissing checks for missing inputs and returns them as a slice.

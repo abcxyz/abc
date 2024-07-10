@@ -108,6 +108,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	}
 
 	_, err = render.Render(ctx, &render.Params{
+		AcceptDefaults:       c.flags.AcceptDefaults,
 		BackupDir:            backupDir,
 		Backups:              true,
 		Clock:                clock.New(),

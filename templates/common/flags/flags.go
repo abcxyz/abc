@@ -140,3 +140,15 @@ func Verbose(v *bool) *cli.BoolVar {
 		Usage:   "include more output; intended for power users",
 	}
 }
+
+// AcceptDefaults causes template defaults to be accepted automatically when
+// prompting is disabled.
+func AcceptDefaults(a *bool) *cli.BoolVar {
+	return &cli.BoolVar{
+		Name:    "accept-defaults",
+		Target:  a,
+		Default: false,
+		EnvVar:  "ABC_ACCEPT_DEFAULTS",
+		Usage:   "when a template input has a default value, and the user didn't provide a value for that input, and prompting is disabled, this will cause the default value to be silently used.",
+	}
+}

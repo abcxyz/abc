@@ -46,6 +46,9 @@ type NewTestFlags struct {
 
 	// ForceOverwrite lets existing test config file be overwritten.
 	ForceOverwrite bool
+
+	// See common/flags.AcceptDefaults().
+	AcceptDefaults bool
 }
 
 func (r *NewTestFlags) Register(set *cli.FlagSet) {
@@ -54,6 +57,7 @@ func (r *NewTestFlags) Register(set *cli.FlagSet) {
 	f.StringMapVar(flags.Inputs(&r.Inputs))
 
 	f.BoolVar(flags.Prompt(&r.Prompt))
+	f.BoolVar(flags.AcceptDefaults(&r.AcceptDefaults))
 
 	f.BoolVar(&cli.BoolVar{
 		Name:    "force-overwrite",

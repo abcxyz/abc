@@ -26,6 +26,9 @@ import (
 
 // RenderFlags describes what template to render and how.
 type RenderFlags struct {
+	// See common/flags.AcceptDefaults().
+	AcceptDefaults bool
+
 	// Positional arguments:
 
 	// Source is the location of the input template to be rendered.
@@ -117,6 +120,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	f.BoolVar(flags.Prompt(&r.Prompt))
+	f.BoolVar(flags.AcceptDefaults(&r.AcceptDefaults))
 
 	f.BoolVar(&cli.BoolVar{
 		Name:    "manifest",

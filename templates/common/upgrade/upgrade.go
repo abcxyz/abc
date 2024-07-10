@@ -64,6 +64,9 @@ const rejectedPatchSuffix = ".patch.rej"
 
 // Params contains all the arguments to Upgrade().
 type Params struct {
+	// The value of --accept-defaults.
+	AcceptDefaults bool
+
 	// Relative paths where patch reversal has already happened. This is a flag
 	// supplied by the user. This will be set if there were merge conflicts
 	// during patch reversal that were manually resolved by the user.
@@ -396,6 +399,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	}
 
 	renderResult, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
+		AcceptDefaults:          p.AcceptDefaults,
 		Clock:                   p.Clock,
 		Cwd:                     p.CWD,
 		DebugStepDiffs:          p.DebugStepDiffs,
