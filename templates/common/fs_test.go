@@ -530,7 +530,7 @@ func TestCopyRecursive_ForbidSymlinks(t *testing.T) {
 			sourceTempDir := t.TempDir()
 
 			for _, r := range tc.regularFiles {
-				abctestutil.Overwrite(t, sourceTempDir, r, "contents")
+				abctestutil.OverwriteJoin(t, sourceTempDir, r, "contents")
 			}
 			for _, s := range tc.symlinks {
 				path := filepath.Join(sourceTempDir, s)

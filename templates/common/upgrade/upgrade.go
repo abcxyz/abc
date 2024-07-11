@@ -410,7 +410,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		IgnoreUnknownInputs:     true, // The old manifest may have inputs that were removed in the latest template version
 		InputFiles:              p.InputFiles,
 		IncludeFromDestExtraDir: reversedDir,
-		Inputs:                  inputsToMap(oldManifest.Inputs),
+		Inputs:                  sets.UnionMapKeys(p.Inputs, inputsToMap(oldManifest.Inputs)),
 		KeepTempDirs:            p.KeepTempDirs,
 		Manifest:                true,
 		OutDir:                  mergeDir,

@@ -119,6 +119,8 @@ func TestUpgradeAll(t *testing.T) {
 		localEdits                   func(tb testing.TB, installedDir string)
 		dialogSteps                  []prompt.DialogStep
 		prompt                       bool
+		upgradeInputs                map[string]string
+		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
 		wantManifestAfterUpgrade     *manifest.Manifest
 		want                         *Result
@@ -146,7 +148,7 @@ func TestUpgradeAll(t *testing.T) {
 		{
 			// Scenario: an input that did not exist in the old template version
 			// is added, and has a default. The user should be prompted.
-			name: "new_input_with_default",
+			name: "new_input_with_default_should_prompt",
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
@@ -215,6 +217,142 @@ steps:
 				m.OutputFiles = []*manifest.OutputFile{
 					{
 						File: mdl.S("manual_filename.txt"),
+					},
+				}
+			}),
+		},
+
+		{
+			// Scenario: an input that did not exist in the old template version
+			// is added, and has a default. The user provided an --input value
+			// for that flag. The user's value should be used.
+			name: "new_input_with_default_should_use_inputs_from_flags",
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+			wantManifestBeforeUpgrade: outTxtOnlyManifest,
+			upgradeInputs: map[string]string{
+				"rename_to": "filename_from_flag.txt",
+			},
+			templateUnionForUpgrade: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+inputs:
+  - name: "rename_to"
+    default: "default_filename.txt" 
+    desc: "New filename for out.txt"
+steps:
+  - desc: 'include out.txt'
+    action: 'include'
+    params:
+      paths: ['out.txt']
+      as: ['{{.rename_to}}']
+`,
+			},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						Type: Success,
+						NonConflicts: []ActionTaken{
+							{
+								Action: WriteNew,
+								Path:   "filename_from_flag.txt",
+							},
+							{
+								Action:      DeleteAction,
+								Explanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
+								Path:        "out.txt",
+							},
+						},
+						DLMeta:       wantDLMeta,
+						ManifestPath: ".",
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"filename_from_flag.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.Inputs = []*manifest.Input{
+					{
+						Name:  mdl.S("rename_to"),
+						Value: mdl.S("filename_from_flag.txt"),
+					},
+				}
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("filename_from_flag.txt"),
+					},
+				}
+			}),
+		},
+
+		{
+			// Scenario: an input that did not exist in the old template version
+			// is added, and has a default. The user provided an --input-file value
+			// for that flag. The user's values from that file should be used.
+			name: "new_input_with_default_should_use_inputs_from_file",
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+			wantManifestBeforeUpgrade: outTxtOnlyManifest,
+			templateUnionForUpgrade: map[string]string{
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+inputs:
+  - name: "rename_to"
+    default: "default_filename.txt" 
+    desc: "New filename for out.txt"
+steps:
+  - desc: 'include out.txt'
+    action: 'include'
+    params:
+      paths: ['out.txt']
+      as: ['{{.rename_to}}']
+`,
+			},
+			upgradeInputFileContents: `rename_to: value_from_file.txt`,
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						Type: Success,
+						NonConflicts: []ActionTaken{
+							{
+								Action:      DeleteAction,
+								Explanation: "this file was output by the old template but is no longer output by the new template, and there were no local edits",
+								Path:        "out.txt",
+							},
+							{
+								Action: WriteNew,
+								Path:   "value_from_file.txt",
+							},
+						},
+						DLMeta:       wantDLMeta,
+						ManifestPath: ".",
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"value_from_file.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.Inputs = []*manifest.Input{
+					{
+						Name:  mdl.S("rename_to"),
+						Value: mdl.S("value_from_file.txt"),
+					},
+				}
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("value_from_file.txt"),
 					},
 				}
 			}),
@@ -385,7 +523,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				abctestutil.Overwrite(tb, installedDir, "another_file.txt", "my edited contents")
+				abctestutil.OverwriteJoin(tb, installedDir, "another_file.txt", "my edited contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "hello\n",
@@ -494,7 +632,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				abctestutil.Overwrite(tb, installedDir, "out.txt", "my edited contents")
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "my edited contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":   "goodbye",
@@ -662,7 +800,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				abctestutil.Overwrite(tb, installedDir, "out.txt", "modified contents")
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "modified contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "initial contents",
@@ -721,7 +859,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				abctestutil.Overwrite(tb, installedDir, "out.txt", "my cool new file")
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "my cool new file")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "template now outputs this",
@@ -789,7 +927,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				abctestutil.Overwrite(tb, installedDir, "out.txt", "identical contents")
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "identical contents")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"out.txt":             "identical contents",
@@ -846,7 +984,7 @@ steps:
 				}
 			}),
 			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
-				abctestutil.Overwrite(tb, installedDir, "out.txt", "identical contents")
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "identical contents")
 			},
 			templateUnionForUpgrade: map[string]string{
 				"some_other_file.txt": "some other file contents",
@@ -924,7 +1062,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				abctestutil.Overwrite(tb, installedDir, "foo.abcmerge_locally_added", "whatever")
+				abctestutil.OverwriteJoin(tb, installedDir, "foo.abcmerge_locally_added", "whatever")
 			},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			templateUnionForUpgrade: map[string]string{
@@ -1088,7 +1226,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				abctestutil.Overwrite(tb, installedDir, "file.txt", "green is my favorite color\n")
+				abctestutil.OverwriteJoin(tb, installedDir, "file.txt", "green is my favorite color\n")
 			},
 			templateReplacementForUpgrade: map[string]string{
 				"spec.yaml": `
@@ -1313,10 +1451,19 @@ yellow is my favorite color
 				tc.fakeUpgradeDownloaderFactory.outDownloader.sourceDir = templateDir
 			}
 
+			var inputFiles []string
+			if len(tc.upgradeInputFileContents) > 0 {
+				filename := filepath.Join(t.TempDir(), "input_file.yaml")
+				abctestutil.Overwrite(t, filename, tc.upgradeInputFileContents)
+				inputFiles = append(inputFiles, filename)
+			}
+
 			params := &Params{
 				Clock:             clk,
 				CWD:               destDir,
 				FS:                &common.RealFS{},
+				Inputs:            tc.upgradeInputs,
+				InputFiles:        inputFiles,
 				Location:          manifestFullPath,
 				Prompt:            tc.prompt,
 				Stdout:            os.Stdout,
@@ -1470,7 +1617,7 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 	}
 
 	// Now modify the template so there's something to actually do during upgrade
-	abctestutil.Overwrite(t, templateDir, "out.txt", "new contents")
+	abctestutil.OverwriteJoin(t, templateDir, "out.txt", "new contents")
 	result = UpgradeAll(ctx, params)
 	if result.Err != nil {
 		t.Fatal(result.Err)
@@ -1562,8 +1709,8 @@ steps:
 
 	// Simulate the user making some edits to the included-from-destination file
 	// after the render operation but before the upgrade
-	abctestutil.Overwrite(t, destDir1, "file.txt", "green is my favorite color\n")
-	abctestutil.Overwrite(t, destDir2, "file.txt", "green is my favorite color\n")
+	abctestutil.OverwriteJoin(t, destDir1, "file.txt", "green is my favorite color\n")
+	abctestutil.OverwriteJoin(t, destDir2, "file.txt", "green is my favorite color\n")
 
 	templateReplacementForUpgrade := map[string]string{
 		"spec.yaml": `
@@ -1664,7 +1811,7 @@ steps:
 	}
 
 	// Resolve the merge conflict
-	abctestutil.Overwrite(t, destDir1, "file.txt", "purple is my favorite color\n")
+	abctestutil.OverwriteJoin(t, destDir1, "file.txt", "purple is my favorite color\n")
 	abctestutil.Remove(t, destDir1, "file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
@@ -1734,7 +1881,7 @@ steps:
 	}
 
 	// Resolve the merge conflict
-	abctestutil.Overwrite(t, destDir2, "file.txt", "purple is my favorite color\n")
+	abctestutil.OverwriteJoin(t, destDir2, "file.txt", "purple is my favorite color\n")
 	abctestutil.Remove(t, destDir2, "file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
@@ -1931,7 +2078,7 @@ func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
 	mustRender(t, ctx, clk, nil, tempBase, templateDir1, destDir1)
 	mustRender(t, ctx, clk, nil, tempBase, templateDir2, destDir2)
 
-	abctestutil.Overwrite(t, destDir1, "myfile.txt", "my local edits")
+	abctestutil.OverwriteJoin(t, destDir1, "myfile.txt", "my local edits")
 
 	upgradedTemplate1Files := map[string]string{
 		"spec.yaml":  includeDotSpec,
@@ -1980,7 +2127,7 @@ func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
 		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
 	}
 
-	abctestutil.Overwrite(t, destDir1, "myfile.txt", "my resolved contents")
+	abctestutil.OverwriteJoin(t, destDir1, "myfile.txt", "my resolved contents")
 	abctestutil.Remove(t, destDir1, "myfile.txt"+SuffixFromNewTemplate)
 
 	allResult = UpgradeAll(ctx, upgradeParams)
