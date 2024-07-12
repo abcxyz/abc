@@ -13,8 +13,6 @@
 // limitations under the License.
 
 // Package goldentest implements golden test related subcommands.
-// TODO: this should be refactored into a library function so it can be used
-// programmatically.
 package goldentest
 
 // This file implements the "templates golden-test verify" subcommand.

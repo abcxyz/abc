@@ -38,7 +38,6 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/sets"
-	"github.com/pkg/profile"
 )
 
 const (
@@ -102,8 +101,6 @@ func main() {
 	ctx, done := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
-
-	defer profile.Start(profile.ProfilePath("/usr/local/google/home/revell/tmp/profile")).Stop()
 
 	setLogEnvVars()
 	ctx = logging.WithLogger(ctx, logging.NewFromEnv("ABC_"))

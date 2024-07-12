@@ -34,7 +34,7 @@ import (
 // both files are absent).
 //
 // For the purposes of determining the paths in the returned diff, we use the
-// relative path of file1 relative to file1RelTo, and the same for file1. So if
+// relative path of file1 relative to file1RelTo, and the same for file2. So if
 // file1 is "/x/y/z.tzt" and file1RelTo is "/x", then the filename label in the
 // returned diff will be "y/z.txt".
 func RunDiff(ctx context.Context, color bool, file1, file1RelTo, file2, file2RelTo string) (_ string, outErr error) {
