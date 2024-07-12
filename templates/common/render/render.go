@@ -110,7 +110,13 @@ type Params struct {
 
 	// The value of --input, or another source of input values (e.g. the golden
 	// test test.yaml).
-	Inputs map[string]string
+	InputsFromFlags map[string]string
+
+	// This is only set in the case where this template is being rendered as
+	// part of an upgrade operation, and contains the set of inputs that were
+	// saved in the manifest from the previous render operation. They're
+	// separate from the other inputs so they can be given lowest precedence.
+	InputsFromManifest map[string]string
 
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
@@ -230,7 +236,8 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 		FS:                  p.FS,
 		IgnoreUnknownInputs: p.IgnoreUnknownInputs,
 		InputFiles:          p.InputFiles,
-		Inputs:              p.Inputs,
+		Inputs:              p.InputsFromFlags,
+		InputsFromManifest:  p.InputsFromManifest,
 		Prompt:              p.Prompt,
 		Prompter:            p.Prompter,
 		SkipInputValidation: p.SkipInputValidation,

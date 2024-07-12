@@ -1544,7 +1544,7 @@ steps:
 				},
 				IgnoreUnknownInputs: tc.flagIgnoreUnknownInputs,
 				InputFiles:          inputFilePaths,
-				Inputs:              tc.flagInputs,
+				InputsFromFlags:     tc.flagInputs,
 				KeepTempDirs:        tc.flagKeepTempDirs,
 				Manifest:            tc.flagManifest,
 				ManifestOnly:        tc.flagManifestOnly,

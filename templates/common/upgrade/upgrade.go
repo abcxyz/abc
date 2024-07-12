@@ -94,8 +94,8 @@ type Params struct {
 	// The value of --input-file.
 	InputFiles []string
 
-	// The value of --input.
-	Inputs map[string]string
+	// The values from --input.
+	InputsFromFlags map[string]string
 
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
@@ -407,10 +407,10 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		Downloader:              downloader,
 		FS:                      p.FS,
 		GitProtocol:             p.GitProtocol,
-		IgnoreUnknownInputs:     true, // The old manifest may have inputs that were removed in the latest template version
 		InputFiles:              p.InputFiles,
+		InputsFromManifest:      inputsToMap(oldManifest.Inputs),
 		IncludeFromDestExtraDir: reversedDir,
-		Inputs:                  inputsToMap(oldManifest.Inputs),
+		InputsFromFlags:         p.InputsFromFlags,
 		KeepTempDirs:            p.KeepTempDirs,
 		Manifest:                true,
 		OutDir:                  mergeDir,

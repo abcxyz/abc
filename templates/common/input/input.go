@@ -49,6 +49,12 @@ type ResolveParams struct {
 	// The value of --input. Template input values.
 	Inputs map[string]string
 
+	// This is only set in the case where this template is being rendered as
+	// part of an upgrade operation, and contains the set of inputs that were
+	// saved in the manifest from the previous render operation. They're
+	// separate from the other inputs so they can be given lowest precedence.
+	InputsFromManifest map[string]string
+
 	// The value of --input-file. A list of YAML filenames defining template inputs.
 	InputFiles []string
 
@@ -99,8 +105,15 @@ func Resolve(ctx context.Context, rp *ResolveParams) (map[string]string, error) 
 	// the --ignore-unknown-inputs flag.
 	knownFileInputs := filterUnknownInputs(rp.Spec, fileInputs)
 
-	// Order matters: values from --input take precedence over --input-file.
-	inputs := sets.UnionMapKeys(cliInputs, knownFileInputs)
+	// Unknown inputs from manifest files are always ignored regardless of
+	// the --ignore-unknown-inputs flag, because a new template version may
+	// remove an input that was present in an old version, we don't want to
+	// include such superfluous inputs in the render process.
+	knownInputsFromManifest := filterUnknownInputs(rp.Spec, rp.InputsFromManifest)
+
+	// Order matters: values from --input take precedence over --input-file
+	// which in turn take precedence over manifest inputs.
+	inputs := sets.UnionMapKeys(cliInputs, knownFileInputs, knownInputsFromManifest)
 
 	if rp.Prompt {
 		_, ok := rp.Prompter.(fakePrompter)
