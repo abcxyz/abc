@@ -235,6 +235,7 @@ steps:
 			upgradeInputs: map[string]string{
 				"rename_to": "filename_from_flag.txt",
 			},
+			upgradeInputFileContents: `rename_to: value_from_file.txt`, // should be ignored in favor of upgradeInputs
 			templateUnionForUpgrade: map[string]string{
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
@@ -1462,7 +1463,7 @@ yellow is my favorite color
 				Clock:             clk,
 				CWD:               destDir,
 				FS:                &common.RealFS{},
-				Inputs:            tc.upgradeInputs,
+				InputsFromFlags:   tc.upgradeInputs,
 				InputFiles:        inputFiles,
 				Location:          manifestFullPath,
 				Prompt:            tc.prompt,

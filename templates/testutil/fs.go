@@ -255,8 +255,8 @@ func OverwriteJoin(tb testing.TB, dir, name, contents string) {
 	Overwrite(tb, filepath.Join(dir, name), contents)
 }
 
-// OverwriteJoin writes the given contents to the given path, failing the test
-// on error. If the enclosing directory doesn't exist, it will be created.
+// Overwrite writes the given contents to the given path, failing the test on
+// error. If the enclosing directory doesn't exist, it will be created.
 func Overwrite(tb testing.TB, path, contents string) {
 	tb.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

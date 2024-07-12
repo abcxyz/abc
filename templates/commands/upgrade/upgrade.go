@@ -141,7 +141,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		FS:                   &common.RealFS{},
 		GitProtocol:          c.flags.GitProtocol,
 		InputFiles:           c.flags.InputFiles,
-		Inputs:               c.flags.Inputs,
+		InputsFromFlags:      c.flags.Inputs,
 		KeepTempDirs:         c.flags.KeepTempDirs,
 		Location:             absLocation,
 		Prompt:               c.flags.Prompt,
