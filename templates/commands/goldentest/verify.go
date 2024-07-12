@@ -13,6 +13,8 @@
 // limitations under the License.
 
 // Package goldentest implements golden test related subcommands.
+// TODO: this should be refactored into a library function so it can be used
+// programmatically.
 package goldentest
 
 // This file implements the "templates golden-test verify" subcommand.
@@ -112,8 +114,6 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 	}
 	tempTracker.Track(tempDir)
 
-	var merr error
-
 	// Highlight error message color, given diff text might be hundreds lines long.
 	// Only color the text when the result is to displayed at a terminal
 	var red, green func(a ...interface{}) string
@@ -126,129 +126,157 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 		green = fmt.Sprint
 	}
 
-	resultReport := "\nTest Report:\n"
+	var merr error
+	var resultReport strings.Builder
+
+	resultReport.WriteString("\nTest Report:\n")
 
 	for _, tc := range testCases {
-		goldenDataDir := filepath.Join(templateLocation, goldenTestDir, tc.TestName, testDataDir)
-		tempDataDir := filepath.Join(tempDir, goldenTestDir, tc.TestName, testDataDir)
-
-		if !tc.TestConfig.Features.SkipABCRenamed {
-			if err := renameGitDirsAndFiles(tempDataDir); err != nil {
-				return fmt.Errorf("failed renaming git related dirs and files for test case %s: %w", tc.TestName, err)
-			}
+		p := &runTestCaseParams{
+			templateLocation: templateLocation,
+			tempBase:         tempDir,
+			useColor:         useColor,
+			redSprintf:       red,
+			greenSprintf:     green,
 		}
-
-		fileSet := make(map[string]struct{})
-
-		exists, err := common.Exists(goldenDataDir)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
-		if !exists {
-			return fmt.Errorf("no recorded test data in %q, "+
-				"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
-		}
-
-		if err := addTestFiles(fileSet, goldenDataDir); err != nil {
-			return err
-		}
-		if err := addTestFiles(fileSet, tempDataDir); err != nil {
-			return err
-		}
-
-		// Sort the relPaths in alphebetical order.
-		relPaths := make([]string, 0, len(fileSet))
-		for k := range fileSet {
-			relPaths = append(relPaths, k)
-		}
-		sort.Strings(relPaths)
-
-		var tcErr error
-		outputMismatch := false
-		for _, relPath := range relPaths {
-			goldenFile := filepath.Join(goldenDataDir, relPath)
-			tempFile := filepath.Join(tempDataDir, relPath)
-			abcRenameTrimmedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
-			abcRenameTrimmedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
-
-			exists, err := common.Exists(goldenFile)
-			if err != nil {
-				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedGoldenFile, err)
-			}
-			if !exists {
-				failureText := red(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
-				err := fmt.Errorf(failureText)
-				tcErr = errors.Join(tcErr, err)
-				outputMismatch = true
-				continue
-			}
-
-			exists, err = common.Exists(tempFile)
-			if err != nil {
-				return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedTempFile, err)
-			}
-			if !exists {
-				failureText := red(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
-				err := fmt.Errorf(failureText)
-				tcErr = errors.Join(tcErr, err)
-				continue
-			}
-
-			diff, err := run.RunDiff(ctx, useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)
-			if err != nil {
-				return fmt.Errorf("error diffing actual vs expected output: %w", err)
-			}
-
-			if len(diff) > 0 {
-				failureText := red(fmt.Sprintf("-- [%s] file content mismatch", abcRenameTrimmedGoldenFile))
-				err := fmt.Errorf("%s:\n%s", failureText, diff)
-				tcErr = errors.Join(tcErr, err)
-				outputMismatch = true
-			}
-		}
-
-		// verify stdout only when SkipStdout flag is set to false.
-		if !tc.TestConfig.Features.SkipStdout {
-			goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
-			tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
-
-			stdoutDiff, err := run.RunDiff(ctx, useColor, goldenStdoutFile, goldenDataDir, tempStdoutFile, tempDataDir)
-			if err != nil {
-				return fmt.Errorf("failed to compare stdout:%w", err)
-			}
-			if len(stdoutDiff) > 0 {
-				failureText := red("the printed messages differ between the recorded golden output and the actual output")
-				err := fmt.Errorf("%s:\n%s", failureText, stdoutDiff)
-				tcErr = errors.Join(tcErr, err)
-				outputMismatch = true
-			}
-		}
-
-		if outputMismatch {
-			failureText := red(fmt.Sprintf("template location [%s] golden test [%s] didn't match actual output, you might "+
-				"need to run 'record' command to capture it as the new expected output", templateLocation, tc.TestName))
-			err := fmt.Errorf(failureText)
-			tcErr = errors.Join(tcErr, err)
-		}
-
-		if tcErr != nil {
+		if err := runTestCase(ctx, p, tc); err != nil {
 			result := red(fmt.Sprintf("[x] template location [%s] golden test [%s] fails", templateLocation, tc.TestName))
-			tcErr := fmt.Errorf("%s:\n %w", result, tcErr)
+			tcErr := fmt.Errorf("%s:\n %w", result, err)
 			merr = errors.Join(merr, tcErr)
-			resultReport += result
+			resultReport.WriteString(result)
 		} else {
-			resultReport += green(fmt.Sprintf("[✓] template location [%s] golden test [%s] succeeds", templateLocation, tc.TestName))
+			resultReport.WriteString(green(fmt.Sprintf("[✓] template location [%s] golden test [%s] succeeds", templateLocation, tc.TestName)))
 		}
 
-		resultReport += "\n"
+		resultReport.WriteString("\n")
 	}
 
-	// Print test result report.
-	fmt.Println(resultReport)
+	fmt.Println(resultReport.String())
 
 	if merr != nil {
 		return fmt.Errorf("golden test verification failure:\n %w", merr)
 	}
+	return nil
+}
+
+type runTestCaseParams struct {
+	templateLocation string
+	tempBase         string
+	useColor         bool
+
+	// These may not actually use color if stdout is not a terminal.
+	redSprintf, greenSprintf func(...any) string
+}
+
+func runTestCase(ctx context.Context, p *runTestCaseParams, tc *TestCase) error {
+	goldenDataDir := filepath.Join(p.templateLocation, goldenTestDir, tc.TestName, testDataDir)
+	tempDataDir := filepath.Join(p.tempBase, goldenTestDir, tc.TestName, testDataDir)
+
+	if !tc.TestConfig.Features.SkipABCRenamed {
+		if err := renameGitDirsAndFiles(tempDataDir); err != nil {
+			return fmt.Errorf("failed renaming git related dirs and files for test case %s: %w", tc.TestName, err)
+		}
+	}
+
+	fileSet := make(map[string]struct{})
+
+	exists, err := common.Exists(goldenDataDir)
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+	if !exists {
+		return fmt.Errorf("no recorded test data in %q, "+
+			"please run `record` command to record the template rendering result to golden tests", goldenDataDir)
+	}
+
+	if err := addTestFiles(fileSet, goldenDataDir); err != nil {
+		return err
+	}
+	if err := addTestFiles(fileSet, tempDataDir); err != nil {
+		return err
+	}
+
+	// Sort the relPaths in alphebetical order.
+	relPaths := make([]string, 0, len(fileSet))
+	for k := range fileSet {
+		relPaths = append(relPaths, k)
+	}
+	sort.Strings(relPaths)
+
+	var merr error
+	anyDiffErrs := false
+	for _, relPath := range relPaths {
+		if err := diffOneFile(ctx, p, goldenDataDir, tempDataDir, relPath); err != nil {
+			merr = errors.Join(merr, err)
+			anyDiffErrs = true
+		}
+	}
+
+	// verify stdout only when SkipStdout flag is set to false.
+	if !tc.TestConfig.Features.SkipStdout {
+		goldenStdoutFile := filepath.Join(goldenDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+		tempStdoutFile := filepath.Join(tempDataDir, common.ABCInternalDir, common.ABCInternalStdout)
+
+		stdoutDiff, err := run.RunDiff(ctx, p.useColor, goldenStdoutFile, goldenDataDir, tempStdoutFile, tempDataDir)
+		if err != nil {
+			return fmt.Errorf("failed to compare stdout:%w", err)
+		}
+		if len(stdoutDiff) > 0 {
+			failureText := p.redSprintf("the printed messages differ between the recorded golden output and the actual output")
+			err := fmt.Errorf("%s:\n%s", failureText, stdoutDiff)
+			merr = errors.Join(merr, err)
+			anyDiffErrs = true
+		}
+	}
+
+	if anyDiffErrs {
+		failureText := p.redSprintf(fmt.Sprintf("template location [%s] golden test [%s] didn't match actual output, you might "+
+			"need to run 'record' command to capture it as the new expected output", p.templateLocation, tc.TestName))
+		err := fmt.Errorf(failureText)
+		merr = errors.Join(merr, err)
+	}
+
+	return merr
+}
+
+func diffOneFile(ctx context.Context, p *runTestCaseParams, goldenDataDir, tempDataDir, relPath string) error {
+	goldenFile := filepath.Join(goldenDataDir, relPath)
+	tempFile := filepath.Join(tempDataDir, relPath)
+	abcRenameTrimmedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
+	abcRenameTrimmedTempFile := strings.TrimSuffix(tempFile, abcRenameSuffix)
+
+	// TODO(revell): try rewriting RunDiff to return error if neither file
+	// exists, then these can go on the "if RunDiff returns error" branch
+	// instead of running every time.
+	exists, err := common.Exists(goldenFile)
+	if err != nil {
+		return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedGoldenFile, err)
+	}
+
+	if !exists {
+		failureText := p.redSprintf(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
+		return fmt.Errorf(failureText)
+	}
+
+	exists, err = common.Exists(tempFile)
+	if err != nil {
+		return fmt.Errorf("failed to read (%s): %w", abcRenameTrimmedTempFile, err)
+	}
+	if !exists {
+		failureText := p.redSprintf(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
+		return fmt.Errorf(failureText)
+	}
+
+	diff, err := run.RunDiff(ctx, p.useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)
+	if err != nil {
+		return fmt.Errorf("error diffing actual vs expected output: %w", err)
+	}
+
+	if len(diff) > 0 {
+		failureText := p.redSprintf(fmt.Sprintf("-- [%s] file content mismatch", abcRenameTrimmedGoldenFile))
+		return fmt.Errorf("%s:\n%s", failureText, diff)
+	}
+
 	return nil
 }
 
