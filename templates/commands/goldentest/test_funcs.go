@@ -201,7 +201,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		OutDir:              testDir,
 		Downloader:          &templatesource.LocalDownloader{SrcPath: templateDir},
 		FS:                  &common.RealFS{},
-		Inputs:              varValuesToMap(tc.TestConfig.Inputs),
+		InputsFromFlags:     varValuesToMap(tc.TestConfig.Inputs),
 		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
 		SourceForMessages:   templateDir,
 		Stdout:              stdoutBuf,

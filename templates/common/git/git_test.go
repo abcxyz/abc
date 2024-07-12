@@ -61,7 +61,7 @@ func TestLocalTags(t *testing.T) {
 		t.Fatalf("got %d tags, but expected 0 tags in an empty repo", len(got))
 	}
 
-	abctestutil.Overwrite(t, tempDir, "myfile1.txt", "some contents")
+	abctestutil.OverwriteJoin(t, tempDir, "myfile1.txt", "some contents")
 
 	// If we don't do this, there will be an error on commit
 	mustRun(ctx, t, "git", "config", "-f", tempDir+"/.git/config", "user.email", "fake@example.com")
@@ -80,7 +80,7 @@ func TestLocalTags(t *testing.T) {
 		t.Fatalf("got tags %v, want %v", got, want)
 	}
 
-	abctestutil.Overwrite(t, tempDir, "myfile2.txt", "some contents")
+	abctestutil.OverwriteJoin(t, tempDir, "myfile2.txt", "some contents")
 	mustRun(ctx, t, "git", "-C", tempDir, "add", "-A")
 	mustRun(ctx, t, "git", "-C", tempDir, "commit", "--no-gpg-sign", "--author", "nobody <nobody>", "-m", "my second commit")
 	mustRun(ctx, t, "git", "-C", tempDir, "tag", "mytag2")
@@ -276,10 +276,10 @@ func TestCheckout(t *testing.T) {
 
 			ctx := context.Background()
 			if len(tc.branch) > 0 {
-				abctestutil.Overwrite(t, tempDir, ".git/refs/heads/"+tc.branch, abctestutil.MinimalGitHeadSHA)
+				abctestutil.OverwriteJoin(t, tempDir, ".git/refs/heads/"+tc.branch, abctestutil.MinimalGitHeadSHA)
 			}
 			if len(tc.tag) > 0 {
-				abctestutil.Overwrite(t, tempDir, ".git/refs/tags/"+tc.tag, abctestutil.MinimalGitHeadSHA)
+				abctestutil.OverwriteJoin(t, tempDir, ".git/refs/tags/"+tc.tag, abctestutil.MinimalGitHeadSHA)
 			}
 			err := Checkout(ctx, tc.version, tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

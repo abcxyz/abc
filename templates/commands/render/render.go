@@ -121,7 +121,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		FS:                   fs,
 		GitProtocol:          c.flags.GitProtocol,
 		IgnoreUnknownInputs:  c.flags.IgnoreUnknownInputs,
-		Inputs:               c.flags.Inputs,
+		InputsFromFlags:      c.flags.Inputs,
 		InputFiles:           c.flags.InputFiles,
 		KeepTempDirs:         c.flags.KeepTempDirs,
 		Manifest:             c.flags.Manifest,

@@ -247,16 +247,22 @@ func TestMustGlob(tb testing.TB, glob string) (string, bool) {
 	panic("unreachable") // silence compiler warning for "missing return"
 }
 
-// Overwrite writes the given contents to the path created by filepath.Join(dir,
-// name), failing the test on error. If the enclosing directory doesn't exist,
-// it will be created.
-func Overwrite(tb testing.TB, dir, name, contents string) {
+// OverwriteJoin writes the given contents to the path created by
+// filepath.Join(dir, name), failing the test on error. If the enclosing
+// directory doesn't exist, it will be created.
+func OverwriteJoin(tb testing.TB, dir, name, contents string) {
 	tb.Helper()
-	filename := filepath.Join(dir, name)
-	if err := os.MkdirAll(filepath.Dir(filename), 0o700); err != nil {
+	Overwrite(tb, filepath.Join(dir, name), contents)
+}
+
+// Overwrite writes the given contents to the given path, failing the test on
+// error. If the enclosing directory doesn't exist, it will be created.
+func Overwrite(tb testing.TB, path, contents string) {
+	tb.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		tb.Fatal(err)
 	}
-	if err := os.WriteFile(filename, []byte(contents), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
 		tb.Fatal(err)
 	}
 }
@@ -271,7 +277,7 @@ func Prepend(tb testing.TB, dir, baseName, contents string) {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	Overwrite(tb, dir, baseName, contents+string(buf))
+	OverwriteJoin(tb, dir, baseName, contents+string(buf))
 }
 
 func Remove(tb testing.TB, dir, baseName string) {

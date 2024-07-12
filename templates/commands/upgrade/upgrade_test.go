@@ -88,7 +88,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				abctestutil.Overwrite(tb, installedDir, "greet.txt", "goodbye\n")
+				abctestutil.OverwriteJoin(tb, installedDir, "greet.txt", "goodbye\n")
 			},
 			upgradedTemplate: map[string]string{
 				"spec.yaml": includeDotSpec,
@@ -109,8 +109,8 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				abctestutil.Overwrite(tb, installedDir, "greet.txt", "hello, mars\n")
-				abctestutil.Overwrite(tb, installedDir, "color.txt", "red\n")
+				abctestutil.OverwriteJoin(tb, installedDir, "greet.txt", "hello, mars\n")
+				abctestutil.OverwriteJoin(tb, installedDir, "color.txt", "red\n")
 			},
 			wantExitCode: 1,
 			wantErr:      []string{"exit code 1"},
@@ -159,7 +159,7 @@ steps:
 			},
 			localEdits: func(tb testing.TB, installedDir string) {
 				tb.Helper()
-				abctestutil.Overwrite(tb, installedDir, "hello.txt", "a\nY\nc\n")
+				abctestutil.OverwriteJoin(tb, installedDir, "hello.txt", "a\nY\nc\n")
 			},
 			upgradedTemplate: map[string]string{
 				"spec.yaml": `
