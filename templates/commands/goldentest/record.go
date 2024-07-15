@@ -102,7 +102,7 @@ func recordTestCases(ctx context.Context, templateLocation string, testNames []s
 
 	tempDir, err := tempTracker.MkdirTempTracked("", "record-testcase-")
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	err = renderTemplateTestCases(ctx, testCases, templateLocation, tempDir)
 	if err != nil {

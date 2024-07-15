@@ -104,7 +104,7 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if errors.Is(err, context.Canceled) {
 		// Any other errors besides context.Canceled will be processed in the
 		// following loop.
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	var resultReport strings.Builder
@@ -184,7 +184,7 @@ func verify(ctx context.Context, pool *workerpool.Pool[string], templateLocation
 		if err := pool.Do(ctx, workerFunc); err != nil {
 			// The only way pool.Do() can return error is if the context is
 			// canceled.
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 
