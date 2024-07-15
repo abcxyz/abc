@@ -31,7 +31,6 @@ import (
 	"github.com/abcxyz/abc/templates/common/errs"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/specutil"
-	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	"github.com/abcxyz/abc/templates/model"
 	"github.com/abcxyz/abc/templates/model/decode"
@@ -164,26 +163,22 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 	return out, nil
 }
 
-// renderTestCases render all test cases into a temporary directory.
-func renderTestCases(ctx context.Context, testCases []*TestCase, location string) (string, error) {
-	tempDir, err := os.MkdirTemp("", tempdir.GoldenTestRenderNamePart)
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-
+// renderTemplateTestCases render all test cases for a single template into a
+// temporary directory.
+func renderTemplateTestCases(ctx context.Context, testCases []*TestCase, templateDir, tempDir string) error {
 	var merr error
 	for _, tc := range testCases {
-		if err := renderTestCase(ctx, location, tempDir, tc); err != nil {
-			merr = errors.Join(merr, fmt.Errorf("failed to render test case [%s] for template location [%s]: %w", tc.TestName, location, err))
+		if err := renderTestCase(ctx, templateDir, tempDir, tc); err != nil {
+			merr = errors.Join(merr, fmt.Errorf("failed to render test case [%s] for template location [%s]: %w", tc.TestName, templateDir, err))
 		}
 	}
 	if merr != nil {
-		return "", fmt.Errorf("failed to render golden tests: %w", merr)
+		return fmt.Errorf("failed to render golden tests: %w", merr)
 	}
-	return tempDir, nil
+	return nil
 }
 
-// renderTestCase executes the "template render" command based upon test config.
+// renderTestCase renders a single test case for a single template.
 func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *TestCase) error {
 	testDir := filepath.Join(outputDir, goldenTestDir, tc.TestName, testDataDir)
 

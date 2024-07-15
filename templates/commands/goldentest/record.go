@@ -100,10 +100,11 @@ func recordTestCases(ctx context.Context, templateLocation string, testNames []s
 	tempTracker := tempdir.NewDirTracker(rfs, false)
 	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
 
-	// Create a temporary directory to validate golden tests rendered with no
-	// error. If any test fails, no data should be written to file system
-	// for atomicity purpose.
-	tempDir, err := renderTestCases(ctx, testCases, templateLocation)
+	tempDir, err := tempTracker.MkdirTempTracked("", "record-testcase-")
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+	err = renderTemplateTestCases(ctx, testCases, templateLocation, tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to render test cases: %w", err)
 	}
