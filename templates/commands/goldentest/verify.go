@@ -25,6 +25,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -36,6 +37,7 @@ import (
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/workerpool"
 )
 
 type VerifyCommand struct {
@@ -85,14 +87,46 @@ func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to crawl template locations: %w", err)
 	}
+
+	pool := workerpool.New[string](&workerpool.Config{
+		// Concurrency is larger than the number of CPUs because the bottleneck
+		// is not CPU cycles. We just want to do I/O concurrently. The constant
+		// multiplier was chosen arbitrarily.
+		Concurrency: int64(runtime.NumCPU()) * 4,
+	})
+
 	var merr error
 	for _, templateLocation := range templateLocations {
-		merr = errors.Join(merr, verify(ctx, templateLocation, c.flags.TestNames, c.Stdout()))
+		merr = errors.Join(merr, verify(ctx, pool, templateLocation, c.flags.TestNames, c.Stdout()))
 	}
+
+	results, err := pool.Done(ctx)
+	if errors.Is(err, context.Canceled) {
+		// Any other errors besides context.Canceled will be processed in the
+		// following loop.
+		return err
+	}
+
+	var resultReport strings.Builder
+	resultReport.WriteString("\n")
+	for _, result := range results {
+		if result.Error != nil {
+			merr = errors.Join(merr, result.Error)
+		}
+		resultReport.WriteString(result.Value)
+		resultReport.WriteString("\n")
+	}
+
+	fmt.Println(resultReport.String())
+
+	if merr != nil {
+		return fmt.Errorf("golden test verification failure:\n %w", merr)
+	}
+
 	return merr
 }
 
-func verify(ctx context.Context, templateLocation string, testNames []string, stdout io.Writer) (rErr error) {
+func verify(ctx context.Context, pool *workerpool.Pool[string], templateLocation string, testNames []string, stdout io.Writer) error {
 	logger := logging.FromContext(ctx)
 	logger.InfoContext(ctx, "verifying test for template location", "template_location", templateLocation)
 	testCases, err := parseTestCases(ctx, templateLocation, testNames)
@@ -101,16 +135,6 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 	}
 
 	fs := &common.RealFS{}
-
-	tempTracker := tempdir.NewDirTracker(fs, false)
-	defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
-
-	// Create a temporary directory to render golden tests
-	tempDir, err := renderTestCases(ctx, testCases, templateLocation)
-	if err != nil {
-		return fmt.Errorf("failed to render test cases: %w", err)
-	}
-	tempTracker.Track(tempDir)
 
 	// Highlight error message color, given diff text might be hundreds lines long.
 	// Only color the text when the result is to displayed at a terminal
@@ -124,40 +148,50 @@ func verify(ctx context.Context, templateLocation string, testNames []string, st
 		green = fmt.Sprint
 	}
 
-	var merr error
-	var resultReport strings.Builder
-
-	resultReport.WriteString("\nTest Report:\n")
-
 	for _, tc := range testCases {
-		p := &runTestCaseParams{
-			templateLocation: templateLocation,
-			tempBase:         tempDir,
-			useColor:         useColor,
-			redSprintf:       red,
-			greenSprintf:     green,
-		}
-		if err := runTestCase(ctx, p, tc); err != nil {
-			result := red(fmt.Sprintf("[x] template location [%s] golden test [%s] fails", templateLocation, tc.TestName))
-			tcErr := fmt.Errorf("%s:\n %w", result, err)
-			merr = errors.Join(merr, tcErr)
-			resultReport.WriteString(result)
-		} else {
-			resultReport.WriteString(green(fmt.Sprintf("[✓] template location [%s] golden test [%s] succeeds", templateLocation, tc.TestName)))
+		tc := tc
+
+		workerFunc := func() (_ string, rErr error) {
+			tempTracker := tempdir.NewDirTracker(fs, false)
+			defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
+
+			tempDir, err := tempTracker.MkdirTempTracked("", "verify-testcase-"+tc.TestName+"-")
+			if err != nil {
+				return "", fmt.Errorf("failed creating temp directory: %w", err)
+			}
+
+			err = renderTemplateTestCases(ctx, testCases, templateLocation, tempDir)
+			if err != nil {
+				return "", fmt.Errorf("failed to render test cases: %w", err)
+			}
+			tempTracker.Track(tempDir)
+
+			p := &diffOutputsOneTestParams{
+				templateLocation: templateLocation,
+				tempBase:         tempDir,
+				useColor:         useColor,
+				redSprintf:       red,
+				greenSprintf:     green,
+			}
+
+			if err := diffOutputsOneTest(ctx, p, tc); err != nil {
+				result := red(fmt.Sprintf("[x] template location [%s] golden test [%s] fails", templateLocation, tc.TestName))
+				return "", fmt.Errorf("%s:\n %w", result, err)
+			}
+			return green(fmt.Sprintf("[✓] template location [%s] golden test [%s] succeeds", templateLocation, tc.TestName)), nil
 		}
 
-		resultReport.WriteString("\n")
+		if err := pool.Do(ctx, workerFunc); err != nil {
+			// The only way pool.Do() can return error is if the context is
+			// canceled.
+			return err
+		}
 	}
 
-	fmt.Println(resultReport.String())
-
-	if merr != nil {
-		return fmt.Errorf("golden test verification failure:\n %w", merr)
-	}
 	return nil
 }
 
-type runTestCaseParams struct {
+type diffOutputsOneTestParams struct {
 	templateLocation string
 	tempBase         string
 	useColor         bool
@@ -166,7 +200,9 @@ type runTestCaseParams struct {
 	redSprintf, greenSprintf func(...any) string
 }
 
-func runTestCase(ctx context.Context, p *runTestCaseParams, tc *TestCase) error {
+// diffOutputsOneTest checks the got vs want outputs for a single test and
+// returns an error if they differ.
+func diffOutputsOneTest(ctx context.Context, p *diffOutputsOneTestParams, tc *TestCase) error {
 	goldenDataDir := filepath.Join(p.templateLocation, goldenTestDir, tc.TestName, testDataDir)
 	tempDataDir := filepath.Join(p.tempBase, goldenTestDir, tc.TestName, testDataDir)
 
@@ -237,7 +273,7 @@ func runTestCase(ctx context.Context, p *runTestCaseParams, tc *TestCase) error 
 	return merr
 }
 
-func diffOneFile(ctx context.Context, p *runTestCaseParams, goldenDataDir, tempDataDir, relPath string) error {
+func diffOneFile(ctx context.Context, p *diffOutputsOneTestParams, goldenDataDir, tempDataDir, relPath string) error {
 	goldenFile := filepath.Join(goldenDataDir, relPath)
 	tempFile := filepath.Join(tempDataDir, relPath)
 	abcRenameTrimmedGoldenFile := strings.TrimSuffix(goldenFile, abcRenameSuffix)
