@@ -18,6 +18,8 @@ package upgrade
 import (
 	"context"
 	"fmt"
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"path/filepath"
 	"strings"
 
@@ -123,6 +125,10 @@ To resolve this conflict, please manually apply the rejected hunks in the given
 )
 
 func (c *Command) Run(ctx context.Context, args []string) error {
+	mClient := metrics.FromContext(ctx)
+	cleanup := wrapper.WriteMetric(ctx, mClient, "command_upgrade", 1)
+	defer cleanup()
+
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}

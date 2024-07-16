@@ -21,6 +21,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"os"
 	"path/filepath"
 
@@ -72,6 +74,10 @@ func (c *NewTestCommand) Flags() *cli.FlagSet {
 
 func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	logger := logging.FromContext(ctx)
+
+	mClient := metrics.FromContext(ctx)
+	cleanup := wrapper.WriteMetric(ctx, mClient, "command_goldentest_new", 1)
+	defer cleanup()
 
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)

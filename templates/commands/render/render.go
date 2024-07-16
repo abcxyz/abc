@@ -20,6 +20,8 @@ package render
 import (
 	"context"
 	"fmt"
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -74,6 +76,10 @@ func (c *Command) Flags() *cli.FlagSet {
 }
 
 func (c *Command) Run(ctx context.Context, args []string) error {
+	mClient := metrics.FromContext(ctx)
+	cleanup := wrapper.WriteMetric(ctx, mClient, "command_render", 1)
+	defer cleanup()
+
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"os"
 	"os/signal"
 	"runtime"
@@ -28,7 +29,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/abcxyz/abc-updater/pkg/abcupdater"
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc-updater/pkg/updater"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
@@ -136,23 +138,62 @@ func setLogEnvVars() {
 	}
 }
 
-func realMain(ctx context.Context) error {
-	if err := checkSupportedOS(); err != nil {
-		return err
-	}
-
+func checkVersion(ctx context.Context) func() {
 	// Only check for updates if not built from HEAD.
 	if version.Version != "source" {
 		// Timeout updater after 1 second.
 		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
-		defer updaterDone()
-		report := abcupdater.CheckAppVersion(updaterCtx, &abcupdater.CheckVersionParams{
+		report := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
 			AppID:   version.Name,
 			Version: version.Version,
-		}, func(s string) { fmt.Fprintf(os.Stderr, "\n%s\n", s) })
-
-		defer report()
+		})
+		return func() {
+			logger := logging.FromContext(ctx)
+			if msg, err := report(); err != nil {
+				logger.DebugContext(ctx, "failed to grab update definitions", "err", err.Error())
+			} else {
+				logger.InfoContext(ctx, fmt.Sprintf("\n%s\n", msg))
+			}
+			updaterDone()
+		}
 	}
+	return func() {}
+}
+
+func realMain(ctx context.Context) error {
+	start := time.Now()
+	if err := checkSupportedOS(); err != nil {
+		return err
+	}
+
+	updateResult := checkVersion(ctx)
+	defer updateResult()
+
+	mClient, err := metrics.New(ctx, version.Name, version.Version)
+	if err != nil {
+		fmt.Printf("metric client creation failed: %v\n", err)
+	}
+	ctx = metrics.WithClient(ctx, mClient)
+	defer func() {
+		if r := recover(); r != nil {
+			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer cancel()
+			foo := wrapper.WriteMetric(ctx, mClient, "panics", 1)
+			defer foo()
+			panic(r)
+		}
+	}()
+
+	cleanup := wrapper.WriteMetric(ctx, mClient, "runs", 1)
+	defer cleanup()
+
+	// TODO: This will cause a synchronous metrics call, may be way too slow.
+	defer func() {
+		// Intentionally leaking closer, otherwise there is a race condition.
+		ctx, _ := context.WithTimeout(ctx, 200*time.Millisecond)
+		cleanup := wrapper.WriteMetric(ctx, mClient, "runtime_millis", time.Now().Sub(start).Milliseconds())
+		defer cleanup()
+	}()
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }
