@@ -21,8 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/abcxyz/abc-updater/pkg/metrics"
-	"github.com/abcxyz/abc/internal/wrapper"
 	"io"
 	"io/fs"
 	"os"
@@ -34,6 +32,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/run"
 	"github.com/abcxyz/abc/templates/common/tempdir"

@@ -18,14 +18,14 @@ package upgrade
 import (
 	"context"
 	"fmt"
-	"github.com/abcxyz/abc-updater/pkg/metrics"
-	"github.com/abcxyz/abc/internal/wrapper"
 	"path/filepath"
 	"strings"
 
 	"github.com/alessio/shellescape"
 	"github.com/benbjohnson/clock"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/upgrade"
 	"github.com/abcxyz/pkg/cli"

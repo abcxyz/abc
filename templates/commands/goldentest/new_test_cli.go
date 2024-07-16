@@ -21,14 +21,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/abcxyz/abc-updater/pkg/metrics"
-	"github.com/abcxyz/abc/internal/wrapper"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
 	"github.com/abcxyz/abc/internal/version"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"

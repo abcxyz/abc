@@ -18,11 +18,11 @@ package describe
 import (
 	"context"
 	"fmt"
-	"github.com/abcxyz/abc-updater/pkg/metrics"
-	"github.com/abcxyz/abc/internal/wrapper"
 	"io"
 	"os"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"

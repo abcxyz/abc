@@ -20,8 +20,6 @@ package render
 import (
 	"context"
 	"fmt"
-	"github.com/abcxyz/abc-updater/pkg/metrics"
-	"github.com/abcxyz/abc/internal/wrapper"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -29,6 +27,8 @@ import (
 
 	"github.com/benbjohnson/clock"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
