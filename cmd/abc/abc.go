@@ -149,8 +149,8 @@ func checkVersion(ctx context.Context) func() {
 		})
 		return func() {
 			logger := logging.FromContext(ctx)
-			if msg, err := report(); err != nil {
-				logger.DebugContext(ctx, "failed to grab update definitions", "err", err.Error())
+			if msg, err := results(); err != nil {
+				logger.DebugContext(ctx, "failed to check for updates", "err", err.Error())
 			} else if msg != "" {
 				logger.InfoContext(ctx, fmt.Sprintf("\n%s\n", msg))
 			}
@@ -161,10 +161,6 @@ func checkVersion(ctx context.Context) func() {
 }
 
 func realMain(ctx context.Context) error {
-	if err := checkSupportedOS(); err != nil {
-		return err
-	}
-
 	start := time.Now()
 	if err := checkSupportedOS(); err != nil {
 		return err
