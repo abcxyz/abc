@@ -25,12 +25,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/posener/complete"
-	"github.com/posener/complete/v2/predict"
 )
 
 type RecordCommand struct {

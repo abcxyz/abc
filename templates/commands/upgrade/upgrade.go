@@ -23,7 +23,7 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/benbjohnson/clock"
-	"github.com/posener/complete"
+	"github.com/posener/complete/v2"
 	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc/templates/common"

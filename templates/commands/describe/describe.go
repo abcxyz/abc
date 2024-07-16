@@ -21,14 +21,15 @@ import (
 	"io"
 	"os"
 
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/posener/complete"
-	"github.com/posener/complete/v2/predict"
 )
 
 type Command struct {

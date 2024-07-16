@@ -24,6 +24,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc/internal/version"
@@ -37,8 +39,6 @@ import (
 	"github.com/abcxyz/abc/templates/model/header"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/posener/complete"
-	"github.com/posener/complete/v2/predict"
 )
 
 type NewTestCommand struct {

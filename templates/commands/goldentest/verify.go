@@ -31,7 +31,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
-	"github.com/posener/complete"
+	"github.com/posener/complete/v2"
 	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc/templates/common"
