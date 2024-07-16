@@ -27,6 +27,8 @@ import (
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	spec "github.com/abcxyz/abc/templates/model/spec/v1beta6"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/posener/complete"
+	"github.com/posener/complete/v2/predict"
 )
 
 type Command struct {
@@ -65,6 +67,10 @@ func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
+}
+
+func (c *Command) PredictArgs() complete.Predictor {
+	return predict.Dirs("")
 }
 
 type runParams struct {

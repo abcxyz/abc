@@ -37,6 +37,8 @@ import (
 	"github.com/abcxyz/abc/templates/model/header"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/posener/complete"
+	"github.com/posener/complete/v2/predict"
 )
 
 type NewTestCommand struct {
@@ -68,6 +70,10 @@ func (c *NewTestCommand) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
+}
+
+func (c *NewTestCommand) PredictArgs() complete.Predictor {
+	return predict.Dirs("")
 }
 
 func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {

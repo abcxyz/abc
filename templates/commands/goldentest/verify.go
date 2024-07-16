@@ -31,6 +31,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
+	"github.com/posener/complete"
+	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/run"
@@ -72,6 +74,10 @@ func (c *VerifyCommand) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
+}
+
+func (c *VerifyCommand) PredictArgs() complete.Predictor {
+	return predict.Dirs("")
 }
 
 func (c *VerifyCommand) Run(ctx context.Context, args []string) (rErr error) {

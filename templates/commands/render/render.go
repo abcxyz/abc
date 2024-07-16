@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
+	"github.com/posener/complete"
+	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
@@ -71,6 +73,10 @@ func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
+}
+
+func (c *Command) PredictArgs() complete.Predictor {
+	return predict.Dirs("")
 }
 
 func (c *Command) Run(ctx context.Context, args []string) error {
