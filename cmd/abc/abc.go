@@ -143,7 +143,7 @@ func checkVersion(ctx context.Context) func() {
 	if version.Version != "source" {
 		// Timeout updater after 1 second.
 		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
-		report := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
+		results := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
 			AppID:   version.Name,
 			Version: version.Version,
 		})
@@ -151,7 +151,7 @@ func checkVersion(ctx context.Context) func() {
 			logger := logging.FromContext(ctx)
 			if msg, err := report(); err != nil {
 				logger.DebugContext(ctx, "failed to grab update definitions", "err", err.Error())
-			} else {
+			} else if msg != "" {
 				logger.InfoContext(ctx, fmt.Sprintf("\n%s\n", msg))
 			}
 			updaterDone()
@@ -161,6 +161,10 @@ func checkVersion(ctx context.Context) func() {
 }
 
 func realMain(ctx context.Context) error {
+	if err := checkSupportedOS(); err != nil {
+		return err
+	}
+
 	start := time.Now()
 	if err := checkSupportedOS(); err != nil {
 		return err
@@ -173,6 +177,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		fmt.Printf("metric client creation failed: %v\n", err)
 	}
+
 	ctx = metrics.WithClient(ctx, mClient)
 	defer func() {
 		if r := recover(); r != nil {
