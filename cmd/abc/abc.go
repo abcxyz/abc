@@ -28,7 +28,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/abcxyz/abc-updater/pkg/abcupdater"
+	"github.com/abcxyz/abc-updater/pkg/updater"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
@@ -146,12 +146,20 @@ func realMain(ctx context.Context) error {
 		// Timeout updater after 1 second.
 		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
 		defer updaterDone()
-		report := abcupdater.CheckAppVersion(updaterCtx, &abcupdater.CheckVersionParams{
+		results := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
 			AppID:   version.Name,
 			Version: version.Version,
-		}, func(s string) { fmt.Fprintf(os.Stderr, "\n%s\n", s) })
+		})
 
-		defer report()
+		defer func() {
+			message, err := results()
+			if err != nil {
+				logger := logging.FromContext(ctx)
+				logger.InfoContext(ctx, "failed to check for new versions", "error", err)
+				return
+			}
+			fmt.Fprintf(os.Stderr, "\n%s\n", message)
+		}()
 	}
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
