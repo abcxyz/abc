@@ -56,12 +56,6 @@ template was originally rendered, usually found in the .abc subdirectory.
 `
 }
 
-// Hidden implements cli.Command.
-func (c *Command) Hidden() bool {
-	// TODO(upgrade): unhide the upgrade command when it's ready.
-	return true
-}
-
 func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
