@@ -219,12 +219,12 @@ func checkSupportedOS() error {
 }
 
 func checkDarwinVersion(utsRelease string) error {
-	// We support Mac OS 13 and newer, which corresponds to Darwin kernel
+	// We support macOS 13 and newer, which corresponds to Darwin kernel
 	// version 22 and newer. The mappings from macOS version to Darwin
 	// version are taken from
 	// https://en.wikipedia.org/wiki/Darwin_(operating_system)#Release_history.
 	// Regrettably, the unix.Uname() function only gives darwin version, not
-	// macos version.
+	// macOS version.
 	const (
 		// These two must match. Whenever one is changed, the other must
 		// also be changed to match.
