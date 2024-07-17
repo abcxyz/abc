@@ -188,11 +188,6 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 				action:           WriteNew,
 				humanExplanation: "this file was not modified by the user, and the new template has changes to this file",
 			}, nil
-		case o.oldFileMatchesOldHash == mismatch:
-			return &mergeDecision{
-				action:           EditEditConflict,
-				humanExplanation: "this file was modified by the user, and the template wants to update it, so manual conflict resolution is required",
-			}, nil
 		case o.oldFileMatchesOldHash == absent:
 			// This is the case where the new template has a version of this
 			// file that's different than the previous template version, but the
@@ -203,6 +198,18 @@ func decideMerge(o *decideMergeParams) (*mergeDecision, error) {
 			return &mergeDecision{
 				action:           DeleteEditConflict,
 				humanExplanation: "this file was deleted by the user, and the new template has updates, so manual conflict resolution is required",
+			}, nil
+		// Below this line, we know that o.oldFileMatchesOldHash == mismatch,
+		// since the other possibilities were already handled.
+		case o.oldFileMatchesNewHash == match:
+			return &mergeDecision{
+				action:           Noop,
+				humanExplanation: "the user's locally modified file is identical to the upgraded template's output file, so no changes are needed",
+			}, nil
+		default:
+			return &mergeDecision{
+				action:           EditEditConflict,
+				humanExplanation: "this file was modified by the user, and the template wants to update it, so manual conflict resolution is required",
 			}, nil
 		}
 	}

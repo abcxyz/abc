@@ -25,6 +25,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
+
 	"github.com/abcxyz/abc-updater/pkg/metrics"
 	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
@@ -67,6 +70,10 @@ func (c *RecordCommand) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
+}
+
+func (c *RecordCommand) PredictArgs() complete.Predictor {
+	return predict.Dirs("")
 }
 
 func (c *RecordCommand) Run(ctx context.Context, args []string) error {

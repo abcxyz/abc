@@ -23,6 +23,8 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/benbjohnson/clock"
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc-updater/pkg/metrics"
 	"github.com/abcxyz/abc/internal/wrapper"
@@ -58,16 +60,14 @@ template was originally rendered, usually found in the .abc subdirectory.
 `
 }
 
-// Hidden implements cli.Command.
-func (c *Command) Hidden() bool {
-	// TODO(upgrade): unhide the upgrade command when it's ready.
-	return true
-}
-
 func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
+}
+
+func (c *Command) PredictArgs() complete.Predictor {
+	return predict.Files("") // "Files" will predict both files and dirs
 }
 
 const (

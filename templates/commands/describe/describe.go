@@ -21,6 +21,9 @@ import (
 	"io"
 	"os"
 
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
+
 	"github.com/abcxyz/abc-updater/pkg/metrics"
 	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
@@ -67,6 +70,10 @@ func (c *Command) Flags() *cli.FlagSet {
 	set := c.NewFlagSet()
 	c.flags.Register(set)
 	return set
+}
+
+func (c *Command) PredictArgs() complete.Predictor {
+	return predict.Dirs("")
 }
 
 type runParams struct {
