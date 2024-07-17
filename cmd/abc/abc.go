@@ -30,8 +30,8 @@ import (
 
 	"github.com/abcxyz/abc-updater/pkg/metrics"
 	"github.com/abcxyz/abc-updater/pkg/updater"
+	"github.com/abcxyz/abc/internal/metricswrap"
 	"github.com/abcxyz/abc/internal/version"
-	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
 	"github.com/abcxyz/abc/templates/commands/render"
@@ -182,20 +182,20 @@ func realMain(ctx context.Context) error {
 	ctx = metrics.WithClient(ctx, mClient)
 	defer func() {
 		if r := recover(); r != nil {
-			handler := wrapper.WriteMetric(ctx, mClient, "panics", 1)
+			handler := metricswrap.WriteMetric(ctx, mClient, "panics", 1)
 			defer handler()
 			panic(r)
 		}
 	}()
 
-	cleanup := wrapper.WriteMetric(ctx, mClient, "runs", 1)
+	cleanup := metricswrap.WriteMetric(ctx, mClient, "runs", 1)
 	defer cleanup()
 
 	runtimeCtx, closer := context.WithTimeout(ctx, runtimeMetricsTimeout)
 	defer closer()
 	// TODO: This will cause a synchronous metrics call, may be way too slow.
 	defer func() {
-		cleanup := wrapper.WriteMetric(runtimeCtx, mClient, "runtime_millis", time.Since(start).Milliseconds())
+		cleanup := metricswrap.WriteMetric(runtimeCtx, mClient, "runtime_millis", time.Since(start).Milliseconds())
 		defer cleanup()
 	}()
 

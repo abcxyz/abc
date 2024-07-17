@@ -30,7 +30,7 @@ import (
 	"github.com/posener/complete/v2/predict"
 
 	"github.com/abcxyz/abc-updater/pkg/metrics"
-	"github.com/abcxyz/abc/internal/wrapper"
+	"github.com/abcxyz/abc/internal/metricswrap"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/render"
 	"github.com/abcxyz/abc/templates/common/templatesource"
@@ -83,7 +83,7 @@ func (c *Command) PredictArgs() complete.Predictor {
 
 func (c *Command) Run(ctx context.Context, args []string) error {
 	mClient := metrics.FromContext(ctx)
-	cleanup := wrapper.WriteMetric(ctx, mClient, "command_render", 1)
+	cleanup := metricswrap.WriteMetric(ctx, mClient, "command_render", 1)
 	defer cleanup()
 
 	if err := c.Flags().Parse(args); err != nil {

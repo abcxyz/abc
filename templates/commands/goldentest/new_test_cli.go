@@ -29,8 +29,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/metricswrap"
 	"github.com/abcxyz/abc/internal/version"
-	"github.com/abcxyz/abc/internal/wrapper"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
 	"github.com/abcxyz/abc/templates/common/input"
@@ -82,7 +82,7 @@ func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	logger := logging.FromContext(ctx)
 
 	mClient := metrics.FromContext(ctx)
-	cleanup := wrapper.WriteMetric(ctx, mClient, "command_goldentest_new", 1)
+	cleanup := metricswrap.WriteMetric(ctx, mClient, "command_goldentest_new", 1)
 	defer cleanup()
 
 	if err := c.Flags().Parse(args); err != nil {
