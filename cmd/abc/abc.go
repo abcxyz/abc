@@ -45,6 +45,11 @@ import (
 const (
 	defaultLogLevel  = logging.LevelWarning
 	defaultLogFormat = logging.FormatText
+	// Long since only runs once every 24 hours.
+	updateTimeout = time.Second
+	// Shorter since nothing can be done in parallel due to it starting after
+	// program logic finishes.
+	runtimeMetricsTimeout = 200 * time.Millisecond
 )
 
 var templateCommands = map[string]cli.CommandFactory{
@@ -140,24 +145,24 @@ func setLogEnvVars() {
 
 func checkVersion(ctx context.Context) func() {
 	// Only check for updates if not built from HEAD.
-	if version.Version != "source" {
-		// Timeout updater after 1 second.
-		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
-		results := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
-			AppID:   version.Name,
-			Version: version.Version,
-		})
-		return func() {
-			logger := logging.FromContext(ctx)
-			if msg, err := results(); err != nil {
-				logger.DebugContext(ctx, "failed to check for updates", "err", err.Error())
-			} else if msg != "" {
-				logger.InfoContext(ctx, fmt.Sprintf("\n%s\n", msg))
-			}
-			updaterDone()
+	if version.Version == "source" {
+		return func() {}
+	}
+	updaterCtx, updaterDone := context.WithTimeout(ctx, updateTimeout)
+	results := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
+		AppID:   version.Name,
+		Version: version.Version,
+	})
+	return func() {
+		defer updaterDone()
+		logger := logging.FromContext(ctx)
+		if msg, err := results(); err != nil {
+			// Debug log since not necessarily actionable.
+			logger.DebugContext(ctx, "failed to check for updates", "err", err.Error())
+		} else if msg != "" {
+			logger.InfoContext(ctx, fmt.Sprintf("\n%s\n", msg))
 		}
 	}
-	return func() {}
 }
 
 func realMain(ctx context.Context) error {
@@ -177,10 +182,8 @@ func realMain(ctx context.Context) error {
 	ctx = metrics.WithClient(ctx, mClient)
 	defer func() {
 		if r := recover(); r != nil {
-			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
-			defer cancel()
-			foo := wrapper.WriteMetric(ctx, mClient, "panics", 1)
-			defer foo()
+			handler := wrapper.WriteMetric(ctx, mClient, "panics", 1)
+			defer handler()
 			panic(r)
 		}
 	}()
@@ -188,7 +191,7 @@ func realMain(ctx context.Context) error {
 	cleanup := wrapper.WriteMetric(ctx, mClient, "runs", 1)
 	defer cleanup()
 
-	runtimeCtx, closer := context.WithTimeout(ctx, 200*time.Millisecond)
+	runtimeCtx, closer := context.WithTimeout(ctx, runtimeMetricsTimeout)
 	defer closer()
 	// TODO: This will cause a synchronous metrics call, may be way too slow.
 	defer func() {

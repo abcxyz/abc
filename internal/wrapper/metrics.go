@@ -16,16 +16,23 @@ package wrapper
 
 import (
 	"context"
+	"time"
 
 	"github.com/abcxyz/abc-updater/pkg/metrics"
 	"github.com/abcxyz/pkg/logging"
 )
 
+// A little on the long side to tolerate cold starts. Metrics run concurrently
+// so users will see at most 500ms runtime from this in most cases.
+const defaultMetricsTimeout = 500 * time.Millisecond
+
 // WriteMetric is an async wrapper for metrics.WriteMetric.
 // It returns a function that blocks on completion and handles any errors.
 func WriteMetric(ctx context.Context, client *metrics.Client, name string, count int64) func() {
+	ctx, done := context.WithTimeout(ctx, defaultMetricsTimeout)
 	errCh := make(chan error, 1)
 	go func() {
+		defer done()
 		defer close(errCh)
 		errCh <- client.WriteMetric(ctx, name, count)
 	}()
