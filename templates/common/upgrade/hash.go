@@ -74,6 +74,8 @@ func hashAndCompare(path, wantHash string) (hashResult, error) {
 		}
 		return "", fmt.Errorf("Open(%q): %w", path, err)
 	}
+	defer inFile.Close()
+
 	if _, err := io.Copy(hasher, inFile); err != nil {
 		return "", fmt.Errorf("Copy(): %w", err)
 	}

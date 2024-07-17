@@ -667,6 +667,55 @@ steps:
 		{
 			// This test simulates a situation where:
 			//  - A template outputs a file
+			//  - The user edits that file
+			//  - We upgrade to a template that also changes that same file to
+			//    the exact same contents as the user's local modified copy
+			//  - There should be no conflict.
+			name: "upgraded_template_changes_file_that_has_user_edits",
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello",
+				"spec.yaml": includeDotSpec,
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "my edited contents")
+			},
+			templateReplacementForUpgrade: map[string]string{
+				"out.txt":   "my edited contents",
+				"spec.yaml": includeDotSpec,
+			},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{
+								Action: Noop,
+								Path:   "out.txt",
+							},
+						},
+						DLMeta: wantDLMeta,
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "my edited contents",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime
+			}),
+		},
+		{
+			// This test simulates a situation where:
+			//  - A template outputs a file
 			//  - The user deletes the file
 			//  - The upgraded template version has new contents for that file
 			//  - There should be a delete-vs-edit conflict
