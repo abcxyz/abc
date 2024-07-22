@@ -138,6 +138,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Clock:                clock.New(),
 		DebugStepDiffs:       c.flags.DebugStepDiffs,
 		DebugScratchContents: c.flags.DebugScratchContents,
+		EvenIfUpToDate:       c.flags.EvenIfUpToDate,
 		FS:                   &common.RealFS{},
 		GitProtocol:          c.flags.GitProtocol,
 		InputFiles:           c.flags.InputFiles,

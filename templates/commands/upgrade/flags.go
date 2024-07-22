@@ -51,6 +51,12 @@ type Flags struct {
 	// See common/flags.DebugStepDiffs().
 	DebugStepDiffs bool
 
+	// Continue upgrading even if the dirhash matches between the
+	// already-installed template version and the to-be-installed template
+	// version. This is useful to for the manifest to be rewritten with a new
+	// template_location field when running with --template-location=foo.
+	EvenIfUpToDate bool
+
 	// See common/flags.GitProtocol().
 	GitProtocol string
 
@@ -100,6 +106,11 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Predict: predict.Files("*.yaml"),
 		Target:  &f.ResumeFrom,
 		Usage:   "begin or resume the upgrade starting at this manifest file",
+	})
+	u.BoolVar(&cli.BoolVar{
+		Name:   "even-if-up-to-date",
+		Target: &f.EvenIfUpToDate,
+		Usage:  "continue even if the template dirhash shows that the latest version of the template has already been installed; this is useful to force the manifest to be rewritten when used with --template-location",
 	})
 	u.BoolVar(flags.Verbose(&f.Verbose))
 
