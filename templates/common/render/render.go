@@ -613,7 +613,6 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 		if err != nil {
 			return "", err //nolint:wrapcheck
 		}
-		fmt.Printf(" *** Diff is: \n%s\n", diff)
 		if diff != "" {
 			includeFromDestPatches[relPath] = diff
 		}
