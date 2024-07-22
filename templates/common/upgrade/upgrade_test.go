@@ -439,13 +439,14 @@ steps:
 				"out.txt":   "hello\n",
 				"spec.yaml": includeDotSpec,
 			},
+
 			templateUnionForUpgrade:   map[string]string{},
 			wantManifestBeforeUpgrade: outTxtOnlyManifest,
 			wantDestContentsAfterUpgrade: map[string]string{
 				"out.txt": "hello\n",
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.ModificationTime = afterUpgradeTime
+				m.ModificationTime = afterUpgradeTime // timestamp gets updated, because upgrade actually runs.
 			}),
 		},
 		{
