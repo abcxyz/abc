@@ -89,7 +89,7 @@ type Params struct {
 	// already-installed template version and the to-be-installed template
 	// version. This is useful to for the manifest to be rewritten with a new
 	// template_location field when running with --template-location=foo.
-	EvenIfUpToDate bool
+	ContinueIfCurrent bool
 
 	// FS abstracts filesystem operations for error injection testing.
 	FS common.FS
@@ -359,7 +359,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		return nil, fmt.Errorf("failed downloading template: %w", err)
 	}
 
-	if !p.EvenIfUpToDate {
+	if !p.ContinueIfCurrent {
 		hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
 		if err != nil {
 			return nil, err //nolint:wrapcheck

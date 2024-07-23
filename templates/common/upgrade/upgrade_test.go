@@ -119,7 +119,7 @@ func TestUpgradeAll(t *testing.T) {
 		localEdits                   func(tb testing.TB, installedDir string)
 		dialogSteps                  []prompt.DialogStep
 		flagPrompt                   bool
-		flagEvenIfUpToDate           bool
+		flagContinueIfCurrent           bool
 		upgradeInputs                map[string]string
 		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -418,7 +418,7 @@ steps:
 		},
 		{
 			name:               "dont_short_circuit_if_already_latest_version_but_flag_overrides",
-			flagEvenIfUpToDate: true,
+			flagContinueIfCurrent: true,
 			want: &Result{
 				Overall: Success,
 				Results: []*ManifestResult{
@@ -1545,7 +1545,7 @@ yellow is my favorite color
 			params := &Params{
 				Clock:             clk,
 				CWD:               destDir,
-				EvenIfUpToDate:    tc.flagEvenIfUpToDate,
+				ContinueIfCurrent: tc.flagContinueIfCurrent,
 				FS:                &common.RealFS{},
 				InputsFromFlags:   tc.upgradeInputs,
 				InputFiles:        inputFiles,
