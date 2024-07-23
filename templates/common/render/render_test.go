@@ -185,7 +185,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -203,15 +202,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -241,7 +237,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				UpgradeChannel:   mdl.S("main"),
 				Inputs: []*manifest.Input{
 					{
@@ -260,15 +255,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -293,7 +285,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -311,15 +302,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -349,7 +337,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -367,15 +354,53 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
+					},
+				},
+			},
+		},
+		{
+			name: "manifest_only_flag_with_include_from_destination",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['myfile.txt']
+              from: 'destination'
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			flagManifest:     true,
+			flagManifestOnly: true,
+			existingDestContents: map[string]string{
+				"myfile.txt": "red",
+			},
+			wantDestContents: map[string]string{
+				"myfile.txt": "red",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("myfile.txt"),
 					},
 				},
 			},
@@ -662,11 +687,9 @@ steps:
 				// time we add a new api version
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:aJN049UDpyv0f6rr9IApCi4PV3Z3llWM2OOSH+KCUzc="),
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("myfile.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/myfile.txt
 +++ b/myfile.txt
 @@ -1 +1 @@
@@ -678,7 +701,6 @@ steps:
 					},
 					{
 						File: mdl.S("subdir_a/file_a.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/subdir_a/file_a.txt
 +++ b/subdir_a/file_a.txt
 @@ -1 +1 @@
@@ -690,7 +712,6 @@ steps:
 					},
 					{
 						File: mdl.S("subdir_b/file_b.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/subdir_b/file_b.txt
 +++ b/subdir_b/file_b.txt
 @@ -1 +1 @@
@@ -1476,7 +1497,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -1494,15 +1514,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -1542,19 +1559,19 @@ steps:
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
 				},
-				IgnoreUnknownInputs: tc.flagIgnoreUnknownInputs,
-				InputFiles:          inputFilePaths,
-				InputsFromFlags:     tc.flagInputs,
-				KeepTempDirs:        tc.flagKeepTempDirs,
-				Manifest:            tc.flagManifest,
-				ManifestOnly:        tc.flagManifestOnly,
-				OutDir:              outDir,
-				OverrideBuiltinVars: tc.overrideBuiltinVars,
-				SkipInputValidation: tc.flagSkipInputValidation,
-				SourceForMessages:   sourceDir,
-				Stdout:              stdoutBuf,
-				TempDirBase:         tempDir,
-				UpgradeChannel:      tc.flagUpgradeChannel,
+				IgnoreUnknownInputs:  tc.flagIgnoreUnknownInputs,
+				InputFiles:           inputFilePaths,
+				InputsFromFlags:      tc.flagInputs,
+				KeepTempDirs:         tc.flagKeepTempDirs,
+				Manifest:             tc.flagManifest,
+				BackfillManifestOnly: tc.flagManifestOnly,
+				OutDir:               outDir,
+				OverrideBuiltinVars:  tc.overrideBuiltinVars,
+				SkipInputValidation:  tc.flagSkipInputValidation,
+				SourceForMessages:    sourceDir,
+				Stdout:               stdoutBuf,
+				TempDirBase:          tempDir,
+				UpgradeChannel:       tc.flagUpgradeChannel,
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
@@ -1639,6 +1656,8 @@ func verifyManifest(ctx context.Context, tb testing.TB, gotManifest bool, manife
 	opts := []cmp.Option{
 		// Don't force test authors to assert the line and column numbers
 		cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}),
+		cmpopts.IgnoreFields(manifest.Manifest{}, "TemplateDirhash"),
+		cmpopts.IgnoreFields(manifest.OutputFile{}, "Hash"),
 		cmpopts.EquateEmpty(),
 	}
 

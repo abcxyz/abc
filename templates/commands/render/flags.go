@@ -74,13 +74,13 @@ type RenderFlags struct {
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
 
-	// Manifest enables the writing of manifest files, which are an experimental
+	// BackfillManifest enables the writing of manifest files, which are an experimental
 	// feature related to template upgrades.
-	Manifest bool
+	BackfillManifest bool
 
 	// Whether to *only* create a manifest file without outputting any other
 	// files from the template.
-	ManifestOnly bool
+	BackfillManifestOnly bool
 
 	// Overrides the `upgrade_channel` field in the output manifest. Can be
 	// either a branch name or the special string "latest".
@@ -124,7 +124,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 
 	f.BoolVar(&cli.BoolVar{
 		Name:    "manifest",
-		Target:  &r.Manifest,
+		Target:  &r.BackfillManifest,
 		Default: false,
 		EnvVar:  "ABC_MANIFEST",
 		// TODO(upgrade): remove "(experimental)"
@@ -140,12 +140,12 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "manifest-only",
-		Target:  &r.ManifestOnly,
+		Name:    "backfill-manifest-only",
+		Target:  &r.BackfillManifestOnly,
 		Default: false,
 		EnvVar:  "ABC_MANIFEST_ONLY",
 		// TODO(upgrade): remove "(experimental)"
-		Usage: "(experimental) write only a manifest file and no other files; implicitly sets --manifest=true",
+		Usage: "(experimental) write only a manifest file and no other files; implicitly sets --manifest=true; this is for the case where you have already rendered a template but there's no manifest, and you want to create just the manifest",
 	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")
@@ -163,9 +163,9 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 			return fmt.Errorf("missing <source> file")
 		}
 
-		if r.ManifestOnly {
-			// --manifest-only implies the user wants a manifest.
-			r.Manifest = true
+		if r.BackfillManifestOnly {
+			// --backfill-manifest-only implies the user wants a manifest.
+			r.BackfillManifest = true
 		}
 
 		return nil
