@@ -118,7 +118,8 @@ func TestUpgradeAll(t *testing.T) {
 
 		localEdits                   func(tb testing.TB, installedDir string)
 		dialogSteps                  []prompt.DialogStep
-		prompt                       bool
+		flagPrompt                   bool
+		flagContinueIfCurrent        bool
 		upgradeInputs                map[string]string
 		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -165,7 +166,7 @@ Enter value, or leave empty to accept default: `,
 					ThenRespond: "manual_filename.txt",
 				},
 			},
-			prompt: true,
+			flagPrompt: true,
 			templateUnionForUpgrade: map[string]string{
 				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
@@ -414,6 +415,39 @@ steps:
 				"out.txt": "hello\n",
 			},
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
+		},
+		{
+			name:                  "dont_short_circuit_if_already_latest_version_but_flag_overrides",
+			flagContinueIfCurrent: true,
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						DLMeta:       wantDLMeta,
+						NonConflicts: []ActionTaken{
+							{
+								Action: Noop,
+								Path:   "out.txt",
+							},
+						},
+					},
+				},
+			},
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+
+			templateUnionForUpgrade:   map[string]string{},
+			wantManifestBeforeUpgrade: outTxtOnlyManifest,
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime // timestamp gets updated, because upgrade actually runs.
+			}),
 		},
 		{
 			name: "new_template_has_file_not_in_old_template",
@@ -1511,11 +1545,12 @@ yellow is my favorite color
 			params := &Params{
 				Clock:             clk,
 				CWD:               destDir,
+				ContinueIfCurrent: tc.flagContinueIfCurrent,
 				FS:                &common.RealFS{},
 				InputsFromFlags:   tc.upgradeInputs,
 				InputFiles:        inputFiles,
 				Location:          manifestFullPath,
-				Prompt:            tc.prompt,
+				Prompt:            tc.flagPrompt,
 				Stdout:            os.Stdout,
 				downloaderFactory: dlFactory,
 			}
@@ -2353,7 +2388,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 		// Don't force test authors to assert the line and column numbers
 		cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}),
 
-		// Don't force test author to compute hashes when writing test/updating test cases.
+		// Don't force test author to compute hashes when writing/updating test cases.
 		cmpopts.IgnoreFields(manifest.Manifest{}, "TemplateDirhash"),
 		cmpopts.IgnoreFields(manifest.OutputFile{}, "Hash"),
 	}

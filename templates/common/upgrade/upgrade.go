@@ -85,6 +85,12 @@ type Params struct {
 	// The value of --debug-step-diffs.
 	DebugStepDiffs bool
 
+	// Continue upgrading even if the dirhash matches between the
+	// already-installed template version and the to-be-installed template
+	// version. This is useful to for the manifest to be rewritten with a new
+	// template_location field when running with --template-location=foo.
+	ContinueIfCurrent bool
+
 	// FS abstracts filesystem operations for error injection testing.
 	FS common.FS
 
@@ -353,18 +359,20 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		return nil, fmt.Errorf("failed downloading template: %w", err)
 	}
 
-	hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-	if hashMatch {
-		// No need to upgrade. We already have the latest template version.
-		logger.InfoContext(ctx, "template installation is already up to date",
-			"manifest_path", absManifestPath)
-		return &ManifestResult{
-			Type:   AlreadyUpToDate,
-			DLMeta: dlMeta,
-		}, nil
+	if !p.ContinueIfCurrent {
+		hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
+		if err != nil {
+			return nil, err //nolint:wrapcheck
+		}
+		if hashMatch {
+			// No need to upgrade. We already have the latest template version.
+			logger.InfoContext(ctx, "template installation is already up to date",
+				"manifest_path", absManifestPath)
+			return &ManifestResult{
+				Type:   AlreadyUpToDate,
+				DLMeta: dlMeta,
+			}, nil
+		}
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
