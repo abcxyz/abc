@@ -48,6 +48,9 @@ type Params struct {
 	// The value of --accept-defaults.
 	AcceptDefaults bool
 
+	// TODO
+	ContinueWithoutPatches bool
+
 	// BackupDir is the directory where overwritten files will be backed up.
 	// BackupDir is ignored if Backups is false.
 	BackupDir string
@@ -631,9 +634,30 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 }
 
 func ifdPatches(ctx context.Context, p *Params, cp *commitParams) (map[string]string, error) {
-	// TODO comment
 	if p.BackfillManifestOnly {
-		return nil, nil
+		if len(cp.includedFromDest) == 0 || p.ContinueWithoutPatches {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf(`
+We're running in --backfill-manifest-only mode with a template that modifies
+files in place (using the "from: destination" feature in spec.yaml). We can't
+generate a complete manifest retrospectively for this template installation
+because the former contents of the file(s) (before they were modifed in place)
+aren't available anymore. You have two options:
+
+ - Re-run this command with "--continue-without-patches" to proceed anyway,
+   leaving an incomplete manifest. This means that when you run "abc upgrade" on
+   this template installation in the future, there may be some spurious edits
+   that will require manual correction. For example, there may be duplicate
+   edits in the given file(s).
+
+ - Revert the commit that installed this template in the past and reinstall it
+   using "abc render --manifest" to generate a fully correct manifest.
+
+The files in question that are modified in place are: %s
+`, maps.Keys(cp.includedFromDest))
+
 	}
 
 	// Design decision: it's OK to hold these patches in memory. It's unlikely
@@ -651,6 +675,10 @@ func ifdPatches(ctx context.Context, p *Params, cp *commitParams) (map[string]st
 		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}
+
+		if p.BackfillManifestOnly {
+		}
+
 		if diff != "" {
 			out[relPath] = diff
 		}
