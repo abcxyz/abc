@@ -119,7 +119,7 @@ func TestUpgradeAll(t *testing.T) {
 		localEdits                   func(tb testing.TB, installedDir string)
 		dialogSteps                  []prompt.DialogStep
 		flagPrompt                   bool
-		flagContinueIfCurrent           bool
+		flagContinueIfCurrent        bool
 		upgradeInputs                map[string]string
 		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -417,7 +417,7 @@ steps:
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
 		},
 		{
-			name:               "dont_short_circuit_if_already_latest_version_but_flag_overrides",
+			name:                  "dont_short_circuit_if_already_latest_version_but_flag_overrides",
 			flagContinueIfCurrent: true,
 			want: &Result{
 				Overall: Success,
