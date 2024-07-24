@@ -90,29 +90,30 @@ steps:
 `
 
 	cases := []struct {
-		name                    string
-		templateContents        map[string]string
-		existingDestContents    map[string]string
-		flagInputs              map[string]string
-		inputFileNames          []string
-		inputFileContents       map[string]string
-		flagAcceptDefaults      bool
-		flagKeepTempDirs        bool
-		flagForceOverwrite      bool
-		flagIgnoreUnknownInputs bool
-		flagSkipInputValidation bool
-		flagManifest            bool
-		flagManifestOnly        bool
-		flagUpgradeChannel      string
-		flagDebugStepDiffs      bool
-		overrideBuiltinVars     map[string]string
-		removeAllErr            error
-		wantScratchContents     map[string]string
-		wantTemplateContents    map[string]string
-		wantDestContents        map[string]string
-		wantBackupContents      map[string]string
-		wantStdout              string
-		wantErr                 string
+		name                       string
+		templateContents           map[string]string
+		existingDestContents       map[string]string
+		flagInputs                 map[string]string
+		inputFileNames             []string
+		inputFileContents          map[string]string
+		flagAcceptDefaults         bool
+		flagContinueWithoutPatches bool
+		flagKeepTempDirs           bool
+		flagForceOverwrite         bool
+		flagIgnoreUnknownInputs    bool
+		flagSkipInputValidation    bool
+		flagManifest               bool
+		flagManifestOnly           bool
+		flagUpgradeChannel         string
+		flagDebugStepDiffs         bool
+		overrideBuiltinVars        map[string]string
+		removeAllErr               error
+		wantScratchContents        map[string]string
+		wantTemplateContents       map[string]string
+		wantDestContents           map[string]string
+		wantBackupContents         map[string]string
+		wantStdout                 string
+		wantErr                    string
 		// manifests are part of the destination directory, but are compared
 		// separately because they change every time we add a new api_version
 		// and we don't want to change a bunch of "wanted" strings every time.
@@ -185,7 +186,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -203,15 +203,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -241,7 +238,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				UpgradeChannel:   mdl.S("main"),
 				Inputs: []*manifest.Input{
 					{
@@ -260,15 +256,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -293,7 +286,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -311,15 +303,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -349,7 +338,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -662,11 +650,9 @@ steps:
 				// time we add a new api version
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:aJN049UDpyv0f6rr9IApCi4PV3Z3llWM2OOSH+KCUzc="),
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("myfile.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/myfile.txt
 +++ b/myfile.txt
 @@ -1 +1 @@
@@ -678,7 +664,6 @@ steps:
 					},
 					{
 						File: mdl.S("subdir_a/file_a.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/subdir_a/file_a.txt
 +++ b/subdir_a/file_a.txt
 @@ -1 +1 @@
@@ -690,7 +675,6 @@ steps:
 					},
 					{
 						File: mdl.S("subdir_b/file_b.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/subdir_b/file_b.txt
 +++ b/subdir_b/file_b.txt
 @@ -1 +1 @@
@@ -1476,7 +1460,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -1494,15 +1477,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -1531,30 +1511,31 @@ steps:
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
-				AcceptDefaults: tc.flagAcceptDefaults,
-				Backups:        true,
-				BackupDir:      backupDir,
-				Clock:          clk,
-				DebugStepDiffs: tc.flagDebugStepDiffs,
-				Downloader:     &templatesource.LocalDownloader{SrcPath: sourceDir},
-				ForceOverwrite: tc.flagForceOverwrite,
+				AcceptDefaults:         tc.flagAcceptDefaults,
+				Backups:                true,
+				BackupDir:              backupDir,
+				Clock:                  clk,
+				ContinueWithoutPatches: tc.flagContinueWithoutPatches,
+				DebugStepDiffs:         tc.flagDebugStepDiffs,
+				Downloader:             &templatesource.LocalDownloader{SrcPath: sourceDir},
+				ForceOverwrite:         tc.flagForceOverwrite,
 				FS: &common.ErrorFS{
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
 				},
-				IgnoreUnknownInputs: tc.flagIgnoreUnknownInputs,
-				InputFiles:          inputFilePaths,
-				InputsFromFlags:     tc.flagInputs,
-				KeepTempDirs:        tc.flagKeepTempDirs,
-				Manifest:            tc.flagManifest,
-				ManifestOnly:        tc.flagManifestOnly,
-				OutDir:              outDir,
-				OverrideBuiltinVars: tc.overrideBuiltinVars,
-				SkipInputValidation: tc.flagSkipInputValidation,
-				SourceForMessages:   sourceDir,
-				Stdout:              stdoutBuf,
-				TempDirBase:         tempDir,
-				UpgradeChannel:      tc.flagUpgradeChannel,
+				IgnoreUnknownInputs:  tc.flagIgnoreUnknownInputs,
+				InputFiles:           inputFilePaths,
+				InputsFromFlags:      tc.flagInputs,
+				KeepTempDirs:         tc.flagKeepTempDirs,
+				Manifest:             tc.flagManifest,
+				BackfillManifestOnly: tc.flagManifestOnly,
+				OutDir:               outDir,
+				OverrideBuiltinVars:  tc.overrideBuiltinVars,
+				SkipInputValidation:  tc.flagSkipInputValidation,
+				SourceForMessages:    sourceDir,
+				Stdout:               stdoutBuf,
+				TempDirBase:          tempDir,
+				UpgradeChannel:       tc.flagUpgradeChannel,
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
@@ -1639,6 +1620,8 @@ func verifyManifest(ctx context.Context, tb testing.TB, gotManifest bool, manife
 	opts := []cmp.Option{
 		// Don't force test authors to assert the line and column numbers
 		cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}),
+		cmpopts.IgnoreFields(manifest.Manifest{}, "TemplateDirhash"),
+		cmpopts.IgnoreFields(manifest.OutputFile{}, "Hash"),
 		cmpopts.EquateEmpty(),
 	}
 

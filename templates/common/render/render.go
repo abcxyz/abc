@@ -48,6 +48,9 @@ type Params struct {
 	// The value of --accept-defaults.
 	AcceptDefaults bool
 
+	// TODO
+	ContinueWithoutPatches bool
+
 	// BackupDir is the directory where overwritten files will be backed up.
 	// BackupDir is ignored if Backups is false.
 	BackupDir string
@@ -124,9 +127,9 @@ type Params struct {
 	// The value of --manifest. Whether to create a manifest file.
 	Manifest bool
 
-	// The value of --manifest-only. Whether to *only* create a manifest file
-	// without outputting any other files from the template.
-	ManifestOnly bool
+	// The value of --backfill-manifest-only. Whether to *only* create a
+	// manifest file without outputting any other files from the template.
+	BackfillManifestOnly bool
 
 	// The directory where the rendered output will be written.
 	OutDir string
@@ -281,7 +284,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 		rp:               p,
 		scope:            scope,
 		scratchDir:       scratchDir,
-		suppressPrint:    p.ManifestOnly, // if --manifest-only was given, then the user doesn't want printed output.
+		suppressPrint:    p.BackfillManifestOnly, // if --backfill-manifest-only was given, then the user doesn't want printed output.
 		templateDir:      templateDir,
 	}
 
@@ -688,7 +691,7 @@ func commit(ctx context.Context, commitDryRun bool, p *Params, scratchDir string
 		// Edge case 3: we're in "manifest only" mode, which means that we don't
 		// want to output any files except the manifest.
 		_, ok := includedFromDest[relPath]
-		allowPreexisting := ok || p.ForceOverwrite || p.ManifestOnly
+		allowPreexisting := ok || p.ForceOverwrite || p.BackfillManifestOnly
 
 		return common.CopyHint{
 			BackupIfExists:   p.Backups,
@@ -716,9 +719,9 @@ func commit(ctx context.Context, commitDryRun bool, p *Params, scratchDir string
 	// here. There's the "commit dry run mode" and the "CopyRecursive dry run
 	// mode." If the commit dry run mode is enabled, then the CopyRecursive dry
 	// run mode is also enabled. There's also another case where CopyRecursive
-	// dry run mode is enabled: when --manifest-only is turned on, which means
-	// we never write any output files except the manifest.
-	copyDryRun := commitDryRun || p.ManifestOnly
+	// dry run mode is enabled: when --backfill-manifest-only is turned on,
+	// which means we never write any output files except the manifest.
+	copyDryRun := commitDryRun || p.BackfillManifestOnly
 
 	params := &common.CopyParams{
 		BackupDirMaker: backupDirMaker,
@@ -754,7 +757,7 @@ func fillDefaults(p *Params) *Params {
 }
 
 func validate(p *Params) error {
-	if p.ManifestOnly && !p.Manifest {
+	if p.BackfillManifestOnly && !p.Manifest {
 		return fmt.Errorf("if ManifestOnly is true, then Manifest must be true")
 	}
 	return nil
