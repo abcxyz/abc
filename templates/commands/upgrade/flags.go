@@ -84,6 +84,9 @@ type Flags struct {
 	// template location stored in the manifest (which is the default).
 	TemplateLocation string
 
+	// See common/flags.UpgradeChannel().
+	UpgradeChannel string
+
 	Verbose bool
 
 	// The template version to upgrade to. If not specified, the underlying
@@ -123,6 +126,7 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.BoolVar(flags.KeepTempDirs(&f.KeepTempDirs))
 	r.BoolVar(flags.Prompt(&f.Prompt))
 	r.BoolVar(flags.AcceptDefaults(&f.AcceptDefaults))
+	r.StringVar(flags.UpgradeChannel(&f.UpgradeChannel))
 
 	r.StringVar(&cli.StringVar{
 		Name:    "version",
