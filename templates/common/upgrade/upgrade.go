@@ -392,6 +392,8 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		return nil, err //nolint:wrapcheck
 	}
 
+	fmt.Printf("*** 0.01\n")
+
 	reversalConflicts, err := reversePatches(ctx, &reversePatchesParams{
 		fs:              p.FS,
 		alreadyResolved: p.AlreadyResolved,
@@ -402,6 +404,8 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("*** 0.1\n")
+
 	if len(reversalConflicts) > 0 {
 		return &ManifestResult{
 			DLMeta:            dlMeta,
@@ -409,6 +413,8 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 			Type:              PatchReversalConflict,
 		}, nil
 	}
+
+	fmt.Printf("*** 0.2\n")
 
 	renderResult, err := render.RenderAlreadyDownloaded(ctx, dlMeta, templateDir, &render.Params{
 		AcceptDefaults:          p.AcceptDefaults,
@@ -433,15 +439,20 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		SourceForMessages:       oldManifest.TemplateLocation.Val,
 		Stdout:                  p.Stdout,
 		TempDirBase:             p.TempDirBase,
+		UpgradeChannel:          p.UpgradeChannel,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed rendering template: %w", err)
 	}
 
+	fmt.Printf("*** 1\n")
+
 	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("*** 2\n")
 
 	commitParams := &commitParams{
 		fs:               p.FS,
@@ -727,13 +738,17 @@ func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalCo
 		return nil, fmt.Errorf("you specified --already-resolved file(s) that were not part of this template's manifest: %s", strings.Join(unknownFiles, ", "))
 	}
 
+	fmt.Printf("*** A\n")
 	for _, f := range p.oldManifest.OutputFiles {
 		if f.Patch == nil || len(f.Patch.Val) == 0 {
 			continue
 		}
 
 		outPath := filepath.Join(p.reversedDir, f.File.Val)
+		fmt.Printf("*** B\n")
+
 		if slices.Contains(p.alreadyResolved, f.File.Val) {
+			fmt.Printf("*** C\n")
 			// In the case where a previous run of abc raised a merge conflict,
 			// and the user resolved it, and provided the command-line flag
 			// indicating that they already resolved it, then we skip applying
@@ -745,10 +760,14 @@ func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalCo
 			}
 			continue
 		}
+		fmt.Printf("*** D\n")
+
 		conflict, err := reverseOnePatch(ctx, p.installedDir, outPath, f)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Printf("*** E\n")
+
 		if conflict != nil {
 			out = append(out, conflict)
 		}

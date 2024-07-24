@@ -1737,11 +1737,11 @@ steps:
     action: 'include'
     params:
       from: 'destination'
-      paths: ['file.txt']
+      paths: ['dir/file.txt']
   - desc: 'Change favorite color'
     action: 'string_replace'
     params:
-      paths: ['file.txt']
+      paths: ['dir/file.txt']
       replacements: 
         - to_replace: 'purple'
           with: 'red'  
@@ -1750,7 +1750,7 @@ steps:
 	abctestutil.WriteAll(t, templateDir, origTemplateDirContents)
 
 	origDestContents := map[string]string{
-		"file.txt": "purple is my favorite color\n",
+		"dir/file.txt": "purple is my favorite color\n",
 	}
 
 	// We have multiple template installations so we can test resuming after
@@ -1776,9 +1776,9 @@ steps:
 		Inputs:           []*manifest.Input{},
 		OutputFiles: []*manifest.OutputFile{
 			{
-				File: mdl.S("file.txt"),
-				Patch: mdl.SP(`--- a/file.txt
-+++ b/file.txt
+				File: mdl.S("dir/file.txt"),
+				Patch: mdl.SP(`--- a/dir/file.txt
++++ b/dir/file.txt
 @@ -1 +1 @@
 -red is my favorite color
 +purple is my favorite color
@@ -1794,8 +1794,8 @@ steps:
 
 	// Simulate the user making some edits to the included-from-destination file
 	// after the render operation but before the upgrade
-	abctestutil.OverwriteJoin(t, destDir1, "file.txt", "green is my favorite color\n")
-	abctestutil.OverwriteJoin(t, destDir2, "file.txt", "green is my favorite color\n")
+	abctestutil.OverwriteJoin(t, destDir1, "dir/file.txt", "green is my favorite color\n")
+	abctestutil.OverwriteJoin(t, destDir2, "dir/file.txt", "green is my favorite color\n")
 
 	templateReplacementForUpgrade := map[string]string{
 		"spec.yaml": `
@@ -1807,11 +1807,11 @@ steps:
     action: 'include'
     params:
       from: 'destination'
-      paths: ['file.txt']
+      paths: ['dir/file.txt']
   - desc: 'Change favorite color'
     action: 'string_replace'
     params:
-      paths: ['file.txt']
+      paths: ['dir/file.txt']
       replacements:
         - to_replace: 'purple'
           with: 'yellow'
@@ -1840,9 +1840,9 @@ steps:
 				Type:         PatchReversalConflict,
 				ReversalConflicts: []*ReversalConflict{
 					{
-						RelPath:       "file.txt",
-						AbsPath:       filepath.Join(destDir1, "file.txt"),
-						RejectedHunks: filepath.Join(destDir1, "file.txt.patch.rej"),
+						RelPath:       "dir/file.txt",
+						AbsPath:       filepath.Join(destDir1, "dir/file.txt"),
+						RejectedHunks: filepath.Join(destDir1, "dir/file.txt.patch.rej"),
 					},
 				},
 				DLMeta: &templatesource.DownloadMetadata{
@@ -1868,7 +1868,7 @@ steps:
 
 	// manifest should be unchanged if there's a reversal conflict
 	wantDestContentsAfterFailedUpgrade := map[string]string{
-		"file.txt": "green is my favorite color\n",
+		"dir/file.txt": "green is my favorite color\n",
 
 		// Don't assert the contents of the .rej file, because its contents vary
 		// between macos and linux due to the differences between freebsd patch
@@ -1881,26 +1881,26 @@ steps:
 	assertManifest(ctx, t, "after upgrade", wantManifestAfterFailedUpgrade, manifestFullPath)
 
 	gotDestContentsAfterFailedUpgrade := abctestutil.LoadDir(t, destDir1,
-		abctestutil.SkipGlob(".abc/manifest*"),     // the manifest is verified separately
-		abctestutil.SkipGlob("file.txt.patch.rej"), // the patch reject file is just checked for presence, separately
+		abctestutil.SkipGlob(".abc/manifest*"),         // the manifest is verified separately
+		abctestutil.SkipGlob("dir/file.txt.patch.rej"), // the patch reject file is just checked for presence, separately
 	)
 	if diff := cmp.Diff(gotDestContentsAfterFailedUpgrade, wantDestContentsAfterFailedUpgrade); diff != "" {
 		t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
 	}
-	ok, err := common.Exists(filepath.Join(destDir1, "file.txt.patch.rej"))
+	ok, err := common.Exists(filepath.Join(destDir1, "dir/file.txt.patch.rej"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !ok {
-		t.Fatal("got no file.txt.patch.rej rejected patch file, but wanted one")
+		t.Fatal("got no dir/file.txt.patch.rej rejected patch file, but wanted one")
 	}
 
 	// Resolve the merge conflict
-	abctestutil.OverwriteJoin(t, destDir1, "file.txt", "purple is my favorite color\n")
-	abctestutil.Remove(t, destDir1, "file.txt.patch.rej")
+	abctestutil.OverwriteJoin(t, destDir1, "dir/file.txt", "purple is my favorite color\n")
+	abctestutil.Remove(t, destDir1, "dir/file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
-	upgradeParams.AlreadyResolved = []string{"file.txt"}
+	upgradeParams.AlreadyResolved = []string{"dir/file.txt"}
 	upgradeParams.ResumeFrom = "1/.abc/manifest_.._.._template_dir_2024-03-01T12:05:06.000000007Z.lock.yaml"
 
 	result = UpgradeAll(ctx, upgradeParams)
@@ -1916,7 +1916,7 @@ steps:
 				NonConflicts: []ActionTaken{
 					{
 						Action: "writeNew",
-						Path:   "file.txt",
+						Path:   "dir/file.txt",
 					},
 				},
 				DLMeta: &templatesource.DownloadMetadata{
@@ -1935,9 +1935,9 @@ steps:
 				ManifestPath: "2/.abc/manifest_.._.._template_dir_2024-03-01T12:05:07.000000007Z.lock.yaml",
 				ReversalConflicts: []*ReversalConflict{
 					{
-						RelPath:       "file.txt",
-						AbsPath:       filepath.Join(destDir2, "file.txt"),
-						RejectedHunks: filepath.Join(destDir2, "file.txt.patch.rej"),
+						RelPath:       "dir/file.txt",
+						AbsPath:       filepath.Join(destDir2, "dir/file.txt"),
+						RejectedHunks: filepath.Join(destDir2, "dir/file.txt.patch.rej"),
 					},
 				},
 				DLMeta: &templatesource.DownloadMetadata{
@@ -1958,7 +1958,7 @@ steps:
 	}
 
 	wantDestContentsAfterSuccessfulUpgrade := map[string]string{
-		"file.txt": "yellow is my favorite color\n",
+		"dir/file.txt": "yellow is my favorite color\n",
 	}
 	gotDestContentsAfterSuccessfulUpgrade := abctestutil.LoadDir(t, destDir1, abctestutil.SkipGlob(".abc/manifest*"))
 	if diff := cmp.Diff(gotDestContentsAfterSuccessfulUpgrade, wantDestContentsAfterSuccessfulUpgrade); diff != "" {
@@ -1966,11 +1966,11 @@ steps:
 	}
 
 	// Resolve the merge conflict
-	abctestutil.OverwriteJoin(t, destDir2, "file.txt", "purple is my favorite color\n")
-	abctestutil.Remove(t, destDir2, "file.txt.patch.rej")
+	abctestutil.OverwriteJoin(t, destDir2, "dir/file.txt", "purple is my favorite color\n")
+	abctestutil.Remove(t, destDir2, "dir/file.txt.patch.rej")
 
 	// Inform the upgrade command that patch reversal has already happened
-	upgradeParams.AlreadyResolved = []string{"file.txt"}
+	upgradeParams.AlreadyResolved = []string{"dir/file.txt"}
 	upgradeParams.ResumeFrom = "2/.abc/manifest_.._.._template_dir_2024-03-01T12:05:07.000000007Z.lock.yaml"
 
 	result = UpgradeAll(ctx, upgradeParams)
@@ -1987,7 +1987,7 @@ steps:
 				NonConflicts: []ActionTaken{
 					{
 						Action: "writeNew",
-						Path:   "file.txt",
+						Path:   "dir/file.txt",
 					},
 				},
 				DLMeta: &templatesource.DownloadMetadata{
