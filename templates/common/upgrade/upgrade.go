@@ -136,6 +136,10 @@ type Params struct {
 	// template location stored in the manifest (which is the default).
 	TemplateLocation string
 
+	// The value of --upgrade-channel. The branch to pull upgrades from, or the
+	// special string "latest".
+	UpgradeChannel string
+
 	// An optional version to update to, overriding the upgrade_channel field in
 	// the manifest.
 	//

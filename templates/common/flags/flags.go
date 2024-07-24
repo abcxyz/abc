@@ -152,3 +152,13 @@ func AcceptDefaults(a *bool) *cli.BoolVar {
 		Usage:   "when a template input has a default value, and the user didn't provide a value for that input, and prompting is disabled, this will cause the default value to be silently used.",
 	}
 }
+
+func UpgradeChannel(u *string) *cli.StringVar {
+	return &cli.StringVar{
+		Name:    "upgrade-channel",
+		Target:  u,
+		Default: "",
+		EnvVar:  "ABC_UPGRADE_CHANNEL",
+		Usage:   `overrides the "upgrade_channel" field in the output manifest, which controls where upgraded template versions will be pulled from in the future by "abc uprade". Can be either a branch name or the special string "latest". The default is to upgrade from the branch that the template was originally rendered from if rendered from a branch, or in any other case to use the value "latest" to upgrade to the latest release tag by semver order.`,
+	}
+}
