@@ -120,6 +120,7 @@ func TestUpgradeAll(t *testing.T) {
 		dialogSteps                  []prompt.DialogStep
 		flagPrompt                   bool
 		flagContinueIfCurrent        bool
+		flagUpgradeChannel           string
 		upgradeInputs                map[string]string
 		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -141,10 +142,7 @@ func TestUpgradeAll(t *testing.T) {
 		wantRejectFile string
 	}{
 		// TODO(upgrade): tests to add:
-		//  a chain of upgrades
 		//  extra inputs needed:
-		//    inputs from file
-		//    inputs provided as flags
 		//    upgraded template removes input(s)
 		{
 			// Scenario: an input that did not exist in the old template version
@@ -222,7 +220,6 @@ steps:
 				}
 			}),
 		},
-
 		{
 			// Scenario: an input that did not exist in the old template version
 			// is added, and has a default. The user provided an --input value
@@ -447,6 +444,41 @@ steps:
 			},
 			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
 				m.ModificationTime = afterUpgradeTime // timestamp gets updated, because upgrade actually runs.
+			}),
+		},
+		{
+			name:                  "upgrade_channel_flag_is_saved_to_manifest",
+			flagContinueIfCurrent: true,
+			flagUpgradeChannel:    "my-branch",
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						DLMeta:       wantDLMeta,
+						NonConflicts: []ActionTaken{
+							{
+								Action: Noop,
+								Path:   "out.txt",
+							},
+						},
+					},
+				},
+			},
+			origTemplateDirContents: map[string]string{
+				"out.txt":   "hello\n",
+				"spec.yaml": includeDotSpec,
+			},
+
+			templateUnionForUpgrade:   map[string]string{},
+			wantManifestBeforeUpgrade: outTxtOnlyManifest,
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.ModificationTime = afterUpgradeTime // timestamp gets updated, because upgrade actually runs.
+				m.UpgradeChannel = mdl.S("my-branch")
 			}),
 		},
 		{
@@ -1552,6 +1584,7 @@ yellow is my favorite color
 				Location:          manifestFullPath,
 				Prompt:            tc.flagPrompt,
 				Stdout:            os.Stdout,
+				UpgradeChannel:    tc.flagUpgradeChannel,
 				downloaderFactory: dlFactory,
 			}
 
@@ -2125,7 +2158,7 @@ func TestUpgradeAll_MultipleTemplates(t *testing.T) {
 		"destDir1/myfile.txt": "my new template1 file contents",
 		"destDir2/myfile.txt": "my new template2 file contents",
 	}
-	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifest are too unpredictable, don't assert their contents
+	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifests are too unpredictable, don't assert their contents
 	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
 	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
 		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
