@@ -151,6 +151,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
 		Stdout:               c.Stdout(),
 		TemplateLocation:     c.flags.TemplateLocation,
+		UpgradeChannel:       c.flags.UpgradeChannel,
 		Version:              c.flags.Version,
 	})
 	if result.Err != nil {
