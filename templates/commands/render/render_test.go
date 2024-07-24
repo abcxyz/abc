@@ -71,7 +71,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				InputFiles:           []string{"abc-inputs.yaml"},
 				Inputs:               map[string]string{"x": "y"},
 				KeepTempDirs:         true,
-				BackfillManifest:     true,
+				Manifest:             true,
 				BackfillManifestOnly: true,
 				SkipInputValidation:  true,
 				Source:               "helloworld@v1",

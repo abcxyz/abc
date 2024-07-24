@@ -90,29 +90,30 @@ steps:
 `
 
 	cases := []struct {
-		name                    string
-		templateContents        map[string]string
-		existingDestContents    map[string]string
-		flagInputs              map[string]string
-		inputFileNames          []string
-		inputFileContents       map[string]string
-		flagAcceptDefaults      bool
-		flagKeepTempDirs        bool
-		flagForceOverwrite      bool
-		flagIgnoreUnknownInputs bool
-		flagSkipInputValidation bool
-		flagManifest            bool
-		flagManifestOnly        bool
-		flagUpgradeChannel      string
-		flagDebugStepDiffs      bool
-		overrideBuiltinVars     map[string]string
-		removeAllErr            error
-		wantScratchContents     map[string]string
-		wantTemplateContents    map[string]string
-		wantDestContents        map[string]string
-		wantBackupContents      map[string]string
-		wantStdout              string
-		wantErr                 string
+		name                       string
+		templateContents           map[string]string
+		existingDestContents       map[string]string
+		flagInputs                 map[string]string
+		inputFileNames             []string
+		inputFileContents          map[string]string
+		flagAcceptDefaults         bool
+		flagContinueWithoutPatches bool
+		flagKeepTempDirs           bool
+		flagForceOverwrite         bool
+		flagIgnoreUnknownInputs    bool
+		flagSkipInputValidation    bool
+		flagManifest               bool
+		flagManifestOnly           bool
+		flagUpgradeChannel         string
+		flagDebugStepDiffs         bool
+		overrideBuiltinVars        map[string]string
+		removeAllErr               error
+		wantScratchContents        map[string]string
+		wantTemplateContents       map[string]string
+		wantDestContents           map[string]string
+		wantBackupContents         map[string]string
+		wantStdout                 string
+		wantErr                    string
 		// manifests are part of the destination directory, but are compared
 		// separately because they change every time we add a new api_version
 		// and we don't want to change a bunch of "wanted" strings every time.
@@ -386,8 +387,9 @@ steps:
           - to_replace: 'purple'
             with: 'red'`,
 			},
-			flagManifest:     true,
-			flagManifestOnly: true,
+			flagManifest:               true,
+			flagManifestOnly:           true,
+			flagContinueWithoutPatches: true,
 			existingDestContents: map[string]string{
 				"myfile.txt": "red",
 			},
@@ -1548,13 +1550,14 @@ steps:
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
-				AcceptDefaults: tc.flagAcceptDefaults,
-				Backups:        true,
-				BackupDir:      backupDir,
-				Clock:          clk,
-				DebugStepDiffs: tc.flagDebugStepDiffs,
-				Downloader:     &templatesource.LocalDownloader{SrcPath: sourceDir},
-				ForceOverwrite: tc.flagForceOverwrite,
+				AcceptDefaults:         tc.flagAcceptDefaults,
+				Backups:                true,
+				BackupDir:              backupDir,
+				Clock:                  clk,
+				ContinueWithoutPatches: tc.flagContinueWithoutPatches,
+				DebugStepDiffs:         tc.flagDebugStepDiffs,
+				Downloader:             &templatesource.LocalDownloader{SrcPath: sourceDir},
+				ForceOverwrite:         tc.flagForceOverwrite,
 				FS: &common.ErrorFS{
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,

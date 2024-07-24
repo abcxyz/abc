@@ -76,9 +76,9 @@ type RenderFlags struct {
 	// See common/flags.SkipInputValidation().
 	SkipInputValidation bool
 
-	// BackfillManifest enables the writing of manifest files, which are an experimental
+	// Manifest enables the writing of manifest files, which are an experimental
 	// feature related to template upgrades.
-	BackfillManifest bool
+	Manifest bool
 
 	// Whether to *only* create a manifest file without outputting any other
 	// files from the template.
@@ -127,7 +127,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 
 	f.BoolVar(&cli.BoolVar{
 		Name:    "manifest",
-		Target:  &r.BackfillManifest,
+		Target:  &r.Manifest,
 		Default: false,
 		EnvVar:  "ABC_MANIFEST",
 		// TODO(upgrade): remove "(experimental)"
@@ -168,7 +168,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 
 		if r.BackfillManifestOnly {
 			// --backfill-manifest-only implies the user wants a manifest.
-			r.BackfillManifest = true
+			r.Manifest = true
 		}
 
 		return nil

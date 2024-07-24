@@ -131,7 +131,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		InputsFromFlags:        c.flags.Inputs,
 		InputFiles:             c.flags.InputFiles,
 		KeepTempDirs:           c.flags.KeepTempDirs,
-		Manifest:               c.flags.BackfillManifest,
+		Manifest:               c.flags.Manifest,
 		BackfillManifestOnly:   c.flags.BackfillManifestOnly,
 		Prompt:                 c.flags.Prompt,
 		Prompter:               c,

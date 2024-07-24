@@ -657,7 +657,6 @@ aren't available anymore. You have two options:
 
 The files in question that are modified in place are: %s
 `, maps.Keys(cp.includedFromDest))
-
 	}
 
 	// Design decision: it's OK to hold these patches in memory. It's unlikely
@@ -674,9 +673,6 @@ The files in question that are modified in place are: %s
 		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, fromDir)
 		if err != nil {
 			return nil, err //nolint:wrapcheck
-		}
-
-		if p.BackfillManifestOnly {
 		}
 
 		if diff != "" {
