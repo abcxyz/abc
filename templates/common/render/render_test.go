@@ -114,6 +114,7 @@ steps:
 		wantBackupContents         map[string]string
 		wantStdout                 string
 		wantErr                    string
+
 		// manifests are part of the destination directory, but are compared
 		// separately because they change every time we add a new api_version
 		// and we don't want to change a bunch of "wanted" strings every time.
