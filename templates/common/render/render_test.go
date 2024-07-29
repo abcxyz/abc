@@ -90,29 +90,31 @@ steps:
 `
 
 	cases := []struct {
-		name                     string
-		templateContents         map[string]string
-		existingDestContents     map[string]string
-		flagInputs               map[string]string
-		inputFileNames           []string
-		inputFileContents        map[string]string
-		flagAcceptDefaults       bool
-		flagKeepTempDirs         bool
-		flagForceOverwrite       bool
-		flagIgnoreUnknownInputs  bool
-		flagSkipInputValidation  bool
-		flagManifest             bool
-		flagBackfillManifestOnly bool
-		flagUpgradeChannel       string
-		flagDebugStepDiffs       bool
-		overrideBuiltinVars      map[string]string
-		removeAllErr             error
-		wantScratchContents      map[string]string
-		wantTemplateContents     map[string]string
-		wantDestContents         map[string]string
-		wantBackupContents       map[string]string
-		wantStdout               string
-		wantErr                  string
+		name                       string
+		templateContents           map[string]string
+		existingDestContents       map[string]string
+		flagInputs                 map[string]string
+		inputFileNames             []string
+		inputFileContents          map[string]string
+		flagAcceptDefaults         bool
+		flagContinueWithoutPatches bool
+		flagKeepTempDirs           bool
+		flagForceOverwrite         bool
+		flagIgnoreUnknownInputs    bool
+		flagSkipInputValidation    bool
+		flagManifest               bool
+		flagBackfillManifestOnly   bool
+		flagUpgradeChannel         string
+		flagDebugStepDiffs         bool
+		overrideBuiltinVars        map[string]string
+		removeAllErr               error
+		wantScratchContents        map[string]string
+		wantTemplateContents       map[string]string
+		wantDestContents           map[string]string
+		wantBackupContents         map[string]string
+		wantStdout                 string
+		wantErr                    string
+
 		// manifests are part of the destination directory, but are compared
 		// separately because they change every time we add a new api_version
 		// and we don't want to change a bunch of "wanted" strings every time.
@@ -354,15 +356,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -1510,13 +1509,14 @@ steps:
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
-				AcceptDefaults: tc.flagAcceptDefaults,
-				Backups:        true,
-				BackupDir:      backupDir,
-				Clock:          clk,
-				DebugStepDiffs: tc.flagDebugStepDiffs,
-				Downloader:     &templatesource.LocalDownloader{SrcPath: sourceDir},
-				ForceOverwrite: tc.flagForceOverwrite,
+				AcceptDefaults:         tc.flagAcceptDefaults,
+				Backups:                true,
+				BackupDir:              backupDir,
+				Clock:                  clk,
+				ContinueWithoutPatches: tc.flagContinueWithoutPatches,
+				DebugStepDiffs:         tc.flagDebugStepDiffs,
+				Downloader:             &templatesource.LocalDownloader{SrcPath: sourceDir},
+				ForceOverwrite:         tc.flagForceOverwrite,
 				FS: &common.ErrorFS{
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,

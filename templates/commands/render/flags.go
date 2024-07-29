@@ -29,6 +29,11 @@ type RenderFlags struct {
 	// See common/flags.AcceptDefaults().
 	AcceptDefaults bool
 
+	// Only used when BackfillManifestOnly is set. The user acknowledges that
+	// the backfilled manifest file will be missing patches for files that were
+	// "included from destination".
+	ContinueWithoutPatches bool
+
 	// Positional arguments:
 
 	// Source is the location of the input template to be rendered.
@@ -45,8 +50,8 @@ type RenderFlags struct {
 	// See common/flags.GitProtocol().
 	GitProtocol string
 
-	// ForceOverwrite lets existing output files in the Dest directory be overwritten
-	// with the output of the template.
+	// ForceOverwrite lets existing output files in the Dest directory be
+	// overwritten with the output of the template.
 	ForceOverwrite bool
 
 	// Ignore any values in the Inputs map that aren't valid template inputs,
@@ -138,7 +143,15 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		Default: false,
 		EnvVar:  "ABC_MANIFEST_ONLY",
 		// TODO(upgrade): remove "(experimental)"
-		Usage: "(experimental) write only a manifest file and no other files; implicitly sets --manifest=true",
+		Usage: "(experimental) write only a manifest file and no other files; implicitly sets --manifest=true; this is for the case where you have already rendered a template but there's no manifest, and you want to create just the manifest",
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "continue-without-patches",
+		Target:  &r.ContinueWithoutPatches,
+		Default: false,
+		EnvVar:  "ABC_CONTINUE_WITHOUT_PATCHES",
+		Usage:   `only used when --backfill-manifest-only mode is set; since it's impossible to create a completely accurate manifest for a file that was modified-in-place in the past, this flag instructs the render command to proceed anyway and create a manifest missing the "patch reversal" fields; this may cause spurious merge issues in the future during upgrade operations on this manifest`,
 	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")
