@@ -90,29 +90,29 @@ steps:
 `
 
 	cases := []struct {
-		name                    string
-		templateContents        map[string]string
-		existingDestContents    map[string]string
-		flagInputs              map[string]string
-		inputFileNames          []string
-		inputFileContents       map[string]string
-		flagAcceptDefaults      bool
-		flagKeepTempDirs        bool
-		flagForceOverwrite      bool
-		flagIgnoreUnknownInputs bool
-		flagSkipInputValidation bool
-		flagManifest            bool
-		flagManifestOnly        bool
-		flagUpgradeChannel      string
-		flagDebugStepDiffs      bool
-		overrideBuiltinVars     map[string]string
-		removeAllErr            error
-		wantScratchContents     map[string]string
-		wantTemplateContents    map[string]string
-		wantDestContents        map[string]string
-		wantBackupContents      map[string]string
-		wantStdout              string
-		wantErr                 string
+		name                     string
+		templateContents         map[string]string
+		existingDestContents     map[string]string
+		flagInputs               map[string]string
+		inputFileNames           []string
+		inputFileContents        map[string]string
+		flagAcceptDefaults       bool
+		flagKeepTempDirs         bool
+		flagForceOverwrite       bool
+		flagIgnoreUnknownInputs  bool
+		flagSkipInputValidation  bool
+		flagManifest             bool
+		flagBackfillManifestOnly bool
+		flagUpgradeChannel       string
+		flagDebugStepDiffs       bool
+		overrideBuiltinVars      map[string]string
+		removeAllErr             error
+		wantScratchContents      map[string]string
+		wantTemplateContents     map[string]string
+		wantDestContents         map[string]string
+		wantBackupContents       map[string]string
+		wantStdout               string
+		wantErr                  string
 		// manifests are part of the destination directory, but are compared
 		// separately because they change every time we add a new api_version
 		// and we don't want to change a bunch of "wanted" strings every time.
@@ -287,9 +287,9 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagManifest:     true,
-			flagManifestOnly: true,
-			wantDestContents: map[string]string{},
+			flagManifest:             true,
+			flagBackfillManifestOnly: true,
+			wantDestContents:         map[string]string{},
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
@@ -338,8 +338,8 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagManifest:     true,
-			flagManifestOnly: true,
+			flagManifest:             true,
+			flagBackfillManifestOnly: true,
 			existingDestContents: map[string]string{
 				"file1.txt": "existing contents",
 			},
@@ -1542,19 +1542,19 @@ steps:
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
 				},
-				IgnoreUnknownInputs: tc.flagIgnoreUnknownInputs,
-				InputFiles:          inputFilePaths,
-				InputsFromFlags:     tc.flagInputs,
-				KeepTempDirs:        tc.flagKeepTempDirs,
-				Manifest:            tc.flagManifest,
-				ManifestOnly:        tc.flagManifestOnly,
-				OutDir:              outDir,
-				OverrideBuiltinVars: tc.overrideBuiltinVars,
-				SkipInputValidation: tc.flagSkipInputValidation,
-				SourceForMessages:   sourceDir,
-				Stdout:              stdoutBuf,
-				TempDirBase:         tempDir,
-				UpgradeChannel:      tc.flagUpgradeChannel,
+				IgnoreUnknownInputs:  tc.flagIgnoreUnknownInputs,
+				InputFiles:           inputFilePaths,
+				InputsFromFlags:      tc.flagInputs,
+				KeepTempDirs:         tc.flagKeepTempDirs,
+				Manifest:             tc.flagManifest,
+				BackfillManifestOnly: tc.flagBackfillManifestOnly,
+				OutDir:               outDir,
+				OverrideBuiltinVars:  tc.overrideBuiltinVars,
+				SkipInputValidation:  tc.flagSkipInputValidation,
+				SourceForMessages:    sourceDir,
+				Stdout:               stdoutBuf,
+				TempDirBase:          tempDir,
+				UpgradeChannel:       tc.flagUpgradeChannel,
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
