@@ -80,7 +80,7 @@ type RenderFlags struct {
 
 	// Whether to *only* create a manifest file without outputting any other
 	// files from the template.
-	ManifestOnly bool
+	BackfillManifestOnly bool
 
 	// Overrides the `upgrade_channel` field in the output manifest. Can be
 	// either a branch name or the special string "latest".
@@ -133,8 +133,8 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "manifest-only",
-		Target:  &r.ManifestOnly,
+		Name:    "backfill-manifest-only",
+		Target:  &r.BackfillManifestOnly,
 		Default: false,
 		EnvVar:  "ABC_MANIFEST_ONLY",
 		// TODO(upgrade): remove "(experimental)"
@@ -156,8 +156,8 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 			return fmt.Errorf("missing <source> file")
 		}
 
-		if r.ManifestOnly {
-			// --manifest-only implies the user wants a manifest.
+		if r.BackfillManifestOnly {
+			// --backfill-manifest-only implies the user wants a manifest.
 			r.Manifest = true
 		}
 
