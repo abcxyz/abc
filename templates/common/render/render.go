@@ -661,8 +661,7 @@ aren't available anymore. You have two options:
  - Revert the commit that rendered this template in the past. Re-render it using
    "abc render --manifest" to generate a fully correct manifest.
 
-The files in question that are modified in place are: %s
-`,
+The files in question that are modified in place are: %s`,
 			sortedFiles)
 	}
 
