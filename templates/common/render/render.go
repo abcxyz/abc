@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -603,24 +604,9 @@ type commitParams struct {
 // directory. We first do a dry-run to check that the copy is likely to succeed,
 // so we don't leave a half-done mess in the user's dest directory.
 func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manifestPath string, _ error) {
-	// Design decision: it's OK to hold these patches in memory. It's unlikely
-	// that anyone will create such huge patches with abc that they'll run out
-	// of RAM.
-	includeFromDestPatches := map[string]string{}
-
-	// For each file that was included-from-destination, create a patch that
-	// reverses the change. This might be used in the future during a template
-	// upgrade operation.
-	for relPath, fromDir := range cp.includedFromDest {
-		destPath := filepath.Join(fromDir, relPath)
-		srcPath := filepath.Join(cp.scratchDir, relPath)
-		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, fromDir)
-		if err != nil {
-			return "", err //nolint:wrapcheck
-		}
-		if diff != "" {
-			includeFromDestPatches[relPath] = diff
-		}
+	includeFromDestPatches, err := ifdPatches(ctx, p, cp)
+	if err != nil {
+		return "", err
 	}
 
 	for _, dryRun := range []bool{true, false} {
@@ -648,6 +634,60 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 		}
 	}
 	return manifestPath, nil
+}
+
+func ifdPatches(ctx context.Context, p *Params, cp *commitParams) (map[string]string, error) {
+	if p.BackfillManifestOnly {
+		if len(cp.includedFromDest) == 0 || p.ContinueWithoutPatches {
+			return nil, nil
+		}
+
+		sortedFiles := maps.Keys(cp.includedFromDest)
+		sort.Strings(sortedFiles)
+
+		return nil, fmt.Errorf(`
+We're running in --backfill-manifest-only mode with a template that modifies
+files in place (using the "from: destination" feature in spec.yaml). We can't
+generate a complete manifest retrospectively for this template installation
+because the former contents of the file(s) (before they were modifed in place)
+aren't available anymore. You have two options:
+
+ - Re-run this command with "--continue-without-patches" to proceed anyway,
+   leaving an incomplete manifest. This means that when you run "abc upgrade" on
+   this template installation in the future, there may be some spurious edits
+   that will require manual correction. For example, there may be duplicate
+   edits in the given file(s).
+
+ - Revert the commit that rendered this template in the past. Re-render it using
+   "abc render --manifest" to generate a fully correct manifest.
+
+The files in question that are modified in place are: %s
+`,
+			sortedFiles)
+	}
+
+	// Design decision: it's OK to hold these patches in memory. It's unlikely
+	// that anyone will create such huge patches with abc that they'll run out
+	// of RAM.
+	out := map[string]string{}
+
+	// For each file that was included-from-destination, create a patch that
+	// reverses the change. This might be used in the future during a template
+	// upgrade operation.
+	for relPath, fromDir := range cp.includedFromDest {
+		destPath := filepath.Join(fromDir, relPath)
+		srcPath := filepath.Join(cp.scratchDir, relPath)
+		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, fromDir)
+		if err != nil {
+			return nil, err //nolint:wrapcheck
+		}
+
+		if diff != "" {
+			out[relPath] = diff
+		}
+	}
+
+	return out, nil
 }
 
 // commit copies the contents of scratchDir to rp.Dest. If dryRun==true, then
@@ -760,7 +800,7 @@ func fillDefaults(p *Params) *Params {
 
 func validate(p *Params) error {
 	if p.BackfillManifestOnly && !p.Manifest {
-		return fmt.Errorf("if BackfillManifestOnly is true, then Manifest must be true")
+		return fmt.Errorf("if the BackfillManifestOnly flag is true, then the Manifest flag must be true")
 	}
 	return nil
 }

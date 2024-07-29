@@ -356,15 +356,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
