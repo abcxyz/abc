@@ -29,6 +29,9 @@ type RenderFlags struct {
 	// See common/flags.AcceptDefaults().
 	AcceptDefaults bool
 
+	// Only used when BackfillManifestOnly is set. The user acknowledges that
+	// the backfilled manifest file will be missing patches for files that were
+	// "included from destination".
 	ContinueWithoutPatches bool
 
 	// Positional arguments:
@@ -47,8 +50,8 @@ type RenderFlags struct {
 	// See common/flags.GitProtocol().
 	GitProtocol string
 
-	// ForceOverwrite lets existing output files in the Dest directory be overwritten
-	// with the output of the template.
+	// ForceOverwrite lets existing output files in the Dest directory be
+	// overwritten with the output of the template.
 	ForceOverwrite bool
 
 	// Ignore any values in the Inputs map that aren't valid template inputs,

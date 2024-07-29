@@ -48,7 +48,9 @@ type Params struct {
 	// The value of --accept-defaults.
 	AcceptDefaults bool
 
-	// TODO
+	// Only used when BackfillManifestOnly is set. The user acknowledges that
+	// the backfilled manifest file will be missing patches for files that were
+	// "included from destination".
 	ContinueWithoutPatches bool
 
 	// BackupDir is the directory where overwritten files will be backed up.
