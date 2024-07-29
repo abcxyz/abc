@@ -647,16 +647,22 @@ func ifdPatches(ctx context.Context, p *Params, cp *commitParams) (map[string]st
 
 		return nil, fmt.Errorf(`
 We're running in --backfill-manifest-only mode with a template that modifies
-files in place (using the "from: destination" feature in spec.yaml). We can't
-generate a complete manifest retrospectively for this template installation
-because the former contents of the file(s) (before they were modifed in place)
-aren't available anymore. You have two options:
+files in place (using the "from: destination" feature in spec.yaml). Normally,
+the manifest is supposed to store a patch for each file modified in place that
+will undo the modification. This is used later during the template upgrade
+process. We can't generate a complete manifest retrospectively for this template
+installation because generating a patch would require the former contents of the
+file(s) (before they were modified in place), but we the old version of the file
+isn't available anymore. You have
+two options:
 
  - Re-run this command with "--continue-without-patches" to proceed anyway,
-   leaving an incomplete manifest. This means that when you run "abc upgrade" on
-   this template installation in the future, there may be some spurious edits
-   that will require manual correction. For example, there may be duplicate
-   edits in the given file(s).
+   creating a manifest that might cause problems. This means that when you run
+   "abc upgrade" on this manifest in the future, there may be some spurious
+   edits that will require manual correction. For example, there may be duplicate
+   edits in the given file(s). If you don't care about upgrading this template
+   installation later, or if you're confident in handling the merge conflict
+   later, then this is a good option.
 
  - Revert the commit that rendered this template in the past. Re-render it using
    "abc render --manifest" to generate a fully correct manifest.
