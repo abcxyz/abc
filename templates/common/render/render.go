@@ -758,7 +758,7 @@ func fillDefaults(p *Params) *Params {
 
 func validate(p *Params) error {
 	if p.BackfillManifestOnly && !p.Manifest {
-		return fmt.Errorf("if ManifestOnly is true, then Manifest must be true")
+		return fmt.Errorf("if BackfillManifestOnly is true, then Manifest must be true")
 	}
 	return nil
 }

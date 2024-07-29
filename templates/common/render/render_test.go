@@ -103,7 +103,7 @@ steps:
 		flagIgnoreUnknownInputs    bool
 		flagSkipInputValidation    bool
 		flagManifest               bool
-		flagManifestOnly           bool
+		flagBackfillManifestOnly   bool
 		flagUpgradeChannel         string
 		flagDebugStepDiffs         bool
 		overrideBuiltinVars        map[string]string
@@ -280,9 +280,9 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagManifest:     true,
-			flagManifestOnly: true,
-			wantDestContents: map[string]string{},
+			flagManifest:             true,
+			flagBackfillManifestOnly: true,
+			wantDestContents:         map[string]string{},
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
@@ -327,8 +327,8 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagManifest:     true,
-			flagManifestOnly: true,
+			flagManifest:             true,
+			flagBackfillManifestOnly: true,
 			existingDestContents: map[string]string{
 				"file1.txt": "existing contents",
 			},
@@ -1528,7 +1528,7 @@ steps:
 				InputsFromFlags:      tc.flagInputs,
 				KeepTempDirs:         tc.flagKeepTempDirs,
 				Manifest:             tc.flagManifest,
-				BackfillManifestOnly: tc.flagManifestOnly,
+				BackfillManifestOnly: tc.flagBackfillManifestOnly,
 				OutDir:               outDir,
 				OverrideBuiltinVars:  tc.overrideBuiltinVars,
 				SkipInputValidation:  tc.flagSkipInputValidation,
