@@ -706,7 +706,7 @@ type reversePatchesParams struct {
 	// installedDir is the directory where the template output is going.
 	installedDir string
 
-	// reversedDir is where reversePatches will store the patches files after
+	// reversedDir is where reversePatches will store the patched files after
 	// the patches from the manifest have been successfully applied.
 	reversedDir string
 
@@ -737,6 +737,13 @@ func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalCo
 		outPath := filepath.Join(p.reversedDir, f.File.Val)
 
 		if slices.Contains(p.alreadyResolved, f.File.Val) {
+			// The p.reversedDir directory doesn't contain any subdirs until we
+			// create them here.
+			dirToCreate := filepath.Dir(outPath)
+			if err := p.fs.MkdirAll(dirToCreate, common.OwnerRWXPerms); err != nil {
+				return nil, fmt.Errorf("failed creating %s: %w", dirToCreate, err)
+			}
+
 			// In the case where a previous run of abc raised a merge conflict,
 			// and the user resolved it, and provided the command-line flag
 			// indicating that they already resolved it, then we skip applying
