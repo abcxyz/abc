@@ -367,6 +367,48 @@ steps:
 			},
 		},
 		{
+			name: "manifest_only_flag_with_include_from_destination",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['myfile.txt']
+              from: 'destination'
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			flagManifest:               true,
+			flagBackfillManifestOnly:   true,
+			flagContinueWithoutPatches: true,
+			existingDestContents: map[string]string{
+				"myfile.txt": "red",
+			},
+			wantDestContents: map[string]string{
+				"myfile.txt": "red",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("myfile.txt"),
+					},
+				},
+			},
+		},
+		{
 			name:           "simple_success_with_input_file_flag",
 			inputFileNames: []string{"inputs.yaml"},
 			inputFileContents: map[string]string{
