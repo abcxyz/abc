@@ -1,7 +1,7 @@
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
-github.com/abcxyz/abc-updater v0.2.0 h1:uF4LbQVxDjewk0NKZseJaQgecrVFTQDXxuvsF2rFEs8=
-github.com/abcxyz/abc-updater v0.2.0/go.mod h1:t8QKGyq682NiuXeNGfbXaMl1jisYrSd7wV55nMm9uvM=
+github.com/abcxyz/abc-updater v0.3.0 h1:34cCQia6NUDCTvQ0Pz3HIXyQjC59o5c6iCrzQgAwC24=
+github.com/abcxyz/abc-updater v0.3.0/go.mod h1:t8QKGyq682NiuXeNGfbXaMl1jisYrSd7wV55nMm9uvM=
 github.com/abcxyz/pkg v1.1.1 h1:y0IfzdZrZT355EYQA8amE5c/PUsA86gw6SzqxeSAz2I=
 github.com/abcxyz/pkg v1.1.1/go.mod h1:oNJANNMDik+8WfOc8lgHSMdGn1+e/62VBrc25VN5cAM=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d h1:licZJFw2RwpHMqeKTCYkitsPqHNxTmd4SNR5r94FGM8=

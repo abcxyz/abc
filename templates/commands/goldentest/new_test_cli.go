@@ -28,6 +28,8 @@ import (
 	"github.com/posener/complete/v2/predict"
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/metricswrap"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/builtinvar"
@@ -78,6 +80,10 @@ func (c *NewTestCommand) PredictArgs() complete.Predictor {
 
 func (c *NewTestCommand) Run(ctx context.Context, args []string) (rErr error) {
 	logger := logging.FromContext(ctx)
+
+	mClient := metrics.FromContext(ctx)
+	cleanup := metricswrap.WriteMetric(ctx, mClient, "command_goldentest_new", 1)
+	defer cleanup()
 
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
