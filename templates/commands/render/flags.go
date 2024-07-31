@@ -131,7 +131,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	f.BoolVar(&cli.BoolVar{
 		Name:    "manifest",
 		Target:  &r.Manifest,
-		Default: false,
+		Default: true,
 		EnvVar:  "ABC_MANIFEST",
 		// TODO(upgrade): remove "(experimental)"
 		Usage: "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
