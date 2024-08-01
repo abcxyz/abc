@@ -90,6 +90,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				Inputs:         map[string]string{},
 				ForceOverwrite: false,
 				KeepTempDirs:   false,
+				Manifest:       true,
 			},
 		},
 		{
@@ -196,6 +197,7 @@ steps:
 		name             string
 		templateContents map[string]string
 		flagPrompt       bool
+		flagManifest     bool
 		dialog           []prompt.DialogStep
 		wantDestContents map[string]string
 		wantErr          string
@@ -209,7 +211,8 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagPrompt: true,
+			flagPrompt:   true,
+			flagManifest: false,
 			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
@@ -245,6 +248,12 @@ Enter value: `,
 			if tc.flagPrompt {
 				args = append(args, "--prompt")
 			}
+			if tc.flagManifest {
+				args = append(args, "--manifest=true")
+			} else {
+				args = append(args, "--manifest=false")
+			}
+
 			args = append(args, fmt.Sprintf("--dest=%s", dest))
 			args = append(args, sourceDir)
 
