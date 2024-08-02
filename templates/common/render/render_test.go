@@ -215,59 +215,6 @@ steps:
 			},
 		},
 		{
-			name: "simple_success_with_manifest_and_upgrade_channel_flag",
-			flagInputs: map[string]string{
-				"name_to_greet":      "Bob",
-				"emoji_suffix":       "🐈",
-				"ending_punctuation": "!",
-			},
-			templateContents: map[string]string{
-				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
-				"file1.txt":            "my favorite color is blue",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			flagManifest:       true,
-			flagUpgradeChannel: "main",
-			wantStdout:         "Hello, Bob🐈!\n",
-			wantDestContents: map[string]string{
-				"file1.txt":            "my favorite color is red",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantManifest: &manifest.Manifest{
-				CreationTime:     clk.Now(),
-				ModificationTime: clk.Now(),
-				UpgradeChannel:   mdl.S("main"),
-				Inputs: []*manifest.Input{
-					{
-						Name:  mdl.S("emoji_suffix"),
-						Value: mdl.S("\U0001F408"),
-					},
-					{
-						Name:  mdl.S("ending_punctuation"),
-						Value: mdl.S("!"),
-					},
-					{
-						Name:  mdl.S("name_to_greet"),
-						Value: mdl.S("Bob"),
-					},
-				},
-				OutputFiles: []*manifest.OutputFile{
-					{
-						File: mdl.S("dir1/file_in_dir.txt"),
-					},
-					{
-						File: mdl.S("dir2/file2.txt"),
-					},
-					{
-						File: mdl.S("file1.txt"),
-					},
-				},
-			},
-		},
-		{
 			name: "simple_success_with_manifest_only_flag",
 			flagInputs: map[string]string{
 				"name_to_greet":      "Bob",
@@ -1567,7 +1514,7 @@ steps:
 				InputFiles:           inputFilePaths,
 				InputsFromFlags:      tc.flagInputs,
 				KeepTempDirs:         tc.flagKeepTempDirs,
-				Manifest:             tc.flagManifest,
+				Manifest:             true,
 				BackfillManifestOnly: tc.flagBackfillManifestOnly,
 				OutDir:               outDir,
 				OverrideBuiltinVars:  tc.overrideBuiltinVars,

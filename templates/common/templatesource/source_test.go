@@ -264,9 +264,9 @@ func TestParseSource(t *testing.T) {
 			abctestutil.WriteAll(t, tempDir, tc.tempDirContents)
 
 			params := &ParseSourceParams{
-				CWD:         tempDir,
-				Source:      tc.source,
-				GitProtocol: tc.gitProtocol,
+				CWD:             tempDir,
+				Source:          tc.source,
+				FlagGitProtocol: tc.gitProtocol,
 			}
 			got, err := ParseSource(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

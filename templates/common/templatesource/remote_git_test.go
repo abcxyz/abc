@@ -240,6 +240,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				remote:          "fake-remote",
 				subdir:          "",
 				version:         abctestutil.MinimalGitHeadSHA,
+				requireUpgradeChannel: true,
 				cloner: &fakeCloner{
 					tb:         t,
 					out:        basicFiles,
@@ -263,10 +264,12 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		{
 			name: "clone_by_sha_with_detected_tag",
 			dl: &remoteGitDownloader{
-				canonicalSource: "mysource",
-				remote:          "fake-remote",
-				subdir:          "",
-				version:         abctestutil.MinimalGitHeadSHA,
+				canonicalSource:       "mysource",
+				remote:                "fake-remote",
+				subdir:                "",
+				version:               abctestutil.MinimalGitHeadSHA,
+				flagUpgradeChannel:    Latest,
+				requireUpgradeChannel: true,
 				cloner: &fakeCloner{
 					tb:         t,
 					addTags:    []string{"v1.2.3"},

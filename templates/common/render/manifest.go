@@ -74,9 +74,6 @@ type writeManifestParams struct {
 
 	// The temp directory where the template was downloaded.
 	templateDir string
-
-	// The value of the --upgrade-channel flag.
-	upgradeChannel string
 }
 
 // writeManifest creates a manifest struct, marshals it as YAML, and writes it
@@ -207,13 +204,6 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 		locType = "" // we only save the location type in the manifest if the location is canonical
 	}
 
-	upgradeChannel := p.dlMeta.UpgradeChannel
-	if p.upgradeChannel != "" {
-		// The user specified --upgrade-channel to override the autodetected
-		// upgrade channel.
-		upgradeChannel = p.upgradeChannel
-	}
-
 	return &manifest.WithHeader{
 		Header: &header.Fields{
 			NewStyleAPIVersion: model.String{Val: apiVersion},
@@ -224,7 +214,7 @@ func buildManifest(p *writeManifestParams) (*manifest.WithHeader, error) {
 			LocationType:     model.String{Val: locType},                  // may be empty string if location isn't canonical
 			TemplateDirhash:  model.String{Val: templateDirhash},
 			TemplateVersion:  model.String{Val: p.dlMeta.Version},
-			UpgradeChannel:   model.String{Val: upgradeChannel},
+			UpgradeChannel:   model.String{Val: p.dlMeta.UpgradeChannel},
 			CreationTime:     now,
 			ModificationTime: now,
 			Inputs:           inputList,

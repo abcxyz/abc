@@ -104,10 +104,18 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		"backups",
 		fmt.Sprint(time.Now().UTC().Unix()))
 
+	manifest := c.flags.Manifest || c.flags.BackfillManifestOnly
+
+	// We require an upgrade channel IFF we're creating a manifest. Since the
+	// only point of having an upgrade channel is to save it in the manifest for
+	// future upgrades.
+	requireUpgradeChannel := manifest
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-		CWD:         wd,
-		Source:      c.flags.Source,
-		GitProtocol: c.flags.GitProtocol,
+		CWD:                   wd,
+		Source:                c.flags.Source,
+		FlagGitProtocol:       c.flags.GitProtocol,
+		FlagUpgradeChannel:    c.flags.UpgradeChannel,
+		RequireUpgradeChannel: requireUpgradeChannel,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck
@@ -131,7 +139,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		InputsFromFlags:        c.flags.Inputs,
 		InputFiles:             c.flags.InputFiles,
 		KeepTempDirs:           c.flags.KeepTempDirs,
-		Manifest:               c.flags.Manifest,
+		Manifest:               manifest,
 		BackfillManifestOnly:   c.flags.BackfillManifestOnly,
 		Prompt:                 c.flags.Prompt,
 		Prompter:               c,

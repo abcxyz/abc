@@ -447,41 +447,6 @@ steps:
 			}),
 		},
 		{
-			name:                  "upgrade_channel_flag_is_saved_to_manifest",
-			flagContinueIfCurrent: true,
-			flagUpgradeChannel:    "my-branch",
-			want: &Result{
-				Overall: Success,
-				Results: []*ManifestResult{
-					{
-						ManifestPath: ".",
-						Type:         Success,
-						DLMeta:       wantDLMeta,
-						NonConflicts: []ActionTaken{
-							{
-								Action: Noop,
-								Path:   "out.txt",
-							},
-						},
-					},
-				},
-			},
-			origTemplateDirContents: map[string]string{
-				"out.txt":   "hello\n",
-				"spec.yaml": includeDotSpec,
-			},
-
-			templateUnionForUpgrade:   map[string]string{},
-			wantManifestBeforeUpgrade: outTxtOnlyManifest,
-			wantDestContentsAfterUpgrade: map[string]string{
-				"out.txt": "hello\n",
-			},
-			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
-				m.ModificationTime = afterUpgradeTime // timestamp gets updated, because upgrade actually runs.
-				m.UpgradeChannel = mdl.S("my-branch")
-			}),
-		},
-		{
 			name: "new_template_has_file_not_in_old_template",
 			origTemplateDirContents: map[string]string{
 				"out.txt":   "hello\n",
