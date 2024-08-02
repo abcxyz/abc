@@ -627,7 +627,6 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 				inputs:                 cp.inputs,
 				outputHashes:           outputHashes,
 				templateDir:            cp.templateDir,
-				upgradeChannel:         p.UpgradeChannel,
 			}); err != nil {
 				return "", err
 			}

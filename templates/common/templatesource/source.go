@@ -105,7 +105,15 @@ type ParseSourceParams struct {
 	Source string
 
 	// The value of --git-protocol.
-	GitProtocol string
+	FlagGitProtocol string
+
+	// The value of --upgrade-channel.
+	FlagUpgradeChannel string
+	
+	// Reject the user input with an error in the case where an upgrade channel
+	// can't be determined from the combination of the location string and
+	// flags.
+	RequireUpgradeChannel bool
 }
 
 // ParseSource maps the input template source to a particular kind of
