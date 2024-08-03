@@ -1636,8 +1636,8 @@ yellow is my favorite color
 			assertManifest(ctx, t, "after upgrade", tc.wantManifestAfterUpgrade, manifestFullPath)
 
 			gotDestContentsAfter := abctestutil.LoadDir(t, destDir,
-				abctestutil.SkipGlob(".abc/manifest*"),
-				abctestutil.SkipGlob("*.patch.rej"), // rejected hunk files are asserted separately
+				abctestutil.SkipGlob(".abc/manifest*"), // manifests are asserted separately
+				abctestutil.SkipGlob("*.patch.rej"),    // rejected hunk files are asserted separately
 			)
 			if diff := cmp.Diff(gotDestContentsAfter, tc.wantDestContentsAfterUpgrade); diff != "" {
 				t.Errorf("installed directory contents after upgrading were not as expected (-got,+want): %s", diff)
@@ -2462,7 +2462,6 @@ func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, fakeDL *fak
 		DestDir:     destDir,
 		Downloader:  downloader,
 		FS:          &common.RealFS{},
-		Manifest:    true,
 		OutDir:      destDir,
 		TempDirBase: tempBase,
 	})
