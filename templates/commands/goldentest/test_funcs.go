@@ -198,6 +198,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		FS:                  &common.RealFS{},
 		InputsFromFlags:     varValuesToMap(tc.TestConfig.Inputs),
 		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
+		SkipManifest:        true,
 		SourceForMessages:   templateDir,
 		Stdout:              stdoutBuf,
 	})
