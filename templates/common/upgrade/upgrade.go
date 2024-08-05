@@ -425,7 +425,6 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		IncludeFromDestExtraDir: reversedDir,
 		InputsFromFlags:         p.InputsFromFlags,
 		KeepTempDirs:            p.KeepTempDirs,
-		Manifest:                true,
 		OutDir:                  mergeDir,
 		Prompt:                  p.Prompt,
 		Prompter:                p.Prompter,

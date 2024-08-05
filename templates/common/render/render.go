@@ -127,8 +127,9 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// The value of --manifest. Whether to create a manifest file.
-	Manifest bool
+	// Override the default behavior of outputting a manifest for the rendered
+	// template.
+	SkipManifest bool
 
 	// The value of --backfill-manifest-only. Whether to *only* create a
 	// manifest file without outputting any other files from the template.
@@ -180,8 +181,8 @@ type Result struct {
 
 	// ManifestPath, if set, is the relative path to the manifest file, starting
 	// from the destination directory (e.g. ".abc/manifest_123.yaml"). If
-	// manifest output wasn't enabled (see the --manifest flag), then this will
-	// be empty.
+	// manifest output wasn't enabled (see the --skip-manifest flag), then this
+	// will be empty.
 	ManifestPath string
 }
 
@@ -615,7 +616,7 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 			return "", err
 		}
 
-		if p.Manifest {
+		if !p.SkipManifest {
 			if manifestPath, err = writeManifest(&writeManifestParams{
 				clock:                  p.Clock,
 				cwd:                    p.Cwd,
@@ -665,7 +666,8 @@ two options:
    later, then this is a good option.
 
  - Revert the commit that rendered this template in the past. Re-render it using
-   "abc render --manifest" to generate a fully correct manifest.
+   "abc render" (which now defaults to '--skip-manifest=false') to generate a
+   fully correct manifest.
 
 The files in question that are modified in place are: %s`,
 			sortedFiles)
@@ -804,8 +806,8 @@ func fillDefaults(p *Params) *Params {
 }
 
 func validate(p *Params) error {
-	if p.BackfillManifestOnly && !p.Manifest {
-		return fmt.Errorf("if the BackfillManifestOnly flag is true, then the Manifest flag must be true")
+	if p.BackfillManifestOnly && p.SkipManifest {
+		return fmt.Errorf("if the --backfill-manifest-only flag is true, then the --skip-manifest flag must be false")
 	}
 	return nil
 }

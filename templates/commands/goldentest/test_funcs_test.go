@@ -579,7 +579,9 @@ steps:
 				return
 			}
 
-			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/test"))
+			gotDestContents := abctestutil.LoadDir(t, filepath.Join(tempDir, "testdata/golden/test"),
+				abctestutil.SkipGlob(".abc/manifest*"), // manifests are asserted separately
+			)
 			if diff := cmp.Diff(gotDestContents, tc.want); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}

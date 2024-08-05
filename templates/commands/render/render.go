@@ -113,9 +113,12 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		return err //nolint:wrapcheck
 	}
 
+	skipManifest := c.flags.SkipManifest && !c.flags.BackfillManifestOnly
+
 	_, err = render.Render(ctx, &render.Params{
 		AcceptDefaults:         c.flags.AcceptDefaults,
 		ContinueWithoutPatches: c.flags.ContinueWithoutPatches,
+		BackfillManifestOnly:   c.flags.BackfillManifestOnly,
 		BackupDir:              backupDir,
 		Backups:                true,
 		Clock:                  clock.New(),
@@ -131,11 +134,10 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		InputsFromFlags:        c.flags.Inputs,
 		InputFiles:             c.flags.InputFiles,
 		KeepTempDirs:           c.flags.KeepTempDirs,
-		Manifest:               c.flags.Manifest,
-		BackfillManifestOnly:   c.flags.BackfillManifestOnly,
 		Prompt:                 c.flags.Prompt,
 		Prompter:               c,
 		SkipInputValidation:    c.flags.SkipInputValidation,
+		SkipManifest:           skipManifest,
 		SkipPromptTTYCheck:     c.skipPromptTTYCheck,
 		SourceForMessages:      c.flags.Source,
 		Stdout:                 c.Stdout(),

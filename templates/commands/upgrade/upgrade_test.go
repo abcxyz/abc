@@ -235,7 +235,6 @@ these flags:
 				DestDir:     destDir,
 				Downloader:  downloader,
 				FS:          &common.RealFS{},
-				Manifest:    true,
 				OutDir:      destDir,
 				TempDirBase: tempBase,
 			})
@@ -468,7 +467,6 @@ steps:
 				DestDir:     destDir,
 				Downloader:  downloader,
 				FS:          &common.RealFS{},
-				Manifest:    true,
 				OutDir:      destDir,
 				TempDirBase: tempBase,
 			})

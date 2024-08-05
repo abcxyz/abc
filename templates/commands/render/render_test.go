@@ -18,14 +18,20 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/abcxyz/abc/templates/common"
+	"github.com/abcxyz/abc/templates/model"
+	"github.com/abcxyz/abc/templates/model/decode"
+	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
+	mdl "github.com/abcxyz/abc/templates/testutil/model"
 	"github.com/abcxyz/abc/templates/testutil/prompt"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -55,13 +61,14 @@ func TestRenderFlags_Parse(t *testing.T) {
 				"--input", "x=y",
 				"--keep-temp-dirs",
 				"--backfill-manifest-only",
-				"--manifest",
+				"--skip-manifest",
 				"--skip-input-validation",
 				"--upgrade-channel", "main",
 				"helloworld@v1",
 			},
 			want: RenderFlags{
 				AcceptDefaults:       true,
+				BackfillManifestOnly: true,
 				DebugScratchContents: true,
 				DebugStepDiffs:       true,
 				Dest:                 "my_dir",
@@ -71,8 +78,7 @@ func TestRenderFlags_Parse(t *testing.T) {
 				InputFiles:           []string{"abc-inputs.yaml"},
 				Inputs:               map[string]string{"x": "y"},
 				KeepTempDirs:         true,
-				Manifest:             true,
-				BackfillManifestOnly: true,
+				SkipManifest:         true,
 				SkipInputValidation:  true,
 				Source:               "helloworld@v1",
 				UpgradeChannel:       "main",
@@ -90,7 +96,6 @@ func TestRenderFlags_Parse(t *testing.T) {
 				Inputs:         map[string]string{},
 				ForceOverwrite: false,
 				KeepTempDirs:   false,
-				Manifest:       true,
 			},
 		},
 		{
@@ -197,9 +202,10 @@ steps:
 		name             string
 		templateContents map[string]string
 		flagPrompt       bool
-		flagManifest     bool
+		flagSkipManifest bool
 		dialog           []prompt.DialogStep
 		wantDestContents map[string]string
+		wantManifest     *manifest.Manifest
 		wantErr          string
 	}{
 		{
@@ -211,8 +217,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagPrompt:   true,
-			flagManifest: false,
+			flagPrompt: true,
 			dialog: []prompt.DialogStep{
 				{
 					WaitForPrompt: `
@@ -227,6 +232,19 @@ Enter value: `,
 				"file1.txt":            "my favorite person is Bob",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
+			},
+			wantManifest: &manifest.Manifest{
+				Inputs: []*manifest.Input{
+					{
+						Name:  mdl.S("name_of_favourite_person"),
+						Value: mdl.S("Bob"),
+					},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
 			},
 		},
 	}
@@ -248,11 +266,6 @@ Enter value: `,
 			if tc.flagPrompt {
 				args = append(args, "--prompt")
 			}
-			if tc.flagManifest {
-				args = append(args, "--manifest=true")
-			} else {
-				args = append(args, "--manifest=false")
-			}
 
 			args = append(args, fmt.Sprintf("--dest=%s", dest))
 			args = append(args, sourceDir)
@@ -264,10 +277,75 @@ Enter value: `,
 				t.Fatal(diff)
 			}
 
-			gotDestContents := abctestutil.LoadDir(t, dest)
+			gotDestContents := abctestutil.LoadDir(t, dest,
+				abctestutil.SkipGlob(".abc/manifest*"), // manifests are asserted separately
+			)
 			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
 				t.Errorf("dest directory contents were not as expected (-got,+want): %s", diff)
 			}
+
+			globResults, err := filepath.Glob(dest + "/.abc/manifest*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(globResults) != 1 {
+				t.Fatalf("got %d files returned from glob when looking for manifest, wanted 1", len(globResults))
+			}
+
+			assertManifest(ctx, t, "after upgrade", tc.wantManifest, globResults[0])
 		})
 	}
+}
+
+func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, path string) {
+	tb.Helper()
+
+	got, err := loadManifest(ctx, path)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	opts := []cmp.Option{
+		// Don't force test authors to assert the line and column numbers
+		cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}),
+
+		// Don't force test author to compute hashes when writing/updating test cases.
+		cmpopts.IgnoreFields(manifest.Manifest{}, "TemplateDirhash", "CreationTime", "ModificationTime"),
+		cmpopts.IgnoreFields(manifest.OutputFile{}, "Hash"),
+	}
+	if diff := cmp.Diff(got, want, opts...); diff != "" {
+		tb.Errorf("at %q, manifest was not as expected (-got,+want): %s", whereAreWe, diff)
+	}
+
+	// We omitted these fields from the Diff(), but make sure they look sane.
+	const minHashLen = 10 // arbitrarily picked, anything shorter isn't a sane hash
+	if len(got.TemplateDirhash.Val) < minHashLen {
+		tb.Errorf("dirhash %q is too short", got.TemplateDirhash.Val)
+	}
+	for _, oh := range got.OutputFiles {
+		if len(oh.Hash.Val) < minHashLen {
+			tb.Errorf("output hash %q for file %q is too short", oh.Hash.Val, oh.File.Val)
+		}
+	}
+}
+
+// loadManifest reads and unmarshals the manifest at the given path.
+func loadManifest(ctx context.Context, path string) (*manifest.Manifest, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
+	}
+	defer f.Close()
+
+	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	if err != nil {
+		return nil, fmt.Errorf("error reading manifest file: %w", err)
+	}
+
+	out, ok := manifestI.(*manifest.Manifest)
+	if !ok {
+		return nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
+	}
+
+	return out, nil
 }
