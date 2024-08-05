@@ -104,12 +104,12 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		"backups",
 		fmt.Sprint(time.Now().UTC().Unix()))
 
-	manifest := c.flags.Manifest || c.flags.BackfillManifestOnly
+	createManifest := c.flags.BackfillManifestOnly || !c.flags.SkipManifest
 
-	// We require an upgrade channel IFF we're creating a manifest. Since the
-	// only point of having an upgrade channel is to save it in the manifest for
+	// We require an upgrade channel IFF we're creating a manifest; the only
+	// point of having an upgrade channel is to save it in the manifest for
 	// future upgrades.
-	requireUpgradeChannel := manifest
+	requireUpgradeChannel := createManifest
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
 		CWD:                   wd,
 		Source:                c.flags.Source,
@@ -120,8 +120,6 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-
-	skipManifest := c.flags.SkipManifest && !c.flags.BackfillManifestOnly
 
 	_, err = render.Render(ctx, &render.Params{
 		AcceptDefaults:         c.flags.AcceptDefaults,
@@ -145,7 +143,7 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		Prompt:                 c.flags.Prompt,
 		Prompter:               c,
 		SkipInputValidation:    c.flags.SkipInputValidation,
-		SkipManifest:           skipManifest,
+		SkipManifest:           !createManifest,
 		SkipPromptTTYCheck:     c.skipPromptTTYCheck,
 		SourceForMessages:      c.flags.Source,
 		Stdout:                 c.Stdout(),

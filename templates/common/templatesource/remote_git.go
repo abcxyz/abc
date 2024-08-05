@@ -286,9 +286,11 @@ func gitTemplateVars(ctx context.Context, srcDir string) (*DownloaderVars, error
 	}, nil
 }
 
-// resolveVersion returns the latest release tag if version is "latest", and otherwise
-// just returns the input version. The return value is either a branch, tag, or
-// a long commit SHA (unless there's an error).
+// resolveVersion returns the latest release tag if version is "latest", and
+// otherwise just returns the input version. The returned tagBranchOrSHA is
+// either a branch, tag, or a long commit SHA (unless there's an error). The
+// returned upgradeChannel is an auto-detected upgrade channel that should only
+// be used if the user didn't specify one with --upgrade-channel.
 func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA, upgradeChannel string, _ error) {
 	isSemver := false
 	if len(version) > 0 {
@@ -307,7 +309,8 @@ func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA
 		return tagBranchOrSHA, Latest, nil
 	case sha.MatchString(version):
 		// If the requested version is a SHA, then we'll require the user to
-		// specify which upgrade channel they want by returning empty string.
+		// specify which upgrade channel they want by returning empty string for
+		// upgradeChannel.
 		return version, "", nil
 	case isSemver:
 		// If the requested version is a vX.Y.Z semver version, then the
