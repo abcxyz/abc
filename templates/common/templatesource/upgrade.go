@@ -86,10 +86,10 @@ type ForUpgradeParams struct {
 
 func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
 	downloader, ok, err := newRemoteGitDownloader(&newRemoteGitDownloaderParams{
-		re:             remoteGitUpgradeLocationRE,
-		input:          f.CanonicalLocation,
-		gitProtocol:    f.GitProtocol,
-		defaultVersion: f.Version,
+		re:                 remoteGitUpgradeLocationRE,
+		input:              f.CanonicalLocation,
+		gitProtocol:        f.GitProtocol,
+		defaultVersion:     f.Version,
 		flagUpgradeChannel: f.FlagUpgradeChannel,
 	})
 	if err != nil {

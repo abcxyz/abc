@@ -109,7 +109,7 @@ type ParseSourceParams struct {
 
 	// The value of --upgrade-channel.
 	FlagUpgradeChannel string
-	
+
 	// Reject the user input with an error in the case where an upgrade channel
 	// can't be determined from the combination of the location string and
 	// flags.
