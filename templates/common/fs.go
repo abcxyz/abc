@@ -296,6 +296,11 @@ func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 	if dryRun {
 		writer = io.Discard
 	} else {
+		parentDir := filepath.Dir(dst)
+		if err := rfs.MkdirAll(parentDir, OwnerRWXPerms); err != nil {
+			return fmt.Errorf("fs.MkdirAll(%s): %w", parentDir, err)
+		}
+
 		writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 		if err != nil {
 			return pos.Errorf("OpenFile(): %w", err)
@@ -324,11 +329,6 @@ func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 // abc.
 func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) error {
 	backupFile := filepath.Join(backupDir, relPath)
-	parent := filepath.Dir(backupFile)
-	if err := os.MkdirAll(parent, OwnerRWXPerms); err != nil {
-		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
-	}
-
 	fileToBackup := filepath.Join(srcRoot, relPath)
 
 	if err := CopyFile(ctx, nil, rfs, fileToBackup, backupFile, false, nil); err != nil {
