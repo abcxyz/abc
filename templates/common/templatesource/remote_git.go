@@ -140,7 +140,8 @@ type remoteGitDownloader struct {
 	// The value of --upgrade-channel.
 	flagUpgradeChannel string
 
-	// Error if we can't infer an upgrade channel to put in the manifest.
+	// Return an error if we can't infer an upgrade channel to put in the
+	// manifest.
 	requireUpgradeChannel bool
 }
 
