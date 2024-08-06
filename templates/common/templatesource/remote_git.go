@@ -181,7 +181,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 	}
 
 	if upgradeChannel == "" && g.requireUpgradeChannel {
-		return nil, fmt.Errorf("with the download method and version you've provided, you must also provide --upgrade-channel; common values are --upgrade-channel=main (to track the main branch) or --upgrade-channel=latest (to track the latest semver release tag)")
+		return nil, fmt.Errorf("when installing from a SHA, you must provide the --upgrade-channel flag to make upgrading easy in the future; this will control which branch/tag upgrades will be pulled from; common values are --upgrade-channel=main (to track the main branch) or --upgrade-channel=latest (to track the then-latest semver release tag); alternatively you can provide the --skip-manifest flag which will disable the ability to upgrade this template installation")
 	}
 
 	logger.DebugContext(ctx, "resolved version from",

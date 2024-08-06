@@ -276,7 +276,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 					wantRemote: "fake-remote",
 				},
 			},
-			wantErr: "provide --upgrade-channel",
+			wantErr: "you must provide the --upgrade-channel flag",
 		},
 		{
 			name: "clone_by_sha_with_detected_tag",

@@ -90,6 +90,7 @@ func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams)
 		input:          f.CanonicalLocation,
 		gitProtocol:    f.GitProtocol,
 		defaultVersion: f.Version,
+		flagUpgradeChannel: f.FlagUpgradeChannel,
 	})
 	if err != nil {
 		return nil, err

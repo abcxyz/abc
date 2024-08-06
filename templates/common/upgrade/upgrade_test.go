@@ -1046,6 +1046,90 @@ steps:
 			}),
 		},
 		{
+			// This test simulates the user providing the --upgrade-channel flag
+			// to the upgrade command, which should override the upgrade_channel
+			// field in the manifest.
+			name: "upgrade_channel_flag_overrides_manifest",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": includeDotSpec,
+				"out.txt":   "out.txt contents",
+			},
+			fakeDownloader: &fakeDownloader{
+				outDLMeta: &templatesource.DownloadMetadata{
+					IsCanonical:     true,
+					CanonicalSource: "fake_canonical_source",
+					LocationType:    "fake_location_type",
+					Version:         "fake_version",
+					UpgradeChannel:  "initial_upgrade_channel",
+				},
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.TemplateLocation.Val = "fake_canonical_source"
+				m.LocationType.Val = "fake_location_type"
+				m.TemplateVersion.Val = "fake_version"
+				m.UpgradeChannel.Val = "initial_upgrade_channel"
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			flagUpgradeChannel:    "upgrade_channel_from_flag",
+			flagContinueIfCurrent: true,
+			fakeUpgradeDownloaderFactory: &fakeUpgradeDownloaderFactory{
+				wantParams: &templatesource.ForUpgradeParams{
+					LocType:            "fake_location_type",
+					CanonicalLocation:  "fake_canonical_source",
+					Version:            "initial_upgrade_channel",
+					FlagUpgradeChannel: "upgrade_channel_from_flag",
+				},
+				outDownloader: &fakeDownloader{
+					outDLMeta: &templatesource.DownloadMetadata{
+						IsCanonical:     true,
+						CanonicalSource: "fake_canonical_source",
+						LocationType:    "fake_location_type",
+						Version:         "fake_version",
+						UpgradeChannel:  "upgrade_channel_from_flag",
+					},
+				},
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.TemplateLocation.Val = "fake_canonical_source"
+				m.LocationType.Val = "fake_location_type"
+				m.TemplateVersion.Val = "fake_version"
+				m.UpgradeChannel.Val = "upgrade_channel_from_flag"
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "out.txt contents",
+			},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: "noop", Path: "out.txt"},
+						},
+						DLMeta: &templatesource.DownloadMetadata{
+							IsCanonical:     true,
+							CanonicalSource: "fake_canonical_source",
+							LocationType:    "fake_location_type",
+							Version:         "fake_version",
+							UpgradeChannel:  "upgrade_channel_from_flag",
+						},
+					},
+				},
+			},
+		},
+
+		{
 			// This test simulates a template being downloaded from a remote
 			// source using a fake downloader.
 			name: "add_file_with_remote_template",
@@ -1580,6 +1664,7 @@ yellow is my favorite color
 				params.Prompter = prompter
 				upgradeResult = UpgradeAll(ctx, params)
 			})
+
 			if diff := testutil.DiffErrString(upgradeResult.Err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
