@@ -480,9 +480,10 @@ func makeDownloader(ctx context.Context, p *Params, installedDir string, oldMani
 			return nil, fmt.Errorf("--template-location and --version must not be used together; to specify the version with --template-version, use the @version syntax, like github.com/foo/bar@main")
 		}
 		downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-			CWD:         p.CWD,
-			Source:      p.TemplateLocation,
-			GitProtocol: p.GitProtocol,
+			CWD:                p.CWD,
+			Source:             p.TemplateLocation,
+			FlagGitProtocol:    p.GitProtocol,
+			FlagUpgradeChannel: p.UpgradeChannel,
 		})
 		if err != nil {
 			return nil, err //nolint:wrapcheck
@@ -506,11 +507,12 @@ func makeDownloader(ctx context.Context, p *Params, installedDir string, oldMani
 		downloaderFactory = templatesource.ForUpgrade
 	}
 	downloader, err := downloaderFactory(ctx, &templatesource.ForUpgradeParams{
-		InstalledDir:      installedDir,
-		CanonicalLocation: oldManifest.TemplateLocation.Val,
-		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
-		GitProtocol:       p.GitProtocol,
-		Version:           version,
+		InstalledDir:       installedDir,
+		CanonicalLocation:  oldManifest.TemplateLocation.Val,
+		LocType:            templatesource.LocationType(oldManifest.LocationType.Val),
+		GitProtocol:        p.GitProtocol,
+		Version:            version,
+		FlagUpgradeChannel: p.UpgradeChannel,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",

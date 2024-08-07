@@ -69,6 +69,10 @@ func (l *localSourceParser) sourceParse(ctx context.Context, params *ParseSource
 
 	logger.InfoContext(ctx, "treating src as a local path", "src", absSource)
 
+	if params.FlagUpgradeChannel != "" {
+		return nil, false, fmt.Errorf("the --upgrade-channel flag doesn't make sense when installing from a local directory; it must be omitted")
+	}
+
 	return &LocalDownloader{
 		SrcPath: absSource,
 	}, true, nil

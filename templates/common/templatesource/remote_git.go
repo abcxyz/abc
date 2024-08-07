@@ -62,10 +62,12 @@ type remoteGitSourceParser struct {
 
 func (g *remoteGitSourceParser) sourceParse(ctx context.Context, params *ParseSourceParams) (Downloader, bool, error) {
 	return newRemoteGitDownloader(&newRemoteGitDownloaderParams{
-		re:             g.re,
-		input:          params.Source,
-		gitProtocol:    params.GitProtocol,
-		defaultVersion: g.defaultVersion,
+		re:                    g.re,
+		input:                 params.Source,
+		gitProtocol:           params.FlagGitProtocol,
+		defaultVersion:        g.defaultVersion,
+		flagUpgradeChannel:    params.FlagUpgradeChannel,
+		requireUpgradeChannel: params.RequireUpgradeChannel,
 	})
 }
 
@@ -75,10 +77,12 @@ type newRemoteGitDownloaderParams struct {
 	// defaultVersion is the template version (e.g. "latest", "v1.2.3") that
 	// will be used if the "re" regular expression either doesn't have a
 	// matching group named "version", or
-	defaultVersion string
-	gitProtocol    string
-	input          string
-	re             *regexp.Regexp
+	defaultVersion        string
+	gitProtocol           string
+	input                 string
+	flagUpgradeChannel    string
+	requireUpgradeChannel bool
+	re                    *regexp.Regexp
 }
 
 // newRemoteGitDownloader is basically a fancy constructor for
@@ -108,11 +112,13 @@ func newRemoteGitDownloader(p *newRemoteGitDownloaderParams) (Downloader, bool, 
 	subdir := string(p.re.ExpandString(nil, "${subdir}", p.input, match))
 
 	return &remoteGitDownloader{
-		canonicalSource: canonicalSource,
-		cloner:          &realCloner{},
-		remote:          remote,
-		subdir:          subdir,
-		version:         version,
+		canonicalSource:       canonicalSource,
+		cloner:                &realCloner{},
+		remote:                remote,
+		subdir:                subdir,
+		version:               version,
+		flagUpgradeChannel:    p.flagUpgradeChannel,
+		requireUpgradeChannel: p.requireUpgradeChannel,
 	}, true, nil
 }
 
@@ -130,6 +136,13 @@ type remoteGitDownloader struct {
 	canonicalSource string
 
 	cloner cloner
+
+	// The value of --upgrade-channel.
+	flagUpgradeChannel string
+
+	// Return an error if we can't infer an upgrade channel to put in the
+	// manifest.
+	requireUpgradeChannel bool
 }
 
 // Download implements Downloader.
@@ -158,10 +171,20 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		return nil, fmt.Errorf("Clone() of %s: %w", g.remote, err)
 	}
 
-	versionToCheckout, track, err := resolveVersion(ctx, tmpDir, g.version)
+	versionToCheckout, defaultUpgradeChannel, err := resolveVersion(ctx, tmpDir, g.version)
 	if err != nil {
 		return nil, err
 	}
+
+	upgradeChannel := defaultUpgradeChannel
+	if g.flagUpgradeChannel != "" {
+		upgradeChannel = g.flagUpgradeChannel
+	}
+
+	if upgradeChannel == "" && g.requireUpgradeChannel {
+		return nil, fmt.Errorf("when installing from a SHA, you must provide the --upgrade-channel flag to make upgrading easy in the future; this will control which branch/tag upgrades will be pulled from; common values are --upgrade-channel=main (to track the main branch) or --upgrade-channel=latest (to track the then-latest semver release tag); alternatively you can provide the --skip-manifest flag which will disable the ability to upgrade this template installation")
+	}
+
 	logger.DebugContext(ctx, "resolved version from",
 		"input", g.version,
 		"to", versionToCheckout)
@@ -224,7 +247,7 @@ func (g *remoteGitDownloader) Download(ctx context.Context, _, templateDir, _ st
 		CanonicalSource: g.canonicalSource,
 		LocationType:    RemoteGit,
 		Version:         canonicalVersion,
-		UpgradeChannel:  track,
+		UpgradeChannel:  upgradeChannel,
 		Vars:            *vars,
 	}
 
@@ -264,9 +287,11 @@ func gitTemplateVars(ctx context.Context, srcDir string) (*DownloaderVars, error
 	}, nil
 }
 
-// resolveVersion returns the latest release tag if version is "latest", and otherwise
-// just returns the input version. The return value is either a branch, tag, or
-// a long commit SHA (unless there's an error).
+// resolveVersion returns the latest release tag if version is "latest", and
+// otherwise just returns the input version. The returned tagBranchOrSHA is
+// either a branch, tag, or a long commit SHA (unless there's an error). The
+// returned upgradeChannel is an auto-detected upgrade channel that should only
+// be used if the user didn't specify one with --upgrade-channel.
 func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA, upgradeChannel string, _ error) {
 	isSemver := false
 	if len(version) > 0 {
@@ -276,16 +301,21 @@ func resolveVersion(ctx context.Context, tmpDir, version string) (tagBranchOrSHA
 
 	switch {
 	case version == "":
-		return "", "", fmt.Errorf("the template source version cannot be empty")
+		return "", "", fmt.Errorf(`the template source version cannot be empty; consider providing one of @main, @latest, @tagname, or @branchname`)
 	case version == Latest:
 		tagBranchOrSHA, err := resolveLatest(ctx, tmpDir)
 		if err != nil {
 			return "", "", err
 		}
 		return tagBranchOrSHA, Latest, nil
-	case sha.MatchString(version) || isSemver:
-		// If the requested version is a SHA or a vX.Y.Z semver version, then
-		// the behavior on upgrade should be to upgrade to the latest semver
+	case sha.MatchString(version):
+		// If the requested version is a SHA, then we'll require the user to
+		// specify which upgrade channel they want by returning empty string for
+		// upgradeChannel.
+		return version, "", nil
+	case isSemver:
+		// If the requested version is a vX.Y.Z semver version, then the
+		// behavior on upgrade should be to upgrade to the latest semver
 		// release.
 		return version, Latest, nil
 	}
