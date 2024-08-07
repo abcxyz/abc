@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
 	"github.com/abcxyz/pkg/testutil"
@@ -199,7 +200,6 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				version: "v1.2.3",
 			},
 			wantErr: `must not contain ".."`,
-			want:    map[string]string{},
 		},
 		{
 			name: "missing_subdir",
@@ -234,12 +234,14 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			want:    map[string]string{},
 		},
 		{
-			name: "clone_by_sha",
+			name: "clone_by_sha_with_upgrade_channel_flag",
 			dl: &remoteGitDownloader{
-				canonicalSource: "mysource",
-				remote:          "fake-remote",
-				subdir:          "",
-				version:         abctestutil.MinimalGitHeadSHA,
+				canonicalSource:       "mysource",
+				remote:                "fake-remote",
+				subdir:                "",
+				version:               abctestutil.MinimalGitHeadSHA,
+				requireUpgradeChannel: true,
+				flagUpgradeChannel:    "main",
 				cloner: &fakeCloner{
 					tb:         t,
 					out:        basicFiles,
@@ -252,7 +254,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				CanonicalSource: "mysource",
 				LocationType:    RemoteGit,
 				Version:         abctestutil.MinimalGitHeadSHA,
-				UpgradeChannel:  "latest",
+				UpgradeChannel:  "main",
 				Vars: DownloaderVars{
 					GitTag:      "",
 					GitSHA:      abctestutil.MinimalGitHeadSHA,
@@ -261,12 +263,30 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 			},
 		},
 		{
+			name: "clone_by_sha_missing_upgrade_channel_flag",
+			dl: &remoteGitDownloader{
+				canonicalSource:       "mysource",
+				remote:                "fake-remote",
+				subdir:                "",
+				version:               abctestutil.MinimalGitHeadSHA,
+				requireUpgradeChannel: true,
+				cloner: &fakeCloner{
+					tb:         t,
+					out:        basicFiles,
+					wantRemote: "fake-remote",
+				},
+			},
+			wantErr: "you must provide the --upgrade-channel flag",
+		},
+		{
 			name: "clone_by_sha_with_detected_tag",
 			dl: &remoteGitDownloader{
-				canonicalSource: "mysource",
-				remote:          "fake-remote",
-				subdir:          "",
-				version:         abctestutil.MinimalGitHeadSHA,
+				canonicalSource:       "mysource",
+				remote:                "fake-remote",
+				subdir:                "",
+				version:               abctestutil.MinimalGitHeadSHA,
+				flagUpgradeChannel:    Latest,
+				requireUpgradeChannel: true,
 				cloner: &fakeCloner{
 					tb:         t,
 					addTags:    []string{"v1.2.3"},
@@ -303,7 +323,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 				t.Fatal(diff)
 			}
 			got := abctestutil.LoadDir(t, tempDir)
-			if diff := cmp.Diff(got, tc.want); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("output files were not as expected (-got, +want): %s", diff)
 			}
 			if diff := cmp.Diff(gotDLMeta, tc.wantDLMeta); diff != "" {
@@ -336,7 +356,7 @@ func TestResolveVersion(t *testing.T) {
 			name:               "version_with_sha",
 			in:                 "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
 			wantVersion:        "b488f14a5302518e0ba347712e6dc4db4d0f7ce5",
-			wantUpgradeChannel: "latest",
+			wantUpgradeChannel: "",
 		},
 		{
 			name:               "version_with_main_branch",
@@ -430,7 +450,7 @@ func TestResolveVersion(t *testing.T) {
 				t.Errorf("got %q, want %q", gotVersion, tc.wantVersion)
 			}
 			if gotTrack != tc.wantUpgradeChannel {
-				t.Errorf("got upgrade track %q, want %q", gotTrack, tc.wantUpgradeChannel)
+				t.Errorf("got upgrade channel %q, want %q", gotTrack, tc.wantUpgradeChannel)
 			}
 		})
 	}

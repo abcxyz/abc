@@ -256,58 +256,6 @@ steps:
 			},
 		},
 		{
-			name: "simple_success_with_manifest_and_upgrade_channel_flag",
-			flagInputs: map[string]string{
-				"name_to_greet":      "Bob",
-				"emoji_suffix":       "🐈",
-				"ending_punctuation": "!",
-			},
-			templateContents: map[string]string{
-				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
-				"file1.txt":            "my favorite color is blue",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			flagUpgradeChannel: "main",
-			wantStdout:         "Hello, Bob🐈!\n",
-			wantDestContents: map[string]string{
-				"file1.txt":            "my favorite color is red",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantManifest: &manifest.Manifest{
-				CreationTime:     clk.Now(),
-				ModificationTime: clk.Now(),
-				UpgradeChannel:   mdl.S("main"),
-				Inputs: []*manifest.Input{
-					{
-						Name:  mdl.S("emoji_suffix"),
-						Value: mdl.S("\U0001F408"),
-					},
-					{
-						Name:  mdl.S("ending_punctuation"),
-						Value: mdl.S("!"),
-					},
-					{
-						Name:  mdl.S("name_to_greet"),
-						Value: mdl.S("Bob"),
-					},
-				},
-				OutputFiles: []*manifest.OutputFile{
-					{
-						File: mdl.S("dir1/file_in_dir.txt"),
-					},
-					{
-						File: mdl.S("dir2/file2.txt"),
-					},
-					{
-						File: mdl.S("file1.txt"),
-					},
-				},
-			},
-		},
-		{
 			name: "simple_success_with_manifest_only_flag",
 			flagInputs: map[string]string{
 				"name_to_greet":      "Bob",
@@ -1838,6 +1786,7 @@ steps:
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
 				AcceptDefaults:         tc.flagAcceptDefaults,
+				BackfillManifestOnly:   tc.flagBackfillManifestOnly,
 				Backups:                true,
 				BackupDir:              backupDir,
 				Clock:                  clk,
@@ -1849,18 +1798,17 @@ steps:
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
 				},
-				IgnoreUnknownInputs:  tc.flagIgnoreUnknownInputs,
-				InputFiles:           inputFilePaths,
-				InputsFromFlags:      tc.flagInputs,
-				KeepTempDirs:         tc.flagKeepTempDirs,
-				BackfillManifestOnly: tc.flagBackfillManifestOnly,
-				OutDir:               outDir,
-				OverrideBuiltinVars:  tc.overrideBuiltinVars,
-				SkipInputValidation:  tc.flagSkipInputValidation,
-				SourceForMessages:    sourceDir,
-				Stdout:               stdoutBuf,
-				TempDirBase:          tempDir,
-				UpgradeChannel:       tc.flagUpgradeChannel,
+				IgnoreUnknownInputs: tc.flagIgnoreUnknownInputs,
+				InputFiles:          inputFilePaths,
+				InputsFromFlags:     tc.flagInputs,
+				KeepTempDirs:        tc.flagKeepTempDirs,
+				OutDir:              outDir,
+				OverrideBuiltinVars: tc.overrideBuiltinVars,
+				SkipInputValidation: tc.flagSkipInputValidation,
+				SourceForMessages:   sourceDir,
+				Stdout:              stdoutBuf,
+				TempDirBase:         tempDir,
+				UpgradeChannel:      tc.flagUpgradeChannel,
 			}
 
 			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
