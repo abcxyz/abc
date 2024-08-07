@@ -271,7 +271,10 @@ func Copy(ctx context.Context, fs FS, src, dst string) error {
 	return CopyFile(ctx, nil, fs, src, dst, false, nil)
 }
 
-// CopyFile copies the contents of src to dst.
+// CopyFile copies the contents of src to dst. src and dst are filenames, not
+// directories.
+//
+// If the target directory doesn't exist, it will be automatically created.
 //
 // tee is nil-able. If not nil, it will be written to with the file contents.
 func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, dryRun bool, tee io.Writer) (outErr error) {

@@ -648,7 +648,7 @@ func TestCopyFile(t *testing.T) {
 
 			var gotTee string
 			if tee != nil {
-				gotTee = tee.(*bytes.Buffer).String()
+				gotTee = tee.(*bytes.Buffer).String() //nolint:forcetypeassert
 			}
 			if gotTee != tc.wantTee {
 				t.Errorf("tee io.Writer contents were not as expected; got %q but want %q", gotTee, tc.wantTee)
