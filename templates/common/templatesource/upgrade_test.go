@@ -185,12 +185,12 @@ func TestForUpgrade(t *testing.T) {
 			installedInDir := filepath.Join(tempDir, tc.installedInSubdir)
 
 			downloader, err := ForUpgrade(ctx, &ForUpgradeParams{
-				LocType:            tc.locType,
-				CanonicalLocation:  location,
-				InstalledDir:       installedInDir,
-				GitProtocol:        tc.gitProtocol,
-				Version:            tc.version,
-				FlagUpgradeChannel: tc.flagUpgradeChannel,
+				LocType:           tc.locType,
+				CanonicalLocation: location,
+				InstalledDir:      installedInDir,
+				GitProtocol:       tc.gitProtocol,
+				Version:           tc.version,
+				UpgradeChannel:    tc.flagUpgradeChannel,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)

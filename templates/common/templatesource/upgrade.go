@@ -80,8 +80,11 @@ type ForUpgradeParams struct {
 	// branch, or a SHA.
 	Version string
 
-	// The value of --upgrade-channel
-	FlagUpgradeChannel string
+	// Optional: the value of the UpgradeChannel to be returned in the
+	// DownloadMetadata of the returned Downloader. This can come from the
+	// --upgrade-channel or from the manifest being upgraded. Leave empty to
+	// autodetect the upgrade channel based on the Version field.
+	UpgradeChannel string
 }
 
 func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams) (Downloader, error) {
@@ -90,7 +93,7 @@ func remoteGitUpgradeDownloaderFactory(ctx context.Context, f *ForUpgradeParams)
 		input:              f.CanonicalLocation,
 		gitProtocol:        f.GitProtocol,
 		defaultVersion:     f.Version,
-		flagUpgradeChannel: f.FlagUpgradeChannel,
+		flagUpgradeChannel: f.UpgradeChannel,
 	})
 	if err != nil {
 		return nil, err
