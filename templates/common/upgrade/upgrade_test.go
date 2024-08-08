@@ -121,6 +121,7 @@ func TestUpgradeAll(t *testing.T) {
 		flagPrompt                   bool
 		flagContinueIfCurrent        bool
 		flagUpgradeChannel           string
+		flagUpgradeVersion           string
 		upgradeInputs                map[string]string
 		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -131,7 +132,7 @@ func TestUpgradeAll(t *testing.T) {
 		// If these fields are set, then we'll fake a remote download using
 		// fakeXXXDownloaderFactory. This allows testing of the "upgrade_channel"
 		// logic.
-		fakeDownloader               *fakeDownloader
+		fakeInitialRenderDownloader  *fakeDownloader
 		fakeUpgradeDownloaderFactory *fakeUpgradeDownloaderFactory
 
 		// wantRejectFile, if set, is a path to a file that should contain the
@@ -1054,7 +1055,7 @@ steps:
 				"spec.yaml": includeDotSpec,
 				"out.txt":   "out.txt contents",
 			},
-			fakeDownloader: &fakeDownloader{
+			fakeInitialRenderDownloader: &fakeDownloader{
 				outDLMeta: &templatesource.DownloadMetadata{
 					IsCanonical:     true,
 					CanonicalSource: "fake_canonical_source",
@@ -1078,10 +1079,10 @@ steps:
 			flagContinueIfCurrent: true,
 			fakeUpgradeDownloaderFactory: &fakeUpgradeDownloaderFactory{
 				wantParams: &templatesource.ForUpgradeParams{
-					LocType:            "fake_location_type",
-					CanonicalLocation:  "fake_canonical_source",
-					Version:            "initial_upgrade_channel",
-					FlagUpgradeChannel: "upgrade_channel_from_flag",
+					LocType:           "fake_location_type",
+					CanonicalLocation: "fake_canonical_source",
+					Version:           "initial_upgrade_channel",
+					UpgradeChannel:    "upgrade_channel_from_flag",
 				},
 				outDownloader: &fakeDownloader{
 					outDLMeta: &templatesource.DownloadMetadata{
@@ -1128,7 +1129,6 @@ steps:
 				},
 			},
 		},
-
 		{
 			// This test simulates a template being downloaded from a remote
 			// source using a fake downloader.
@@ -1154,7 +1154,7 @@ steps:
 			templateUnionForUpgrade: map[string]string{
 				"some_other_file.txt": "some other file contents",
 			},
-			fakeDownloader: &fakeDownloader{
+			fakeInitialRenderDownloader: &fakeDownloader{
 				outDLMeta: &templatesource.DownloadMetadata{
 					IsCanonical:     true,
 					CanonicalSource: "fake_canonical_source",
@@ -1168,6 +1168,7 @@ steps:
 					LocType:           "fake_location_type",
 					CanonicalLocation: "fake_canonical_source",
 					Version:           "fake_upgrade_channel",
+					UpgradeChannel:    "fake_upgrade_channel",
 				},
 				outDownloader: &fakeDownloader{
 					outDLMeta: &templatesource.DownloadMetadata{
@@ -1208,6 +1209,187 @@ steps:
 				m.LocationType.Val = "fake_location_type"
 				m.TemplateVersion.Val = "fake_version"
 				m.UpgradeChannel.Val = "fake_upgrade_channel"
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("out.txt"),
+					},
+					{
+						File: mdl.S("some_other_file.txt"),
+					},
+				}
+			}),
+		},
+		{
+			name: "upgrade_to_specific_version",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": includeDotSpec,
+				"out.txt":   "out.txt contents",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.TemplateLocation.Val = "fake_canonical_source"
+				m.LocationType.Val = "fake_location_type"
+				m.TemplateVersion.Val = "fake_version"
+				m.UpgradeChannel.Val = "upgrade_channel_from_initial_render"
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "identical contents")
+			},
+			templateUnionForUpgrade: map[string]string{
+				"some_other_file.txt": "some other file contents",
+			},
+			flagUpgradeVersion: "version-from-flag",
+			fakeInitialRenderDownloader: &fakeDownloader{
+				outDLMeta: &templatesource.DownloadMetadata{
+					IsCanonical:     true,
+					CanonicalSource: "fake_canonical_source",
+					LocationType:    "fake_location_type",
+					Version:         "fake_version",
+					UpgradeChannel:  "upgrade_channel_from_initial_render",
+				},
+			},
+			fakeUpgradeDownloaderFactory: &fakeUpgradeDownloaderFactory{
+				wantParams: &templatesource.ForUpgradeParams{
+					LocType:           "fake_location_type",
+					CanonicalLocation: "fake_canonical_source",
+					Version:           "version-from-flag",
+					UpgradeChannel:    "upgrade_channel_from_initial_render",
+				},
+				outDownloader: &fakeDownloader{
+					outDLMeta: &templatesource.DownloadMetadata{
+						IsCanonical:     true,
+						CanonicalSource: "fake_canonical_source",
+						LocationType:    "fake_location_type",
+						Version:         "version-from-flag",
+						UpgradeChannel:  "upgrade_channel_from_initial_render",
+					},
+				},
+			},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: "noop", Path: "out.txt"},
+							{Action: "writeNew", Path: "some_other_file.txt"},
+						},
+						DLMeta: &templatesource.DownloadMetadata{
+							IsCanonical:     true,
+							CanonicalSource: "fake_canonical_source",
+							LocationType:    "fake_location_type",
+							Version:         "version-from-flag",
+							UpgradeChannel:  "upgrade_channel_from_initial_render",
+						},
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt":             "identical contents",
+				"some_other_file.txt": "some other file contents",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.TemplateLocation.Val = "fake_canonical_source"
+				m.LocationType.Val = "fake_location_type"
+				m.TemplateVersion.Val = "version-from-flag"
+				m.UpgradeChannel.Val = "upgrade_channel_from_initial_render"
+				m.ModificationTime = afterUpgradeTime.UTC()
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("out.txt"),
+					},
+					{
+						File: mdl.S("some_other_file.txt"),
+					},
+				}
+			}),
+		},
+		{
+			name: "upgrade_to_specific_version_with_upgrade_channel",
+			origTemplateDirContents: map[string]string{
+				"spec.yaml": includeDotSpec,
+				"out.txt":   "out.txt contents",
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.TemplateLocation.Val = "fake_canonical_source"
+				m.LocationType.Val = "fake_location_type"
+				m.TemplateVersion.Val = "fake_version"
+				m.UpgradeChannel.Val = "upgrade_channel_from_initial_render"
+				m.OutputFiles = []*manifest.OutputFile{
+					{
+						File: mdl.S("out.txt"),
+					},
+				}
+			}),
+			localEdits: func(tb testing.TB, installedDir string) { //nolint:thelper
+				abctestutil.OverwriteJoin(tb, installedDir, "out.txt", "identical contents")
+			},
+			templateUnionForUpgrade: map[string]string{
+				"some_other_file.txt": "some other file contents",
+			},
+			flagUpgradeVersion: "version-from-flag",
+			flagUpgradeChannel: "channel-from-flag",
+			fakeInitialRenderDownloader: &fakeDownloader{
+				outDLMeta: &templatesource.DownloadMetadata{
+					IsCanonical:     true,
+					CanonicalSource: "fake_canonical_source",
+					LocationType:    "fake_location_type",
+					Version:         "fake_version",
+					UpgradeChannel:  "upgrade_channel_from_initial_render",
+				},
+			},
+			fakeUpgradeDownloaderFactory: &fakeUpgradeDownloaderFactory{
+				wantParams: &templatesource.ForUpgradeParams{
+					LocType:           "fake_location_type",
+					CanonicalLocation: "fake_canonical_source",
+					Version:           "version-from-flag",
+					UpgradeChannel:    "channel-from-flag",
+				},
+				outDownloader: &fakeDownloader{
+					outDLMeta: &templatesource.DownloadMetadata{
+						IsCanonical:     true,
+						CanonicalSource: "fake_canonical_source",
+						LocationType:    "fake_location_type",
+						Version:         "version-from-flag",
+						UpgradeChannel:  "channel-from-flag",
+					},
+				},
+			},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						NonConflicts: []ActionTaken{
+							{Action: "noop", Path: "out.txt"},
+							{Action: "writeNew", Path: "some_other_file.txt"},
+						},
+						DLMeta: &templatesource.DownloadMetadata{
+							IsCanonical:     true,
+							CanonicalSource: "fake_canonical_source",
+							LocationType:    "fake_location_type",
+							Version:         "version-from-flag",
+							UpgradeChannel:  "channel-from-flag",
+						},
+					},
+				},
+			},
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt":             "identical contents",
+				"some_other_file.txt": "some other file contents",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest, func(m *manifest.Manifest) {
+				m.TemplateLocation.Val = "fake_canonical_source"
+				m.LocationType.Val = "fake_location_type"
+				m.TemplateVersion.Val = "version-from-flag"
+				m.UpgradeChannel.Val = "channel-from-flag"
 				m.ModificationTime = afterUpgradeTime.UTC()
 				m.OutputFiles = []*manifest.OutputFile{
 					{
@@ -1598,10 +1780,10 @@ yellow is my favorite color
 			clk := clock.NewMock()
 			clk.Set(beforeUpgradeTime)
 
-			if tc.fakeDownloader != nil {
-				tc.fakeDownloader.sourceDir = templateDir // inject per-testcase value that's not known when the testcase is created
+			if tc.fakeInitialRenderDownloader != nil {
+				tc.fakeInitialRenderDownloader.sourceDir = templateDir // inject per-testcase value that's not known when the testcase is created
 			}
-			renderResult := mustRender(t, ctx, clk, tc.fakeDownloader, tempBase, templateDir, destDir)
+			renderResult := mustRender(t, ctx, clk, tc.fakeInitialRenderDownloader, tempBase, templateDir, destDir)
 
 			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
@@ -1634,6 +1816,7 @@ yellow is my favorite color
 				Prompt:            tc.flagPrompt,
 				Stdout:            os.Stdout,
 				UpgradeChannel:    tc.flagUpgradeChannel,
+				Version:           tc.flagUpgradeVersion,
 				downloaderFactory: dlFactory,
 			}
 

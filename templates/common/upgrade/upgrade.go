@@ -506,13 +506,15 @@ func makeDownloader(ctx context.Context, p *Params, installedDir string, oldMani
 	if downloaderFactory == nil {
 		downloaderFactory = templatesource.ForUpgrade
 	}
+
+	upgradeChannel := common.FirstNonZero(p.UpgradeChannel, oldManifest.UpgradeChannel.Val)
 	downloader, err := downloaderFactory(ctx, &templatesource.ForUpgradeParams{
-		InstalledDir:       installedDir,
-		CanonicalLocation:  oldManifest.TemplateLocation.Val,
-		LocType:            templatesource.LocationType(oldManifest.LocationType.Val),
-		GitProtocol:        p.GitProtocol,
-		Version:            version,
-		FlagUpgradeChannel: p.UpgradeChannel,
+		InstalledDir:      installedDir,
+		CanonicalLocation: oldManifest.TemplateLocation.Val,
+		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
+		GitProtocol:       p.GitProtocol,
+		Version:           version,
+		UpgradeChannel:    upgradeChannel,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
@@ -608,8 +610,6 @@ func commit(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken, e
 // is so the *next* time we upgrade this template, we'll realize that there have
 // been local customizations.
 func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
-	// Most fields come from the new manifest, except for the creation time
-	// which comes from the old manifest.
 	forMarshaling := manifest.ForMarshaling(*newManifest)
 	forMarshaling.CreationTime = old.CreationTime
 
