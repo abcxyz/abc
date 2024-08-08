@@ -15,6 +15,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -22,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -564,6 +566,105 @@ func TestCopyRecursive_ForbidSymlinks(t *testing.T) {
 			}
 			if symlinkErr.Path != tc.wantErrPath {
 				t.Fatalf("got unexpected error path %q, wanted %q", symlinkErr.Path, tc.wantErrPath)
+			}
+		})
+	}
+}
+
+func TestCopyFile(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name            string
+		srcName         string
+		srcContents     string
+		dstName         string
+		dryRun          bool
+		tee             bool
+		wantDstContents string
+		wantTee         string
+		wantErr         string
+	}{
+		{
+			name:            "simple_success",
+			srcName:         "my_src_file.txt",
+			srcContents:     "my contents",
+			dstName:         "my_dst_file.txt",
+			wantDstContents: "my contents",
+		},
+		{
+			name:    "nonexistent_source",
+			srcName: "my_src_file.txt",
+			// Note: no srcContents are specified, so src file won't exist
+			dstName: "my_dst_file.txt",
+			wantErr: "no such file or directory",
+		},
+		{
+			name:            "subdir_created",
+			srcName:         "my_src_file.txt",
+			srcContents:     "my contents",
+			dstName:         "subdir/my_dst_file.txt",
+			wantDstContents: "my contents",
+		},
+		{
+			name:            "tee",
+			srcName:         "my_src_file.txt",
+			srcContents:     "my contents",
+			dstName:         "my_dst_file.txt",
+			tee:             true,
+			wantDstContents: "my contents",
+			wantTee:         "my contents",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			srcPath := filepath.Join(tempDir, tc.srcName)
+
+			if len(tc.srcContents) > 0 {
+				if err := os.WriteFile(srcPath, []byte(tc.srcContents), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			fs := &RealFS{}
+			ctx := context.Background()
+			dstPath := filepath.Join(tempDir, tc.dstName)
+
+			var tee io.Writer
+			if tc.tee {
+				tee = &bytes.Buffer{}
+			}
+
+			err := CopyFile(ctx, nil, fs, srcPath, dstPath, tc.dryRun, tee)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
+
+			var gotTee string
+			if tee != nil {
+				gotTee = tee.(*bytes.Buffer).String() //nolint:forcetypeassert
+			}
+			if gotTee != tc.wantTee {
+				t.Errorf("tee io.Writer contents were not as expected; got %q but want %q", gotTee, tc.wantTee)
+			}
+
+			if tc.wantErr != "" {
+				// Skip verifying file contents if the copy was expected to fail.
+				return
+			}
+
+			gotContents, err := os.ReadFile(dstPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(gotContents) != tc.wantDstContents {
+				t.Errorf("got contents %q, want %q", gotContents, tc.wantDstContents)
 			}
 		})
 	}
