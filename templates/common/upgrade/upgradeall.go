@@ -25,13 +25,14 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/graph"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
-	"golang.org/x/exp/maps"
 )
 
 // Result is the return value from an upgrade operation. It will be returned
@@ -96,7 +97,6 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		Results: make([]*ManifestResult, 0, len(sorted)),
 	}
 
-	// TODO: just pass already-parsed manifest to upgrade?
 	for _, manifestPath := range sorted {
 		absManifestPath := filepath.Join(p.Location, manifestPath)
 		if !filepath.IsAbs(absManifestPath) {
