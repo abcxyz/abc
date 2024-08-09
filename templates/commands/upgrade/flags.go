@@ -138,6 +138,7 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.StringVar(&cli.StringVar{
 		Name:    "template-location",
 		Usage:   "upgrade to the template specified by this location, rather than the template location stored in the manifest (which is the default); this is useful when your template was installed from a non-canonical location and therefore has no template location stored in the manifest",
+		Predict: predict.Dirs(""),
 		Example: "github.com/abcxyz/abc/t/rest_server@mybranch",
 		EnvVar:  "ABC_UPGRADE_TEMPLATE_LOCATION",
 		Target:  &f.TemplateLocation,
