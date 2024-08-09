@@ -88,7 +88,7 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		return &Result{Err: err}
 	}
 
-	_, sorted, depGraph, err := manifestsToUpgrade(ctx, p)
+	manifests, sorted, depGraph, err := manifestsToUpgrade(ctx, p)
 	if err != nil {
 		return &Result{Err: err}
 	}
@@ -104,7 +104,8 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		}
 		logger.InfoContext(ctx, "beginning upgrade of manifest",
 			"manifest", absManifestPath)
-		result, err := upgrade(ctx, p, absManifestPath)
+		manifest := manifests[manifestPath]
+		result, err := upgrade(ctx, p, absManifestPath, manifest)
 		if err != nil {
 			out.Err = fmt.Errorf("when upgrading the manifest at %s:\n%w", absManifestPath, err)
 			break
