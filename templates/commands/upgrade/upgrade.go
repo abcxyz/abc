@@ -78,11 +78,15 @@ Background on conflict types:
 
  - editEditConflict: you made some local edits to this file that was installed
    by the template, which conflicts with the new version of the template which
-   wants to edit the file. Both versions of the file are left in your output
-   directory, named "yourfile.abcmerge_locally_edited" and
-   "yourfile.abcmerge_from_new_template". Please resolve the conflict by either
-   (1) renaming one of the files to "yourfile" and deleting the other, or (2)
-   merging the two files into "yourfile".
+   wants to edit the file. Your locally edited file is unchanged, and the
+   incoming file from the template has the additional extension 
+   ".abcmerge_from_new_template". Please resolve the conflict by either
+     - selectively incorporating some of the changes from the 
+       .abcmerge_from_new_template file into your local file
+	 - rejecting this incoming change by removing the 
+	   .abcmerge_from_new_template file
+	 - overwriting your locally edit file with the .abcmerge_from_new_template
+	   incoming file. 
 
  - editDeleteConflict: you made an edit to this file that was installed by the
    template, which conflicts with the new version of the template, which wants
