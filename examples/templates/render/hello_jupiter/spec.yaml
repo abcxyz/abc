@@ -15,6 +15,11 @@
 apiVersion: 'cli.abcxyz.dev/v1beta6'
 kind: 'Template'
 
+
+inputs:
+  - name: 'planet_to_greet'
+    description: 'The planet name to put in the hello message'
+
 desc:
   'An example template that changes a "hello world" program to a "hello jupiter"
   program'
