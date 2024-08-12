@@ -133,6 +133,16 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 	return out
 }
 
+// manifestsToUpgrade finds all the all the manifests that are in scope for this
+// upgrade operation.
+//
+// The return values are:
+//   - A map from manifest path to manifest object that was parsed from that path
+//   - A topologically sorted list of manifest paths. Each one references a key
+//     in the map, and a key in the graph.
+//   - A dependency graph having a node for each manifest path.
+//
+// The set of keys is guaranteed to be the same in all the returned values.
 func manifestsToUpgrade(ctx context.Context, p *Params) (map[string]*manifest.Manifest, []string, *graph.Graph[string], error) {
 	manifestPaths, err := crawlManifests(p.Location)
 	if err != nil {
