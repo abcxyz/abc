@@ -329,7 +329,7 @@ type ActionTaken struct {
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *ManifestResult, rErr error) {
+func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest *manifest.Manifest) (_ *ManifestResult, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "upgrade")
 
 	// For now, manifest files are always located in the .abc directory under
@@ -337,11 +337,6 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	installedDir := filepath.Join(filepath.Dir(absManifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
-		return nil, err
-	}
-
-	oldManifest, err := loadManifest(ctx, p.FS, absManifestPath)
-	if err != nil {
 		return nil, err
 	}
 
