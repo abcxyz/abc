@@ -2739,7 +2739,7 @@ func mustIndexFunc[T any](t *testing.T, s []T, f func(T) bool) int {
 func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, path string) {
 	tb.Helper()
 
-	got, err := loadManifest(ctx, &common.RealFS{}, path)
+	got, _, err := loadManifest(ctx, &common.RealFS{}, path)
 	if err != nil {
 		tb.Fatal(err)
 	}

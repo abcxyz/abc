@@ -337,7 +337,7 @@ func loadManifest(ctx context.Context, path string) (*manifest.Manifest, error) 
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	manifestI, _, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
 		return nil, fmt.Errorf("error reading manifest file: %w", err)
 	}

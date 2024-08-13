@@ -27,7 +27,9 @@ import (
 	"github.com/abcxyz/pkg/logging"
 )
 
-func filterManifests(ctx context.Context, filterCELExpr string, manifestsUnfiltered map[string]*manifest.Manifest) (map[string]*manifest.Manifest, error) {
+// The set of keys must be the same between manifestsUnfiltered and
+// manifestBufs.
+func filterManifests(ctx context.Context, filterCELExpr string, manifestsUnfiltered map[string]*manifest.Manifest, manifestBufs map[string][]byte) (map[string]*manifest.Manifest, error) {
 	logger := logging.FromContext(ctx).With("logger", "filterOneManifest")
 
 	out := maps.Clone(manifestsUnfiltered)
@@ -35,17 +37,17 @@ func filterManifests(ctx context.Context, filterCELExpr string, manifestsUnfilte
 		return out, nil
 	}
 
-	for key, manifest := range manifestsUnfiltered {
-		ok, err := filterOneManifest(filterCELExpr, manifest)
+	for path, buf := range manifestBufs {
+		ok, err := filterOneManifest(filterCELExpr, buf)
 		if err != nil {
 			return nil, err
 		}
 		logger.InfoContext(ctx, "The CEL filter was successfully evaluated for a manifest",
-			"manifest_filename", key,
+			"manifest_filename", path,
 			"result", ok)
 
 		if !ok {
-			delete(out, key)
+			delete(out, path)
 		}
 	}
 
@@ -54,26 +56,12 @@ func filterManifests(ctx context.Context, filterCELExpr string, manifestsUnfilte
 
 // Returns true if the given CEL expression returns true when evaluated against
 // the given manifest.
-func filterOneManifest(filterCELExpr string, m *manifest.Manifest) (bool, error) {
-	// Alternative considered: there's another approach we could have taken to
-	// provide the values of the manifest fields to the CEL expression. We could
-	// have implemented the CEL ref.Val and ref.Type interfaces for the Manifest
-	// struct, using a lot of reflection code. This approach was deemed overly
-	// complex and bug-prone, since we'd be processing struct fields and tags
-	// using reflection, and there might be bugs where the field names and
-	// hierarchy in the CEL might differ subtly from the YAML. It would be a lot
-	// of code, all of which would be hard to maintain.
-	//
-	// The simpler, highly practical but less architecturally clean approach is
-	// to just round-trip the manifest struct through YAML marshaling and
-	// unmarshaling to get a map[string]any, then provide that map to CEL as the
-	// field values of the manifest. This is guaranteed to have exactly the
-	// right field names and hierarchy as YAML would have it, since it's
-	// produced by the YAML library.
-	buf, err := yaml.Marshal(m)
-	if err != nil {
-		return false, fmt.Errorf("internal error: failed marshaling Manifest while filtering: %w", err)
-	}
+func filterOneManifest(filterCELExpr string, buf []byte) (bool, error) {
+	// Subtle point: we use the YAML from the file rather than using the
+	// manifest struct that's already in memory. This means that the CEL
+	// expression will see exactly the values in the file, and not values that
+	// might be inferred when upgrading to the latest api_version. This avoids
+	// confusing the user with magically changing field values.
 	var asMap map[string]any
 	if err := yaml.Unmarshal(buf, &asMap); err != nil {
 		return false, fmt.Errorf("internal error: failed unmarshaling YAML back to map: %w", err)

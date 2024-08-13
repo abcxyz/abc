@@ -156,12 +156,12 @@ func manifestsToUpgrade(ctx context.Context, p *Params) (map[string]*manifest.Ma
 		return nil, nil, nil, ErrNoManifests
 	}
 
-	manifestsUnfiltered, err := loadManifests(ctx, p.CWD, p.Location, manifestPaths)
+	manifestsUnfiltered, manifestBufs, err := loadManifests(ctx, p.CWD, p.Location, manifestPaths)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	manifestsFiltered, err := filterManifests(ctx, p.ManifestFilter, manifestsUnfiltered)
+	manifestsFiltered, err := filterManifests(ctx, p.ManifestFilter, manifestsUnfiltered, manifestBufs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -182,20 +182,23 @@ func manifestsToUpgrade(ctx context.Context, p *Params) (map[string]*manifest.Ma
 	return manifestsFiltered, sorted, depGraph, nil
 }
 
-func loadManifests(ctx context.Context, cwd, startFrom string, paths []string) (map[string]*manifest.Manifest, error) {
-	out := make(map[string]*manifest.Manifest, len(paths))
+// The keys in the two returned maps are identical.
+func loadManifests(ctx context.Context, cwd, startFrom string, paths []string) (map[string]*manifest.Manifest, map[string][]byte, error) {
+	outManifests := make(map[string]*manifest.Manifest, len(paths))
+	outBufs := make(map[string][]byte, len(paths))
 	for _, p := range paths {
 		manifestPath := filepath.Join(startFrom, p)
 		if !filepath.IsAbs(manifestPath) {
 			manifestPath = filepath.Join(cwd, manifestPath)
 		}
-		manifest, err := loadManifest(ctx, &common.RealFS{}, manifestPath)
+		manifest, buf, err := loadManifest(ctx, &common.RealFS{}, manifestPath)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		out[p] = manifest
+		outManifests[p] = manifest
+		outBufs[p] = buf
 	}
-	return out, nil
+	return outManifests, outBufs, nil
 }
 
 func overallResult(results []*ManifestResult) ResultType {
