@@ -23,6 +23,7 @@ import (
 	"github.com/google/cel-go/cel"
 	"gopkg.in/yaml.v3"
 
+	"github.com/abcxyz/abc/templates/common"
 	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -30,7 +31,7 @@ import (
 // The set of keys must be the same between manifestsUnfiltered and
 // manifestBufs.
 func filterManifests(ctx context.Context, filterCELExpr string, manifestsUnfiltered map[string]*manifest.Manifest, manifestBufs map[string][]byte) (map[string]*manifest.Manifest, error) {
-	logger := logging.FromContext(ctx).With("logger", "filterOneManifest")
+	logger := logging.FromContext(ctx).With("logger", "filterManifests")
 
 	out := maps.Clone(manifestsUnfiltered)
 	if len(filterCELExpr) == 0 {
@@ -38,7 +39,7 @@ func filterManifests(ctx context.Context, filterCELExpr string, manifestsUnfilte
 	}
 
 	for path, buf := range manifestBufs {
-		ok, err := filterOneManifest(filterCELExpr, buf)
+		ok, err := filterOneManifest(ctx, path, filterCELExpr, buf)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +57,9 @@ func filterManifests(ctx context.Context, filterCELExpr string, manifestsUnfilte
 
 // Returns true if the given CEL expression returns true when evaluated against
 // the given manifest.
-func filterOneManifest(filterCELExpr string, buf []byte) (bool, error) {
+func filterOneManifest(ctx context.Context, path, filterCELExpr string, buf []byte) (bool, error) {
+	logger := logging.FromContext(ctx).With("logger", "filterOneManifest")
+
 	// Subtle point: we use the YAML from the file rather than using the
 	// manifest struct that's already in memory. This means that the CEL
 	// expression will see exactly the values in the file, and not values that
@@ -78,6 +81,16 @@ func filterOneManifest(filterCELExpr string, buf []byte) (bool, error) {
 
 	ast, issues := celEnv.Compile(filterCELExpr)
 	if err := issues.Err(); err != nil {
+		// Subtle point here: since the set of manifest field names may differ
+		// across different api_versions, we don't treat a nonexistent variable
+		// name as an error. We just skip this manifest and keep going.
+		if name, ok := common.IsCELUndeclaredRef(err); ok {
+			logger.InfoContext(ctx, "CEL Compile() found undeclared reference; skipping this manifest because it may just be a different api_version",
+				"reference_to", name,
+				"manifest_file", path)
+			return false, nil
+		}
+
 		return false, fmt.Errorf("failed compiling CEL expression: %w", err)
 	}
 

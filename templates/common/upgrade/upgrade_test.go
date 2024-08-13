@@ -2404,6 +2404,14 @@ steps:
 			flagManifestFilter: `"string_which_should_be_bool"`,
 			wantErr:            "CEL filter evaluation did not return bool",
 		},
+		{
+			name:               "nonexistent_field_skips_manifest",
+			flagManifestFilter: `nonexistent == "lol"`,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my old template1 file contents",
+				"destDir2/myfile.txt": "my old template2 file contents",
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
