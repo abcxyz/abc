@@ -69,6 +69,10 @@ type Flags struct {
 	// See common/flags.KeepTempDirs().
 	KeepTempDirs bool
 
+	// An optional CEL expression which will be evaluated against each manifest
+	// that is found; only those where the expression is true will be upgraded.
+	ManifestFilter string
+
 	// The manifest to start with, when upgrading multiple manifests. This is
 	// used when a previous upgrade operation required manual intervention, and
 	// the manual intervention is done, and the user wants to resume.
@@ -114,6 +118,12 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Name:   "continue-if-current",
 		Target: &f.ContinueIfCurrent,
 		Usage:  "continue even if the template dirhash shows that the latest version of the template has already been installed; this is useful to force the manifest to be rewritten when used with --template-location",
+	})
+	u.StringVar(&cli.StringVar{
+		Name:    "manifest-filter",
+		Example: `template_location == "github.com/abcxyz/abc/examples/templates/render/hello_jupiter"`,
+		Target:  &f.ManifestFilter,
+		Usage:   "An optional CEL expression which will be evaluated against each manifest that is found; only those where the expression is true will be upgraded. If not set, the default is to upgrade every manifest that is found in the provided location",
 	})
 	u.BoolVar(flags.Verbose(&f.Verbose))
 

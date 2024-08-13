@@ -111,6 +111,12 @@ type Params struct {
 	// that single template will be upgraded.
 	Location string
 
+	// A CEL expression to filter the manifests found. If this is set, then it
+	// will be executed against each manifest YAML model, and the manifest will
+	// upgraded IFF the expression returns true. If unset, then no filtering
+	// will be done and every manifest found under Location will be upgraded.
+	ManifestFilter string
+
 	// The value of --prompt.
 	Prompt   bool
 	Prompter input.Prompter

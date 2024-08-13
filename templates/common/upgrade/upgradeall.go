@@ -161,7 +161,10 @@ func manifestsToUpgrade(ctx context.Context, p *Params) (map[string]*manifest.Ma
 		return nil, nil, nil, err
 	}
 
-	manifestsFiltered := filterManifests(p, manifestsUnfiltered)
+	manifestsFiltered, err := filterManifests(ctx, p.ManifestFilter, manifestsUnfiltered)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	sorted, depGraph, err := depOrder(p.TemplateLocation, manifestsFiltered)
 	if err != nil {
@@ -193,15 +196,6 @@ func loadManifests(ctx context.Context, cwd, startFrom string, paths []string) (
 		out[p] = manifest
 	}
 	return out, nil
-}
-
-func filterManifests(p *Params, manifestsUnfiltered map[string]*manifest.Manifest) map[string]*manifest.Manifest {
-	out := maps.Clone(manifestsUnfiltered)
-	_ = p
-
-	// TODO(drevell): add filtering logic in next PR
-
-	return out
 }
 
 func overallResult(results []*ManifestResult) ResultType {
