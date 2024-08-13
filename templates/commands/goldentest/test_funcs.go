@@ -151,7 +151,7 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 	}
 	defer f.Close()
 
-	testI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindGoldenTest)
+	testI, _, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindGoldenTest)
 	if err != nil {
 		return nil, fmt.Errorf("error reading golden test config file: %w", err)
 	}

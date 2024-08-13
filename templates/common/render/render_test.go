@@ -2227,7 +2227,7 @@ func mustLoadManifest(ctx context.Context, tb testing.TB, path string) *manifest
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	manifestI, _, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
 		tb.Fatalf("error reading manifest file: %v", err)
 	}

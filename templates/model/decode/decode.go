@@ -135,23 +135,23 @@ var apiVersions = []apiVersionDef{
 // non-empty, then we'll also validate that the "kind" of the YAML file matches
 // requireKind, and return error if not. This also calls Validate() on
 // the returned struct and returns error if invalid.
-func Decode(r io.Reader, filename, requireKind string, isReleaseBuild bool) (model.ValidatorUpgrader, string, error) {
+func Decode(r io.Reader, filename, requireKind string, isReleaseBuild bool) (model.ValidatorUpgrader, string, []byte, error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {
-		return nil, "", fmt.Errorf("error reading file %s: %w", filename, err)
+		return nil, "", nil, fmt.Errorf("error reading file %s: %w", filename, err)
 	}
 
 	cf := &header.Fields{}
 	if err := yaml.Unmarshal(buf, cf); err != nil {
-		return nil, "", fmt.Errorf("error parsing file %s: %w", filename, err)
+		return nil, "", nil, fmt.Errorf("error parsing file %s: %w", filename, err)
 	}
 
 	var apiVersion string
 	if cf.NewStyleAPIVersion.Val != "" && cf.OldStyleAPIVersion.Val != "" {
-		return nil, "", cf.OldStyleAPIVersion.Pos.Errorf("must not set both apiVersion and api_version, please use api_version only")
+		return nil, "", nil, cf.OldStyleAPIVersion.Pos.Errorf("must not set both apiVersion and api_version, please use api_version only")
 	}
 	if cf.NewStyleAPIVersion.Val == "" && cf.OldStyleAPIVersion.Val == "" {
-		return nil, "", fmt.Errorf(`file %s must set the field "api_version"`, filename)
+		return nil, "", nil, fmt.Errorf(`file %s must set the field "api_version"`, filename)
 	}
 	if cf.NewStyleAPIVersion.Val != "" {
 		apiVersion = cf.NewStyleAPIVersion.Val
@@ -161,19 +161,19 @@ func Decode(r io.Reader, filename, requireKind string, isReleaseBuild bool) (mod
 	}
 
 	if cf.Kind.Val == "" {
-		return nil, "", fmt.Errorf(`file %s must set the field "kind"`, filename)
+		return nil, "", nil, fmt.Errorf(`file %s must set the field "kind"`, filename)
 	}
 	if requireKind != "" && cf.Kind.Val != requireKind {
-		return nil, "", fmt.Errorf("file %s has kind %q, but %q is required", filename, cf.Kind.Val, requireKind)
+		return nil, "", nil, fmt.Errorf("file %s has kind %q, but %q is required", filename, cf.Kind.Val, requireKind)
 	}
 
 	if apiVersion > LatestSupportedAPIVersion(isReleaseBuild) {
-		return nil, "", fmt.Errorf("api_version %q is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation", apiVersion)
+		return nil, "", nil, fmt.Errorf("api_version %q is not supported in this version of abc; you might need to upgrade. See https://github.com/abcxyz/abc/#installation", apiVersion)
 	}
 
 	vu, err := decodeFromVersionKind(filename, apiVersion, cf.Kind.Val, buf)
 	if err == nil {
-		return vu, apiVersion, nil
+		return vu, apiVersion, buf, nil
 	}
 
 	// Parsing or validation failed. We'll try to detect a common user error
@@ -185,32 +185,32 @@ func Decode(r io.Reader, filename, requireKind string, isReleaseBuild bool) (mod
 	// they should change the api_version field in their YAML file.
 	attemptAPIVersion := apiVersions[len(apiVersions)-1].apiVersion
 	if attemptAPIVersion == apiVersion {
-		return nil, "", err // api_version upgrade isn't possible, they're already on the latest.
+		return nil, "", nil, err // api_version upgrade isn't possible, they're already on the latest.
 	}
 	if _, attemptErr := decodeFromVersionKind(filename, attemptAPIVersion, cf.Kind.Val, buf); attemptErr == nil {
-		return nil, "", fmt.Errorf("file %s sets api_version %q but does not parse and validate successfully under that version. However, it will be valid if you change the api_version to %q. The error was: %w",
+		return nil, "", nil, fmt.Errorf("file %s sets api_version %q but does not parse and validate successfully under that version. However, it will be valid if you change the api_version to %q. The error was: %w",
 			filename, apiVersion, attemptAPIVersion, err)
 	}
 
-	return nil, "", err
+	return nil, "", buf, err
 }
 
 // DecodeValidateUpgrade parses the given YAML contents of r into a struct,
 // then repeatedly calls Upgrade() and Validate() on it until it's the newest version, then
 // returns it. requireKind has the same meaning as in Decode().
-func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, error) {
-	vu, apiVersion, err := Decode(r, filename, requireKind, version.IsReleaseBuild())
+func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKind string) (model.ValidatorUpgrader, []byte, error) {
+	vu, apiVersion, buf, err := Decode(r, filename, requireKind, version.IsReleaseBuild())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for {
 		upgraded, err := vu.Upgrade(ctx)
 		if err != nil {
 			if errors.Is(err, model.ErrLatestVersion) {
-				return vu, nil
+				return vu, buf, nil
 			}
-			return nil, fmt.Errorf("internal error: YAML model couldn't be upgraded from api_version %s: %w", apiVersion, err)
+			return nil, nil, fmt.Errorf("internal error: YAML model couldn't be upgraded from api_version %s: %w", apiVersion, err)
 		}
 		vu = upgraded
 		if err := vu.Validate(); err != nil {
@@ -218,7 +218,7 @@ func DecodeValidateUpgrade(ctx context.Context, r io.Reader, filename, requireKi
 			// validation, that means there's a broken Upgrade() function that
 			// created an invalid struct. This isn't the user's fault, there's a
 			// bug in Upgrade().
-			return nil, fmt.Errorf("internal error: validation failed after automatic schema upgrade from %s in %s: %w", apiVersion, filename, err)
+			return nil, nil, fmt.Errorf("internal error: validation failed after automatic schema upgrade from %s in %s: %w", apiVersion, filename, err)
 		}
 	}
 }

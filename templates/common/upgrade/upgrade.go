@@ -111,6 +111,12 @@ type Params struct {
 	// that single template will be upgraded.
 	Location string
 
+	// A CEL expression to filter the manifests found. If this is set, then it
+	// will be executed against each manifest YAML model, and the manifest will
+	// upgraded IFF the expression returns true. If unset, then no filtering
+	// will be done and every manifest found under Location will be upgraded.
+	ManifestFilter string
+
 	// The value of --prompt.
 	Prompt   bool
 	Prompter input.Prompter
@@ -434,7 +440,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest
 		return nil, fmt.Errorf("failed rendering template: %w", err)
 	}
 
-	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
+	newManifest, _, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
 	if err != nil {
 		return nil, err
 	}
@@ -618,24 +624,24 @@ func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
 }
 
 // loadManifest reads and unmarshals the manifest at the given path.
-func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
+func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, []byte, error) {
 	f, err := fs.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
+		return nil, nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	manifestI, buf, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
-		return nil, fmt.Errorf("error reading manifest file: %w", err)
+		return nil, nil, fmt.Errorf("error reading manifest file: %w", err)
 	}
 
 	out, ok := manifestI.(*manifest.Manifest)
 	if !ok {
-		return nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
+		return nil, nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
 	}
 
-	return out, nil
+	return out, buf, nil
 }
 
 // inputsToMap takes the list of input values (e.g. "service_account" was "my-service-account")

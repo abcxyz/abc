@@ -344,7 +344,7 @@ builtin_vars:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, gotVersion, err := Decode(strings.NewReader(tc.fileContents), "file.yaml", tc.requireKind, tc.isReleaseBuild)
+			got, gotVersion, _, err := Decode(strings.NewReader(tc.fileContents), "file.yaml", tc.requireKind, tc.isReleaseBuild)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -509,7 +509,7 @@ steps:
 
 			ctx := context.Background()
 			rd := strings.NewReader(tc.fileContents)
-			vu, err := DecodeValidateUpgrade(ctx, rd, "file.yaml", "")
+			vu, _, err := DecodeValidateUpgrade(ctx, rd, "file.yaml", "")
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
 			}

@@ -124,7 +124,7 @@ func Load(ctx context.Context, fs common.FS, templateDir, source string) (*spec.
 	}
 	defer f.Close()
 
-	specI, err := decode.DecodeValidateUpgrade(ctx, f, SpecFileName, decode.KindTemplate)
+	specI, _, err := decode.DecodeValidateUpgrade(ctx, f, SpecFileName, decode.KindTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("error reading template spec file: %w", err)
 	}
