@@ -1281,3 +1281,24 @@ with a list of versions and constraints `ABC_IGNORE_VERSIONS=<2.0.0,3.5.0`.
 
 This check is not done on non-release builds, as they don't have canonical
 version to check against.
+
+## Metrics
+Google collects usage statics. No identifible data is collected.
+Mtrics are collected using [abcxyz/abc-updater](https://github.com/abcxyz/abc-updater).
+
+Currently, data is collected on:
+- Count of total invocations
+- Count of each sub-command (render, describe, upgrade, ect)
+- Count of invocations running in panic
+- Runtime in ms of each invocation
+
+Along with each metric, the following metadata is recorded:
+- Application version
+- Installation time with minute granularity
+
+Metrics data is retained for 24 months.
+
+You can **opt-out** of collection by setting the following environment variable:
+```shell
+ABC_NO_METRICS=TRUE
+```
