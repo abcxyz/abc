@@ -69,6 +69,10 @@ type Flags struct {
 	// See common/flags.KeepTempDirs().
 	KeepTempDirs bool
 
+	// An optional CEL expression which will be evaluated against each manifest
+	// that is found; only those where the expression is true will be upgraded.
+	ManifestFilter string
+
 	// The manifest to start with, when upgrading multiple manifests. This is
 	// used when a previous upgrade operation required manual intervention, and
 	// the manual intervention is done, and the user wants to resume.
@@ -83,6 +87,9 @@ type Flags struct {
 	// Upgrade to the template specified by this location, rather than the
 	// template location stored in the manifest (which is the default).
 	TemplateLocation string
+
+	// See common/flags.UpgradeChannel().
+	UpgradeChannel string
 
 	Verbose bool
 
@@ -112,6 +119,12 @@ func (f *Flags) Register(set *cli.FlagSet) {
 		Target: &f.ContinueIfCurrent,
 		Usage:  "continue even if the template dirhash shows that the latest version of the template has already been installed; this is useful to force the manifest to be rewritten when used with --template-location",
 	})
+	u.StringVar(&cli.StringVar{
+		Name:    "manifest-filter",
+		Example: `template_location == "github.com/abcxyz/abc/examples/templates/render/hello_jupiter"`,
+		Target:  &f.ManifestFilter,
+		Usage:   "An optional CEL expression which will be evaluated against each manifest that is found; only those where the expression is true will be upgraded. If not set, the default is to upgrade every manifest that is found in the provided location",
+	})
 	u.BoolVar(flags.Verbose(&f.Verbose))
 
 	r := set.NewSection("RENDER OPTIONS")
@@ -123,6 +136,7 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.BoolVar(flags.KeepTempDirs(&f.KeepTempDirs))
 	r.BoolVar(flags.Prompt(&f.Prompt))
 	r.BoolVar(flags.AcceptDefaults(&f.AcceptDefaults))
+	r.StringVar(flags.UpgradeChannel(&f.UpgradeChannel))
 
 	r.StringVar(&cli.StringVar{
 		Name:    "version",
@@ -134,6 +148,7 @@ func (f *Flags) Register(set *cli.FlagSet) {
 	r.StringVar(&cli.StringVar{
 		Name:    "template-location",
 		Usage:   "upgrade to the template specified by this location, rather than the template location stored in the manifest (which is the default); this is useful when your template was installed from a non-canonical location and therefore has no template location stored in the manifest",
+		Predict: predict.Dirs(""),
 		Example: "github.com/abcxyz/abc/t/rest_server@mybranch",
 		EnvVar:  "ABC_UPGRADE_TEMPLATE_LOCATION",
 		Target:  &f.TemplateLocation,

@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,11 @@ import (
 type Params struct {
 	// The value of --accept-defaults.
 	AcceptDefaults bool
+
+	// Only used when BackfillManifestOnly is set. The user acknowledges that
+	// the backfilled manifest file will be missing patches for files that were
+	// "included from destination".
+	ContinueWithoutPatches bool
 
 	// BackupDir is the directory where overwritten files will be backed up.
 	// BackupDir is ignored if Backups is false.
@@ -121,12 +127,13 @@ type Params struct {
 	// The value of --keep-temp-dirs.
 	KeepTempDirs bool
 
-	// The value of --manifest. Whether to create a manifest file.
-	Manifest bool
+	// Override the default behavior of outputting a manifest for the rendered
+	// template.
+	SkipManifest bool
 
-	// The value of --manifest-only. Whether to *only* create a manifest file
-	// without outputting any other files from the template.
-	ManifestOnly bool
+	// The value of --backfill-manifest-only. Whether to *only* create a
+	// manifest file without outputting any other files from the template.
+	BackfillManifestOnly bool
 
 	// The directory where the rendered output will be written.
 	OutDir string
@@ -174,8 +181,8 @@ type Result struct {
 
 	// ManifestPath, if set, is the relative path to the manifest file, starting
 	// from the destination directory (e.g. ".abc/manifest_123.yaml"). If
-	// manifest output wasn't enabled (see the --manifest flag), then this will
-	// be empty.
+	// manifest output wasn't enabled (see the --skip-manifest flag), then this
+	// will be empty.
 	ManifestPath string
 }
 
@@ -281,7 +288,7 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 		rp:               p,
 		scope:            scope,
 		scratchDir:       scratchDir,
-		suppressPrint:    p.ManifestOnly, // if --manifest-only was given, then the user doesn't want printed output.
+		suppressPrint:    p.BackfillManifestOnly, // if --backfill-manifest-only was given, then the user doesn't want printed output.
 		templateDir:      templateDir,
 	}
 
@@ -598,24 +605,9 @@ type commitParams struct {
 // directory. We first do a dry-run to check that the copy is likely to succeed,
 // so we don't leave a half-done mess in the user's dest directory.
 func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manifestPath string, _ error) {
-	// Design decision: it's OK to hold these patches in memory. It's unlikely
-	// that anyone will create such huge patches with abc that they'll run out
-	// of RAM.
-	includeFromDestPatches := map[string]string{}
-
-	// For each file that was included-from-destination, create a patch that
-	// reverses the change. This might be used in the future during a template
-	// upgrade operation.
-	for relPath, fromDir := range cp.includedFromDest {
-		destPath := filepath.Join(fromDir, relPath)
-		srcPath := filepath.Join(cp.scratchDir, relPath)
-		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, fromDir)
-		if err != nil {
-			return "", err //nolint:wrapcheck
-		}
-		if diff != "" {
-			includeFromDestPatches[relPath] = diff
-		}
+	includeFromDestPatches, err := ifdPatches(ctx, p, cp)
+	if err != nil {
+		return "", err
 	}
 
 	for _, dryRun := range []bool{true, false} {
@@ -624,7 +616,7 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 			return "", err
 		}
 
-		if p.Manifest {
+		if !p.SkipManifest {
 			if manifestPath, err = writeManifest(&writeManifestParams{
 				clock:                  p.Clock,
 				cwd:                    p.Cwd,
@@ -636,13 +628,72 @@ func commitTentatively(ctx context.Context, p *Params, cp *commitParams) (manife
 				inputs:                 cp.inputs,
 				outputHashes:           outputHashes,
 				templateDir:            cp.templateDir,
-				upgradeChannel:         p.UpgradeChannel,
 			}); err != nil {
 				return "", err
 			}
 		}
 	}
 	return manifestPath, nil
+}
+
+func ifdPatches(ctx context.Context, p *Params, cp *commitParams) (map[string]string, error) {
+	if p.BackfillManifestOnly {
+		if len(cp.includedFromDest) == 0 || p.ContinueWithoutPatches {
+			return nil, nil
+		}
+
+		sortedFiles := maps.Keys(cp.includedFromDest)
+		sort.Strings(sortedFiles)
+
+		return nil, fmt.Errorf(`
+We're running in --backfill-manifest-only mode with a template that modifies
+files in place (using the "from: destination" feature in spec.yaml). Normally,
+the manifest is supposed to store a patch for each file modified in place that
+will undo the modification. This is used later during the template upgrade
+process. We can't generate a complete manifest retrospectively for this template
+installation because generating a patch would require the former contents of the
+file(s) (before they were modified in place), but we the old version of the file
+isn't available anymore. You have
+two options:
+
+ - Re-run this command with "--continue-without-patches" to proceed anyway,
+   creating a manifest that might cause problems. This means that when you run
+   "abc upgrade" on this manifest in the future, there may be some spurious
+   edits that will require manual correction. For example, there may be duplicate
+   edits in the given file(s). If you don't care about upgrading this template
+   installation later, or if you're confident in handling the merge conflict
+   later, then this is a good option.
+
+ - Revert the commit that rendered this template in the past. Re-render it using
+   "abc render" (which now defaults to '--skip-manifest=false') to generate a
+   fully correct manifest.
+
+The files in question that are modified in place are: %s`,
+			sortedFiles)
+	}
+
+	// Design decision: it's OK to hold these patches in memory. It's unlikely
+	// that anyone will create such huge patches with abc that they'll run out
+	// of RAM.
+	out := map[string]string{}
+
+	// For each file that was included-from-destination, create a patch that
+	// reverses the change. This might be used in the future during a template
+	// upgrade operation.
+	for relPath, fromDir := range cp.includedFromDest {
+		destPath := filepath.Join(fromDir, relPath)
+		srcPath := filepath.Join(cp.scratchDir, relPath)
+		diff, err := run.RunDiff(ctx, false, srcPath, cp.scratchDir, destPath, fromDir)
+		if err != nil {
+			return nil, err //nolint:wrapcheck
+		}
+
+		if diff != "" {
+			out[relPath] = diff
+		}
+	}
+
+	return out, nil
 }
 
 // commit copies the contents of scratchDir to rp.Dest. If dryRun==true, then
@@ -688,7 +739,7 @@ func commit(ctx context.Context, commitDryRun bool, p *Params, scratchDir string
 		// Edge case 3: we're in "manifest only" mode, which means that we don't
 		// want to output any files except the manifest.
 		_, ok := includedFromDest[relPath]
-		allowPreexisting := ok || p.ForceOverwrite || p.ManifestOnly
+		allowPreexisting := ok || p.ForceOverwrite || p.BackfillManifestOnly
 
 		return common.CopyHint{
 			BackupIfExists:   p.Backups,
@@ -716,9 +767,9 @@ func commit(ctx context.Context, commitDryRun bool, p *Params, scratchDir string
 	// here. There's the "commit dry run mode" and the "CopyRecursive dry run
 	// mode." If the commit dry run mode is enabled, then the CopyRecursive dry
 	// run mode is also enabled. There's also another case where CopyRecursive
-	// dry run mode is enabled: when --manifest-only is turned on, which means
-	// we never write any output files except the manifest.
-	copyDryRun := commitDryRun || p.ManifestOnly
+	// dry run mode is enabled: when --backfill-manifest-only is turned on,
+	// which means we never write any output files except the manifest.
+	copyDryRun := commitDryRun || p.BackfillManifestOnly
 
 	params := &common.CopyParams{
 		BackupDirMaker: backupDirMaker,
@@ -754,8 +805,8 @@ func fillDefaults(p *Params) *Params {
 }
 
 func validate(p *Params) error {
-	if p.ManifestOnly && !p.Manifest {
-		return fmt.Errorf("if ManifestOnly is true, then Manifest must be true")
+	if p.BackfillManifestOnly && p.SkipManifest {
+		return fmt.Errorf("if the --backfill-manifest-only flag is true, then the --skip-manifest flag must be false")
 	}
 	return nil
 }

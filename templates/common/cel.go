@@ -304,7 +304,7 @@ func celCompile(ctx context.Context, scope *Scope, expr string) (cel.Program, er
 
 	ast, issues := env.Compile(expr)
 	if err := issues.Err(); err != nil {
-		if name, ok := isCELUndeclaredRef(err); ok {
+		if name, ok := IsCELUndeclaredRef(err); ok {
 			return nil, &errs.UnknownVarError{
 				VarName:       name,
 				AvailableVars: maps.Keys(scope.AllVars()),
@@ -330,7 +330,10 @@ func celCompile(ctx context.Context, scope *Scope, expr string) (cel.Program, er
 
 var celUndeclaredRefRE = regexp.MustCompile(`undeclared reference to '([^']+)'`)
 
-func isCELUndeclaredRef(err error) (string, bool) {
+// Detects whether the given error, which should come from the CEL Compile()
+// function, is an error indicating a reference to a nonexistent variable. This
+// can happen when, for example, the CEL expr was "x == 5" but x doesn't exist.
+func IsCELUndeclaredRef(err error) (string, bool) {
 	// The variable name that is the "undeclared reference" isn't available
 	// as a field of the error, so we're forced to parse the error message.
 	matches := celUndeclaredRefRE.FindStringSubmatch(err.Error())

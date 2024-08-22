@@ -111,6 +111,12 @@ type Params struct {
 	// that single template will be upgraded.
 	Location string
 
+	// A CEL expression to filter the manifests found. If this is set, then it
+	// will be executed against each manifest YAML model, and the manifest will
+	// upgraded IFF the expression returns true. If unset, then no filtering
+	// will be done and every manifest found under Location will be upgraded.
+	ManifestFilter string
+
 	// The value of --prompt.
 	Prompt   bool
 	Prompter input.Prompter
@@ -135,6 +141,10 @@ type Params struct {
 	// Upgrade to the template specified by this location, rather than the
 	// template location stored in the manifest (which is the default).
 	TemplateLocation string
+
+	// The value of --upgrade-channel. The branch to pull upgrades from, or the
+	// special string "latest".
+	UpgradeChannel string
 
 	// An optional version to update to, overriding the upgrade_channel field in
 	// the manifest.
@@ -325,7 +335,7 @@ type ActionTaken struct {
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *ManifestResult, rErr error) {
+func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest *manifest.Manifest) (_ *ManifestResult, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "upgrade")
 
 	// For now, manifest files are always located in the .abc directory under
@@ -333,11 +343,6 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	installedDir := filepath.Join(filepath.Dir(absManifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
-		return nil, err
-	}
-
-	oldManifest, err := loadManifest(ctx, p.FS, absManifestPath)
-	if err != nil {
 		return nil, err
 	}
 
@@ -398,6 +403,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	if err != nil {
 		return nil, err
 	}
+
 	if len(reversalConflicts) > 0 {
 		return &ManifestResult{
 			DLMeta:            dlMeta,
@@ -420,7 +426,6 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		IncludeFromDestExtraDir: reversedDir,
 		InputsFromFlags:         p.InputsFromFlags,
 		KeepTempDirs:            p.KeepTempDirs,
-		Manifest:                true,
 		OutDir:                  mergeDir,
 		Prompt:                  p.Prompt,
 		Prompter:                p.Prompter,
@@ -429,12 +434,13 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		SourceForMessages:       oldManifest.TemplateLocation.Val,
 		Stdout:                  p.Stdout,
 		TempDirBase:             p.TempDirBase,
+		UpgradeChannel:          p.UpgradeChannel,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed rendering template: %w", err)
 	}
 
-	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
+	newManifest, _, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
 	if err != nil {
 		return nil, err
 	}
@@ -475,9 +481,10 @@ func makeDownloader(ctx context.Context, p *Params, installedDir string, oldMani
 			return nil, fmt.Errorf("--template-location and --version must not be used together; to specify the version with --template-version, use the @version syntax, like github.com/foo/bar@main")
 		}
 		downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-			CWD:         p.CWD,
-			Source:      p.TemplateLocation,
-			GitProtocol: p.GitProtocol,
+			CWD:                p.CWD,
+			Source:             p.TemplateLocation,
+			FlagGitProtocol:    p.GitProtocol,
+			FlagUpgradeChannel: p.UpgradeChannel,
 		})
 		if err != nil {
 			return nil, err //nolint:wrapcheck
@@ -500,12 +507,15 @@ func makeDownloader(ctx context.Context, p *Params, installedDir string, oldMani
 	if downloaderFactory == nil {
 		downloaderFactory = templatesource.ForUpgrade
 	}
+
+	upgradeChannel := common.FirstNonZero(p.UpgradeChannel, oldManifest.UpgradeChannel.Val)
 	downloader, err := downloaderFactory(ctx, &templatesource.ForUpgradeParams{
 		InstalledDir:      installedDir,
 		CanonicalLocation: oldManifest.TemplateLocation.Val,
 		LocType:           templatesource.LocationType(oldManifest.LocationType.Val),
 		GitProtocol:       p.GitProtocol,
 		Version:           version,
+		UpgradeChannel:    upgradeChannel,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed creating downloader for manifest location %q of type %q with git protocol %q: %w",
@@ -601,8 +611,6 @@ func commit(ctx context.Context, p *commitParams, dryRun bool) ([]ActionTaken, e
 // is so the *next* time we upgrade this template, we'll realize that there have
 // been local customizations.
 func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
-	// Most fields come from the new manifest, except for the creation time
-	// which comes from the old manifest.
 	forMarshaling := manifest.ForMarshaling(*newManifest)
 	forMarshaling.CreationTime = old.CreationTime
 
@@ -616,24 +624,24 @@ func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
 }
 
 // loadManifest reads and unmarshals the manifest at the given path.
-func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
+func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, []byte, error) {
 	f, err := fs.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
+		return nil, nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	manifestI, buf, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
-		return nil, fmt.Errorf("error reading manifest file: %w", err)
+		return nil, nil, fmt.Errorf("error reading manifest file: %w", err)
 	}
 
 	out, ok := manifestI.(*manifest.Manifest)
 	if !ok {
-		return nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
+		return nil, nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
 	}
 
-	return out, nil
+	return out, buf, nil
 }
 
 // inputsToMap takes the list of input values (e.g. "service_account" was "my-service-account")
@@ -700,7 +708,7 @@ type reversePatchesParams struct {
 	// installedDir is the directory where the template output is going.
 	installedDir string
 
-	// reversedDir is where reversePatches will store the patches files after
+	// reversedDir is where reversePatches will store the patched files after
 	// the patches from the manifest have been successfully applied.
 	reversedDir string
 
@@ -729,7 +737,15 @@ func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalCo
 		}
 
 		outPath := filepath.Join(p.reversedDir, f.File.Val)
+
 		if slices.Contains(p.alreadyResolved, f.File.Val) {
+			// The p.reversedDir directory doesn't contain any subdirs until we
+			// create them here.
+			dirToCreate := filepath.Dir(outPath)
+			if err := p.fs.MkdirAll(dirToCreate, common.OwnerRWXPerms); err != nil {
+				return nil, fmt.Errorf("failed creating %s: %w", dirToCreate, err)
+			}
+
 			// In the case where a previous run of abc raised a merge conflict,
 			// and the user resolved it, and provided the command-line flag
 			// indicating that they already resolved it, then we skip applying
@@ -741,10 +757,12 @@ func reversePatches(ctx context.Context, p *reversePatchesParams) ([]*ReversalCo
 			}
 			continue
 		}
+
 		conflict, err := reverseOnePatch(ctx, p.installedDir, outPath, f)
 		if err != nil {
 			return nil, err
 		}
+
 		if conflict != nil {
 			out = append(out, conflict)
 		}

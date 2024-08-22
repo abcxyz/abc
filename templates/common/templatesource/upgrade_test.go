@@ -29,15 +29,16 @@ func TestForUpgrade(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name              string
-		canonicalLocation string
-		locType           LocationType
-		gitProtocol       string
-		installedInSubdir string
-		dirContents       map[string]string
-		version           string
-		wantDownloader    Downloader
-		wantErr           string
+		name               string
+		canonicalLocation  string
+		locType            LocationType
+		gitProtocol        string
+		flagUpgradeChannel string
+		installedInSubdir  string
+		dirContents        map[string]string
+		version            string
+		wantDownloader     Downloader
+		wantErr            string
 	}{
 		{
 			name:              "remote_git_https_no_subdir",
@@ -104,6 +105,21 @@ func TestForUpgrade(t *testing.T) {
 				cloner:          &realCloner{},
 				remote:          "https://github.com/abcxyz/abc.git",
 				version:         "someversion",
+			},
+		},
+		{
+			name:               "override_upgrade_channel",
+			canonicalLocation:  "github.com/abcxyz/abc",
+			locType:            RemoteGit,
+			gitProtocol:        "https",
+			flagUpgradeChannel: "some-branch",
+			version:            "someversion",
+			wantDownloader: &remoteGitDownloader{
+				canonicalSource:    "github.com/abcxyz/abc",
+				cloner:             &realCloner{},
+				remote:             "https://github.com/abcxyz/abc.git",
+				version:            "someversion",
+				flagUpgradeChannel: "some-branch",
 			},
 		},
 		{
@@ -174,6 +190,7 @@ func TestForUpgrade(t *testing.T) {
 				InstalledDir:      installedInDir,
 				GitProtocol:       tc.gitProtocol,
 				Version:           tc.version,
+				UpgradeChannel:    tc.flagUpgradeChannel,
 			})
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)

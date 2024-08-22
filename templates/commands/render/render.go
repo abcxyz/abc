@@ -110,41 +110,50 @@ func (c *Command) Run(ctx context.Context, args []string) error {
 		"backups",
 		fmt.Sprint(time.Now().UTC().Unix()))
 
+	createManifest := c.flags.BackfillManifestOnly || !c.flags.SkipManifest
+
+	// We require an upgrade channel IFF we're creating a manifest; the only
+	// point of having an upgrade channel is to save it in the manifest for
+	// future upgrades.
+	requireUpgradeChannel := createManifest
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-		CWD:         wd,
-		Source:      c.flags.Source,
-		GitProtocol: c.flags.GitProtocol,
+		CWD:                   wd,
+		Source:                c.flags.Source,
+		FlagGitProtocol:       c.flags.GitProtocol,
+		FlagUpgradeChannel:    c.flags.UpgradeChannel,
+		RequireUpgradeChannel: requireUpgradeChannel,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
 
 	_, err = render.Render(ctx, &render.Params{
-		AcceptDefaults:       c.flags.AcceptDefaults,
-		BackupDir:            backupDir,
-		Backups:              true,
-		Clock:                clock.New(),
-		Cwd:                  wd,
-		DebugScratchContents: c.flags.DebugScratchContents,
-		DebugStepDiffs:       c.flags.DebugStepDiffs,
-		OutDir:               c.flags.Dest,
-		Downloader:           downloader,
-		ForceOverwrite:       c.flags.ForceOverwrite,
-		FS:                   fs,
-		GitProtocol:          c.flags.GitProtocol,
-		IgnoreUnknownInputs:  c.flags.IgnoreUnknownInputs,
-		InputsFromFlags:      c.flags.Inputs,
-		InputFiles:           c.flags.InputFiles,
-		KeepTempDirs:         c.flags.KeepTempDirs,
-		Manifest:             c.flags.Manifest,
-		ManifestOnly:         c.flags.ManifestOnly,
-		Prompt:               c.flags.Prompt,
-		Prompter:             c,
-		SkipInputValidation:  c.flags.SkipInputValidation,
-		SkipPromptTTYCheck:   c.skipPromptTTYCheck,
-		SourceForMessages:    c.flags.Source,
-		Stdout:               c.Stdout(),
-		UpgradeChannel:       c.flags.UpgradeChannel,
+		AcceptDefaults:         c.flags.AcceptDefaults,
+		ContinueWithoutPatches: c.flags.ContinueWithoutPatches,
+		BackfillManifestOnly:   c.flags.BackfillManifestOnly,
+		BackupDir:              backupDir,
+		Backups:                true,
+		Clock:                  clock.New(),
+		Cwd:                    wd,
+		DebugScratchContents:   c.flags.DebugScratchContents,
+		DebugStepDiffs:         c.flags.DebugStepDiffs,
+		OutDir:                 c.flags.Dest,
+		Downloader:             downloader,
+		ForceOverwrite:         c.flags.ForceOverwrite,
+		FS:                     fs,
+		GitProtocol:            c.flags.GitProtocol,
+		IgnoreUnknownInputs:    c.flags.IgnoreUnknownInputs,
+		InputsFromFlags:        c.flags.Inputs,
+		InputFiles:             c.flags.InputFiles,
+		KeepTempDirs:           c.flags.KeepTempDirs,
+		Prompt:                 c.flags.Prompt,
+		Prompter:               c,
+		SkipInputValidation:    c.flags.SkipInputValidation,
+		SkipManifest:           !createManifest,
+		SkipPromptTTYCheck:     c.skipPromptTTYCheck,
+		SourceForMessages:      c.flags.Source,
+		Stdout:                 c.Stdout(),
+		UpgradeChannel:         c.flags.UpgradeChannel,
 	})
 
 	return err //nolint:wrapcheck

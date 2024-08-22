@@ -151,7 +151,7 @@ func parseTestConfig(ctx context.Context, path string) (*goldentest.Test, error)
 	}
 	defer f.Close()
 
-	testI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindGoldenTest)
+	testI, _, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindGoldenTest)
 	if err != nil {
 		return nil, fmt.Errorf("error reading golden test config file: %w", err)
 	}
@@ -198,6 +198,7 @@ func renderTestCase(ctx context.Context, templateDir, outputDir string, tc *Test
 		FS:                  &common.RealFS{},
 		InputsFromFlags:     varValuesToMap(tc.TestConfig.Inputs),
 		OverrideBuiltinVars: varValuesToMap(tc.TestConfig.BuiltinVars),
+		SkipManifest:        true,
 		SourceForMessages:   templateDir,
 		Stdout:              stdoutBuf,
 	})

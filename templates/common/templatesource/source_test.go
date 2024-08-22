@@ -31,7 +31,8 @@ func TestParseSource(t *testing.T) {
 	cases := []struct {
 		name                string
 		source              string
-		gitProtocol         string
+		flagGitProtocol     string
+		flagUpgradeChannel  string
 		tempDirContents     map[string]string
 		dest                string
 		want                Downloader
@@ -117,6 +118,15 @@ func TestParseSource(t *testing.T) {
 			want: &LocalDownloader{
 				SrcPath: "my/dir",
 			},
+		},
+		{
+			name:               "reject_upgrade_channel_with_local_template",
+			source:             "my/dir",
+			flagUpgradeChannel: "main",
+			tempDirContents: map[string]string{
+				"my/dir/spec.yaml": "my spec file contents",
+			},
+			wantErr: "the --upgrade-channel flag ",
 		},
 		{
 			name:    "https_remote_format_rejected",
@@ -264,9 +274,10 @@ func TestParseSource(t *testing.T) {
 			abctestutil.WriteAll(t, tempDir, tc.tempDirContents)
 
 			params := &ParseSourceParams{
-				CWD:         tempDir,
-				Source:      tc.source,
-				GitProtocol: tc.gitProtocol,
+				CWD:                tempDir,
+				Source:             tc.source,
+				FlagGitProtocol:    tc.flagGitProtocol,
+				FlagUpgradeChannel: tc.flagUpgradeChannel,
 			}
 			got, err := ParseSource(ctx, params)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

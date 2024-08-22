@@ -29,6 +29,11 @@ type RenderFlags struct {
 	// See common/flags.AcceptDefaults().
 	AcceptDefaults bool
 
+	// Only used when BackfillManifestOnly is set. The user acknowledges that
+	// the backfilled manifest file will be missing patches for files that were
+	// "included from destination".
+	ContinueWithoutPatches bool
+
 	// Positional arguments:
 
 	// Source is the location of the input template to be rendered.
@@ -45,8 +50,8 @@ type RenderFlags struct {
 	// See common/flags.GitProtocol().
 	GitProtocol string
 
-	// ForceOverwrite lets existing output files in the Dest directory be overwritten
-	// with the output of the template.
+	// ForceOverwrite lets existing output files in the Dest directory be
+	// overwritten with the output of the template.
 	ForceOverwrite bool
 
 	// Ignore any values in the Inputs map that aren't valid template inputs,
@@ -76,11 +81,11 @@ type RenderFlags struct {
 
 	// Manifest enables the writing of manifest files, which are an experimental
 	// feature related to template upgrades.
-	Manifest bool
+	SkipManifest bool
 
 	// Whether to *only* create a manifest file without outputting any other
 	// files from the template.
-	ManifestOnly bool
+	BackfillManifestOnly bool
 
 	// Overrides the `upgrade_channel` field in the output manifest. Can be
 	// either a branch name or the special string "latest".
@@ -94,6 +99,7 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	f.StringSliceVar(flags.InputFiles(&r.InputFiles))
 	f.BoolVar(flags.KeepTempDirs(&r.KeepTempDirs))
 	f.BoolVar(flags.SkipInputValidation(&r.SkipInputValidation))
+	f.StringVar(flags.UpgradeChannel(&r.UpgradeChannel))
 
 	f.StringVar(&cli.StringVar{
 		Name:    "dest",
@@ -123,29 +129,29 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 	f.BoolVar(flags.AcceptDefaults(&r.AcceptDefaults))
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "manifest",
-		Target:  &r.Manifest,
+		Name:    "skip-manifest",
+		Target:  &r.SkipManifest,
 		Default: false,
-		EnvVar:  "ABC_MANIFEST",
+		EnvVar:  "ABC_SKIP_MANIFEST",
 		// TODO(upgrade): remove "(experimental)"
-		Usage: "(experimental) write a manifest file containing metadata that will allow future template upgrades.",
-	})
-
-	f.StringVar(&cli.StringVar{
-		Name:    "upgrade-channel",
-		Target:  &r.UpgradeChannel,
-		Default: "",
-		EnvVar:  "ABC_UPGRADE_CHANNEL",
-		Usage:   `overrides the "upgrade_channel" field in the output manifest, which controls where upgraded template versions will be pulled from in the future by "abc uprade". Can be either a branch name or the special string "latest". The default is to upgrade from the branch that the template was originally rendered from if rendered from a branch, or in any other case to use the value "latest" to upgrade to the latest release tag by semver order.`,
+		Usage: "(experimental) skip writing a manifest file containing metadata that will allow future template upgrades.",
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "manifest-only",
-		Target:  &r.ManifestOnly,
+		Name:    "backfill-manifest-only",
+		Target:  &r.BackfillManifestOnly,
 		Default: false,
 		EnvVar:  "ABC_MANIFEST_ONLY",
 		// TODO(upgrade): remove "(experimental)"
-		Usage: "(experimental) write only a manifest file and no other files; implicitly sets --manifest=true",
+		Usage: "(experimental) write only a manifest file and no other files; implicitly sets --skip-manifest=false; this is for the case where you have already rendered a template but there's no manifest, and you want to create just the manifest",
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "continue-without-patches",
+		Target:  &r.ContinueWithoutPatches,
+		Default: false,
+		EnvVar:  "ABC_CONTINUE_WITHOUT_PATCHES",
+		Usage:   `only used when --backfill-manifest-only mode is set; since it's impossible to create a completely accurate manifest for a file that was modified-in-place in the past, this flag instructs the render command to proceed anyway and create a manifest missing the "patch reversal" fields; this may cause spurious merge issues in the future during upgrade operations on this manifest`,
 	})
 
 	t := set.NewSection("TEMPLATE AUTHORS")
@@ -161,11 +167,6 @@ func (r *RenderFlags) Register(set *cli.FlagSet) {
 		r.Source = strings.TrimSpace(set.Arg(0))
 		if r.Source == "" {
 			return fmt.Errorf("missing <source> file")
-		}
-
-		if r.ManifestOnly {
-			// --manifest-only implies the user wants a manifest.
-			r.Manifest = true
 		}
 
 		return nil

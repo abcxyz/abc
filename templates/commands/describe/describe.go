@@ -114,9 +114,9 @@ func (c *Command) realRun(ctx context.Context, rp *runParams) (rErr error) {
 		return err //nolint:wrapcheck
 	}
 	downloader, err := templatesource.ParseSource(ctx, &templatesource.ParseSourceParams{
-		CWD:         cwd,
-		Source:      c.flags.Source,
-		GitProtocol: c.flags.GitProtocol,
+		CWD:             cwd,
+		Source:          c.flags.Source,
+		FlagGitProtocol: c.flags.GitProtocol,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck

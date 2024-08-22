@@ -90,29 +90,30 @@ steps:
 `
 
 	cases := []struct {
-		name                    string
-		templateContents        map[string]string
-		existingDestContents    map[string]string
-		flagInputs              map[string]string
-		inputFileNames          []string
-		inputFileContents       map[string]string
-		flagAcceptDefaults      bool
-		flagKeepTempDirs        bool
-		flagForceOverwrite      bool
-		flagIgnoreUnknownInputs bool
-		flagSkipInputValidation bool
-		flagManifest            bool
-		flagManifestOnly        bool
-		flagUpgradeChannel      string
-		flagDebugStepDiffs      bool
-		overrideBuiltinVars     map[string]string
-		removeAllErr            error
-		wantScratchContents     map[string]string
-		wantTemplateContents    map[string]string
-		wantDestContents        map[string]string
-		wantBackupContents      map[string]string
-		wantStdout              string
-		wantErr                 string
+		name                       string
+		templateContents           map[string]string
+		existingDestContents       map[string]string
+		flagInputs                 map[string]string
+		inputFileNames             []string
+		inputFileContents          map[string]string
+		flagAcceptDefaults         bool
+		flagContinueWithoutPatches bool
+		flagKeepTempDirs           bool
+		flagForceOverwrite         bool
+		flagIgnoreUnknownInputs    bool
+		flagSkipInputValidation    bool
+		flagBackfillManifestOnly   bool
+		flagUpgradeChannel         string
+		flagDebugStepDiffs         bool
+		overrideBuiltinVars        map[string]string
+		removeAllErr               error
+		wantScratchContents        map[string]string
+		wantTemplateContents       map[string]string
+		wantDestContents           map[string]string
+		wantBackupContents         map[string]string
+		wantStdout                 string
+		wantErr                    string
+
 		// manifests are part of the destination directory, but are compared
 		// separately because they change every time we add a new api_version
 		// and we don't want to change a bunch of "wanted" strings every time.
@@ -138,6 +139,20 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S("!")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Bob")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
+			},
 		},
 		{
 			name: "simple_success_with_debug_flag",
@@ -160,6 +175,35 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{
+						Name:  mdl.S("emoji_suffix"),
+						Value: mdl.S("\U0001F408"),
+					},
+					{
+						Name:  mdl.S("ending_punctuation"),
+						Value: mdl.S("!"),
+					},
+					{
+						Name:  mdl.S("name_to_greet"),
+						Value: mdl.S("Bob"),
+					},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("dir1/file_in_dir.txt"),
+					},
+					{
+						File: mdl.S("dir2/file2.txt"),
+					},
+					{
+						File: mdl.S("file1.txt"),
+					},
+				},
+			},
 		},
 		{
 			name: "simple_success_with_manifest",
@@ -175,8 +219,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagManifest: true,
-			wantStdout:   "Hello, Bob🐈!\n",
+			wantStdout: "Hello, Bob🐈!\n",
 			wantDestContents: map[string]string{
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
@@ -185,7 +228,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -203,72 +245,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
-					},
-				},
-			},
-		},
-		{
-			name: "simple_success_with_manifest_and_upgrade_channel_flag",
-			flagInputs: map[string]string{
-				"name_to_greet":      "Bob",
-				"emoji_suffix":       "🐈",
-				"ending_punctuation": "!",
-			},
-			templateContents: map[string]string{
-				"myfile.txt":           "Some random stuff",
-				"spec.yaml":            specContents,
-				"file1.txt":            "my favorite color is blue",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			flagManifest:       true,
-			flagUpgradeChannel: "main",
-			wantStdout:         "Hello, Bob🐈!\n",
-			wantDestContents: map[string]string{
-				"file1.txt":            "my favorite color is red",
-				"dir1/file_in_dir.txt": "file_in_dir contents",
-				"dir2/file2.txt":       "file2 contents",
-			},
-			wantManifest: &manifest.Manifest{
-				CreationTime:     clk.Now(),
-				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
-				UpgradeChannel:   mdl.S("main"),
-				Inputs: []*manifest.Input{
-					{
-						Name:  mdl.S("emoji_suffix"),
-						Value: mdl.S("\U0001F408"),
-					},
-					{
-						Name:  mdl.S("ending_punctuation"),
-						Value: mdl.S("!"),
-					},
-					{
-						Name:  mdl.S("name_to_greet"),
-						Value: mdl.S("Bob"),
-					},
-				},
-				OutputFiles: []*manifest.OutputFile{
-					{
-						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
-					},
-					{
-						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
-					},
-					{
-						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -287,13 +269,11 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagManifest:     true,
-			flagManifestOnly: true,
-			wantDestContents: map[string]string{},
+			flagBackfillManifestOnly: true,
+			wantDestContents:         map[string]string{},
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -311,15 +291,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -338,8 +315,7 @@ steps:
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
-			flagManifest:     true,
-			flagManifestOnly: true,
+			flagBackfillManifestOnly: true,
 			existingDestContents: map[string]string{
 				"file1.txt": "existing contents",
 			},
@@ -349,7 +325,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -367,15 +342,53 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
+					},
+				},
+			},
+		},
+		{
+			name: "manifest_only_flag_with_include_from_destination",
+			templateContents: map[string]string{
+				"spec.yaml": `
+api_version: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+desc: 'my template'
+steps:
+  - desc: 'Include from destination'
+    action: 'include'
+    params:
+        paths:
+            - paths: ['myfile.txt']
+              from: 'destination'
+  - desc: 'Replace "purple" with "red"'
+    action: 'string_replace'
+    params:
+        paths: ['.']
+        replacements:
+          - to_replace: 'purple'
+            with: 'red'`,
+			},
+			flagBackfillManifestOnly:   true,
+			flagContinueWithoutPatches: true,
+			existingDestContents: map[string]string{
+				"myfile.txt": "red",
+			},
+			wantDestContents: map[string]string{
+				"myfile.txt": "red",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs:           []*manifest.Input{},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("myfile.txt"),
 					},
 				},
 			},
@@ -402,6 +415,20 @@ ending_punctuation: '.'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S(".")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Bob")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
+			},
 		},
 		{
 			name:           "simple_success_with_both_inputs_and_input_file_flags",
@@ -426,6 +453,35 @@ emoji_suffix: '🐈'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{
+						Name:  mdl.S("emoji_suffix"),
+						Value: mdl.S("\U0001F408"),
+					},
+					{
+						Name:  mdl.S("ending_punctuation"),
+						Value: mdl.S("."),
+					},
+					{
+						Name:  mdl.S("name_to_greet"),
+						Value: mdl.S("Robert"),
+					},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("dir1/file_in_dir.txt"),
+					},
+					{
+						File: mdl.S("dir2/file2.txt"),
+					},
+					{
+						File: mdl.S("file1.txt"),
+					},
+				},
+			},
 		},
 		{
 			name:           "simple_success_with_two_input_file_flags",
@@ -449,6 +505,20 @@ emoji_suffix: '🐈'`,
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S(".")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Bob")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
 			},
 		},
 		{
@@ -494,6 +564,20 @@ emoji_suffix: '🐈'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S(".")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Bob")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
+			},
 		},
 		{
 			name: "keep_temp_dirs_on_failure_if_flag",
@@ -536,6 +620,20 @@ emoji_suffix: '🐈'`,
 			},
 			wantBackupContents: map[string]string{
 				"file1.txt": "old contents",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S(".")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Bob")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
 			},
 		},
 		{
@@ -588,6 +686,20 @@ emoji_suffix: '🐈'`,
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S(".")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Bob")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
+			},
 		},
 		{
 			name: "handles_unknown_inputs",
@@ -620,8 +732,7 @@ emoji_suffix: '🐈'`,
 			wantErr: `missing input(s): emoji_suffix, name_to_greet`,
 		},
 		{
-			name:         "destination_include_with_manifest",
-			flagManifest: true,
+			name: "destination_include_with_manifest",
 			templateContents: map[string]string{
 				"spec.yaml": `
 api_version: 'cli.abcxyz.dev/v1alpha1'
@@ -662,11 +773,9 @@ steps:
 				// time we add a new api version
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:aJN049UDpyv0f6rr9IApCi4PV3Z3llWM2OOSH+KCUzc="),
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("myfile.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/myfile.txt
 +++ b/myfile.txt
 @@ -1 +1 @@
@@ -678,7 +787,6 @@ steps:
 					},
 					{
 						File: mdl.S("subdir_a/file_a.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/subdir_a/file_a.txt
 +++ b/subdir_a/file_a.txt
 @@ -1 +1 @@
@@ -690,7 +798,6 @@ steps:
 					},
 					{
 						File: mdl.S("subdir_b/file_b.txt"),
-						Hash: mdl.S("h1:84uJzemmEjGfgzar/DclZc/GatFVOXD39/ewmvykVLs="),
 						Patch: mdl.SP(`--- a/subdir_b/file_b.txt
 +++ b/subdir_b/file_b.txt
 @@ -1 +1 @@
@@ -741,6 +848,24 @@ steps:
 			wantBackupContents: map[string]string{
 				"file_a.txt": "purple is my favorite color",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file_a.txt"),
+						Patch: mdl.SP(`--- a/file_a.txt
++++ b/file_a.txt
+@@ -1 +1 @@
+-red is my favorite color
+\ No newline at end of file
++purple is my favorite color
+\ No newline at end of file
+`),
+					},
+					{File: mdl.S("file_b.txt")},
+				},
+			},
 		},
 		{
 			name: "with_default_ignore",
@@ -782,6 +907,27 @@ steps:
 			},
 			wantBackupContents: map[string]string{
 				"file_a.txt": "purple is my favorite color",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("dir/file_b.txt"),
+					},
+					{
+						File: mdl.S("file_a.txt"),
+						Patch: mdl.SP(`--- a/file_a.txt
++++ b/file_a.txt
+@@ -1 +1 @@
+-red is my favorite color
+\ No newline at end of file
++purple is my favorite color
+\ No newline at end of file
+`),
+					},
+				},
 			},
 		},
 		{
@@ -825,6 +971,23 @@ steps:
 			wantBackupContents: map[string]string{
 				"file_a.txt": "purple is my favorite color",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				OutputFiles: []*manifest.OutputFile{
+					{
+						File: mdl.S("file_a.txt"),
+						Patch: mdl.SP(`--- a/file_a.txt
++++ b/file_a.txt
+@@ -1 +1 @@
+-red is my favorite color
+\ No newline at end of file
++purple is my favorite color
+\ No newline at end of file
+`),
+					},
+				},
+			},
 		},
 		{
 			name: "simple_skip",
@@ -844,6 +1007,10 @@ steps:
 `,
 			},
 			wantDestContents: map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+			},
 		},
 		{
 			name: "glob_include",
@@ -884,6 +1051,18 @@ steps:
 				"dir2/something.json":        "json contents",
 				"python_files/include_me.py": "include_me contents",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/something.md")},
+					{File: mdl.S("dir2/something.json")},
+					{File: mdl.S("file1.txt")},
+					{File: mdl.S("file2.txt")},
+					{File: mdl.S("file3.txt")},
+					{File: mdl.S("python_files/include_me.py")},
+				},
+			},
 		},
 		{
 			name: "for_each",
@@ -907,6 +1086,10 @@ steps:
 			},
 			wantStdout:       "Working on environment production\nWorking on environment dev\n",
 			wantDestContents: map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+			},
 		},
 		{
 			name: "skip_input_validation",
@@ -931,6 +1114,13 @@ steps:
 			flagSkipInputValidation: true,
 			wantStdout:              "my_input is crocodile\n",
 			wantDestContents:        map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("my_input"), Value: mdl.S("crocodile")},
+				},
+			},
 		},
 		{
 			name: "step_with_if",
@@ -959,6 +1149,13 @@ steps:
 			flagAcceptDefaults: true,
 			wantStdout:         "Hello\n",
 			wantDestContents:   map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("my_input"), Value: mdl.S("true")},
+				},
+			},
 		},
 		{
 			name: "step_with_if_needs_v1beta1",
@@ -1014,6 +1211,20 @@ emoji_suffix: '🐈'`,
 				"file1.txt":            "my favorite color is red",
 				"dir1/file_in_dir.txt": "file_in_dir contents",
 				"dir2/file2.txt":       "file2 contents",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S(".")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Robert")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
 			},
 		},
 		{
@@ -1080,6 +1291,13 @@ module "cloud_run" {
 }
 `, abctestutil.MinimalGitHeadSHA, abctestutil.MinimalGitHeadShortSHA, "v1.2.3"),
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("example.tf")},
+				},
+			},
 		},
 		{
 			name: "git_metadata_variables_are_empty_string_when_unavailable",
@@ -1100,6 +1318,13 @@ steps:
 			},
 			wantDestContents: map[string]string{
 				"example.txt": `"" "" ""`,
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("example.txt")},
+				},
 			},
 		},
 		{
@@ -1153,6 +1378,10 @@ steps:
 			},
 			wantStdout:       "/my/dest /my/source\n",
 			wantDestContents: map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+			},
 		},
 		{
 			name:       "print_only_flags_are_not_in_scope_outside_of_print_actions",
@@ -1292,6 +1521,13 @@ steps:
 			wantDestContents: map[string]string{
 				"foo/.abc": "",
 			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("foo/.abc")},
+				},
+			},
 		},
 		{
 			name: "abc_is_not_reserved_as_subdir_name",
@@ -1311,6 +1547,13 @@ steps:
 			},
 			wantDestContents: map[string]string{
 				"foo/.abc/bar.txt": "",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("foo/.abc/bar.txt")},
+				},
 			},
 		},
 		{
@@ -1334,6 +1577,10 @@ steps:
 			}),
 			wantStdout:       "rule validation passed\n",
 			wantDestContents: map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+			},
 		},
 		{
 			name: "independent_rule_validation_invalid_rules",
@@ -1391,6 +1638,10 @@ steps:
 			},
 			wantStdout:       "git sha: ahl8foqboh8ktqzxnymuvdcg91hvim0cfszlcstl\ngit short sha: ahl8foq\ngit tag: v1.2.3\n",
 			wantDestContents: map[string]string{},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+			},
 		},
 		{
 			name: "formatTime_not_in_scope_on_old_spec",
@@ -1419,6 +1670,10 @@ steps:
     message: 'The timestamp is {{formatTime ._now_ms "2006-01-02T15:04:05"}}'`,
 			},
 			wantStdout: "The timestamp is 2023-12-08T23:59:02\n",
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+			},
 		},
 		{
 			name: "_now_ms_not_in_scope_on_old_spec",
@@ -1447,6 +1702,10 @@ steps:
     message: 'The timestamp is {{ ._now_ms }}'`,
 			},
 			wantStdout: "The timestamp is 1702079942000\n",
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+			},
 		},
 		{
 			name: "flag_ignore_unknown_inputs",
@@ -1459,7 +1718,6 @@ steps:
 				"ending_punctuation": "!",
 			},
 			flagIgnoreUnknownInputs: true,
-			flagManifest:            true,
 			templateContents: map[string]string{
 				"myfile.txt":           "Some random stuff",
 				"spec.yaml":            specContents,
@@ -1476,7 +1734,6 @@ steps:
 			wantManifest: &manifest.Manifest{
 				CreationTime:     clk.Now(),
 				ModificationTime: clk.Now(),
-				TemplateDirhash:  mdl.S("h1:Gym1rh37Q4e6h72ELjloc4lfVPR6B6tuRaLnFmakAYo="),
 				Inputs: []*manifest.Input{
 					{
 						Name:  mdl.S("emoji_suffix"),
@@ -1494,15 +1751,12 @@ steps:
 				OutputFiles: []*manifest.OutputFile{
 					{
 						File: mdl.S("dir1/file_in_dir.txt"),
-						Hash: mdl.S("h1:IeeGbHh8lPKI7ISJDiQTcNzKT/kATZ6IBgL4PbzOE4M="),
 					},
 					{
 						File: mdl.S("dir2/file2.txt"),
-						Hash: mdl.S("h1:AUDAxmpkSrLdJ6xVNvIMw3PW/RiW+YOOy0WVZ13aAfo="),
 					},
 					{
 						File: mdl.S("file1.txt"),
-						Hash: mdl.S("h1:UQ18krF3vW1ggpVvzlSWqmU0l4Fsuskdq7PaT9KHZ/4="),
 					},
 				},
 			},
@@ -1531,13 +1785,15 @@ steps:
 			rfs := &common.RealFS{}
 			stdoutBuf := &strings.Builder{}
 			p := &Params{
-				AcceptDefaults: tc.flagAcceptDefaults,
-				Backups:        true,
-				BackupDir:      backupDir,
-				Clock:          clk,
-				DebugStepDiffs: tc.flagDebugStepDiffs,
-				Downloader:     &templatesource.LocalDownloader{SrcPath: sourceDir},
-				ForceOverwrite: tc.flagForceOverwrite,
+				AcceptDefaults:         tc.flagAcceptDefaults,
+				BackfillManifestOnly:   tc.flagBackfillManifestOnly,
+				Backups:                true,
+				BackupDir:              backupDir,
+				Clock:                  clk,
+				ContinueWithoutPatches: tc.flagContinueWithoutPatches,
+				DebugStepDiffs:         tc.flagDebugStepDiffs,
+				Downloader:             &templatesource.LocalDownloader{SrcPath: sourceDir},
+				ForceOverwrite:         tc.flagForceOverwrite,
 				FS: &common.ErrorFS{
 					FS:           rfs,
 					RemoveAllErr: tc.removeAllErr,
@@ -1546,8 +1802,6 @@ steps:
 				InputFiles:          inputFilePaths,
 				InputsFromFlags:     tc.flagInputs,
 				KeepTempDirs:        tc.flagKeepTempDirs,
-				Manifest:            tc.flagManifest,
-				ManifestOnly:        tc.flagManifestOnly,
 				OutDir:              outDir,
 				OverrideBuiltinVars: tc.overrideBuiltinVars,
 				SkipInputValidation: tc.flagSkipInputValidation,
@@ -1639,6 +1893,8 @@ func verifyManifest(ctx context.Context, tb testing.TB, gotManifest bool, manife
 	opts := []cmp.Option{
 		// Don't force test authors to assert the line and column numbers
 		cmpopts.IgnoreTypes(&model.ConfigPos{}, model.ConfigPos{}),
+		cmpopts.IgnoreFields(manifest.Manifest{}, "TemplateDirhash"),
+		cmpopts.IgnoreFields(manifest.OutputFile{}, "Hash"),
 		cmpopts.EquateEmpty(),
 	}
 
@@ -1971,7 +2227,7 @@ func mustLoadManifest(ctx context.Context, tb testing.TB, path string) *manifest
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	manifestI, _, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
 		tb.Fatalf("error reading manifest file: %v", err)
 	}

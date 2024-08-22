@@ -271,7 +271,10 @@ func Copy(ctx context.Context, fs FS, src, dst string) error {
 	return CopyFile(ctx, nil, fs, src, dst, false, nil)
 }
 
-// CopyFile copies the contents of src to dst.
+// CopyFile copies the contents of src to dst. src and dst are filenames, not
+// directories.
+//
+// If the target directory doesn't exist, it will be automatically created.
 //
 // tee is nil-able. If not nil, it will be written to with the file contents.
 func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string, dryRun bool, tee io.Writer) (outErr error) {
@@ -296,6 +299,11 @@ func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 	if dryRun {
 		writer = io.Discard
 	} else {
+		parentDir := filepath.Dir(dst)
+		if err := rfs.MkdirAll(parentDir, OwnerRWXPerms); err != nil {
+			return fmt.Errorf("fs.MkdirAll(%s): %w", parentDir, err)
+		}
+
 		writeFile, err := rfs.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 		if err != nil {
 			return pos.Errorf("OpenFile(): %w", err)
@@ -324,11 +332,6 @@ func CopyFile(ctx context.Context, pos *model.ConfigPos, rfs FS, src, dst string
 // abc.
 func backUp(ctx context.Context, rfs FS, backupDir, srcRoot, relPath string) error {
 	backupFile := filepath.Join(backupDir, relPath)
-	parent := filepath.Dir(backupFile)
-	if err := os.MkdirAll(parent, OwnerRWXPerms); err != nil {
-		return fmt.Errorf("os.MkdirAll(%s): %w", parent, err)
-	}
-
 	fileToBackup := filepath.Join(srcRoot, relPath)
 
 	if err := CopyFile(ctx, nil, rfs, fileToBackup, backupFile, false, nil); err != nil {
