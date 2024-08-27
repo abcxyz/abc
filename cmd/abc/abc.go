@@ -191,10 +191,10 @@ func realMain(ctx context.Context) error {
 	cleanup := metricswrap.WriteMetric(ctx, mClient, "runs", 1)
 	defer cleanup()
 
-	runtimeCtx, closer := context.WithTimeout(ctx, runtimeMetricsTimeout)
-	defer closer()
-	// TODO: This will cause a synchronous metrics call, may be way too slow.
+	// This will cause a synchronous metrics call.
 	defer func() {
+		runtimeCtx, closer := context.WithTimeout(ctx, runtimeMetricsTimeout)
+		defer closer()
 		cleanup := metricswrap.WriteMetric(runtimeCtx, mClient, "runtime_millis", time.Since(start).Milliseconds())
 		defer cleanup()
 	}()
