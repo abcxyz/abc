@@ -28,7 +28,9 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
 	"github.com/abcxyz/abc-updater/pkg/updater"
+	"github.com/abcxyz/abc/internal/metricswrap"
 	"github.com/abcxyz/abc/internal/version"
 	"github.com/abcxyz/abc/templates/commands/describe"
 	"github.com/abcxyz/abc/templates/commands/goldentest"
@@ -43,6 +45,11 @@ import (
 const (
 	defaultLogLevel  = logging.LevelWarning
 	defaultLogFormat = logging.FormatText
+	// Long since only runs once every 24 hours.
+	updateTimeout = time.Second
+	// Shorter since nothing can be done in parallel due to it starting after
+	// program logic finishes.
+	runtimeMetricsTimeout = 200 * time.Millisecond
 )
 
 var templateCommands = map[string]cli.CommandFactory{
@@ -136,31 +143,61 @@ func setLogEnvVars() {
 	}
 }
 
+func checkVersion(ctx context.Context) func() {
+	// Only check for updates if not built from HEAD.
+	if version.Version == "source" {
+		return func() {}
+	}
+	updaterCtx, updaterDone := context.WithTimeout(ctx, updateTimeout)
+	results := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
+		AppID:   version.Name,
+		Version: version.Version,
+	})
+	return func() {
+		defer updaterDone()
+		logger := logging.FromContext(ctx)
+		if msg, err := results(); err != nil {
+			// Debug log since not necessarily actionable.
+			logger.DebugContext(ctx, "failed to check for updates", "err", err.Error())
+		} else if msg != "" {
+			logger.InfoContext(ctx, fmt.Sprintf("\n%s\n", msg))
+		}
+	}
+}
+
 func realMain(ctx context.Context) error {
+	start := time.Now()
 	if err := checkSupportedOS(); err != nil {
 		return err
 	}
 
-	// Only check for updates if not built from HEAD.
-	if version.Version != "source" {
-		// Timeout updater after 1 second.
-		updaterCtx, updaterDone := context.WithTimeout(ctx, time.Second)
-		defer updaterDone()
-		results := updater.CheckAppVersionAsync(updaterCtx, &updater.CheckVersionParams{
-			AppID:   version.Name,
-			Version: version.Version,
-		})
+	updateResult := checkVersion(ctx)
+	defer updateResult()
 
-		defer func() {
-			message, err := results()
-			if err != nil {
-				logger := logging.FromContext(ctx)
-				logger.InfoContext(ctx, "failed to check for new versions", "error", err)
-				return
-			}
-			fmt.Fprintf(os.Stderr, "\n%s\n", message)
-		}()
+	mClient, err := metrics.New(ctx, version.Name, version.Version)
+	if err != nil {
+		fmt.Printf("metric client creation failed: %v\n", err)
 	}
+
+	ctx = metrics.WithClient(ctx, mClient)
+	defer func() {
+		if r := recover(); r != nil {
+			handler := metricswrap.WriteMetric(ctx, mClient, "panics", 1)
+			defer handler()
+			panic(r)
+		}
+	}()
+
+	cleanup := metricswrap.WriteMetric(ctx, mClient, "runs", 1)
+	defer cleanup()
+
+	// This will cause a synchronous metrics call.
+	defer func() {
+		runtimeCtx, closer := context.WithTimeout(ctx, runtimeMetricsTimeout)
+		defer closer()
+		cleanup := metricswrap.WriteMetric(runtimeCtx, mClient, "runtime_millis", time.Since(start).Milliseconds())
+		defer cleanup()
+	}()
 
 	return rootCmd().Run(ctx, os.Args[1:]) //nolint:wrapcheck
 }
@@ -182,12 +219,12 @@ func checkSupportedOS() error {
 }
 
 func checkDarwinVersion(utsRelease string) error {
-	// We support Mac OS 13 and newer, which corresponds to Darwin kernel
+	// We support macOS 13 and newer, which corresponds to Darwin kernel
 	// version 22 and newer. The mappings from macOS version to Darwin
 	// version are taken from
 	// https://en.wikipedia.org/wiki/Darwin_(operating_system)#Release_history.
 	// Regrettably, the unix.Uname() function only gives darwin version, not
-	// macos version.
+	// macOS version.
 	const (
 		// These two must match. Whenever one is changed, the other must
 		// also be changed to match.
