@@ -13,7 +13,7 @@
 // limitations under the License.
 
 //nolint:wrapcheck // We don't want to excessively wrap errors, like "yaml error: yaml error: ..."
-package v1beta4
+package v1beta6
 
 import (
 	"errors"
