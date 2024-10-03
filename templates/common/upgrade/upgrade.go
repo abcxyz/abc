@@ -364,20 +364,9 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest
 		return nil, fmt.Errorf("failed downloading template: %w", err)
 	}
 
-	if !p.ContinueIfCurrent {
-		hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
-		if err != nil {
-			return nil, err //nolint:wrapcheck
-		}
-		if hashMatch {
-			// No need to upgrade. We already have the latest template version.
-			logger.InfoContext(ctx, "template installation is already up to date",
-				"manifest_path", absManifestPath)
-			return &ManifestResult{
-				Type:   AlreadyUpToDate,
-				DLMeta: dlMeta,
-			}, nil
-		}
+	noopIfInputsMatch, err := inputsForNoopCheck(ctx, p, templateDir, oldManifest)
+	if err != nil {
+		return nil, err
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
@@ -426,6 +415,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest
 		IncludeFromDestExtraDir: reversedDir,
 		InputsFromFlags:         p.InputsFromFlags,
 		KeepTempDirs:            p.KeepTempDirs,
+		NoopIfInputsMatch:       noopIfInputsMatch,
 		OutDir:                  mergeDir,
 		Prompt:                  p.Prompt,
 		Prompter:                p.Prompter,
@@ -438,6 +428,12 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed rendering template: %w", err)
+	}
+	if renderResult.NoopInputsMatched {
+		return &ManifestResult{
+			Type:   AlreadyUpToDate,
+			DLMeta: dlMeta,
+		}, nil
 	}
 
 	newManifest, _, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
@@ -473,6 +469,35 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest
 		NonConflicts:   nonConflicts,
 		Type:           resultType,
 	}, nil
+}
+
+// Returns a map which, if it is equal to the resolved template inputs, will
+// abort the upgrade as a noop. This supports the optional feature where we
+// can cleanly bail out if there is no new template version and also the user's
+// template inputs are the same as before.
+//
+// Returns nil if we don't want to do a noop, because --continue-if-current was
+// true or because there's a new version of the template.
+func inputsForNoopCheck(ctx context.Context, p *Params, templateDir string, oldManifest *manifest.Manifest) (map[string]string, error) {
+	logger := logging.FromContext(ctx).With("logger", "inputsForNoopCheck")
+	if p.ContinueIfCurrent {
+		return nil, nil
+	}
+
+	hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	if !hashMatch {
+		logger.InfoContext(ctx, "template dirhash did not match")
+		return nil, nil
+	}
+	logger.InfoContext(ctx, "template dirhash matched")
+
+	// We don't make the noop decision yet, but return a set of inputs that will
+	// conditional cause a noop depending on whether they match the new inputs.
+	return inputsToMap(oldManifest.Inputs), nil
 }
 
 func makeDownloader(ctx context.Context, p *Params, installedDir string, oldManifest *manifest.Manifest) (templatesource.Downloader, error) {

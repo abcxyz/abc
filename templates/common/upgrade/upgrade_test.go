@@ -122,6 +122,7 @@ func TestUpgradeAll(t *testing.T) {
 		flagContinueIfCurrent        bool
 		flagUpgradeChannel           string
 		flagUpgradeVersion           string
+		origRenderInputs             map[string]string
 		upgradeInputs                map[string]string
 		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -413,6 +414,71 @@ steps:
 				"out.txt": "hello\n",
 			},
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
+		},
+		{
+			name: "dont_short_circuit_if_inputs_changed",
+			origTemplateDirContents: map[string]string{
+				"out.txt": "hello\n",
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+inputs:
+  - name: 'my_input'
+    desc: 'my input'
+steps:
+  - desc: 'include .'
+    action: 'include'
+    params:
+      paths: ['.']
+`,
+			},
+			origRenderInputs: map[string]string{
+				"my_input": "42",
+			},
+			upgradeInputs: map[string]string{
+				"my_input": "43",
+			},
+			templateUnionForUpgrade: map[string]string{},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						DLMeta:       wantDLMeta,
+						NonConflicts: []ActionTaken{
+							{
+								Action: Noop,
+								Path:   "out.txt",
+							},
+						},
+					},
+				},
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest,
+				func(m *manifest.Manifest) {
+					m.Inputs = []*manifest.Input{
+						{
+							Name:  mdl.S("my_input"),
+							Value: mdl.S("42"),
+						},
+					}
+				},
+			),
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest,
+				func(m *manifest.Manifest) {
+					m.ModificationTime = afterUpgradeTime
+					m.Inputs = []*manifest.Input{
+						{
+							Name:  mdl.S("my_input"),
+							Value: mdl.S("43"),
+						},
+					}
+				},
+			),
 		},
 		{
 			name:                  "dont_short_circuit_if_already_latest_version_but_flag_overrides",
@@ -1783,7 +1849,7 @@ yellow is my favorite color
 			if tc.fakeInitialRenderDownloader != nil {
 				tc.fakeInitialRenderDownloader.sourceDir = templateDir // inject per-testcase value that's not known when the testcase is created
 			}
-			renderResult := mustRender(t, ctx, clk, tc.fakeInitialRenderDownloader, tempBase, templateDir, destDir, nil)
+			renderResult := mustRender(t, ctx, clk, tc.fakeInitialRenderDownloader, tempBase, templateDir, destDir, tc.origRenderInputs)
 
 			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
