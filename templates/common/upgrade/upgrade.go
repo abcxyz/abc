@@ -471,7 +471,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest
 	}, nil
 }
 
-// Returns a map which, if it is equal to the resolve template inputs, will
+// Returns a map which, if it is equal to the resolved template inputs, will
 // abort the upgrade as a noop. This supports the optional feature where we
 // can cleanly bail out if there is no new template version and also the user's
 // template inputs are the same as before.
