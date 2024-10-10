@@ -1283,8 +1283,8 @@ This check is not done on non-release builds, as they don't have canonical
 version to check against.
 
 ## Metrics
-Google collects usage statics. No identifible data is collected.
-Mtrics are collected using [abcxyz/abc-updater](https://github.com/abcxyz/abc-updater).
+Google collects usage statics. No identifiable data is collected.
+Metrics are collected using [abcxyz/abc-updater](https://github.com/abcxyz/abc-updater).
 
 Currently, data is collected on:
 - Count of total invocations
