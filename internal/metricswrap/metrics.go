@@ -40,8 +40,7 @@ func WriteMetric(ctx context.Context, client *metrics.Client, name string, count
 	return func() {
 		err := <-errCh
 		if err != nil {
-			logger := logging.FromContext(ctx)
-			logger.DebugContext(ctx, "Metric writing failed.", "err", err)
+			logging.FromContext(ctx).DebugContext(ctx, "failed to write metric", "err", err)
 		}
 	}
 }

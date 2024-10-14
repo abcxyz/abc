@@ -47,8 +47,9 @@ const (
 	defaultLogFormat = logging.FormatText
 	// Long since only runs once every 24 hours.
 	updateTimeout = time.Second
-	// Shorter since nothing can be done in parallel due to it starting after
-	// program logic finishes.
+
+	// Shorter than default metrics timeout since nothing can be done in parallel
+	// due to it starting after program logic finishes.
 	runtimeMetricsTimeout = 200 * time.Millisecond
 )
 
@@ -176,7 +177,9 @@ func realMain(ctx context.Context) error {
 
 	mClient, err := metrics.New(ctx, version.Name, version.Version)
 	if err != nil {
-		fmt.Printf("metric client creation failed: %v\n", err)
+		if err != nil {
+			logging.FromContext(ctx).DebugContext(ctx, "metric client creation failed", "error", err)
+		}
 	}
 
 	ctx = metrics.WithClient(ctx, mClient)
