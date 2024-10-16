@@ -1276,15 +1276,17 @@ These are the functions that we added that are not normally part of CEL.
 [abcxyz/abc-updater](https://github.com/abcxyz/abc-updater) is run once a day to
 check for newer versions of `abc`, results are printed to stderr if an update is
 available. This check can be disabled by setting the environment variable
-`ABC_IGNORE_VERSIONS=ALL`. Notifications can be disabled for specific versions
-with a list of versions and constraints `ABC_IGNORE_VERSIONS=<2.0.0,3.5.0`.
+`export ABC_IGNORE_VERSIONS=ALL`. Notifications can be disabled for specific versions
+with a list of versions and constraints `export ABC_IGNORE_VERSIONS=<2.0.0,3.5.0`.
 
 This check is not done on non-release builds, as they don't have canonical
 version to check against.
 
 ## Metrics
-Google collects usage statics. No identifiable data is collected.
-Metrics are collected using [abcxyz/abc-updater](https://github.com/abcxyz/abc-updater).
+We collect non-identifiable usage metrics using
+[abcxyz/abc-updater](https://github.com/abcxyz/abc-updater).
+You can **opt** out of these metrics by setting the environment variable
+`ABC_NO_METRICS` to `TRUE` in your shell.
 
 Currently, data is collected on:
 - Count of total invocations
@@ -1297,8 +1299,3 @@ Along with each metric, the following metadata is recorded:
 - Installation time with minute granularity
 
 Metrics data is retained for 24 months.
-
-You can **opt-out** of collection by setting the following environment variable:
-```shell
-ABC_NO_METRICS=TRUE
-```
