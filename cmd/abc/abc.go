@@ -177,9 +177,7 @@ func realMain(ctx context.Context) error {
 
 	mClient, err := metrics.New(ctx, version.Name, version.Version)
 	if err != nil {
-		if err != nil {
-			logging.FromContext(ctx).DebugContext(ctx, "metric client creation failed", "error", err)
-		}
+		logging.FromContext(ctx).DebugContext(ctx, "metric client creation failed", "error", err)
 	}
 
 	ctx = metrics.WithClient(ctx, mClient)
