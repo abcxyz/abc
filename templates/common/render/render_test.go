@@ -105,6 +105,7 @@ steps:
 		flagBackfillManifestOnly   bool
 		flagUpgradeChannel         string
 		flagDebugStepDiffs         bool
+		flagNoopIfInputsMatch      map[string]string
 		overrideBuiltinVars        map[string]string
 		removeAllErr               error
 		wantScratchContents        map[string]string
@@ -112,6 +113,7 @@ steps:
 		wantDestContents           map[string]string
 		wantBackupContents         map[string]string
 		wantStdout                 string
+		wantNoopInputsMatched      bool
 		wantErr                    string
 
 		// manifests are part of the destination directory, but are compared
@@ -1761,6 +1763,67 @@ steps:
 				},
 			},
 		},
+		{
+			name: "noop_on_input_match",
+			flagInputs: map[string]string{
+				"name_to_greet":      "Alice",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			flagNoopIfInputsMatch: map[string]string{
+				"name_to_greet":      "Alice",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			wantNoopInputsMatched: true,
+		},
+		{
+			name: "not_noop_on_input_mismatch",
+			flagInputs: map[string]string{
+				"name_to_greet":      "Alice",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			flagNoopIfInputsMatch: map[string]string{
+				"name_to_greet":      "Bob",
+				"emoji_suffix":       "🐈",
+				"ending_punctuation": "!",
+			},
+			templateContents: map[string]string{
+				"myfile.txt":           "Some random stuff",
+				"spec.yaml":            specContents,
+				"file1.txt":            "my favorite color is blue",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantStdout: "Hello, Alice🐈!\n",
+			wantDestContents: map[string]string{
+				"file1.txt":            "my favorite color is red",
+				"dir1/file_in_dir.txt": "file_in_dir contents",
+				"dir2/file2.txt":       "file2 contents",
+			},
+			wantManifest: &manifest.Manifest{
+				CreationTime:     clk.Now(),
+				ModificationTime: clk.Now(),
+				Inputs: []*manifest.Input{
+					{Name: mdl.S("emoji_suffix"), Value: mdl.S("🐈")},
+					{Name: mdl.S("ending_punctuation"), Value: mdl.S("!")},
+					{Name: mdl.S("name_to_greet"), Value: mdl.S("Alice")},
+				},
+				OutputFiles: []*manifest.OutputFile{
+					{File: mdl.S("dir1/file_in_dir.txt")},
+					{File: mdl.S("dir2/file2.txt")},
+					{File: mdl.S("file1.txt")},
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -1802,6 +1865,7 @@ steps:
 				InputFiles:          inputFilePaths,
 				InputsFromFlags:     tc.flagInputs,
 				KeepTempDirs:        tc.flagKeepTempDirs,
+				NoopIfInputsMatch:   tc.flagNoopIfInputsMatch,
 				OutDir:              outDir,
 				OverrideBuiltinVars: tc.overrideBuiltinVars,
 				SkipInputValidation: tc.flagSkipInputValidation,
@@ -1824,6 +1888,9 @@ steps:
 			}
 			if err == nil {
 				verifyManifest(ctx, t, result.ManifestPath != "", filepath.Join(outDir, result.ManifestPath), tc.wantManifest)
+				if result.NoopInputsMatched != tc.wantNoopInputsMatched {
+					t.Errorf("noopInputsMatched was %t but should be %t", result.NoopInputsMatched, tc.wantNoopInputsMatched)
+				}
 			}
 
 			if diff := cmp.Diff(stdoutBuf.String(), tc.wantStdout); diff != "" {
@@ -2166,8 +2233,6 @@ Enter value, or leave empty to accept default: `,
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// TODO rewrite to use framework
-
 			cmd := &cli.BaseCommand{}
 
 			stdinReader, stdinWriter := io.Pipe()
@@ -2227,7 +2292,7 @@ func mustLoadManifest(ctx context.Context, tb testing.TB, path string) *manifest
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	manifestI, _, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
 		tb.Fatalf("error reading manifest file: %v", err)
 	}

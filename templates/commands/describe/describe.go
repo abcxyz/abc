@@ -24,6 +24,8 @@ import (
 	"github.com/posener/complete/v2"
 	"github.com/posener/complete/v2/predict"
 
+	"github.com/abcxyz/abc-updater/pkg/metrics"
+	"github.com/abcxyz/abc/internal/metricswrap"
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/tempdir"
@@ -80,6 +82,10 @@ type runParams struct {
 }
 
 func (c *Command) Run(ctx context.Context, args []string) error {
+	mClient := metrics.FromContext(ctx)
+	cleanup := metricswrap.WriteMetric(ctx, mClient, "command_describe", 1)
+	defer cleanup()
+
 	if err := c.Flags().Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}

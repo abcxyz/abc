@@ -25,10 +25,13 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/abcxyz/abc/templates/common"
 	"github.com/abcxyz/abc/templates/common/graph"
 	"github.com/abcxyz/abc/templates/common/specutil"
 	"github.com/abcxyz/abc/templates/common/templatesource"
+	manifest "github.com/abcxyz/abc/templates/model/manifest/v1alpha1"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -85,48 +88,26 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		return &Result{Err: err}
 	}
 
-	manifests, err := crawlManifests(p.Location)
-	if err != nil {
-		return &Result{Err: fmt.Errorf("while crawling manifests: %w", err)}
-	}
-	if len(manifests) == 0 {
-		// Perhaps this isn't strictly an error, but in the case where the user
-		// invokes the tool incorrectly and doesn't actually do the work they
-		// intended, we want to tell them and not just pretend things are fine.
-		return &Result{Err: ErrNoManifests}
-	}
-
-	sorted, depGraph, err := depOrder(ctx, p.CWD, p.Location, p.TemplateLocation, manifests)
+	manifests, sorted, depGraph, err := manifestsToUpgrade(ctx, p)
 	if err != nil {
 		return &Result{Err: err}
-	}
-
-	if p.ResumeFrom != "" {
-		resumeFromIdx := slices.Index(sorted, p.ResumeFrom)
-		if resumeFromIdx == -1 {
-			return &Result{Err: fmt.Errorf("the --resume-from value %q is not valid, it must be one of %q", p.ResumeFrom, sorted)}
-		}
-		sorted = sorted[resumeFromIdx:]
 	}
 
 	out := &Result{
 		Results: make([]*ManifestResult, 0, len(sorted)),
 	}
 
-	for _, m := range sorted {
-		absManifestPath := filepath.Join(p.Location, m)
+	for _, manifestPath := range sorted {
+		absManifestPath := filepath.Join(p.Location, manifestPath)
 		if !filepath.IsAbs(absManifestPath) {
 			absManifestPath = filepath.Join(p.CWD, absManifestPath)
 		}
 		logger.InfoContext(ctx, "beginning upgrade of manifest",
 			"manifest", absManifestPath)
-		result, err := upgrade(ctx, p, absManifestPath)
+		manifest := manifests[manifestPath]
+		result, err := upgrade(ctx, p, absManifestPath, manifest)
 		if err != nil {
-			path := filepath.Join(p.Location, m)
-			if !filepath.IsAbs(path) {
-				path = filepath.Join(p.CWD, path)
-			}
-			out.Err = fmt.Errorf("when upgrading the manifest at %s:\n%w", path, err)
+			out.Err = fmt.Errorf("when upgrading the manifest at %s:\n%w", absManifestPath, err)
 			break
 		}
 
@@ -135,9 +116,9 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 		// that had a patch reversal conflict earlier.
 		p.AlreadyResolved = nil
 
-		result.ManifestPath = m
+		result.ManifestPath = manifestPath
 		if depGraph != nil {
-			result.DependedOn = depGraph.EdgesFrom(m)
+			result.DependedOn = depGraph.EdgesFrom(manifestPath)
 		}
 
 		out.Results = append(out.Results, result)
@@ -150,6 +131,74 @@ func UpgradeAll(ctx context.Context, p *Params) *Result {
 	out.Overall = overallResult(out.Results)
 
 	return out
+}
+
+// manifestsToUpgrade finds all the all the manifests that are in scope for this
+// upgrade operation.
+//
+// The return values are:
+//   - A map from manifest path to manifest object that was parsed from that path
+//   - A topologically sorted list of manifest paths. Each one references a key
+//     in the map, and a key in the graph.
+//   - A dependency graph having a node for each manifest path.
+//
+// The set of keys is guaranteed to be the same in all the returned values.
+func manifestsToUpgrade(ctx context.Context, p *Params) (map[string]*manifest.Manifest, []string, *graph.Graph[string], error) {
+	manifestPaths, err := crawlManifests(p.Location)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("while crawling manifests: %w", err)
+	}
+
+	if len(manifestPaths) == 0 {
+		// Perhaps this isn't strictly an error, but in the case where the user
+		// invokes the tool incorrectly and doesn't actually do the work they
+		// intended, we want to tell them and not just pretend things are fine.
+		return nil, nil, nil, ErrNoManifests
+	}
+
+	manifestsUnfiltered, manifestBufs, err := loadManifests(ctx, p.CWD, p.Location, manifestPaths)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	manifestsFiltered, err := filterManifests(ctx, p.ManifestFilter, manifestsUnfiltered, manifestBufs)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	sorted, depGraph, err := depOrder(p.TemplateLocation, manifestsFiltered)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if p.ResumeFrom != "" {
+		resumeFromIdx := slices.Index(sorted, p.ResumeFrom)
+		if resumeFromIdx == -1 {
+			return nil, nil, nil, fmt.Errorf("the --resume-from value %q is not valid, it must be one of %q", p.ResumeFrom, sorted)
+		}
+		sorted = sorted[resumeFromIdx:]
+	}
+
+	return manifestsFiltered, sorted, depGraph, nil
+}
+
+// The keys in the two returned maps are identical.
+func loadManifests(ctx context.Context, cwd, startFrom string, paths []string) (map[string]*manifest.Manifest, map[string][]byte, error) {
+	outManifests := make(map[string]*manifest.Manifest, len(paths))
+	outBufs := make(map[string][]byte, len(paths))
+	for _, p := range paths {
+		manifestPath := filepath.Join(startFrom, p)
+		if !filepath.IsAbs(manifestPath) {
+			manifestPath = filepath.Join(cwd, manifestPath)
+		}
+		manifest, buf, err := loadManifest(ctx, &common.RealFS{}, manifestPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		outManifests[p] = manifest
+		outBufs[p] = buf
+	}
+	return outManifests, outBufs, nil
 }
 
 func overallResult(results []*ManifestResult) ResultType {
@@ -204,21 +253,20 @@ func crawlManifests(startFrom string) ([]string, error) {
 	return manifests, nil
 }
 
-func depOrder(ctx context.Context, cwd, upgradeLocation, localTemplateLocationOverride string, manifestsRel []string) ([]string, *graph.Graph[string], error) {
+func depOrder(localTemplateLocationOverride string, manifests map[string]*manifest.Manifest) ([]string, *graph.Graph[string], error) {
 	if localTemplateLocationOverride != "" {
 		// Subtle point: when the user provides --template-location, then that
 		// means that all the manifest cannot logically have any dependencies
 		// between them. They are all being updated from --template-location,
 		// and that is their only depdendency.
-		return manifestsRel, nil, nil
+		out := maps.Keys(manifests)
+		slices.Sort(out)
+		return out, nil, nil
 	}
 
-	depGraph, err := depGraph(ctx, cwd, upgradeLocation, manifestsRel)
-	if err != nil {
-		return nil, nil, err
-	}
+	deps := depGraph(manifests)
 
-	sorted, err := depGraph.TopologicalSort()
+	sorted, err := deps.TopologicalSort()
 	if err != nil {
 		errCycle := &graph.CyclicError[string]{}
 		if errors.As(err, &errCycle) {
@@ -226,7 +274,7 @@ func depOrder(ctx context.Context, cwd, upgradeLocation, localTemplateLocationOv
 		}
 		return nil, nil, fmt.Errorf("topological sorting of manifest depencies gave an unexpected error: %w", err)
 	}
-	return sorted, depGraph, nil
+	return sorted, deps, nil
 }
 
 // depGraph returns a dependency graph saying which manifests were output by a
@@ -243,7 +291,7 @@ func depOrder(ctx context.Context, cwd, upgradeLocation, localTemplateLocationOv
 // This is basically a "self join" on manifests where the *source* spec.yaml
 // file from one manifest is joined with the manifest that *created* that
 // spec.yaml (if it exists).
-func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []string) (*graph.Graph[string], error) {
+func depGraph(manifests map[string]*manifest.Manifest) *graph.Graph[string] {
 	// A mapping of manifestPath to the spec yaml of the template that was being
 	// rendered when that manifest was created. This is just the result of
 	// reading the "template_location" field from each manifest underneath the
@@ -273,26 +321,17 @@ func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []s
 
 	g := graph.NewGraph[string]()
 
-	for _, manifestRel := range manifestsRel {
+	for manifestRel, manifest := range manifests {
 		// In case this manifest doesn't have any incoming or outgoing
 		// dependencies (no graph edges), we manually add it to the graph so
 		// it will be included in the topological sort. We can't just rely on
 		// implicit creation of nodes when adding edges.
 		g.AddNode(manifestRel)
 
-		manifestPath := filepath.Join(upgradeLocation, manifestRel)
-		if !filepath.IsAbs(manifestPath) {
-			manifestPath = filepath.Join(cwd, manifestPath)
-		}
-		manifest, err := loadManifest(ctx, &common.RealFS{}, manifestPath)
-		if err != nil {
-			return nil, err
-		}
-
 		// If the manifest is at /foo/bar/.abc/manifest.yaml, then the
 		// template was installed to /foo/bar (the parent dir of the dir
 		// that contains the manifest).
-		destDir := filepath.Dir(filepath.Dir(manifestPath))
+		destDir := filepath.Dir(filepath.Dir(manifestRel))
 
 		for _, outputFile := range manifest.OutputFiles {
 			if strings.HasSuffix(outputFile.File.Val, "/"+specutil.SpecFileName) {
@@ -308,7 +347,7 @@ func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []s
 
 	// Do the join: simplify from "manifest -> spec -> manifest" to just
 	// "manifest -> manifest" by joining on the spec path.
-	for _, manifestRel := range manifestsRel {
+	for manifestRel := range manifests {
 		sourceSpec, ok := manifestToSourceSpec[manifestRel]
 		if !ok {
 			continue
@@ -320,7 +359,7 @@ func depGraph(ctx context.Context, cwd, upgradeLocation string, manifestsRel []s
 		g.AddEdge(manifestRel, manifestThatCreatedSpec)
 	}
 
-	return g, nil
+	return g
 }
 
 func fillDefaults(p *Params) (*Params, error) {

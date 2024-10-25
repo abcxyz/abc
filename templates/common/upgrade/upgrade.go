@@ -111,6 +111,12 @@ type Params struct {
 	// that single template will be upgraded.
 	Location string
 
+	// A CEL expression to filter the manifests found. If this is set, then it
+	// will be executed against each manifest YAML model, and the manifest will
+	// upgraded IFF the expression returns true. If unset, then no filtering
+	// will be done and every manifest found under Location will be upgraded.
+	ManifestFilter string
+
 	// The value of --prompt.
 	Prompt   bool
 	Prompter input.Prompter
@@ -329,7 +335,7 @@ type ActionTaken struct {
 //
 // Returns true if the upgrade occurred, or false if the upgrade was skipped
 // because we're already on the latest version of the template.
-func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *ManifestResult, rErr error) {
+func upgrade(ctx context.Context, p *Params, absManifestPath string, oldManifest *manifest.Manifest) (_ *ManifestResult, rErr error) {
 	logger := logging.FromContext(ctx).With("logger", "upgrade")
 
 	// For now, manifest files are always located in the .abc directory under
@@ -337,11 +343,6 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	installedDir := filepath.Join(filepath.Dir(absManifestPath), "..")
 
 	if err := detectUnmergedConflicts(installedDir); err != nil {
-		return nil, err
-	}
-
-	oldManifest, err := loadManifest(ctx, p.FS, absManifestPath)
-	if err != nil {
 		return nil, err
 	}
 
@@ -363,20 +364,9 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		return nil, fmt.Errorf("failed downloading template: %w", err)
 	}
 
-	if !p.ContinueIfCurrent {
-		hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
-		if err != nil {
-			return nil, err //nolint:wrapcheck
-		}
-		if hashMatch {
-			// No need to upgrade. We already have the latest template version.
-			logger.InfoContext(ctx, "template installation is already up to date",
-				"manifest_path", absManifestPath)
-			return &ManifestResult{
-				Type:   AlreadyUpToDate,
-				DLMeta: dlMeta,
-			}, nil
-		}
+	noopIfInputsMatch, err := inputsForNoopCheck(ctx, p, templateDir, oldManifest)
+	if err != nil {
+		return nil, err
 	}
 
 	// The "merge directory" is yet another temp directory in addition to
@@ -425,6 +415,7 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		IncludeFromDestExtraDir: reversedDir,
 		InputsFromFlags:         p.InputsFromFlags,
 		KeepTempDirs:            p.KeepTempDirs,
+		NoopIfInputsMatch:       noopIfInputsMatch,
 		OutDir:                  mergeDir,
 		Prompt:                  p.Prompt,
 		Prompter:                p.Prompter,
@@ -438,8 +429,14 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 	if err != nil {
 		return nil, fmt.Errorf("failed rendering template: %w", err)
 	}
+	if renderResult.NoopInputsMatched {
+		return &ManifestResult{
+			Type:   AlreadyUpToDate,
+			DLMeta: dlMeta,
+		}, nil
+	}
 
-	newManifest, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
+	newManifest, _, err := loadManifest(ctx, p.FS, filepath.Join(mergeDir, renderResult.ManifestPath))
 	if err != nil {
 		return nil, err
 	}
@@ -472,6 +469,35 @@ func upgrade(ctx context.Context, p *Params, absManifestPath string) (_ *Manifes
 		NonConflicts:   nonConflicts,
 		Type:           resultType,
 	}, nil
+}
+
+// Returns a map which, if it is equal to the resolved template inputs, will
+// abort the upgrade as a noop. This supports the optional feature where we
+// can cleanly bail out if there is no new template version and also the user's
+// template inputs are the same as before.
+//
+// Returns nil if we don't want to do a noop, because --continue-if-current was
+// true or because there's a new version of the template.
+func inputsForNoopCheck(ctx context.Context, p *Params, templateDir string, oldManifest *manifest.Manifest) (map[string]string, error) {
+	logger := logging.FromContext(ctx).With("logger", "inputsForNoopCheck")
+	if p.ContinueIfCurrent {
+		return nil, nil
+	}
+
+	hashMatch, err := dirhash.Verify(oldManifest.TemplateDirhash.Val, templateDir)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	if !hashMatch {
+		logger.InfoContext(ctx, "template dirhash did not match")
+		return nil, nil
+	}
+	logger.InfoContext(ctx, "template dirhash matched")
+
+	// We don't make the noop decision yet, but return a set of inputs that will
+	// conditional cause a noop depending on whether they match the new inputs.
+	return inputsToMap(oldManifest.Inputs), nil
 }
 
 func makeDownloader(ctx context.Context, p *Params, installedDir string, oldManifest *manifest.Manifest) (templatesource.Downloader, error) {
@@ -623,24 +649,24 @@ func mergeManifest(old, newManifest *manifest.Manifest) *manifest.WithHeader {
 }
 
 // loadManifest reads and unmarshals the manifest at the given path.
-func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, error) {
+func loadManifest(ctx context.Context, fs common.FS, path string) (*manifest.Manifest, []byte, error) {
 	f, err := fs.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
+		return nil, nil, fmt.Errorf("failed to open manifest file at %q: %w", path, err)
 	}
 	defer f.Close()
 
-	manifestI, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
+	manifestI, buf, err := decode.DecodeValidateUpgrade(ctx, f, path, decode.KindManifest)
 	if err != nil {
-		return nil, fmt.Errorf("error reading manifest file: %w", err)
+		return nil, nil, fmt.Errorf("error reading manifest file: %w", err)
 	}
 
 	out, ok := manifestI.(*manifest.Manifest)
 	if !ok {
-		return nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
+		return nil, nil, fmt.Errorf("internal error: manifest file did not decode to *manifest.Manifest")
 	}
 
-	return out, nil
+	return out, buf, nil
 }
 
 // inputsToMap takes the list of input values (e.g. "service_account" was "my-service-account")

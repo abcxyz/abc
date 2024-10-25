@@ -122,6 +122,7 @@ func TestUpgradeAll(t *testing.T) {
 		flagContinueIfCurrent        bool
 		flagUpgradeChannel           string
 		flagUpgradeVersion           string
+		origRenderInputs             map[string]string
 		upgradeInputs                map[string]string
 		upgradeInputFileContents     string
 		wantDestContentsAfterUpgrade map[string]string // excludes manifest contents
@@ -413,6 +414,71 @@ steps:
 				"out.txt": "hello\n",
 			},
 			wantManifestAfterUpgrade: outTxtOnlyManifest,
+		},
+		{
+			name: "dont_short_circuit_if_inputs_changed",
+			origTemplateDirContents: map[string]string{
+				"out.txt": "hello\n",
+				"spec.yaml": `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+inputs:
+  - name: 'my_input'
+    desc: 'my input'
+steps:
+  - desc: 'include .'
+    action: 'include'
+    params:
+      paths: ['.']
+`,
+			},
+			origRenderInputs: map[string]string{
+				"my_input": "42",
+			},
+			upgradeInputs: map[string]string{
+				"my_input": "43",
+			},
+			templateUnionForUpgrade: map[string]string{},
+			want: &Result{
+				Overall: Success,
+				Results: []*ManifestResult{
+					{
+						ManifestPath: ".",
+						Type:         Success,
+						DLMeta:       wantDLMeta,
+						NonConflicts: []ActionTaken{
+							{
+								Action: Noop,
+								Path:   "out.txt",
+							},
+						},
+					},
+				},
+			},
+			wantManifestBeforeUpgrade: manifestWith(outTxtOnlyManifest,
+				func(m *manifest.Manifest) {
+					m.Inputs = []*manifest.Input{
+						{
+							Name:  mdl.S("my_input"),
+							Value: mdl.S("42"),
+						},
+					}
+				},
+			),
+			wantDestContentsAfterUpgrade: map[string]string{
+				"out.txt": "hello\n",
+			},
+			wantManifestAfterUpgrade: manifestWith(outTxtOnlyManifest,
+				func(m *manifest.Manifest) {
+					m.ModificationTime = afterUpgradeTime
+					m.Inputs = []*manifest.Input{
+						{
+							Name:  mdl.S("my_input"),
+							Value: mdl.S("43"),
+						},
+					}
+				},
+			),
 		},
 		{
 			name:                  "dont_short_circuit_if_already_latest_version_but_flag_overrides",
@@ -1783,7 +1849,7 @@ yellow is my favorite color
 			if tc.fakeInitialRenderDownloader != nil {
 				tc.fakeInitialRenderDownloader.sourceDir = templateDir // inject per-testcase value that's not known when the testcase is created
 			}
-			renderResult := mustRender(t, ctx, clk, tc.fakeInitialRenderDownloader, tempBase, templateDir, destDir)
+			renderResult := mustRender(t, ctx, clk, tc.fakeInitialRenderDownloader, tempBase, templateDir, destDir, tc.origRenderInputs)
 
 			manifestFullPath := filepath.Join(destDir, renderResult.ManifestPath)
 
@@ -1940,7 +2006,7 @@ func TestUpgrade_NonCanonical(t *testing.T) {
 	abctestutil.WriteAll(t, templateDir, origTemplateDirContents)
 	clk := clock.NewMock()
 	clk.Set(time.Date(2024, 3, 1, 4, 5, 6, 7, time.UTC))
-	mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir)
+	mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir, nil)
 
 	clk.Add(time.Second)
 	params := &Params{
@@ -2031,7 +2097,7 @@ steps:
 	ctx := context.Background()
 	clk := clock.NewMock()
 	clk.Set(renderTime1)
-	renderResult1 := mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir1)
+	renderResult1 := mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir1, nil)
 
 	wantManifestBeforeUpgrade := &manifest.Manifest{
 		CreationTime:     renderTime1,
@@ -2056,7 +2122,7 @@ steps:
 	assertManifest(ctx, t, "before upgrade", wantManifestBeforeUpgrade, manifestFullPath)
 
 	clk.Add(time.Second)
-	mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir2) // don't bother checking the manifest for the second render; it's the same as the first one
+	mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir2, nil) // don't bother checking the manifest for the second render; it's the same as the first one
 
 	// Simulate the user making some edits to the included-from-destination file
 	// after the render operation but before the upgrade
@@ -2321,80 +2387,182 @@ func TestDetectUnmergedConflicts(t *testing.T) {
 }
 
 // TODO(upgrade): add tests:
-//   - upgrade multiple with already-resolved
 //   - upgrade template-that-outputs-template
+
 func TestUpgradeAll_MultipleTemplates(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	clk := clock.NewMock()
+	specFile := `api_version: 'cli.abcxyz.dev/v1beta6'
+kind: 'Template'
+desc: 'my template'
+inputs:
+  - name: "my_input"
+    desc: "An arbitrary input"
+steps:
+  - desc: 'include .'
+    action: 'include'
+    params:
+      paths: ['.']
+`
 
-	tempBase := t.TempDir()
-
-	// Make the temp dir into a git repo so template locations will be treated
-	// as canonical.
-	abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
-
-	template1Files := map[string]string{
-		"spec.yaml":  includeDotSpec,
-		"myfile.txt": "my old template1 file contents",
+	cases := []struct {
+		name               string
+		flagManifestFilter string
+		wantNumSuccesses   int
+		wantDestContents   map[string]string
+		wantErr            string
+	}{
+		{
+			name:             "no_filter",
+			wantNumSuccesses: 2,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my new template1 file contents",
+				"destDir2/myfile.txt": "my new template2 file contents",
+			},
+		},
+		{
+			name:               "filter_by_location_type",
+			flagManifestFilter: `location_type == "local_git"`,
+			wantNumSuccesses:   2,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my new template1 file contents",
+				"destDir2/myfile.txt": "my new template2 file contents",
+			},
+		},
+		{
+			name:               "filter_by_template_location",
+			flagManifestFilter: `template_location == "../../templateDir1"`,
+			wantNumSuccesses:   1,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my new template1 file contents",
+				"destDir2/myfile.txt": "my old template2 file contents",
+			},
+		},
+		{
+			name:               "filter_by_input_value",
+			flagManifestFilter: `inputs.exists(item, item.name == "my_input" && item.value == "template_1_input")`,
+			wantNumSuccesses:   1,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my new template1 file contents",
+				"destDir2/myfile.txt": "my old template2 file contents",
+			},
+		},
+		{
+			name:               "filter_by_output_file",
+			flagManifestFilter: `output_files.exists(item, item.file == "myfile.txt")`,
+			wantNumSuccesses:   2,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my new template1 file contents",
+				"destDir2/myfile.txt": "my new template2 file contents",
+			},
+		},
+		{
+			name:               "filter_matches_none",
+			flagManifestFilter: `1 == 0`,
+			wantNumSuccesses:   0,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my old template1 file contents",
+				"destDir2/myfile.txt": "my old template2 file contents",
+			},
+		},
+		{
+			name:               "filter_returns_non_boolean",
+			flagManifestFilter: `"string_which_should_be_bool"`,
+			wantErr:            "CEL filter evaluation did not return bool",
+		},
+		{
+			name:               "nonexistent_field_skips_manifest",
+			flagManifestFilter: `nonexistent == "lol"`,
+			wantDestContents: map[string]string{
+				"destDir1/myfile.txt": "my old template1 file contents",
+				"destDir2/myfile.txt": "my old template2 file contents",
+			},
+		},
 	}
-	template2Files := map[string]string{
-		"spec.yaml":  includeDotSpec,
-		"myfile.txt": "my old template2 file contents",
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	templateDir1 := filepath.Join(tempBase, "templateDir1")
-	templateDir2 := filepath.Join(tempBase, "templateDir2")
-	destBase := filepath.Join(tempBase, "dest")
-	destDir1 := filepath.Join(destBase, "destDir1")
-	destDir2 := filepath.Join(destBase, "destDir2")
-	abctestutil.WriteAll(t, templateDir1, template1Files)
-	abctestutil.WriteAll(t, templateDir2, template2Files)
-	mustRender(t, ctx, clk, nil, tempBase, templateDir1, destDir1)
-	mustRender(t, ctx, clk, nil, tempBase, templateDir2, destDir2)
+			ctx := context.Background()
+			clk := clock.NewMock()
 
-	upgradedTemplate1Files := map[string]string{
-		"spec.yaml":  includeDotSpec,
-		"myfile.txt": "my new template1 file contents",
-	}
-	upgradedTemplate2Files := map[string]string{
-		"spec.yaml":  includeDotSpec,
-		"myfile.txt": "my new template2 file contents",
-	}
+			tempBase := t.TempDir()
 
-	abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
-	abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
+			// Make the temp dir into a git repo so template locations will be treated
+			// as canonical.
+			abctestutil.WriteAll(t, tempBase, abctestutil.WithGitRepoAt("", nil))
 
-	allResult := UpgradeAll(ctx, &Params{
-		Clock:    clk,
-		CWD:      tempBase,
-		FS:       &common.RealFS{},
-		Location: tempBase,
-		Stdout:   os.Stdout,
-	})
+			template1Files := map[string]string{
+				"spec.yaml":  specFile,
+				"myfile.txt": "my old template1 file contents",
+			}
+			template2Files := map[string]string{
+				"spec.yaml":  specFile,
+				"myfile.txt": "my old template2 file contents",
+			}
 
-	if allResult.Err != nil {
-		t.Fatal(allResult.Err)
-	}
+			templateDir1 := filepath.Join(tempBase, "templateDir1")
+			templateDir2 := filepath.Join(tempBase, "templateDir2")
+			destBase := filepath.Join(tempBase, "dest")
+			destDir1 := filepath.Join(destBase, "destDir1")
+			destDir2 := filepath.Join(destBase, "destDir2")
+			abctestutil.WriteAll(t, templateDir1, template1Files)
+			abctestutil.WriteAll(t, templateDir2, template2Files)
+			template1Inputs := map[string]string{
+				"my_input": "template_1_input",
+			}
+			template2Inputs := map[string]string{
+				"my_input": "template_2_input",
+			}
+			mustRender(t, ctx, clk, nil, tempBase, templateDir1, destDir1, template1Inputs)
+			mustRender(t, ctx, clk, nil, tempBase, templateDir2, destDir2, template2Inputs)
 
-	if len(allResult.Results) != 2 {
-		t.Errorf("got %d results, expected exactly 2", len(allResult.Results))
-	}
-	for _, result := range allResult.Results {
-		if result.Type != Success {
-			t.Fatalf("got upgrade result %q, expected %q", result.Type, Success)
-		}
-	}
+			upgradedTemplate1Files := map[string]string{
+				"spec.yaml":  specFile,
+				"myfile.txt": "my new template1 file contents",
+			}
+			upgradedTemplate2Files := map[string]string{
+				"spec.yaml":  specFile,
+				"myfile.txt": "my new template2 file contents",
+			}
 
-	wantDestContents := map[string]string{
-		"destDir1/myfile.txt": "my new template1 file contents",
-		"destDir2/myfile.txt": "my new template2 file contents",
-	}
-	opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifests are too unpredictable, don't assert their contents
-	gotDestContents := abctestutil.LoadDir(t, destBase, opt)
-	if diff := cmp.Diff(gotDestContents, wantDestContents); diff != "" {
-		t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+			abctestutil.WriteAll(t, templateDir1, upgradedTemplate1Files)
+			abctestutil.WriteAll(t, templateDir2, upgradedTemplate2Files)
+
+			allResult := UpgradeAll(ctx, &Params{
+				Clock:          clk,
+				CWD:            tempBase,
+				FS:             &common.RealFS{},
+				Location:       tempBase,
+				ManifestFilter: tc.flagManifestFilter,
+				Stdout:         os.Stdout,
+			})
+			if diff := testutil.DiffErrString(allResult.Err, tc.wantErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if tc.wantErr != "" {
+				return
+			}
+
+			if allResult.Err != nil {
+				t.Fatal(allResult.Err)
+			}
+
+			if len(allResult.Results) != tc.wantNumSuccesses {
+				t.Fatalf("got %d results, expected exactly %d", len(allResult.Results), tc.wantNumSuccesses)
+			}
+			for _, result := range allResult.Results {
+				if result.Type != Success {
+					t.Fatalf("got upgrade result %q, expected %q", result.Type, Success)
+				}
+			}
+
+			opt := abctestutil.SkipGlob("*/.abc/manifest*") // manifests are too unpredictable, don't assert their contents
+			gotDestContents := abctestutil.LoadDir(t, destBase, opt)
+			if diff := cmp.Diff(gotDestContents, tc.wantDestContents); diff != "" {
+				t.Errorf("dest contents were not as expected (-got,+want):\n%s", diff)
+			}
+		})
 	}
 }
 
@@ -2426,8 +2594,8 @@ func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
 	destDir2 := filepath.Join(destBase, "destDir2")
 	abctestutil.WriteAll(t, templateDir1, template1Files)
 	abctestutil.WriteAll(t, templateDir2, template2Files)
-	mustRender(t, ctx, clk, nil, tempBase, templateDir1, destDir1)
-	mustRender(t, ctx, clk, nil, tempBase, templateDir2, destDir2)
+	mustRender(t, ctx, clk, nil, tempBase, templateDir1, destDir1, nil)
+	mustRender(t, ctx, clk, nil, tempBase, templateDir2, destDir2, nil)
 
 	abctestutil.OverwriteJoin(t, destDir1, "myfile.txt", "my local edits")
 
@@ -2540,9 +2708,9 @@ func TestUpgradeAll_Dependency(t *testing.T) {
 	destDirC := filepath.Join(destBase, "destDirC")
 	abctestutil.WriteAll(t, templateDir1, template1Files)
 	abctestutil.WriteAll(t, templateDir2, template2Files)
-	mustRender(t, ctx, clk, nil, tempBase, templateDir1, destDirA)
-	mustRender(t, ctx, clk, nil, tempBase, templateDir2, destDirB)
-	mustRender(t, ctx, clk, nil, tempBase, destDirA+"/inner", destDirC)
+	mustRender(t, ctx, clk, nil, tempBase, templateDir1, destDirA, nil)
+	mustRender(t, ctx, clk, nil, tempBase, templateDir2, destDirB, nil)
+	mustRender(t, ctx, clk, nil, tempBase, destDirA+"/inner", destDirC, nil)
 
 	wantRendered := map[string]string{
 		"destDirA/outer_output_file.txt": "my old outer output file",
@@ -2645,7 +2813,7 @@ func mustIndexFunc[T any](t *testing.T, s []T, f func(T) bool) int {
 func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want *manifest.Manifest, path string) {
 	tb.Helper()
 
-	got, err := loadManifest(ctx, &common.RealFS{}, path)
+	got, _, err := loadManifest(ctx, &common.RealFS{}, path)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -2674,7 +2842,7 @@ func assertManifest(ctx context.Context, tb testing.TB, whereAreWe string, want 
 	}
 }
 
-func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, fakeDL *fakeDownloader, tempBase, templateDir, destDir string) *render.Result {
+func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, fakeDL *fakeDownloader, tempBase, templateDir, destDir string, inputs map[string]string) *render.Result {
 	tb.Helper()
 
 	var downloader templatesource.Downloader = fakeDL
@@ -2690,13 +2858,14 @@ func mustRender(tb testing.TB, ctx context.Context, clk clock.Clock, fakeDL *fak
 	}
 
 	result, err := render.Render(ctx, &render.Params{
-		Clock:       clk,
-		Cwd:         tempBase,
-		DestDir:     destDir,
-		Downloader:  downloader,
-		FS:          &common.RealFS{},
-		OutDir:      destDir,
-		TempDirBase: tempBase,
+		Clock:           clk,
+		Cwd:             tempBase,
+		DestDir:         destDir,
+		Downloader:      downloader,
+		InputsFromFlags: inputs,
+		FS:              &common.RealFS{},
+		OutDir:          destDir,
+		TempDirBase:     tempBase,
 	})
 	if err != nil {
 		tb.Fatal(err)

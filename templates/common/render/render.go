@@ -135,6 +135,11 @@ type Params struct {
 	// manifest file without outputting any other files from the template.
 	BackfillManifestOnly bool
 
+	// If this is non-nil, then rendering will be aborted if the template inputs
+	// match this map. This supports an feature in the upgrade logic where an
+	// upgrade will be a noop if no changes are needed.
+	NoopIfInputsMatch map[string]string
+
 	// The directory where the rendered output will be written.
 	OutDir string
 
@@ -184,6 +189,10 @@ type Result struct {
 	// manifest output wasn't enabled (see the --skip-manifest flag), then this
 	// will be empty.
 	ManifestPath string
+
+	// This is set to true when the render operation was aborted because the
+	// template inputs matched [Params.NoopIfInputsMatch].
+	NoopInputsMatched bool
 }
 
 // Render does the full sequence of steps involved in rendering a template. It
@@ -253,6 +262,10 @@ func RenderAlreadyDownloaded(ctx context.Context, dlMeta *templatesource.Downloa
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
+	}
+
+	if p.NoopIfInputsMatch != nil && maps.Equal(resolvedInputs, p.NoopIfInputsMatch) {
+		return &Result{NoopInputsMatched: true}, nil
 	}
 
 	tempTracker := tempdir.NewDirTracker(p.FS, p.KeepTempDirs)
