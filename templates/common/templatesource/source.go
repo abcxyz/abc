@@ -133,7 +133,7 @@ func ParseSource(ctx context.Context, params *ParseSourceParams) (Downloader, er
 	for _, sp := range realSourceParsers {
 		downloader, ok, err := sp.sourceParse(ctx, params)
 		if err != nil {
-			return nil, err //nolint:wrapcheck
+			return nil, err
 		}
 		if ok {
 			return downloader, nil

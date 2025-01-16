@@ -215,7 +215,6 @@ func TestWalkAndModify(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -302,8 +301,6 @@ func TestParseAndExecuteGoTmpl(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -358,7 +355,6 @@ func TestProcessPaths(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			pathsCopy := make([]model.String, 0, len(tc.paths))
@@ -527,7 +523,6 @@ func TestProcessGlobs(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

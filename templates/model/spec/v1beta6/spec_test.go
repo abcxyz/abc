@@ -152,7 +152,6 @@ steps:
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Spec{}
@@ -294,7 +293,6 @@ rules:
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Input{}
@@ -439,7 +437,7 @@ params:
 			in: `desc: 'mydesc'
 action: 'include'
 params:
-  paths: 
+  paths:
   - paths: ['a/b/c', 'x/y.txt']
     from: 'destination'`,
 			want: &Step{
@@ -535,7 +533,7 @@ action: 'include'
 params:
   from: 'destination'
   paths:
-    - paths: 
+    - paths:
       - 'a.txt'`,
 			wantUnmarshalErr: `unknown field name "from"`,
 		},
@@ -1010,7 +1008,6 @@ params:
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got := &Step{}

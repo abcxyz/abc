@@ -330,8 +330,6 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

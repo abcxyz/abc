@@ -119,8 +119,6 @@ func TestClone(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -201,8 +199,6 @@ func TestHeadTags(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -215,7 +211,7 @@ func TestHeadTags(t *testing.T) {
 
 			got, err := HeadTags(ctx, dir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Errorf(diff)
+				t.Error(diff)
 			}
 
 			if diff := cmp.Diff(got, tc.want); diff != "" {
@@ -267,7 +263,6 @@ func TestCheckout(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

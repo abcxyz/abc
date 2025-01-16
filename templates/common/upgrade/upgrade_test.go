@@ -173,7 +173,7 @@ kind: 'Template'
 desc: 'my template'
 inputs:
   - name: "rename_to"
-    default: "default_filename.txt" 
+    default: "default_filename.txt"
     desc: "New filename for out.txt"
 steps:
   - desc: 'include out.txt'
@@ -242,7 +242,7 @@ kind: 'Template'
 desc: 'my template'
 inputs:
   - name: "rename_to"
-    default: "default_filename.txt" 
+    default: "default_filename.txt"
     desc: "New filename for out.txt"
 steps:
   - desc: 'include out.txt'
@@ -308,7 +308,7 @@ kind: 'Template'
 desc: 'my template'
 inputs:
   - name: "rename_to"
-    default: "default_filename.txt" 
+    default: "default_filename.txt"
     desc: "New filename for out.txt"
 steps:
   - desc: 'include out.txt'
@@ -1826,8 +1826,6 @@ yellow is my favorite color
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2074,9 +2072,9 @@ steps:
     action: 'string_replace'
     params:
       paths: ['dir/file.txt']
-      replacements: 
+      replacements:
         - to_replace: 'purple'
-          with: 'red'  
+          with: 'red'
 `,
 	}
 	abctestutil.WriteAll(t, templateDir, origTemplateDirContents)
@@ -2371,8 +2369,6 @@ func TestDetectUnmergedConflicts(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
