@@ -161,8 +161,6 @@ func verify(ctx context.Context, pool *workerpool.Pool[string], templateLocation
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		workerFunc := func() (_ string, rErr error) {
 			tempTracker := tempdir.NewDirTracker(fs, false)
 			defer tempTracker.DeferMaybeRemoveAll(ctx, &rErr)
@@ -278,7 +276,7 @@ func diffOutputsOneTest(ctx context.Context, p *diffOutputsOneTestParams, tc *Te
 	if anyDiffErrs {
 		failureText := p.redSprintf(fmt.Sprintf("template location [%s] golden test [%s] didn't match actual output, you might "+
 			"need to run 'record' command to capture it as the new expected output", p.templateLocation, tc.TestName))
-		err := fmt.Errorf(failureText)
+		err := errors.New(failureText)
 		merr = errors.Join(merr, err)
 	}
 
@@ -301,7 +299,7 @@ func diffOneFile(ctx context.Context, p *diffOutputsOneTestParams, goldenDataDir
 
 	if !exists {
 		failureText := p.redSprintf(fmt.Sprintf("-- [%s] generated, however not recorded in test data", abcRenameTrimmedGoldenFile))
-		return fmt.Errorf(failureText)
+		return errors.New(failureText)
 	}
 
 	exists, err = common.Exists(tempFile)
@@ -310,7 +308,7 @@ func diffOneFile(ctx context.Context, p *diffOutputsOneTestParams, goldenDataDir
 	}
 	if !exists {
 		failureText := p.redSprintf(fmt.Sprintf("-- [%s] expected, however missing", abcRenameTrimmedGoldenFile))
-		return fmt.Errorf(failureText)
+		return errors.New(failureText)
 	}
 
 	diff, err := run.RunDiff(ctx, p.useColor, goldenFile, goldenDataDir, tempFile, tempDataDir)

@@ -1571,7 +1571,7 @@ rules:
     message: 'rule validation'
 
 steps:
-  - desc: 'print a message' 
+  - desc: 'print a message'
     action: 'print'
     params:
       message: 'rule validation passed'
@@ -1599,7 +1599,7 @@ rules:
     message: 'invalid rule: abc does not start with z'
 
 steps:
-  - desc: 'print a message' 
+  - desc: 'print a message'
     action: 'print'
     params:
       message: 'rule validation passed'
@@ -1624,7 +1624,7 @@ rules:
     message: 'git tag must have specific value'
 
 steps:
-  - desc: 'print a message' 
+  - desc: 'print a message'
     action: 'print'
     params:
       message: |-
@@ -1827,7 +1827,6 @@ steps:
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2229,7 +2228,6 @@ Enter value, or leave empty to accept default: `,
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

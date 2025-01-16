@@ -69,8 +69,6 @@ func TestDescribeFlags_Parse(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -154,8 +152,6 @@ steps:
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -233,15 +229,13 @@ func Test_SpecFieldsForDescribe(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			r := &Command{}
 
 			if diff := cmp.Diff(r.specFieldsForDescribe(tc.spec), tc.wantAttrList); diff != "" {
-				t.Errorf(diff)
+				t.Error(diff)
 			}
 		})
 	}
