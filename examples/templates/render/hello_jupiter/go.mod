@@ -1,5 +1,5 @@
 module github.com/abcxyz/abc/examples/templates/render/hello_jupiter
 
-go 1.22
+go 1.24
 
-toolchain go1.22.1
+toolchain go1.24.0
