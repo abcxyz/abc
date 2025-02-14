@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alessio/shellescape"
+	"al.essio.dev/pkg/shellescape"
 	"github.com/benbjohnson/clock"
 	"github.com/posener/complete/v2"
 	"github.com/posener/complete/v2/predict"
@@ -81,14 +81,14 @@ Background on conflict types:
  - editEditConflict: you made some local edits to this file that was installed
    by the template, which conflicts with the new version of the template which
    wants to edit the file. Your locally edited file is unchanged, and the
-   incoming file from the template has the additional extension 
+   incoming file from the template has the additional extension
    ".abcmerge_from_new_template". Please resolve the conflict by either
-     - selectively incorporating some of the changes from the 
+     - selectively incorporating some of the changes from the
        .abcmerge_from_new_template file into your local file
-	 - rejecting this incoming change by removing the 
+	 - rejecting this incoming change by removing the
 	   .abcmerge_from_new_template file
 	 - overwriting your locally edit file with the .abcmerge_from_new_template
-	   incoming file. 
+	   incoming file.
 
  - editDeleteConflict: you made an edit to this file that was installed by the
    template, which conflicts with the new version of the template, which wants
