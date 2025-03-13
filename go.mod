@@ -33,7 +33,7 @@ require (
 	github.com/posener/script v1.2.0 // indirect
 	github.com/sethvargo/go-envconfig v1.1.1 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250212204824-5a70512c5d8b // indirect
