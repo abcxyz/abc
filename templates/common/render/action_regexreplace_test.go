@@ -15,7 +15,6 @@
 package render
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -400,7 +399,7 @@ gamma`,
 			scratchDir := t.TempDir()
 			abctestutil.WriteAll(t, scratchDir, tc.initContents)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			sp := &stepParams{
 				scope:      common.NewScope(tc.inputs, nil),
 				scratchDir: scratchDir,

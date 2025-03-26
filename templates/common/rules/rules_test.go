@@ -15,7 +15,6 @@
 package rules
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -68,7 +67,7 @@ func TestValidateRules(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := t.Context()
 
 			got := ValidateRules(ctx, tc.scope, tc.rules)
 			if diff := testutil.DiffErrString(got, tc.want); diff != "" {
@@ -176,7 +175,7 @@ Rule msg:  age must be less than 130
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := t.Context()
 
 			sb := &strings.Builder{}
 			tw := tabwriter.NewWriter(sb, 8, 0, 2, ' ', 0)

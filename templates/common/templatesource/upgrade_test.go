@@ -15,7 +15,6 @@
 package templatesource
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -173,7 +172,7 @@ func TestForUpgrade(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			tempDir := t.TempDir()
 
 			abctestutil.WriteAll(t, tempDir, tc.dirContents)

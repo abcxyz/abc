@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -65,7 +64,7 @@ func TestRootCmd(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			rc := rootCmd()
 			_, stdout, stderr := rc.Pipe()
 			err := rc.Run(ctx, tc.args)

@@ -1874,7 +1874,7 @@ steps:
 				UpgradeChannel:      tc.flagUpgradeChannel,
 			}
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 			result, err := Render(ctx, p)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
@@ -2241,7 +2241,7 @@ Enter value, or leave empty to accept default: `,
 			cmd.SetStdout(stdoutWriter)
 			cmd.SetStderr(stderrWriter)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			errCh := make(chan error)
 			var got map[string]string
 			go func() {

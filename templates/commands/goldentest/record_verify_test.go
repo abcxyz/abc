@@ -16,7 +16,6 @@
 package goldentest
 
 import (
-	"context"
 	"testing"
 
 	abctestutil "github.com/abcxyz/abc/templates/testutil"
@@ -89,7 +88,7 @@ inputs:
 
 			abctestutil.WriteAll(t, tempDir, templateContent)
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			args := []string{}
 			if len(tc.testNames) > 0 {

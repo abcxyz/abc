@@ -16,7 +16,6 @@
 package goldentest
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -222,7 +221,7 @@ kind: GoldenTest
 
 			abctestutil.WriteAll(t, tempDir, tc.templateContents)
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			var args []string
 			for k, v := range tc.flagInputs {
@@ -387,7 +386,7 @@ builtin_vars:
 
 			abctestutil.WriteAll(t, tempDir, tc.templateContents)
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			var args []string
 			for k, v := range tc.flagBuiltinVars {

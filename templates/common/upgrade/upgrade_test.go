@@ -1838,7 +1838,7 @@ yellow is my favorite color
 
 			abctestutil.WriteAll(t, destDir, tc.origDestContents)
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 			clk := clock.NewMock()
@@ -1989,7 +1989,7 @@ func (f *fakeDownloader) Download(ctx context.Context, cwd, templateDir, destDir
 func TestUpgrade_NonCanonical(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempBase := t.TempDir()
 	templateDir := filepath.Join(tempBase, "template_dir")
 	destDir := filepath.Join(tempBase, "dest")
@@ -2092,7 +2092,7 @@ steps:
 	abctestutil.WriteAll(t, destDir1, origDestContents)
 	abctestutil.WriteAll(t, destDir2, origDestContents)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	clk := clock.NewMock()
 	clk.Set(renderTime1)
 	renderResult1 := mustRender(t, ctx, clk, nil, tempBase, templateDir, destDir1, nil)
@@ -2479,7 +2479,7 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			clk := clock.NewMock()
 
 			tempBase := t.TempDir()
@@ -2565,7 +2565,7 @@ steps:
 func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	clk := clock.NewMock()
 
 	tempBase := t.TempDir()
@@ -2676,7 +2676,7 @@ func TestUpgradeAll_MultipleTemplatesWithResumedConflict(t *testing.T) {
 func TestUpgradeAll_Dependency(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	clk := clock.NewMock()
 
 	tempBase := t.TempDir()

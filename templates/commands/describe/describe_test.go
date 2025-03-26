@@ -15,7 +15,6 @@
 package describe
 
 import (
-	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -173,7 +172,7 @@ steps:
 				},
 			}
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 			err := r.realRun(ctx, rp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)

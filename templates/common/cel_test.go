@@ -15,7 +15,6 @@
 package common
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -100,7 +99,7 @@ func TestCompileAndEvalCEL(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			scope := NewScope(tc.vars, nil)
 
 			// Create a new "any" variable whose type is pointer-to-the-type-of-tc.want.
@@ -544,7 +543,7 @@ func TestMatchesUncapitalizedBool(t *testing.T) {
 func compileEvalForTest(t *testing.T, expr string, want any, wantErr string) {
 	t.Helper()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	prog, err := celCompile(ctx, NewScope(nil, nil), expr)
 	if diff := testutil.DiffErrString(err, wantErr); diff != "" {

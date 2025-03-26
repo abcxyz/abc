@@ -15,7 +15,6 @@
 package render
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -185,7 +184,7 @@ func TestActionAppend(t *testing.T) {
 					},
 				},
 			}
-			err := actionAppend(context.Background(), sr, sp)
+			err := actionAppend(t.Context(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

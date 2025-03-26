@@ -40,7 +40,7 @@ func TestPromptForInputs_CanceledContext(t *testing.T) {
 	cmd.SetStdout(stdoutWriter)
 	cmd.SetStderr(stderrWriter)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	errCh := make(chan error)
 	go func() {
@@ -333,7 +333,7 @@ CEL error:    CEL expression result couldn't be converted to bool. The CEL engin
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			err := validateInputs(ctx, tc.inputModels, tc.inputVals)
 			if diff := testutil.DiffErrString(err, tc.want); diff != "" {
 				t.Error(diff)

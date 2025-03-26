@@ -256,7 +256,7 @@ Enter value: `,
 
 			abctestutil.WriteAll(t, sourceDir, tc.templateContents)
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			var args []string
 			if tc.flagPrompt {
