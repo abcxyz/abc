@@ -52,7 +52,7 @@ func TestEmitResult(t *testing.T) {
 
 			beam.Init()
 			p, s := beam.NewPipelineWithRoot()
-			ctx := context.Background()
+			ctx := t.Context()
 			csvPCol := beam.CreateList(s, tc.input)
 			dataModels := emitResult(ctx, s, csvPCol)
 

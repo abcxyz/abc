@@ -15,7 +15,6 @@
 package run
 
 import (
-	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -179,7 +178,7 @@ func TestDiff(t *testing.T) {
 				return filepath.Join(tempDir, rel)
 			}
 
-			gotDiff, err := RunDiff(context.Background(), tc.color, abs(tc.file1), abs(tc.file1RelTo), abs(tc.file2), abs(tc.file2RelTo))
+			gotDiff, err := RunDiff(t.Context(), tc.color, abs(tc.file1), abs(tc.file1RelTo), abs(tc.file2), abs(tc.file2RelTo))
 			if err != nil {
 				t.Fatal(err)
 			}

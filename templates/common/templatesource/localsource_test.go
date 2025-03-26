@@ -15,7 +15,6 @@
 package templatesource
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -223,7 +222,7 @@ func TestLocalDownloader_Download(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			tmp := t.TempDir()
 			abctestutil.WriteAll(t, tmp, tc.initialTempDirContents)
 			dl := &LocalDownloader{

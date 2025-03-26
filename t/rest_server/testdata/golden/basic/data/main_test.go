@@ -32,7 +32,7 @@ import (
 
 func TestRealMain(t *testing.T) {
 	t.Parallel()
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 	ctx, done := context.WithCancel(ctx)
 	defer done()
 
@@ -77,7 +77,7 @@ func TestRealMain(t *testing.T) {
 
 func TestHandleHello(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	h := renderer.NewTesting(ctx, t, nil)
 
 	cases := []struct {

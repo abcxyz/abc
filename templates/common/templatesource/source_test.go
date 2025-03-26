@@ -15,7 +15,6 @@
 package templatesource
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -265,7 +264,7 @@ func TestParseSource(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			tempDir := t.TempDir()
 
@@ -388,7 +387,7 @@ func TestGitCanonicalVersion(t *testing.T) {
 
 			tmp := t.TempDir()
 			abctestutil.WriteAll(t, tmp, tc.files)
-			ctx := context.Background()
+			ctx := t.Context()
 			got, gotOK, err := gitCanonicalVersion(ctx, filepath.Join(tmp, tc.dir))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)

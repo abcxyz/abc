@@ -16,7 +16,6 @@ package render
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -211,7 +210,7 @@ func TestActionForEach(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			buf := &bytes.Buffer{}
 			sp := &stepParams{

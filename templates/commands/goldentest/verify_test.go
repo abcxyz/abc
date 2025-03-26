@@ -16,7 +16,6 @@
 package goldentest
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -401,7 +400,7 @@ kind: 'GoldenTest'`,
 
 			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			args := []string{}
 			if len(tc.testNames) > 0 {

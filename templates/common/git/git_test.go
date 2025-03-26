@@ -47,7 +47,7 @@ func skipUnlessEnvEnabled(t *testing.T) {
 func TestLocalTags(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tempDir := t.TempDir()
 
@@ -122,7 +122,7 @@ func TestClone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			tempDir := t.TempDir()
 			err := Clone(ctx, tc.remote, tempDir)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
@@ -202,7 +202,7 @@ func TestHeadTags(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			tmpDir := t.TempDir()
 			abctestutil.WriteAll(t, tmpDir, tc.files)
@@ -269,7 +269,7 @@ func TestCheckout(t *testing.T) {
 			tempDir := t.TempDir()
 			abctestutil.WriteAll(t, tempDir, abctestutil.WithGitRepoAt("", nil))
 
-			ctx := context.Background()
+			ctx := t.Context()
 			if len(tc.branch) > 0 {
 				abctestutil.OverwriteJoin(t, tempDir, ".git/refs/heads/"+tc.branch, abctestutil.MinimalGitHeadSHA)
 			}

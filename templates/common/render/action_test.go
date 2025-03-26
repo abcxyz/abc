@@ -16,7 +16,6 @@ package render
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -240,7 +239,7 @@ func TestWalkAndModify(t *testing.T) {
 				relPathsPositions = append(relPathsPositions, mdl.S(p))
 			}
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 			err := walkAndModify(ctx, sp, relPathsPositions, tc.visitor)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
@@ -529,7 +528,7 @@ func TestProcessGlobs(t *testing.T) {
 			// pre-populate dir contents
 			tempDir := t.TempDir()
 			abctestutil.WriteAllMode(t, tempDir, tc.dirContents)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			gotPaths, err := processGlobs(ctx, tc.paths, tempDir, tc.skipGlobs)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

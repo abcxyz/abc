@@ -16,7 +16,6 @@ package upgrade
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -213,7 +212,7 @@ these flags:
 
 			abctestutil.WriteAll(t, destDir, tc.initialDestContents)
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			abctestutil.WriteAll(t, templateDir, tc.origTemplateDirContents)
 
@@ -291,7 +290,7 @@ func TestMissingManifest(t *testing.T) {
 	t.Parallel()
 
 	cmd := &Command{}
-	ctx := context.Background()
+	ctx := t.Context()
 	err := cmd.Run(ctx, []string{"nonexistent_file.txt"})
 	if diff := testutil.DiffErrString(err, "found no template manifests to upgrade"); diff != "" {
 		t.Fatal(diff)
@@ -446,7 +445,7 @@ steps:
 
 			destDir := filepath.Join(tempBase, "dest_dir")
 			templateDir := filepath.Join(tempBase, "template_dir")
-			ctx := context.Background()
+			ctx := t.Context()
 
 			abctestutil.WriteAll(t, templateDir, tc.origTemplate)
 

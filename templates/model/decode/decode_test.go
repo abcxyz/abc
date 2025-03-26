@@ -15,7 +15,6 @@
 package decode
 
 import (
-	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -503,7 +502,7 @@ steps:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			rd := strings.NewReader(tc.fileContents)
 			vu, _, err := DecodeValidateUpgrade(ctx, rd, "file.yaml", "")
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

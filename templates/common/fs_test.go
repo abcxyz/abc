@@ -16,7 +16,6 @@ package common
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
@@ -431,7 +430,7 @@ func TestCopyRecursive(t *testing.T) {
 				OpenFileErr: tc.openFileErr,
 				StatErr:     tc.statErr,
 			}
-			ctx := context.Background()
+			ctx := t.Context()
 
 			clk := clock.NewMock()
 			const unixTime = 1688609125
@@ -541,7 +540,7 @@ func TestCopyRecursive_ForbidSymlinks(t *testing.T) {
 			}
 
 			destTempDir := t.TempDir()
-			ctx := context.Background()
+			ctx := t.Context()
 			err := CopyRecursive(ctx, nil, &CopyParams{
 				FS:      &RealFS{},
 				SrcRoot: sourceTempDir,
@@ -627,7 +626,7 @@ func TestCopyFile(t *testing.T) {
 			}
 
 			fs := &RealFS{}
-			ctx := context.Background()
+			ctx := t.Context()
 			dstPath := filepath.Join(tempDir, tc.dstName)
 
 			var tee io.Writer

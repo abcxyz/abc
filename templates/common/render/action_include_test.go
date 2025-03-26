@@ -15,7 +15,6 @@
 package render
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -929,7 +928,7 @@ func TestActionInclude(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			tempDir := t.TempDir()
 			templateDir := filepath.Join(tempDir, tempdir.TemplateDirNamePart)
@@ -1014,7 +1013,7 @@ func TestPermissionsPreserved(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := actionInclude(ctx, include, sp)
 	if err != nil {
 		t.Fatal(err)

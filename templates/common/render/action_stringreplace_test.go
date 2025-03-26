@@ -15,7 +15,6 @@
 package render
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -245,7 +244,7 @@ func TestActionStringReplace(t *testing.T) {
 					},
 				},
 			}
-			err := actionStringReplace(context.Background(), sr, sp)
+			err := actionStringReplace(t.Context(), sr, sp)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}

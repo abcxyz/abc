@@ -16,7 +16,6 @@
 package goldentest
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -181,7 +180,7 @@ builtin_vars:
 
 			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			got, err := parseTestCases(ctx, tempDir, tc.testNames)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
@@ -307,7 +306,7 @@ steps:
 
 			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)
@@ -564,7 +563,7 @@ steps:
 
 			abctestutil.WriteAll(t, tempDir, tc.filesContent)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			err := renderTestCase(ctx, tempDir, tempDir, tc.testCase)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Fatal(diff)

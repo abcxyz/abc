@@ -314,7 +314,7 @@ func TestRemoteGitDownloader_Download(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			tempDir := t.TempDir()
 			gotDLMeta, err := tc.dl.Download(ctx, "", tempDir, "")
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
@@ -433,7 +433,7 @@ func TestResolveVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			outDir := t.TempDir()
 			createFakeGitRepo(t, tc.branches, tc.tags, outDir)
 

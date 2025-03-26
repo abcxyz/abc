@@ -88,7 +88,7 @@ func TestRun(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			if tc.timeout != 0 {
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithTimeout(ctx, tc.timeout)
