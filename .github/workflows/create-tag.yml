@@ -33,7 +33,7 @@ jobs:
       # Job need OIDC for token minter to work, see ref:
       # https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
       id-token: 'write'
-    uses: 'abcxyz/pkg/.github/workflows/create-tag.yml@main' # ratchet:exclude
+    uses: 'abcxyz/actions/.github/workflows/create-tag.yml@main' # ratchet:exclude
     with:
       tag: '${{ inputs.tag }}'
       branch: '${{ github.event.repository.default_branch }}'
