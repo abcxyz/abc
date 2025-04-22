@@ -26,12 +26,12 @@ permissions:
 
 jobs:
   # Double check that tests pass and lint is clean.
-  lint-test:
-    uses: './.github/workflows/lint-test.yml'
+  test:
+    uses: './.github/workflows/test.yml'
 
   release:
     runs-on: 'ubuntu-latest'
-    needs: 'lint-test'
+    needs: 'test'
     steps:
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
         with:

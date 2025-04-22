@@ -28,7 +28,7 @@ import (
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/core/metrics"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/spannerio"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/textio"
-	"github.com/apache/beam/sdks/v2/go/pkg/beam/runners/direct"
+	"github.com/apache/beam/sdks/v2/go/pkg/beam/runners/direct" //nolint:staticcheck // TODO: https://github.com/abcxyz/abc/issues/670
 )
 
 var (
@@ -57,7 +57,7 @@ func parseDataModel(record []string) *DataModel {
 	}
 }
 
-// emitResult emits data models to be written to Spanner
+// emitResult emits data models to be written to Spanner.
 func emitResult(ctx context.Context, s beam.Scope, lines beam.PCollection) beam.PCollection {
 	dataModels := beam.ParDo(s, func(line string, emit func(*DataModel)) {
 		reader := csv.NewReader(strings.NewReader(line))
