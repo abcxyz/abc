@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: 'Lint and test'
+name: 'test'
 
 on:
   push:
@@ -27,9 +27,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go_lint:
-    uses: 'abcxyz/actions/.github/workflows/go-lint.yml@main' # ratchet:exclude
-
   go_test:
     uses: 'abcxyz/actions/.github/workflows/go-test.yml@main' # ratchet:exclude
     strategy:
@@ -43,9 +40,6 @@ jobs:
     with:
       runs-on: '"${{ matrix.runner }}"'
       env: '{"ABC_TEST_NON_HERMETIC": true}'
-
-  yaml_lint:
-    uses: 'abcxyz/actions/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
 
   golden_test_presence:
     runs-on: 'ubuntu-latest'
