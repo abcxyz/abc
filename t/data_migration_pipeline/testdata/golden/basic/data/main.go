@@ -28,7 +28,8 @@ import (
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/core/metrics"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/spannerio"
 	"github.com/apache/beam/sdks/v2/go/pkg/beam/io/textio"
-	"github.com/apache/beam/sdks/v2/go/pkg/beam/runners/direct" //nolint:SA1019 https://github.com/abcxyz/abc/issues/670
+	"github.com/apache/beam/sdks/v2/go/pkg/beam/runners/direct" //nolint:SA1019
+	// TODO: https://github.com/abcxyz/abc/issues/670
 )
 
 var (
