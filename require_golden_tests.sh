@@ -8,11 +8,12 @@
 set -eEuo pipefail
 
 exit_status=0
-for spec_path in $(find . -name spec.yaml) ; do
-   template_dir=$(dirname $spec_path)
-   if [ ! -d "$template_dir/testdata/golden" ] ; then
-      echo "::error title=Missing golden test for template::$template_dir"
+# shellcheck disable=SC2044
+for spec_path in $(find . -name spec.yaml); do
+   template_dir="$(dirname "${spec_path}")"
+   if [[ ! -d "${template_dir}/testdata/golden" ]]; then
+      echo "::error title=Missing golden test for template::${template_dir}"
       exit_status=1
       fi
 done
-exit $exit_status
+exit "${exit_status}"
