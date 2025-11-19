@@ -205,10 +205,7 @@ func TestTopoSort(t *testing.T) {
 				}),
 			)
 
-			anyMatched := false
-			if len(tc.want) == 0 && len(got) == 0 {
-				anyMatched = true
-			}
+			anyMatched := len(tc.want) == 0 && len(got) == 0
 			for _, want := range tc.want {
 				if gocmp.Equal(got, want, cmpopts.EquateEmpty()) {
 					anyMatched = true
