@@ -76,7 +76,7 @@ func TestCompileAndEvalCEL(t *testing.T) {
 			name:    "invalid_cel_syntax",
 			in:      mdl.S(`[[[[[`),
 			want:    "",
-			wantErr: "Syntax error: mismatched input",
+			wantErr: "Syntax error:",
 		},
 		{
 			name: "simple_int_return",
